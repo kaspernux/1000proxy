@@ -26,4 +26,5 @@ class ServerRating extends Model
         {
         return $this->belongsTo(Customer::class);
         }
+
     }

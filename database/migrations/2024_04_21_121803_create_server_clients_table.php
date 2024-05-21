@@ -13,21 +13,14 @@ return new class extends Migration
     {
         Schema::create('server_clients', function (Blueprint $table) {
             $table->id();
-            $table->unsignedBigInteger('inbound_id');
-            $table->foreign('inbound_id')->references('id')->on('server_inbounds')->onDelete('cascade');
-            $table->unsignedBigInteger('up')->default(0);
-            $table->unsignedBigInteger('down')->default(0);
-            $table->unsignedBigInteger('total')->default(0);
-            $table->string('remark')->nullable();
+            $table->foreignId('server_inbound_id')->constrained('server_inbounds')->onDelete('cascade');
             $table->boolean('enable')->default(true);
-            $table->dateTime('expiryTime')->nullable();
-            $table->string('listen')->nullable();
-            $table->integer('port')->nullable();
-            $table->string('protocol')->nullable();
-            $table->json('settings')->nullable();
-            $table->json('streamSettings')->nullable();
-            $table->string('tag')->nullable();
-            $table->json('sniffing')->nullable();
+            $table->string('email', 255)->nullable();
+            $table->bigInteger('up')->default(0);
+            $table->bigInteger('down')->default(0);
+            $table->timestamp('expiry_time')->nullable();
+            $table->bigInteger('total')->default(0);
+            $table->boolean('reset')->default(false);
             $table->timestamps();
         });
     }

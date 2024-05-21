@@ -84,8 +84,8 @@ class ServerInfo extends Model
         $this->save();
         }
 
-    public function servers(): HasMany
+    public function servers()
         {
-        return $this->hasMany(Server::class);
+        return $this->belongsTo(Server::class);
         }
     }

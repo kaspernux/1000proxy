@@ -57,9 +57,18 @@ class Server extends Model
         return $this->hasMany(ServerReview::class);
         }
 
-    public function serverRatings(): HasMany
+    public function ratings(): HasMany
+    {
+        return $this->hasMany(ServerRating::class, 'server_id');
+    }
+
+    public function averageRating(): float
+    {
+        return $this->ratings()->avg('rating') ?? 0.0;
+    }
+    public function orderItems(): HasMany
         {
-        return $this->hasMany(ServerRating::class);
+        return $this->hasMany(OrderItem::class);
         }
 
     }

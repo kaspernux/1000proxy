@@ -26,4 +26,9 @@ class ServerReview extends Model
         {
         return $this->belongsTo(Customer::class);
         }
+    public function approve()
+        {
+        $this->approved = true;
+        $this->save();
+        }
     }

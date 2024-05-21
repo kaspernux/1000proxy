@@ -16,11 +16,25 @@ class Customer extends Model
 
     protected $fillable = [
 
+        'is_active',
         'image',
+        'name',
         'email',
         'password',
         'telegram_id',
-        'is_active',
+        'refcode',
+        'wallet',
+        'date',
+        'phone',
+        'refered_by',
+        'step',
+        'freetrial',
+        'first_start',
+        'temp',
+        'is_agent',
+        'discount_percent',
+        'agent_date',
+        'spam_info'
     ];
 
     public function orders(): HasMany
@@ -41,5 +55,29 @@ class Customer extends Model
     public function serverRatings(): HasMany
         {
         return $this->hasMany(ServerRating::class);
+
         }
+
+    public function orderItems(): HasMany
+        {
+        return $this->hasMany(OrderItem::class);
+
+        }
+    public function paymentMethods(): HasMany
+        {
+        return $this->hasMany(PaymentMethod::class);
+        }
+
+    // Define the relationship indicating the customer who referred this customer
+    public function referrer()
+    {
+        return $this->belongsTo(Customer::class, 'refered_by');
     }
+
+    // Define the relationship indicating customers referred by this customer
+    public function referredCustomers()
+    {
+        return $this->hasMany(Customer::class, 'refered_by');
+    }
+
+}

@@ -13,8 +13,12 @@ return new class extends Migration
     {
         Schema::create('server_categories', function (Blueprint $table) {
             $table->id();
-            $table->string('name');
+            $table->foreignId('server_id')->constrained()->onDelete('cascade');
+            $table->string('title');
+            $table->string('parent')->Default(0);
             $table->text('description')->nullable();
+            $table->string('step');
+            $table->boolean('active')->default(false);
             $table->json('options')->nullable(); // Store additional options as JSON
             $table->timestamps();
         });

@@ -13,20 +13,21 @@ return new class extends Migration
     {
         Schema::create('server_inbounds', function (Blueprint $table) {
             $table->id();
-            $table->integer('up');
-            $table->integer('down');
-            $table->integer('total');
-            $table->string('remark');
-            $table->boolean('enable');
+            $table->string('user_id');
+            $table->bigInteger('up')->default(0);
+            $table->bigInteger('down')->default(0);
+            $table->bigInteger('total')->default(0);
+            $table->string('remark', 255)->nullable();
+            $table->boolean('enable')->default(false);
             $table->timestamp('expiryTime')->nullable();
             $table->json('clientStats')->nullable();
-            $table->string('listen');
+            $table->string('listen', 255)->nullable();
             $table->integer('port');
-            $table->string('protocol');
-            $table->json('settings');
-            $table->json('streamSettings');
-            $table->string('tag');
-            $table->json('sniffing');
+            $table->string('protocol', 50);
+            $table->json('settings')->nullable();
+            $table->json('streamSettings')->nullable();
+            $table->string('tag', 100)->nullable();
+            $table->json('sniffing')->nullable();
             $table->timestamps();
         });
     }

@@ -8,7 +8,7 @@ use Illuminate\Database\Eloquent\Model;
 class ServerCategory extends Model
     {
     protected $fillable = [
-        'name', 'description', 'options',
+        'server_id','title', 'parent','description', 'step','active',
     ];
 
     protected $casts = [

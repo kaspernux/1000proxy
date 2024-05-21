@@ -11,44 +11,25 @@ class ServerClient extends Model
     {
     protected $fillable = [
         'id',
+        'server_inbound_id',
+        'enable',
+        'email',
         'up',
         'down',
+        'expiry_time',
         'total',
-        'remark',
-        'enable',
-        'expiryTime',
-        'listen',
-        'port',
-        'protocol',
-        'settings',
-        'streamSettings',
-        'tag',
-        'sniffing',
+        'reset',
     ];
 
     protected $casts = [
         'enable' => 'boolean', // Cast 'enable' to boolean
-        'expiryTime' => 'datetime', // Cast 'expiryTime' to datetime
-        'clientStats' => 'array', // Cast 'clientStats' to array
-        'settings' => 'array', // Cast 'settings' to array
-        'streamSettings' => 'array', // Cast 'streamSettings' to array
-        'sniffing' => 'array', // Cast 'sniffing' to array
+        'expiry_time' => 'datetime', // Cast 'expiryTime' to datetime
     ];
 
     // Define the relationship with the Inbound model
     public function serverInbound(): BelongsTo
         {
         return $this->belongsTo(ServerInbound::class);
-        }
-
-    public function cartItems(): HasMany
-        {
-        return $this->hasMany(CartItem::class);
-        }
-
-    public function DownloadableItems(): HasMany
-        {
-        return $this->hasMany(DownloadableItem::class);
         }
 
     }

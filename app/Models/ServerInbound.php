@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 class ServerInbound extends Model
     {
     protected $fillable = [
+        'user_id',
         'up',
         'down',
         'total',
@@ -26,7 +27,7 @@ class ServerInbound extends Model
 
     protected $casts = [
         'enable' => 'boolean', // Cast 'enable' to boolean
-        'expiryTime' => 'datetime', // Cast 'expiryTime' to datetime
+        'expiry_time' => 'datetime', // Cast 'expiryTime' to datetime
         'clientStats' => 'array', // Cast 'clientStats' to array
         'settings' => 'array', // Cast 'settings' to array
         'streamSettings' => 'array', // Cast 'streamSettings' to array
@@ -39,5 +40,14 @@ class ServerInbound extends Model
     public function serverCategories(): HasMany
         {
         return $this->hasMany(ServerCategory::class);
+        }
+
+    public function ServerPlan()
+        {
+        return $this->belongsTo(ServerPlan::class);
+        }
+    public function servers()
+        {
+        return $this->belongsTo(Server::class);
         }
     }
