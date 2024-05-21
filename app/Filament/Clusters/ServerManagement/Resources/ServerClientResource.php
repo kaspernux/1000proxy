@@ -8,6 +8,8 @@ use App\Filament\Clusters\ServerManagement\Resources\ServerClientResource\Relati
 use App\Models\ServerClient;
 use Filament\Forms;
 use Filament\Forms\Form;
+use Filament\Forms\Components\Group;
+use Filament\Forms\Components\Section;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
@@ -26,30 +28,46 @@ class ServerClientResource extends Resource
     {
         return $form
             ->schema([
-                Forms\Components\Select::make('server_inbound_id')
-                    ->relationship('serverInbound', 'id')
-                    ->required(),
-                Forms\Components\Toggle::make('enable')
-                    ->required(),
-                Forms\Components\TextInput::make('email')
-                    ->email()
-                    ->maxLength(255),
-                Forms\Components\TextInput::make('up')
-                    ->required()
-                    ->numeric()
-                    ->default(0),
-                Forms\Components\TextInput::make('down')
-                    ->required()
-                    ->numeric()
-                    ->default(0),
-                Forms\Components\DateTimePicker::make('expiry_time'),
-                Forms\Components\TextInput::make('total')
-                    ->required()
-                    ->numeric()
-                    ->default(0),
-                Forms\Components\Toggle::make('reset')
-                    ->required(),
-            ]);
+                Group::make()
+                    ->schema([
+                        Section::make('Client Information')
+                            ->schema([
+                                Forms\Components\Select::make('server_inbound_id')
+                                    ->relationship('serverInbound', 'id')
+                                    ->required(),
+                                Forms\Components\TextInput::make('email')
+                                    ->email()
+                                    ->maxLength(255),
+                                Forms\Components\Toggle::make('enable')
+                                    ->required(),
+                            ])
+                    ])
+                    ->columnSpan(1),
+
+                Group::make()
+                    ->schema([
+                        Section::make('Usage Information')
+                            ->schema([
+                                Forms\Components\TextInput::make('up')
+                                    ->required()
+                                    ->numeric()
+                                    ->default(0),
+                                Forms\Components\TextInput::make('down')
+                                    ->required()
+                                    ->numeric()
+                                    ->default(0),
+                                Forms\Components\DateTimePicker::make('expiry_time'),
+                                Forms\Components\TextInput::make('total')
+                                    ->required()
+                                    ->numeric()
+                                    ->default(0),
+                                Forms\Components\Toggle::make('reset')
+                                    ->required(),
+                            ])
+                            ->columns(2)
+                    ])
+                    ->columnSpan(2)
+            ])->columns(3);
     }
 
     public static function table(Table $table): Table
@@ -87,11 +105,14 @@ class ServerClientResource extends Resource
                     ->toggleable(isToggledHiddenByDefault: true),
             ])
             ->filters([
-                //
+                // Add filters if needed
             ])
             ->actions([
-                Tables\Actions\ViewAction::make(),
-                Tables\Actions\EditAction::make(),
+                Tables\Actions\ActionGroup::make([
+                    Tables\Actions\EditAction::make(),
+                    Tables\Actions\ViewAction::make(),
+                    Tables\Actions\DeleteAction::make(),
+                ]),
             ])
             ->bulkActions([
                 Tables\Actions\BulkActionGroup::make([
@@ -103,7 +124,7 @@ class ServerClientResource extends Resource
     public static function getRelations(): array
     {
         return [
-            //
+            // Add relations if needed
         ];
     }
 

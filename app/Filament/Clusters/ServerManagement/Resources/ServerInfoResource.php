@@ -11,6 +11,8 @@ use Filament\Forms\Form;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
+use Filament\Forms\Components\Section;
+use Filament\Forms\Components\Group;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\SoftDeletingScope;
 
@@ -26,24 +28,39 @@ class ServerInfoResource extends Resource
     {
         return $form
             ->schema([
-                Forms\Components\TextInput::make('title')
-                    ->required()
-                    ->maxLength(255),
-                Forms\Components\TextInput::make('ucount')
-                    ->required()
-                    ->numeric()
-                    ->default(0),
-                Forms\Components\Textarea::make('remark')
-                    ->columnSpanFull(),
-                Forms\Components\TextInput::make('flag')
-                    ->maxLength(255),
-                Forms\Components\Toggle::make('active')
-                    ->required(),
-                Forms\Components\TextInput::make('state')
-                    ->required()
-                    ->numeric()
-                    ->default(0),
-            ]);
+                Group::make()->schema([
+                    Section::make('Server Infos')->schema([
+                        Forms\Components\TextInput::make('title')
+                            ->required()
+                            ->maxLength(255),
+                        Forms\Components\TextInput::make('flag')
+                            ->maxLength(255),
+                        Forms\Components\TextInput::make('ucount')
+                            ->required()
+                            ->numeric()
+                            ->default(0),
+                        Forms\Components\TextInput::make('state')
+                            ->required()
+                            ->numeric()
+                            ->default(0),
+                    ])->columns(2),
+
+                Section::make('Details')->schema([
+                    Forms\Components\MarkdownEditor::make('remark')
+                            ->columnSpanFull()
+                            ->fileAttachmentsDirectory('ServerInfo'),
+                ])
+                ])->columnSpan(2),
+
+                Group::make()->schema([
+                    Section::make('Enable')->schema([
+                    Forms\Components\Toggle::make('active')
+                            ->required(),
+                    ])
+
+                ])->columnSpan(1)
+            ])->columns(3);
+
     }
 
     public static function table(Table $table): Table
@@ -75,8 +92,11 @@ class ServerInfoResource extends Resource
                 //
             ])
             ->actions([
-                Tables\Actions\ViewAction::make(),
-                Tables\Actions\EditAction::make(),
+                Tables\Actions\ActionGroup::make([
+                    Tables\Actions\EditAction::make(),
+                    Tables\Actions\ViewAction::make(),
+                    Tables\Actions\DeleteAction::make(),
+                ]),
             ])
             ->bulkActions([
                 Tables\Actions\BulkActionGroup::make([
@@ -100,5 +120,6 @@ class ServerInfoResource extends Resource
             'view' => Pages\ViewServerInfo::route('/{record}'),
             'edit' => Pages\EditServerInfo::route('/{record}/edit'),
         ];
-    }
+
+   }
 }

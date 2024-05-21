@@ -11,6 +11,8 @@ use Filament\Forms\Form;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
+use Filament\Forms\Components\Section;
+use Filament\Forms\Components\Group;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\SoftDeletingScope;
 
@@ -26,29 +28,41 @@ class ServerResource extends Resource
     {
         return $form
             ->schema([
-                Forms\Components\TextInput::make('ip')
-                    ->required()
-                    ->maxLength(255),
-                Forms\Components\TextInput::make('port')
-                    ->required()
-                    ->numeric(),
-                Forms\Components\TextInput::make('username')
-                    ->required()
-                    ->maxLength(255),
-                Forms\Components\TextInput::make('password')
-                    ->password()
-                    ->required()
-                    ->maxLength(255),
-                Forms\Components\TextInput::make('name')
-                    ->required()
-                    ->maxLength(255),
-                Forms\Components\TextInput::make('panel')
-                    ->required()
-                    ->maxLength(255),
-                Forms\Components\TextInput::make('status')
-                    ->required()
-                    ->maxLength(255),
-            ]);
+                Group::make()->schema([
+                    Section::make('Basic Information')->schema([
+                        Forms\Components\TextInput::make('name')
+                            ->required()
+                            ->maxLength(255),
+                        Forms\Components\TextInput::make('status')
+                            ->required()
+                            ->maxLength(255),
+                    ])->columns(2),
+
+                    Section::make('Connection Information')->schema([
+                        Forms\Components\TextInput::make('ip')
+                            ->required()
+                            ->maxLength(255),
+                        Forms\Components\TextInput::make('port')
+                            ->required()
+                            ->numeric(),
+                        Forms\Components\TextInput::make('panel')
+                            ->required()
+                            ->maxLength(255),
+                        ])
+                    ])->columnSpan(2),
+
+                Group::make()->schema([
+                    Section::make('Authentication details')->schema([
+                        Forms\Components\TextInput::make('username')
+                            ->required()
+                            ->maxLength(255),
+                        Forms\Components\TextInput::make('password')
+                            ->password()
+                            ->required()
+                            ->maxLength(255),
+                ])->columnSpan(1)
+            ])
+        ])->columns(3);
     }
 
     public static function table(Table $table): Table
@@ -81,8 +95,11 @@ class ServerResource extends Resource
                 //
             ])
             ->actions([
-                Tables\Actions\ViewAction::make(),
-                Tables\Actions\EditAction::make(),
+                Tables\Actions\ActionGroup::make([
+                    Tables\Actions\EditAction::make(),
+                    Tables\Actions\ViewAction::make(),
+                    Tables\Actions\DeleteAction::make(),
+                ]),
             ])
             ->bulkActions([
                 Tables\Actions\BulkActionGroup::make([
@@ -106,5 +123,6 @@ class ServerResource extends Resource
             'view' => Pages\ViewServer::route('/{record}'),
             'edit' => Pages\EditServer::route('/{record}/edit'),
         ];
-    }
+
+   }
 }
