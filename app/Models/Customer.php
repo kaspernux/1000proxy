@@ -42,9 +42,9 @@ class Customer extends Model
         return $this->hasMany(Order::class);
         }
 
-    public function invoices(): HasMany
+    public function payments(): HasMany
         {
-        return $this->hasMany(Invoice::class);
+        return $this->hasMany(Payments::class);
         }
 
     public function serverReviews(): HasMany
