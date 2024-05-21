@@ -75,6 +75,7 @@ class ServerInfoResource extends Resource
                 //
             ])
             ->actions([
+                Tables\Actions\ViewAction::make(),
                 Tables\Actions\EditAction::make(),
             ])
             ->bulkActions([
@@ -96,6 +97,7 @@ class ServerInfoResource extends Resource
         return [
             'index' => Pages\ListServerInfos::route('/'),
             'create' => Pages\CreateServerInfo::route('/create'),
+            'view' => Pages\ViewServerInfo::route('/{record}'),
             'edit' => Pages\EditServerInfo::route('/{record}/edit'),
         ];
     }

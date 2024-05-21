@@ -18,7 +18,7 @@ class ServerInboundResource extends Resource
 {
     protected static ?string $model = ServerInbound::class;
 
-    protected static ?string $navigationIcon = 'heroicon-o-qr-code';
+    protected static ?string $navigationIcon = 'heroicon-o-code-bracket';
 
     protected static ?string $cluster = ServerManagement::class;
 
@@ -26,40 +26,40 @@ class ServerInboundResource extends Resource
     {
         return $form
             ->schema([
+                Forms\Components\TextInput::make('user_id')
+                    ->required()
+                    ->maxLength(255),
                 Forms\Components\TextInput::make('up')
                     ->required()
-                    ->numeric(),
+                    ->numeric()
+                    ->default(0),
                 Forms\Components\TextInput::make('down')
                     ->required()
-                    ->numeric(),
+                    ->numeric()
+                    ->default(0),
                 Forms\Components\TextInput::make('total')
                     ->required()
-                    ->numeric(),
+                    ->numeric()
+                    ->default(0),
                 Forms\Components\TextInput::make('remark')
-                    ->required()
                     ->maxLength(255),
                 Forms\Components\Toggle::make('enable')
                     ->required(),
                 Forms\Components\DateTimePicker::make('expiryTime'),
                 Forms\Components\TextInput::make('clientStats'),
                 Forms\Components\TextInput::make('listen')
-                    ->required()
                     ->maxLength(255),
                 Forms\Components\TextInput::make('port')
                     ->required()
                     ->numeric(),
                 Forms\Components\TextInput::make('protocol')
                     ->required()
-                    ->maxLength(255),
-                Forms\Components\TextInput::make('settings')
-                    ->required(),
-                Forms\Components\TextInput::make('streamSettings')
-                    ->required(),
+                    ->maxLength(50),
+                Forms\Components\TextInput::make('settings'),
+                Forms\Components\TextInput::make('streamSettings'),
                 Forms\Components\TextInput::make('tag')
-                    ->required()
-                    ->maxLength(255),
-                Forms\Components\TextInput::make('sniffing')
-                    ->required(),
+                    ->maxLength(100),
+                Forms\Components\TextInput::make('sniffing'),
             ]);
     }
 
@@ -67,6 +67,8 @@ class ServerInboundResource extends Resource
     {
         return $table
             ->columns([
+                Tables\Columns\TextColumn::make('user_id')
+                    ->searchable(),
                 Tables\Columns\TextColumn::make('up')
                     ->numeric()
                     ->sortable(),
@@ -105,6 +107,7 @@ class ServerInboundResource extends Resource
                 //
             ])
             ->actions([
+                Tables\Actions\ViewAction::make(),
                 Tables\Actions\EditAction::make(),
             ])
             ->bulkActions([
@@ -126,6 +129,7 @@ class ServerInboundResource extends Resource
         return [
             'index' => Pages\ListServerInbounds::route('/'),
             'create' => Pages\CreateServerInbound::route('/create'),
+            'view' => Pages\ViewServerInbound::route('/{record}'),
             'edit' => Pages\EditServerInbound::route('/{record}/edit'),
         ];
     }

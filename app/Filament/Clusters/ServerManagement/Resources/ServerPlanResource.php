@@ -18,7 +18,7 @@ class ServerPlanResource extends Resource
 {
     protected static ?string $model = ServerPlan::class;
 
-    protected static ?string $navigationIcon = 'heroicon-o-bolt';
+    protected static ?string $navigationIcon = 'heroicon-o-inbox-stack';
 
     protected static ?string $cluster = ServerManagement::class;
 
@@ -174,6 +174,7 @@ class ServerPlanResource extends Resource
                 //
             ])
             ->actions([
+                Tables\Actions\ViewAction::make(),
                 Tables\Actions\EditAction::make(),
             ])
             ->bulkActions([
@@ -195,6 +196,7 @@ class ServerPlanResource extends Resource
         return [
             'index' => Pages\ListServerPlans::route('/'),
             'create' => Pages\CreateServerPlan::route('/create'),
+            'view' => Pages\ViewServerPlan::route('/{record}'),
             'edit' => Pages\EditServerPlan::route('/{record}/edit'),
         ];
     }

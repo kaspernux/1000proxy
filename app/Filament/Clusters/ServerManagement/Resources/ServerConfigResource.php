@@ -18,7 +18,7 @@ class ServerConfigResource extends Resource
 {
     protected static ?string $model = ServerConfig::class;
 
-    protected static ?string $navigationIcon = 'heroicon-o-cog-6-tooth';
+    protected static ?string $navigationIcon = 'heroicon-o-wrench-screwdriver';
 
     protected static ?string $cluster = ServerManagement::class;
 
@@ -116,6 +116,7 @@ class ServerConfigResource extends Resource
                 //
             ])
             ->actions([
+                Tables\Actions\ViewAction::make(),
                 Tables\Actions\EditAction::make(),
             ])
             ->bulkActions([
@@ -137,6 +138,7 @@ class ServerConfigResource extends Resource
         return [
             'index' => Pages\ListServerConfigs::route('/'),
             'create' => Pages\CreateServerConfig::route('/create'),
+            'view' => Pages\ViewServerConfig::route('/{record}'),
             'edit' => Pages\EditServerConfig::route('/{record}/edit'),
         ];
     }

@@ -26,11 +26,22 @@ class ServerCategoryResource extends Resource
     {
         return $form
             ->schema([
-                Forms\Components\TextInput::make('name')
+                Forms\Components\TextInput::make('server_id')
+                    ->required()
+                    ->numeric(),
+                Forms\Components\TextInput::make('title')
+                    ->required()
+                    ->maxLength(255),
+                Forms\Components\TextInput::make('parent')
                     ->required()
                     ->maxLength(255),
                 Forms\Components\Textarea::make('description')
                     ->columnSpanFull(),
+                Forms\Components\TextInput::make('step')
+                    ->required()
+                    ->maxLength(255),
+                Forms\Components\Toggle::make('active')
+                    ->required(),
                 Forms\Components\TextInput::make('options'),
             ]);
     }
@@ -39,8 +50,17 @@ class ServerCategoryResource extends Resource
     {
         return $table
             ->columns([
-                Tables\Columns\TextColumn::make('name')
+                Tables\Columns\TextColumn::make('server_id')
+                    ->numeric()
+                    ->sortable(),
+                Tables\Columns\TextColumn::make('title')
                     ->searchable(),
+                Tables\Columns\TextColumn::make('parent')
+                    ->searchable(),
+                Tables\Columns\TextColumn::make('step')
+                    ->searchable(),
+                Tables\Columns\IconColumn::make('active')
+                    ->boolean(),
                 Tables\Columns\TextColumn::make('created_at')
                     ->dateTime()
                     ->sortable()
@@ -54,6 +74,7 @@ class ServerCategoryResource extends Resource
                 //
             ])
             ->actions([
+                Tables\Actions\ViewAction::make(),
                 Tables\Actions\EditAction::make(),
             ])
             ->bulkActions([
@@ -75,6 +96,7 @@ class ServerCategoryResource extends Resource
         return [
             'index' => Pages\ListServerCategories::route('/'),
             'create' => Pages\CreateServerCategory::route('/create'),
+            'view' => Pages\ViewServerCategory::route('/{record}'),
             'edit' => Pages\EditServerCategory::route('/{record}/edit'),
         ];
     }

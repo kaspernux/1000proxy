@@ -18,7 +18,7 @@ class ServerRatingResource extends Resource
 {
     protected static ?string $model = ServerRating::class;
 
-    protected static ?string $navigationIcon = 'heroicon-o-heart';
+    protected static ?string $navigationIcon = 'heroicon-o-star';
 
     protected static ?string $cluster = ServerManagement::class;
 
@@ -64,6 +64,7 @@ class ServerRatingResource extends Resource
                 //
             ])
             ->actions([
+                Tables\Actions\ViewAction::make(),
                 Tables\Actions\EditAction::make(),
             ])
             ->bulkActions([
@@ -85,6 +86,7 @@ class ServerRatingResource extends Resource
         return [
             'index' => Pages\ListServerRatings::route('/'),
             'create' => Pages\CreateServerRating::route('/create'),
+            'view' => Pages\ViewServerRating::route('/{record}'),
             'edit' => Pages\EditServerRating::route('/{record}/edit'),
         ];
     }

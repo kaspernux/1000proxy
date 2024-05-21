@@ -18,7 +18,7 @@ class ServerReviewResource extends Resource
 {
     protected static ?string $model = ServerReview::class;
 
-    protected static ?string $navigationIcon = 'heroicon-o-chat-bubble-left-right';
+    protected static ?string $navigationIcon = 'heroicon-o-megaphone';
 
     protected static ?string $cluster = ServerManagement::class;
 
@@ -60,6 +60,7 @@ class ServerReviewResource extends Resource
                 //
             ])
             ->actions([
+                Tables\Actions\ViewAction::make(),
                 Tables\Actions\EditAction::make(),
             ])
             ->bulkActions([
@@ -81,6 +82,7 @@ class ServerReviewResource extends Resource
         return [
             'index' => Pages\ListServerReviews::route('/'),
             'create' => Pages\CreateServerReview::route('/create'),
+            'view' => Pages\ViewServerReview::route('/{record}'),
             'edit' => Pages\EditServerReview::route('/{record}/edit'),
         ];
     }

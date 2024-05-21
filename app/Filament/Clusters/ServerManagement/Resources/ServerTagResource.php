@@ -57,6 +57,7 @@ class ServerTagResource extends Resource
                 //
             ])
             ->actions([
+                Tables\Actions\ViewAction::make(),
                 Tables\Actions\EditAction::make(),
             ])
             ->bulkActions([
@@ -78,6 +79,7 @@ class ServerTagResource extends Resource
         return [
             'index' => Pages\ListServerTags::route('/'),
             'create' => Pages\CreateServerTag::route('/create'),
+            'view' => Pages\ViewServerTag::route('/{record}'),
             'edit' => Pages\EditServerTag::route('/{record}/edit'),
         ];
     }

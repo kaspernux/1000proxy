@@ -26,9 +26,14 @@ class ServerClientResource extends Resource
     {
         return $form
             ->schema([
-                Forms\Components\TextInput::make('inbound_id')
-                    ->required()
-                    ->numeric(),
+                Forms\Components\Select::make('server_inbound_id')
+                    ->relationship('serverInbound', 'id')
+                    ->required(),
+                Forms\Components\Toggle::make('enable')
+                    ->required(),
+                Forms\Components\TextInput::make('email')
+                    ->email()
+                    ->maxLength(255),
                 Forms\Components\TextInput::make('up')
                     ->required()
                     ->numeric()
@@ -37,26 +42,13 @@ class ServerClientResource extends Resource
                     ->required()
                     ->numeric()
                     ->default(0),
+                Forms\Components\DateTimePicker::make('expiry_time'),
                 Forms\Components\TextInput::make('total')
                     ->required()
                     ->numeric()
                     ->default(0),
-                Forms\Components\TextInput::make('remark')
-                    ->maxLength(255),
-                Forms\Components\Toggle::make('enable')
+                Forms\Components\Toggle::make('reset')
                     ->required(),
-                Forms\Components\DateTimePicker::make('expiryTime'),
-                Forms\Components\TextInput::make('listen')
-                    ->maxLength(255),
-                Forms\Components\TextInput::make('port')
-                    ->numeric(),
-                Forms\Components\TextInput::make('protocol')
-                    ->maxLength(255),
-                Forms\Components\TextInput::make('settings'),
-                Forms\Components\TextInput::make('streamSettings'),
-                Forms\Components\TextInput::make('tag')
-                    ->maxLength(255),
-                Forms\Components\TextInput::make('sniffing'),
             ]);
     }
 
@@ -64,34 +56,27 @@ class ServerClientResource extends Resource
     {
         return $table
             ->columns([
-                Tables\Columns\TextColumn::make('inbound_id')
+                Tables\Columns\TextColumn::make('serverInbound.id')
                     ->numeric()
                     ->sortable(),
+                Tables\Columns\IconColumn::make('enable')
+                    ->boolean(),
+                Tables\Columns\TextColumn::make('email')
+                    ->searchable(),
                 Tables\Columns\TextColumn::make('up')
                     ->numeric()
                     ->sortable(),
                 Tables\Columns\TextColumn::make('down')
                     ->numeric()
                     ->sortable(),
+                Tables\Columns\TextColumn::make('expiry_time')
+                    ->dateTime()
+                    ->sortable(),
                 Tables\Columns\TextColumn::make('total')
                     ->numeric()
                     ->sortable(),
-                Tables\Columns\TextColumn::make('remark')
-                    ->searchable(),
-                Tables\Columns\IconColumn::make('enable')
+                Tables\Columns\IconColumn::make('reset')
                     ->boolean(),
-                Tables\Columns\TextColumn::make('expiryTime')
-                    ->dateTime()
-                    ->sortable(),
-                Tables\Columns\TextColumn::make('listen')
-                    ->searchable(),
-                Tables\Columns\TextColumn::make('port')
-                    ->numeric()
-                    ->sortable(),
-                Tables\Columns\TextColumn::make('protocol')
-                    ->searchable(),
-                Tables\Columns\TextColumn::make('tag')
-                    ->searchable(),
                 Tables\Columns\TextColumn::make('created_at')
                     ->dateTime()
                     ->sortable()
@@ -105,6 +90,7 @@ class ServerClientResource extends Resource
                 //
             ])
             ->actions([
+                Tables\Actions\ViewAction::make(),
                 Tables\Actions\EditAction::make(),
             ])
             ->bulkActions([
@@ -126,6 +112,7 @@ class ServerClientResource extends Resource
         return [
             'index' => Pages\ListServerClients::route('/'),
             'create' => Pages\CreateServerClient::route('/create'),
+            'view' => Pages\ViewServerClient::route('/{record}'),
             'edit' => Pages\EditServerClient::route('/{record}/edit'),
         ];
     }
