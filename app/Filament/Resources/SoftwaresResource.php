@@ -10,34 +10,52 @@ use Filament\Forms\Form;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
+use Filament\Forms\Components\Group;
+use Filament\Forms\Components\Section;
+use Filament\Forms\Components\FileUpload;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\SoftDeletingScope;
 
 class SoftwaresResource extends Resource
-{
+    {
     protected static ?string $model = Softwares::class;
 
     protected static ?string $navigationIcon = 'heroicon-o-puzzle-piece';
 
     public static function form(Form $form): Form
-    {
+        {
         return $form
             ->schema([
-                Forms\Components\FileUpload::make('image')
-                    ->image(),
-                Forms\Components\TextInput::make('title')
-                    ->required()
-                    ->maxLength(255),
-                Forms\Components\TextInput::make('link')
-                    ->required()
-                    ->maxLength(255),
-                Forms\Components\Toggle::make('staus')
-                    ->required(),
-            ]);
-    }
+                Forms\Components\Group::make([
+                    Forms\Components\Section::make('Software Details')
+                        ->schema([
+                            Forms\Components\TextInput::make('title')
+                                ->required()
+                                ->maxLength(255),
+                            Forms\Components\TextInput::make('link')
+                                ->required()
+                                ->maxLength(255),
+                        ])->columns(2),
+                    Forms\Components\Section::make('Software Logo')
+                        ->schema([
+                            Forms\Components\FileUpload::make('image')
+                                ->image()
+                                ->columnSpan(2),
+                        ])->columns(2),
+                ])->columnSpan(2),
+
+                Forms\Components\Group::make([
+                    Forms\Components\Section::make('Status')
+                        ->schema([
+                            Forms\Components\Toggle::make('status')
+                                ->required(),
+                        ]),
+                ])->columnSpan(1),
+            ])->columns(3);
+        }
 
     public static function table(Table $table): Table
-    {
+        {
         return $table
             ->columns([
                 Tables\Columns\ImageColumn::make('image'),
@@ -71,22 +89,22 @@ class SoftwaresResource extends Resource
                     Tables\Actions\DeleteBulkAction::make(),
                 ]),
             ]);
-    }
+        }
 
     public static function getRelations(): array
-    {
+        {
         return [
             //
         ];
-    }
+        }
 
     public static function getPages(): array
-    {
+        {
         return [
             'index' => Pages\ListSoftwares::route('/'),
             'create' => Pages\CreateSoftwares::route('/create'),
             'view' => Pages\ViewSoftwares::route('/{record}'),
             'edit' => Pages\EditSoftwares::route('/{record}/edit'),
         ];
+        }
     }
-}

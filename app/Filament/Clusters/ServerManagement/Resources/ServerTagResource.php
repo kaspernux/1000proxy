@@ -11,11 +11,14 @@ use Filament\Forms\Form;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
+use Filament\Forms\Components\Section;
+use Filament\Forms\Components\Group;
+use Filament\Forms\Components\MarkdownEditor;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\SoftDeletingScope;
 
 class ServerTagResource extends Resource
-{
+    {
     protected static ?string $model = ServerTag::class;
 
     protected static ?string $navigationIcon = 'heroicon-o-tag';
@@ -23,20 +26,31 @@ class ServerTagResource extends Resource
     protected static ?string $cluster = ServerManagement::class;
 
     public static function form(Form $form): Form
-    {
+        {
         return $form
             ->schema([
-                Forms\Components\TextInput::make('name')
-                    ->required()
-                    ->maxLength(255),
-                Forms\Components\Select::make('server_id')
-                    ->relationship('server', 'name')
-                    ->required(),
-            ]);
-    }
+                Group::make([
+                    Section::make('Tag Information')
+                        ->schema([
+                            Forms\Components\TextInput::make('name')
+                                ->required()
+                                ->maxLength(255),
+                        ]),
+                ])->columnSpan(2),
+
+                Group::make([
+                    Section::make('Server Association')
+                        ->schema([
+                            Forms\Components\Select::make('server_id')
+                                ->relationship('server', 'name')
+                                ->required(),
+                        ]),
+                ])->columnSpan(1),
+            ])->columns(3);
+        }
 
     public static function table(Table $table): Table
-    {
+        {
         return $table
             ->columns([
                 Tables\Columns\TextColumn::make('name')
@@ -68,22 +82,22 @@ class ServerTagResource extends Resource
                     Tables\Actions\DeleteBulkAction::make(),
                 ]),
             ]);
-    }
+        }
 
     public static function getRelations(): array
-    {
+        {
         return [
             //
         ];
-    }
+        }
 
     public static function getPages(): array
-    {
+        {
         return [
             'index' => Pages\ListServerTags::route('/'),
             'create' => Pages\CreateServerTag::route('/create'),
             'view' => Pages\ViewServerTag::route('/{record}'),
             'edit' => Pages\EditServerTag::route('/{record}/edit'),
         ];
+        }
     }
-}

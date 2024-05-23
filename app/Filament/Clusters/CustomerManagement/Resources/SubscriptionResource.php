@@ -15,7 +15,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\SoftDeletingScope;
 
 class SubscriptionResource extends Resource
-{
+    {
     protected static ?string $model = Subscription::class;
 
     protected static ?string $navigationIcon = 'heroicon-o-ticket';
@@ -23,34 +23,51 @@ class SubscriptionResource extends Resource
     protected static ?string $cluster = CustomerManagement::class;
 
     public static function form(Form $form): Form
-    {
+        {
         return $form
             ->schema([
-                Forms\Components\Select::make('user_id')
-                    ->relationship('user', 'name')
-                    ->required(),
-                Forms\Components\TextInput::make('name')
-                    ->required()
-                    ->maxLength(255),
-                Forms\Components\TextInput::make('stripe_id')
-                    ->required()
-                    ->maxLength(255),
-                Forms\Components\TextInput::make('stripe_status')
-                    ->required()
-                    ->maxLength(255),
-                Forms\Components\TextInput::make('stripe_plan')
-                    ->required()
-                    ->maxLength(255),
-                Forms\Components\TextInput::make('quantity')
-                    ->required()
-                    ->numeric(),
-                Forms\Components\DateTimePicker::make('trial_ends_at'),
-                Forms\Components\DateTimePicker::make('ends_at'),
-            ]);
-    }
+                Forms\Components\Group::make([
+                    Forms\Components\Section::make('Subscription Details')
+                        ->schema([
+                            Forms\Components\Select::make('user_id')
+                                ->relationship('user', 'name')
+                                ->required()
+                                ->columnSpan(2),
+                            Forms\Components\TextInput::make('quantity')
+                                ->required()
+                                ->numeric()
+                                ->columnSpan(1),
+                            Forms\Components\TextInput::make('name')
+                                ->required()
+                                ->maxLength(255)
+                                ->columnSpan(2),
+                            Forms\Components\TextInput::make('stripe_id')
+                                ->required()
+                                ->maxLength(255),
+                            Forms\Components\TextInput::make('stripe_plan')
+                                ->required()
+                                ->maxLength(255)
+                                ->columnSpan(2),
+                            Forms\Components\TextInput::make('stripe_status')
+                                ->required()
+                                ->maxLength(255),
+                        ])->columns(3),
+                ])->columnSpan(2),
+
+                Forms\Components\Group::make([
+                    Forms\Components\Section::make('Dates')
+                        ->schema([
+                            Forms\Components\DateTimePicker::make('trial_ends_at')
+                                ->columnSpan(2),
+                            Forms\Components\DateTimePicker::make('ends_at')
+                                ->columnSpan(2),
+                        ])->columns(2),
+                ])->columnSpan(1),
+            ])->columns(3);
+        }
 
     public static function table(Table $table): Table
-    {
+        {
         return $table
             ->columns([
                 Tables\Columns\TextColumn::make('user.name')
@@ -97,22 +114,22 @@ class SubscriptionResource extends Resource
                     Tables\Actions\DeleteBulkAction::make(),
                 ]),
             ]);
-    }
+        }
 
     public static function getRelations(): array
-    {
+        {
         return [
             //
         ];
-    }
+        }
 
     public static function getPages(): array
-    {
+        {
         return [
             'index' => Pages\ListSubscriptions::route('/'),
             'create' => Pages\CreateSubscription::route('/create'),
             'view' => Pages\ViewSubscription::route('/{record}'),
             'edit' => Pages\EditSubscription::route('/{record}/edit'),
         ];
+        }
     }
-}

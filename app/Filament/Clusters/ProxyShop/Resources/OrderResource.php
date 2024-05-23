@@ -11,11 +11,13 @@ use Filament\Forms\Form;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
+use Filament\Forms\Components\Section;
+use Filament\Forms\Components\Group;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\SoftDeletingScope;
 
 class OrderResource extends Resource
-{
+    {
     protected static ?string $model = Order::class;
 
     protected static ?string $navigationIcon = 'heroicon-o-shopping-bag';
@@ -23,34 +25,51 @@ class OrderResource extends Resource
     protected static ?string $cluster = ProxyShop::class;
 
     public static function form(Form $form): Form
-    {
+        {
         return $form
             ->schema([
-                Forms\Components\Select::make('customer_id')
-                    ->relationship('customer', 'name')
-                    ->required(),
-                Forms\Components\DatePicker::make('order_date')
-                    ->required(),
-                Forms\Components\TextInput::make('total_amount')
-                    ->required()
-                    ->numeric(),
-                Forms\Components\TextInput::make('payment_method_id')
-                    ->required()
-                    ->numeric(),
-                Forms\Components\TextInput::make('transaction_id')
-                    ->required()
-                    ->maxLength(255),
-                Forms\Components\TextInput::make('payment_status')
-                    ->required()
-                    ->maxLength(255),
-                Forms\Components\TextInput::make('order_status')
-                    ->required()
-                    ->maxLength(255),
-            ]);
-    }
+                Forms\Components\Group::make([
+                    Forms\Components\Section::make('Order Details')
+                        ->schema([
+                            Forms\Components\Select::make('customer_id')
+                                ->relationship('customer', 'name')
+                                ->required(),
+                            Forms\Components\DatePicker::make('order_date')
+                                ->required(),
+                        ])->columns(2),
+                    Forms\Components\Section::make('Payment Details')
+                        ->schema([
+                            Forms\Components\TextInput::make('total_amount')
+                                ->required()
+                                ->numeric()
+                                ->columnSpan(1),
+                            Forms\Components\TextInput::make('payment_method_id')
+                                ->required()
+                                ->numeric()
+                                ->columnSpan(1),
+                            Forms\Components\TextInput::make('transaction_id')
+                                ->required()
+                                ->maxLength(255)
+                                ->columnSpan(1),
+                        ])->columns(3),
+                ])->columnSpan(2),
+
+                Forms\Components\Group::make([
+                    Forms\Components\Section::make('Status Information')
+                        ->schema([
+                            Forms\Components\TextInput::make('payment_status')
+                                ->required()
+                                ->maxLength(255),
+                            Forms\Components\TextInput::make('order_status')
+                                ->required()
+                                ->maxLength(255),
+                        ])->columns(2),
+                ])->columnSpan(1),
+            ])->columns(3);
+        }
 
     public static function table(Table $table): Table
-    {
+        {
         return $table
             ->columns([
                 Tables\Columns\TextColumn::make('customer.name')
@@ -95,22 +114,22 @@ class OrderResource extends Resource
                     Tables\Actions\DeleteBulkAction::make(),
                 ]),
             ]);
-    }
+        }
 
     public static function getRelations(): array
-    {
+        {
         return [
             //
         ];
-    }
+        }
 
     public static function getPages(): array
-    {
+        {
         return [
             'index' => Pages\ListOrders::route('/'),
             'create' => Pages\CreateOrder::route('/create'),
             'view' => Pages\ViewOrder::route('/{record}'),
             'edit' => Pages\EditOrder::route('/{record}/edit'),
         ];
+        }
     }
-}

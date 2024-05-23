@@ -11,11 +11,14 @@ use Filament\Forms\Form;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
+use Filament\Forms\Components\Section;
+use Filament\Forms\Components\Group;
+use Filament\Forms\Components\MarkdownEditor;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\SoftDeletingScope;
 
 class ServerPlanResource extends Resource
-{
+    {
     protected static ?string $model = ServerPlan::class;
 
     protected static ?string $navigationIcon = 'heroicon-o-inbox-stack';
@@ -23,84 +26,131 @@ class ServerPlanResource extends Resource
     protected static ?string $cluster = ServerManagement::class;
 
     public static function form(Form $form): Form
-    {
+        {
         return $form
             ->schema([
-                Forms\Components\TextInput::make('server_id')
-                    ->required()
-                    ->numeric(),
-                Forms\Components\TextInput::make('server_inbound_id')
-                    ->required()
-                    ->numeric(),
-                Forms\Components\TextInput::make('category_id')
-                    ->required()
-                    ->numeric(),
-                Forms\Components\TextInput::make('fileid')
-                    ->required()
-                    ->maxLength(255),
-                Forms\Components\TextInput::make('acount')
-                    ->required()
-                    ->maxLength(255),
-                Forms\Components\TextInput::make('limitip')
-                    ->required()
-                    ->numeric(),
-                Forms\Components\TextInput::make('title')
-                    ->required()
-                    ->maxLength(255),
-                Forms\Components\TextInput::make('protocol')
-                    ->required()
-                    ->maxLength(255),
-                Forms\Components\TextInput::make('days')
-                    ->required()
-                    ->numeric(),
-                Forms\Components\TextInput::make('volume')
-                    ->required()
-                    ->numeric(),
-                Forms\Components\TextInput::make('type')
-                    ->required()
-                    ->maxLength(255),
-                Forms\Components\TextInput::make('price')
-                    ->required()
-                    ->numeric()
-                    ->prefix('$'),
-                Forms\Components\Textarea::make('descr')
-                    ->required()
-                    ->columnSpanFull(),
-                Forms\Components\TextInput::make('pic')
-                    ->required()
-                    ->maxLength(255),
-                Forms\Components\Toggle::make('active')
-                    ->required(),
-                Forms\Components\TextInput::make('step')
-                    ->required()
-                    ->numeric(),
-                Forms\Components\DateTimePicker::make('date'),
-                Forms\Components\TextInput::make('rahgozar')
-                    ->required()
-                    ->maxLength(255),
-                Forms\Components\TextInput::make('dest')
-                    ->required()
-                    ->maxLength(255),
-                Forms\Components\TextInput::make('serverNames')
-                    ->required()
-                    ->maxLength(255),
-                Forms\Components\TextInput::make('spiderX')
-                    ->required()
-                    ->maxLength(255),
-                Forms\Components\TextInput::make('flow')
-                    ->required()
-                    ->maxLength(255),
-                Forms\Components\TextInput::make('custom_path')
-                    ->maxLength(255),
-                Forms\Components\TextInput::make('custom_port')
-                    ->numeric(),
-                Forms\Components\TextInput::make('custom_sni')
-                    ->maxLength(255),
-            ]);
-    }
+                Group::make([
+                    Section::make('Plan Information')
+                        ->schema([
+                            Forms\Components\TextInput::make('title')
+                                ->required()
+                                ->maxLength(255)
+                                ->columnSpan(2),
+                            Forms\Components\TextInput::make('protocol')
+                                ->required()
+                                ->maxLength(255)
+                                ->columnSpan(1),
+                            Forms\Components\TextInput::make('days')
+                                ->required()
+                                ->numeric()
+                                ->columnSpan(1),
+                            Forms\Components\TextInput::make('volume')
+                                ->required()
+                                ->numeric()
+                                ->columnSpan(1),
+                            Forms\Components\TextInput::make('type')
+                                ->required()
+                                ->maxLength(255)
+                                ->columnSpan(1),
+                            Forms\Components\TextInput::make('price')
+                                ->required()
+                                ->numeric()
+                                ->prefix('$'),
+                        ]),
+
+                    Section::make('Description')
+                        ->schema([
+                            Forms\Components\MarkdownEditor::make('descr')
+                                ->columnSpanFull()
+                                ->fileAttachmentsDirectory('ServerPlan'),
+                        ]),
+
+
+                    Section::make('Additional Details')
+                        ->schema([
+                            Forms\Components\TextInput::make('fileid')
+                                ->required()
+                                ->maxLength(255)
+                                ->columnSpan(1),
+                            Forms\Components\TextInput::make('acount')
+                                ->required()
+                                ->maxLength(255)
+                                ->columnSpan(1),
+                            Forms\Components\TextInput::make('limitip')
+                                ->required()
+                                ->numeric()
+                                ->columnSpan(1),
+                            Forms\Components\TextInput::make('pic')
+                                ->required()
+                                ->maxLength(255)
+                                ->columnSpan(1),
+                            Forms\Components\TextInput::make('step')
+                                ->required()
+                                ->numeric()
+                                ->columnSpan(1),
+                            Forms\Components\DateTimePicker::make('date')
+                                ->columnSpan(1),
+                            Forms\Components\TextInput::make('rahgozar')
+                                ->required()
+                                ->maxLength(255)
+                                ->columnSpan(1),
+                            Forms\Components\TextInput::make('dest')
+                                ->required()
+                                ->maxLength(255)
+                                ->columnSpan(1),
+                            Forms\Components\TextInput::make('serverNames')
+                                ->required()
+                                ->maxLength(255)
+                                ->columnSpan(1),
+                            Forms\Components\TextInput::make('spiderX')
+                                ->required()
+                                ->maxLength(255)
+                                ->columnSpan(1),
+                            Forms\Components\TextInput::make('flow')
+                                ->required()
+                                ->maxLength(255)
+                                ->columnSpan(1),
+                            Forms\Components\TextInput::make('custom_path')
+                                ->maxLength(255)
+                                ->columnSpan(1),
+                            Forms\Components\TextInput::make('custom_port')
+                                ->numeric()
+                                ->columnSpan(1),
+                            Forms\Components\TextInput::make('custom_sni')
+                                ->maxLength(255)
+                                ->columnSpan(1),
+                        ]),
+                ])->columnSpan(2),
+
+                Group::make([
+                    Section::make('Enable')
+                        ->schema([
+                            Forms\Components\Toggle::make('active')
+                                ->required(),
+                        ]),
+
+                    Section::make('Server Details')
+                        ->schema([
+                            Forms\Components\TextInput::make('server_id')
+                                ->required()
+                                ->numeric()
+                                ->columnSpan(1),
+                            Forms\Components\TextInput::make('server_inbound_id')
+                                ->required()
+                                ->numeric()
+                                ->columnSpan(1),
+                            Forms\Components\TextInput::make('category_id')
+                                ->required()
+                                ->numeric()
+                                ->columnSpan(1),
+                        ]),
+
+                ])->columnSpan(1),
+            ])->columns(3);
+        }
 
     public static function table(Table $table): Table
-    {
+        {
         return $table
             ->columns([
                 Tables\Columns\TextColumn::make('server_id')
@@ -185,22 +235,22 @@ class ServerPlanResource extends Resource
                     Tables\Actions\DeleteBulkAction::make(),
                 ]),
             ]);
-    }
+        }
 
     public static function getRelations(): array
-    {
+        {
         return [
             //
         ];
-    }
+        }
 
     public static function getPages(): array
-    {
+        {
         return [
             'index' => Pages\ListServerPlans::route('/'),
             'create' => Pages\CreateServerPlan::route('/create'),
             'view' => Pages\ViewServerPlan::route('/{record}'),
             'edit' => Pages\EditServerPlan::route('/{record}/edit'),
         ];
+        }
     }
-}

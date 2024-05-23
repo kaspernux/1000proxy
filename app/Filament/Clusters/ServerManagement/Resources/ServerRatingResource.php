@@ -15,7 +15,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\SoftDeletingScope;
 
 class ServerRatingResource extends Resource
-{
+    {
     protected static ?string $model = ServerRating::class;
 
     protected static ?string $navigationIcon = 'heroicon-o-star';
@@ -23,23 +23,36 @@ class ServerRatingResource extends Resource
     protected static ?string $cluster = ServerManagement::class;
 
     public static function form(Form $form): Form
-    {
+        {
         return $form
             ->schema([
-                Forms\Components\Select::make('server_id')
-                    ->relationship('server', 'name')
-                    ->required(),
-                Forms\Components\Select::make('customer_id')
-                    ->relationship('customer', 'name')
-                    ->required(),
-                Forms\Components\TextInput::make('rating')
-                    ->required()
-                    ->numeric(),
-            ]);
-    }
+                Forms\Components\Group::make([
+                    Forms\Components\Section::make('Server and Customer Details')
+                        ->schema([
+                            Forms\Components\Select::make('server_id')
+                                ->relationship('server', 'name')
+                                ->required()
+                                ->columnSpan(2),
+                            Forms\Components\Select::make('customer_id')
+                                ->relationship('customer', 'name')
+                                ->required()
+                                ->columnSpan(2),
+                        ])->columns(2),
+                ])->columnSpan(2),
+
+                Forms\Components\Group::make([
+                    Forms\Components\Section::make('Rating Information')
+                        ->schema([
+                            Forms\Components\TextInput::make('rating')
+                                ->required()
+                                ->numeric(),
+                        ]),
+                ])->columnSpan(2),
+            ])->columns(4);
+        }
 
     public static function table(Table $table): Table
-    {
+        {
         return $table
             ->columns([
                 Tables\Columns\TextColumn::make('server.name')
@@ -75,22 +88,22 @@ class ServerRatingResource extends Resource
                     Tables\Actions\DeleteBulkAction::make(),
                 ]),
             ]);
-    }
+        }
 
     public static function getRelations(): array
-    {
+        {
         return [
             //
         ];
-    }
+        }
 
     public static function getPages(): array
-    {
+        {
         return [
             'index' => Pages\ListServerRatings::route('/'),
             'create' => Pages\CreateServerRating::route('/create'),
             'view' => Pages\ViewServerRating::route('/{record}'),
             'edit' => Pages\EditServerRating::route('/{record}/edit'),
         ];
+        }
     }
-}

@@ -11,6 +11,9 @@ use Filament\Forms\Form;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
+use Filament\Forms\Components\Section;
+use Filament\Forms\Components\Group;
+use Filament\Forms\Components\MarkdownEditor;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\SoftDeletingScope;
 
@@ -26,50 +29,67 @@ class ServerConfigResource extends Resource
     {
         return $form
             ->schema([
-                Forms\Components\Select::make('server_id')
-                    ->relationship('server', 'name')
-                    ->required(),
-                Forms\Components\TextInput::make('panel_url')
-                    ->required()
-                    ->maxLength(255),
-                Forms\Components\TextInput::make('ip')
-                    ->required()
-                    ->maxLength(255),
-                Forms\Components\TextInput::make('sni')
-                    ->required()
-                    ->maxLength(255),
-                Forms\Components\TextInput::make('header_type')
-                    ->required()
-                    ->maxLength(255),
-                Forms\Components\TextInput::make('request_header')
-                    ->required()
-                    ->maxLength(255),
-                Forms\Components\TextInput::make('response_header')
-                    ->required()
-                    ->maxLength(255),
-                Forms\Components\TextInput::make('security')
-                    ->required()
-                    ->maxLength(255),
-                Forms\Components\TextInput::make('tlsSettings')
-                    ->required()
-                    ->maxLength(255),
-                Forms\Components\TextInput::make('type')
-                    ->required()
-                    ->maxLength(255),
-                Forms\Components\TextInput::make('username')
-                    ->required()
-                    ->maxLength(255),
-                Forms\Components\TextInput::make('password')
-                    ->password()
-                    ->required()
-                    ->maxLength(255),
-                Forms\Components\TextInput::make('port_type')
-                    ->required()
-                    ->maxLength(255),
-                Forms\Components\TextInput::make('reality')
-                    ->required()
-                    ->maxLength(255),
-            ]);
+                Forms\Components\Group::make([
+                    Forms\Components\Section::make('Headers and Security')
+                        ->schema([
+                            Forms\Components\TextInput::make('panel_url')
+                                ->required()
+                                ->maxLength(255),
+                            Forms\Components\TextInput::make('ip')
+                                ->required()
+                                ->maxLength(255),
+                            Forms\Components\TextInput::make('sni')
+                                ->required()
+                                ->maxLength(255),
+                            Forms\Components\TextInput::make('header_type')
+                                ->required()
+                                ->maxLength(255),
+                            Forms\Components\TextInput::make('request_header')
+                                ->required()
+                                ->maxLength(255),
+                            Forms\Components\TextInput::make('response_header')
+                                ->required()
+                                ->maxLength(255),
+                            Forms\Components\TextInput::make('security')
+                                ->required()
+                                ->maxLength(255),
+                            Forms\Components\TextInput::make('tlsSettings')
+                                ->required()
+                                ->maxLength(255),
+                        ])
+                ])->columnSpan(2),
+
+                Forms\Components\Group::make([
+                    Forms\Components\Section::make('Server Details')
+                        ->schema([
+                            Forms\Components\TextInput::make('server_id')
+                                ->required()
+                                ->numeric(),
+                            Forms\Components\TextInput::make('type')
+                                ->required()
+                                ->maxLength(255),
+                        ])->columns(2),
+                    Forms\Components\Section::make('Authentication and Type')
+                        ->schema([
+                            Forms\Components\TextInput::make('username')
+                                ->required()
+                                ->maxLength(255),
+                            Forms\Components\TextInput::make('password')
+                                ->password()
+                                ->required()
+                                ->maxLength(255),
+                        ]),
+                    Forms\Components\Section::make('Port and Reality Settings')
+                        ->schema([
+                            Forms\Components\TextInput::make('port_type')
+                                ->required()
+                                ->maxLength(255),
+                            Forms\Components\TextInput::make('reality')
+                                ->required()
+                                ->maxLength(255),
+                        ])->columns(2)
+                ])->columnSpan(1)
+            ])->columns(3);
     }
 
     public static function table(Table $table): Table

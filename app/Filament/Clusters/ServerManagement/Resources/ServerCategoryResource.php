@@ -11,6 +11,9 @@ use Filament\Forms\Form;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
+use Filament\Forms\Components\Section;
+use Filament\Forms\Components\Group;
+use Filament\Forms\Components\MarkdownEditor;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\SoftDeletingScope;
 
@@ -26,24 +29,42 @@ class ServerCategoryResource extends Resource
     {
         return $form
             ->schema([
-                Forms\Components\TextInput::make('server_id')
-                    ->required()
-                    ->numeric(),
-                Forms\Components\TextInput::make('title')
-                    ->required()
-                    ->maxLength(255),
-                Forms\Components\TextInput::make('parent')
-                    ->required()
-                    ->maxLength(255),
-                Forms\Components\Textarea::make('description')
-                    ->columnSpanFull(),
-                Forms\Components\TextInput::make('step')
-                    ->required()
-                    ->maxLength(255),
-                Forms\Components\Toggle::make('active')
-                    ->required(),
-                Forms\Components\TextInput::make('options'),
-            ]);
+                Group::make()->schema([
+                    Section::make('Server details')
+                        ->schema([
+                            Forms\Components\TextInput::make('server_id')
+                                ->required()
+                                ->numeric(),
+                            Forms\Components\TextInput::make('title')
+                                ->required()
+                                ->maxLength(255),
+                            Forms\Components\TextInput::make('options')
+                                ->maxLength(255),
+                            Forms\Components\TextInput::make('parent')
+                                ->required()
+                                ->maxLength(255),
+                            ])->columns(2),
+
+                    Section::make('Information about the server')
+                        ->schema([
+                        Forms\Components\MarkdownEditor::make('description')
+                            ->columnSpanFull()
+                            ->fileAttachmentsDirectory('ServerCategory'),
+                        ])
+                ])->columnSpan(2),
+
+                Group::make()->schema([
+                    Section::make('Options')
+                        ->schema([
+                        Forms\Components\TextInput::make('step')
+                            ->required()
+                            ->maxLength(255),
+                        Forms\Components\Toggle::make('active')
+                            ->required(),
+                        ])
+                ])->columnSpan(1)
+
+            ])->columns(3);
     }
 
     public static function table(Table $table): Table

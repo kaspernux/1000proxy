@@ -11,11 +11,14 @@ use Filament\Forms\Form;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
+use Filament\Forms\Components\Section;
+use Filament\Forms\Components\Group;
+use Filament\Forms\Components\DatePicker;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\SoftDeletingScope;
 
 class PaymentsResource extends Resource
-{
+    {
     protected static ?string $model = Payments::class;
 
     protected static ?string $navigationIcon = 'heroicon-o-banknotes';
@@ -23,59 +26,92 @@ class PaymentsResource extends Resource
     protected static ?string $cluster = ProxyShop::class;
 
     public static function form(Form $form): Form
-    {
+        {
         return $form
             ->schema([
-                Forms\Components\TextInput::make('order_id')
-                    ->required()
-                    ->numeric(),
-                Forms\Components\TextInput::make('customer_id')
-                    ->required()
-                    ->numeric(),
-                Forms\Components\TextInput::make('hash_id')
-                    ->required()
-                    ->maxLength(255),
-                Forms\Components\TextInput::make('description')
-                    ->required()
-                    ->maxLength(255),
-                Forms\Components\TextInput::make('payment_method_id')
-                    ->required()
-                    ->maxLength(255),
-                Forms\Components\TextInput::make('type')
-                    ->required()
-                    ->maxLength(255),
-                Forms\Components\TextInput::make('server_plan_id')
-                    ->required()
-                    ->numeric(),
-                Forms\Components\TextInput::make('volume')
-                    ->required()
-                    ->numeric(),
-                Forms\Components\TextInput::make('day')
-                    ->required()
-                    ->numeric(),
-                Forms\Components\TextInput::make('price')
-                    ->required()
-                    ->numeric()
-                    ->prefix('$'),
-                Forms\Components\TextInput::make('tron_price')
-                    ->required()
-                    ->numeric(),
-                Forms\Components\DateTimePicker::make('request_date')
-                    ->required(),
-                Forms\Components\TextInput::make('state')
-                    ->required()
-                    ->maxLength(255),
-                Forms\Components\TextInput::make('agent_bought')
-                    ->required()
-                    ->numeric(),
-                Forms\Components\TextInput::make('agent_count')
-                    ->required()
-                    ->numeric(),
-            ]);
-    }
+                Group::make([
+                    Section::make('Payment Details')
+                        ->schema([
+                            Forms\Components\TextInput::make('order_id')
+                                ->required()
+                                ->numeric()
+                                ->columnSpan(6),
+                            Forms\Components\TextInput::make('customer_id')
+                                ->required()
+                                ->numeric()
+                                ->columnSpan(6),
+                            Forms\Components\TextInput::make('payment_method_id')
+                                ->required()
+                                ->maxLength(255)
+                                ->columnSpan(6),
+                            Forms\Components\TextInput::make('type')
+                                ->required()
+                                ->maxLength(255)
+                                ->columnSpan(6),
+                            Forms\Components\TextInput::make('hash_id')
+                                ->required()
+                                ->maxLength(255)
+                                ->columnSpan(12),
+                            Forms\Components\MarkdownEditor::make('description')
+                                ->required()
+                                ->maxLength(255)
+                                ->fileAttachmentsDirectory('Payments')
+                                ->columnSpan(12),
+                        ])->columns(12),
+
+
+                    Section::make('Additional Information')
+                        ->schema([
+                            Forms\Components\DateTimePicker::make('request_date')
+                                ->required()
+                                ->columnSpan(6),
+                            Forms\Components\TextInput::make('state')
+                                ->required()
+                                ->maxLength(255)
+                                ->columnSpan(6),
+                            Forms\Components\TextInput::make('agent_bought')
+                                ->required()
+                                ->numeric()
+                                ->columnSpan(6),
+                            Forms\Components\TextInput::make('agent_count')
+                                ->required()
+                                ->numeric()
+                                ->columnSpan(6),
+                        ])->columns(12),
+                ])->columnSpan(2),
+
+                Group::make([
+                    Section::make('Server and Volume Details')
+                        ->schema([
+                            Forms\Components\TextInput::make('server_plan_id')
+                                ->required()
+                                ->numeric()
+                                ->columnSpan(6),
+                            Forms\Components\TextInput::make('volume')
+                                ->required()
+                                ->numeric()
+                                ->columnSpan(6),
+                            Forms\Components\DateTimePicker::make('day')
+                                ->required()
+                                ->columnSpan(6),
+                            Forms\Components\TextInput::make('price')
+                                ->required()
+                                ->numeric()
+                                ->prefix('$')
+                                ->columnSpan(6),
+                            Forms\Components\TextInput::make('tron_price')
+                                ->required()
+                                ->numeric()
+                                ->columnSpan(6),
+                        ])->columns(6),
+                ])->columnSpan(1),
+
+
+            ])->columns(3);
+        }
 
     public static function table(Table $table): Table
-    {
+        {
         return $table
             ->columns([
                 Tables\Columns\TextColumn::make('order_id')
@@ -142,22 +178,23 @@ class PaymentsResource extends Resource
                     Tables\Actions\DeleteBulkAction::make(),
                 ]),
             ]);
-    }
+        }
 
     public static function getRelations(): array
-    {
+        {
         return [
             //
         ];
-    }
+        }
 
     public static function getPages(): array
-    {
+        {
         return [
             'index' => Pages\ListPayments::route('/'),
             'create' => Pages\CreatePayments::route('/create'),
+
             'view' => Pages\ViewPayments::route('/{record}'),
             'edit' => Pages\EditPayments::route('/{record}/edit'),
         ];
+        }
     }
-}

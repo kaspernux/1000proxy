@@ -11,11 +11,14 @@ use Filament\Forms\Form;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
+use Filament\Forms\Components\Section;
+use Filament\Forms\Components\Group;
+use Filament\Forms\Components\MarkdownEditor;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\SoftDeletingScope;
 
 class ServerReviewResource extends Resource
-{
+    {
     protected static ?string $model = ServerReview::class;
 
     protected static ?string $navigationIcon = 'heroicon-o-megaphone';
@@ -23,22 +26,36 @@ class ServerReviewResource extends Resource
     protected static ?string $cluster = ServerManagement::class;
 
     public static function form(Form $form): Form
-    {
+        {
         return $form
             ->schema([
-                Forms\Components\Select::make('server_id')
-                    ->relationship('server', 'name')
-                    ->required(),
-                Forms\Components\Select::make('customer_id')
-                    ->relationship('customer', 'name')
-                    ->required(),
-                Forms\Components\Textarea::make('comments')
-                    ->columnSpanFull(),
-            ]);
-    }
+                Forms\Components\Group::make([
+                    Forms\Components\Section::make('Review Details')
+                        ->schema([
+                            Forms\Components\MarkdownEditor::make('comments')
+                                ->columnSpanFull()
+                                ->fileAttachmentsDirectory('ServerReview'),
+                        ]),
+                ])->columnSpan(2),
+
+                Forms\Components\Group::make([
+                    Forms\Components\Section::make('Review Details')
+                        ->schema([
+                            Forms\Components\Select::make('server_id')
+                                ->relationship('server', 'name')
+                                ->required()
+                                ->label('Server'),
+                            Forms\Components\Select::make('customer_id')
+                                ->relationship('customer', 'name')
+                                ->required()
+                                ->label('Customer'),
+                        ])->columns(2),
+                ])->columnSpan(1),
+            ])->columns(3);
+        }
 
     public static function table(Table $table): Table
-    {
+        {
         return $table
             ->columns([
                 Tables\Columns\TextColumn::make('server.name')
@@ -71,22 +88,22 @@ class ServerReviewResource extends Resource
                     Tables\Actions\DeleteBulkAction::make(),
                 ]),
             ]);
-    }
+        }
 
     public static function getRelations(): array
-    {
+        {
         return [
             //
         ];
-    }
+        }
 
     public static function getPages(): array
-    {
+        {
         return [
             'index' => Pages\ListServerReviews::route('/'),
             'create' => Pages\CreateServerReview::route('/create'),
             'view' => Pages\ViewServerReview::route('/{record}'),
             'edit' => Pages\EditServerReview::route('/{record}/edit'),
         ];
+        }
     }
-}

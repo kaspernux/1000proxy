@@ -11,6 +11,9 @@ use Filament\Forms\Form;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
+use Filament\Forms\Components\Section;
+use Filament\Forms\Components\Group;
+use Filament\Forms\Components\MarkdownEditor;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\SoftDeletingScope;
 
@@ -26,41 +29,65 @@ class ServerInboundResource extends Resource
     {
         return $form
             ->schema([
-                Forms\Components\TextInput::make('user_id')
-                    ->required()
-                    ->maxLength(255),
-                Forms\Components\TextInput::make('up')
-                    ->required()
-                    ->numeric()
-                    ->default(0),
-                Forms\Components\TextInput::make('down')
-                    ->required()
-                    ->numeric()
-                    ->default(0),
-                Forms\Components\TextInput::make('total')
-                    ->required()
-                    ->numeric()
-                    ->default(0),
-                Forms\Components\TextInput::make('remark')
-                    ->maxLength(255),
-                Forms\Components\Toggle::make('enable')
-                    ->required(),
-                Forms\Components\DateTimePicker::make('expiryTime'),
-                Forms\Components\TextInput::make('clientStats'),
-                Forms\Components\TextInput::make('listen')
-                    ->maxLength(255),
-                Forms\Components\TextInput::make('port')
-                    ->required()
-                    ->numeric(),
-                Forms\Components\TextInput::make('protocol')
-                    ->required()
-                    ->maxLength(50),
-                Forms\Components\TextInput::make('settings'),
-                Forms\Components\TextInput::make('streamSettings'),
-                Forms\Components\TextInput::make('tag')
-                    ->maxLength(100),
-                Forms\Components\TextInput::make('sniffing'),
-            ]);
+                Forms\Components\Group::make([
+                    Forms\Components\Section::make('User Information')
+                        ->schema([
+                            Forms\Components\TextInput::make('user_id')
+                                ->required()
+                                ->maxLength(255),
+                            Forms\Components\TextInput::make('remark')
+                                ->maxLength(255),
+                            Forms\Components\Toggle::make('enable')
+                                ->required(),
+                        ])->columns(2),
+
+
+
+                    Forms\Components\Section::make('Connection Details')
+                        ->schema([
+                            Forms\Components\DateTimePicker::make('expiryTime'),
+                            Forms\Components\TextInput::make('clientStats'),
+                            Forms\Components\TextInput::make('listen')
+                                ->maxLength(255),
+                            Forms\Components\TextInput::make('port')
+                                ->required()
+                                ->numeric(),
+                        ])->columns(2),
+
+                    Forms\Components\Section::make('Protocol and Settings')
+                        ->schema([
+                            Forms\Components\TextInput::make('protocol')
+                                ->required()
+                                ->maxLength(50),
+                            Forms\Components\TextInput::make('settings'),
+                            Forms\Components\TextInput::make('streamSettings'),
+                        ])
+                ])->columnSpan(2),
+
+                Forms\Components\Group::make([
+                    Forms\Components\Section::make('Data Usage')
+                        ->schema([
+                            Forms\Components\TextInput::make('up')
+                                ->required()
+                                ->numeric()
+                                ->default(0),
+                            Forms\Components\TextInput::make('down')
+                                ->required()
+                                ->numeric()
+                                ->default(0),
+                            Forms\Components\TextInput::make('total')
+                                ->required()
+                                ->numeric()
+                                ->default(0),
+                        ]),
+                    Forms\Components\Section::make('Additional Info')
+                        ->schema([
+                            Forms\Components\TextInput::make('tag')
+                                ->maxLength(100),
+                            Forms\Components\TextInput::make('sniffing'),
+                        ])
+                ])->columnSpan(1)
+            ])->columns(3);
     }
 
     public static function table(Table $table): Table

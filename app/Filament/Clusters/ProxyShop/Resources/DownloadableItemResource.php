@@ -11,11 +11,13 @@ use Filament\Forms\Form;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
+use Filament\Forms\Components\Section;
+use Filament\Forms\Components\Group;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\SoftDeletingScope;
 
 class DownloadableItemResource extends Resource
-{
+    {
     protected static ?string $model = DownloadableItem::class;
 
     protected static ?string $navigationIcon = 'heroicon-o-arrow-down-tray';
@@ -23,23 +25,37 @@ class DownloadableItemResource extends Resource
     protected static ?string $cluster = ProxyShop::class;
 
     public static function form(Form $form): Form
-    {
+        {
         return $form
             ->schema([
-                Forms\Components\TextInput::make('server_id')
-                    ->required()
-                    ->numeric(),
-                Forms\Components\TextInput::make('file_url')
-                    ->required()
-                    ->maxLength(255),
-                Forms\Components\TextInput::make('download_limit')
-                    ->numeric(),
-                Forms\Components\DateTimePicker::make('expiration_time'),
-            ]);
-    }
+                Group::make([
+                    Section::make('Download Details')
+                        ->schema([
+                            Forms\Components\TextInput::make('server_id')
+                                ->required()
+                                ->numeric()
+                                ->columnSpan(1),
+                            Forms\Components\TextInput::make('file_url')
+                                ->required()
+                                ->maxLength(255)
+                                ->columnSpan(3),
+                        ])
+                        ->columns(4),
+                    Section::make('Limits and Expiration')
+                        ->schema([
+                            Forms\Components\TextInput::make('download_limit')
+                                ->numeric()
+                                ->columnSpan(2),
+                            Forms\Components\DateTimePicker::make('expiration_time')
+                                ->columnSpan(2),
+                        ])
+                        ->columns(4),
+                ])->columnSpanFull(),
+            ])->columns(4);
+        }
 
     public static function table(Table $table): Table
-    {
+        {
         return $table
             ->columns([
                 Tables\Columns\TextColumn::make('server_id')
@@ -77,22 +93,22 @@ class DownloadableItemResource extends Resource
                     Tables\Actions\DeleteBulkAction::make(),
                 ]),
             ]);
-    }
+        }
 
     public static function getRelations(): array
-    {
+        {
         return [
             //
         ];
-    }
+        }
 
     public static function getPages(): array
-    {
+        {
         return [
             'index' => Pages\ListDownloadableItems::route('/'),
             'create' => Pages\CreateDownloadableItem::route('/create'),
             'view' => Pages\ViewDownloadableItem::route('/{record}'),
             'edit' => Pages\EditDownloadableItem::route('/{record}/edit'),
         ];
+        }
     }
-}

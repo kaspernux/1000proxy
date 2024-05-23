@@ -11,11 +11,16 @@ use Filament\Forms\Form;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
+use Filament\Forms\Components\DatePicker;
+use Filament\Forms\Components\DateTimePicker;
+use Filament\Forms\Components\TimePicker;
+use Filament\Forms\Components\Section;
+use Filament\Forms\Components\Group;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\SoftDeletingScope;
 
 class PaymentMethodResource extends Resource
-{
+    {
     protected static ?string $model = PaymentMethod::class;
 
     protected static ?string $navigationIcon = 'heroicon-o-credit-card';
@@ -23,32 +28,45 @@ class PaymentMethodResource extends Resource
     protected static ?string $cluster = CustomerManagement::class;
 
     public static function form(Form $form): Form
-    {
+        {
         return $form
             ->schema([
-                Forms\Components\Select::make('customer_id')
-                    ->relationship('customer', 'name')
-                    ->required(),
-                Forms\Components\TextInput::make('name')
-                    ->required()
-                    ->maxLength(255),
-                Forms\Components\Textarea::make('details')
-                    ->columnSpanFull(),
-                Forms\Components\Toggle::make('is_default')
-                    ->required(),
-                Forms\Components\TextInput::make('expiration_date')
-                    ->maxLength(255),
-                Forms\Components\Textarea::make('billing_address')
-                    ->columnSpanFull(),
-                Forms\Components\TextInput::make('type')
-                    ->maxLength(255),
-                Forms\Components\Toggle::make('is_active')
-                    ->required(),
-            ]);
-    }
+                Forms\Components\Group::make([
+                    Forms\Components\Section::make('General Information')
+                        ->schema([
+                            Forms\Components\Select::make('customer_id')
+                                ->relationship('customer', 'name')
+                                ->required(),
+                            Forms\Components\TextInput::make('name')
+                                ->required()
+                                ->maxLength(255),
+                            Forms\Components\Textarea::make('details')
+                                ->columnSpanFull(),
+                            Forms\Components\Textarea::make('billing_address')
+                                ->columnSpanFull(),
+                        ])->columns(2),
+                ])->columnSpan(2),
+                Forms\Components\Group::make([
+                    Forms\Components\Section::make('Settings')
+                        ->schema([
+                            Forms\Components\DateTimePicker::make('expiration_date')
+                                ->maxWidth(255),
+                            Forms\Components\TextInput::make('type')
+                                ->maxLength(255),
+                        ])->columns(2),
+                    Forms\Components\Section::make('Status')
+                        ->schema([
+                            Forms\Components\Toggle::make('is_default')
+                                ->required(),
+                            Forms\Components\Toggle::make('is_active')
+                                ->required(),
+                        ])->columns(2),
+                ])->columnSpan(2),
+            ])->columns(4);
+        }
 
     public static function table(Table $table): Table
-    {
+        {
         return $table
             ->columns([
                 Tables\Columns\TextColumn::make('customer.name')
@@ -88,22 +106,23 @@ class PaymentMethodResource extends Resource
                     Tables\Actions\DeleteBulkAction::make(),
                 ]),
             ]);
-    }
+        }
 
     public static function getRelations(): array
-    {
+        {
         return [
             //
         ];
-    }
+        }
 
     public static function getPages(): array
-    {
+        {
         return [
             'index' => Pages\ListPaymentMethods::route('/'),
             'create' => Pages\CreatePaymentMethod::route('/create'),
             'view' => Pages\ViewPaymentMethod::route('/{record}'),
             'edit' => Pages\EditPaymentMethod::route('/{record}/edit'),
         ];
+
+        }
     }
-}
