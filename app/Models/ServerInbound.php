@@ -2,11 +2,15 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class ServerInbound extends Model
     {
+    use HasFactory;
+
     protected $fillable = [
         'user_id',
         'up',
@@ -26,28 +30,36 @@ class ServerInbound extends Model
     ];
 
     protected $casts = [
-        'enable' => 'boolean', // Cast 'enable' to boolean
-        'expiry_time' => 'datetime', // Cast 'expiryTime' to datetime
-        'clientStats' => 'array', // Cast 'clientStats' to array
-        'settings' => 'array', // Cast 'settings' to array
-        'streamSettings' => 'array', // Cast 'streamSettings' to array
-        'sniffing' => 'array', //
+        'enable' => 'boolean',
+        'expiryTime' => 'datetime',
+        'clientStats' => 'array',
+        'settings' => 'array',
+        'streamSettings' => 'array',
+        'sniffing' => 'array',
     ];
+
     public function serverClients(): HasMany
         {
         return $this->hasMany(ServerClient::class);
         }
+
     public function serverCategories(): HasMany
         {
         return $this->hasMany(ServerCategory::class);
         }
 
-    public function ServerPlan()
+    public function serverPlan(): BelongsTo
         {
         return $this->belongsTo(ServerPlan::class);
         }
-    public function servers()
+
+    public function server(): BelongsTo
         {
         return $this->belongsTo(Server::class);
+        }
+
+    public function orderItem(): BelongsTo
+        {
+        return $this->belongsTo(OrderItem::class);
         }
     }

@@ -13,6 +13,7 @@ use Filament\Tables;
 use Filament\Tables\Table;
 use Filament\Forms\Components\Section;
 use Filament\Forms\Components\Group;
+use Filament\Forms\Components\Select;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\SoftDeletingScope;
 
@@ -57,12 +58,20 @@ class OrderResource extends Resource
                 Forms\Components\Group::make([
                     Forms\Components\Section::make('Status Information')
                         ->schema([
-                            Forms\Components\TextInput::make('payment_status')
+                            Forms\Components\Select::make('payment_status')
                                 ->required()
-                                ->maxLength(255),
-                            Forms\Components\TextInput::make('order_status')
+                                ->options([
+                                    'pending' => 'Pending',
+                                    'paid' => 'Paid',
+                                    'failed' => 'Failed',
+                                ]),
+                            Forms\Components\Select::make('order_status')
                                 ->required()
-                                ->maxLength(255),
+                                ->options([
+                                    'new' => 'New',
+                                    'processing' => 'Processing',
+                                    'completed' => 'Completed',
+                                ]),
                         ])->columns(2),
                 ])->columnSpan(1),
             ])->columns(3);

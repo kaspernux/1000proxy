@@ -17,7 +17,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\SoftDeletingScope;
 
 class ServerResource extends Resource
-{
+    {
     protected static ?string $model = Server::class;
 
     protected static ?string $navigationIcon = 'heroicon-o-server';
@@ -25,7 +25,7 @@ class ServerResource extends Resource
     protected static ?string $cluster = ServerManagement::class;
 
     public static function form(Form $form): Form
-    {
+        {
         return $form
             ->schema([
                 Group::make()->schema([
@@ -33,9 +33,13 @@ class ServerResource extends Resource
                         Forms\Components\TextInput::make('name')
                             ->required()
                             ->maxLength(255),
-                        Forms\Components\TextInput::make('status')
+                        Forms\Components\Select::make('status')
                             ->required()
-                            ->maxLength(255),
+                            ->options([
+                                'up' => 'Up',
+                                'down' => 'Down',
+                                'paused' => 'Paused',
+                            ]),
                     ])->columns(2),
 
                     Section::make('Connection Information')->schema([
@@ -48,8 +52,8 @@ class ServerResource extends Resource
                         Forms\Components\TextInput::make('panel')
                             ->required()
                             ->maxLength(255),
-                        ])
-                    ])->columnSpan(2),
+                    ]),
+                ])->columnSpan(2),
 
                 Group::make()->schema([
                     Section::make('Authentication details')->schema([
@@ -60,13 +64,13 @@ class ServerResource extends Resource
                             ->password()
                             ->required()
                             ->maxLength(255),
-                ])->columnSpan(1)
-            ])
-        ])->columns(3);
-    }
+                    ])->columnSpan(1),
+                ]),
+            ])->columns(3);
+        }
 
     public static function table(Table $table): Table
-    {
+        {
         return $table
             ->columns([
                 Tables\Columns\TextColumn::make('ip')
@@ -106,17 +110,17 @@ class ServerResource extends Resource
                     Tables\Actions\DeleteBulkAction::make(),
                 ]),
             ]);
-    }
+        }
 
     public static function getRelations(): array
-    {
+        {
         return [
             //
         ];
-    }
+        }
 
     public static function getPages(): array
-    {
+        {
         return [
             'index' => Pages\ListServers::route('/'),
             'create' => Pages\CreateServer::route('/create'),
@@ -124,5 +128,5 @@ class ServerResource extends Resource
             'edit' => Pages\EditServer::route('/{record}/edit'),
         ];
 
-   }
-}
+        }
+    }

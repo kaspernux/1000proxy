@@ -14,6 +14,7 @@ use Filament\Tables\Table;
 use Filament\Forms\Components\Section;
 use Filament\Forms\Components\Group;
 use Filament\Forms\Components\DatePicker;
+use Filament\Forms\Components\Select;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\SoftDeletingScope;
 
@@ -46,10 +47,14 @@ class OrderItemResource extends Resource
                         ])->columns(2),
                     Section::make('Financial Details')
                         ->schema([
-                            Forms\Components\TextInput::make('status')
+                            Forms\Components\Select::make('status')
                                 ->required()
-                                ->numeric()
-                                ->columnSpan(2),
+                                ->columnSpan(2)
+                                ->options([
+                                    '0' => 'Pending',
+                                    '1' => 'Paid',
+                                    '2' => 'Failed',
+                                ]),
                             Forms\Components\DatePicker::make('date')
                                 ->required(),
                             Forms\Components\Select::make('payments_id')
@@ -75,8 +80,8 @@ class OrderItemResource extends Resource
                 Group::make([
                     Section::make('Additional Information')
                         ->schema([
-                            Forms\Components\TextInput::make('server_inbound_id')
-                                ->numeric(),
+                            Forms\Components\Select::make('server_inbound_id')
+                                ->relationship('serverInbound', 'id'),
                             Forms\Components\TextInput::make('token')
                                 ->required()
                                 ->maxLength(255),
@@ -132,7 +137,6 @@ class OrderItemResource extends Resource
                     ->sortable(),
                 Tables\Columns\TextColumn::make('fileid')
                     ->numeric()
-
                     ->sortable(),
                 Tables\Columns\TextColumn::make('remark')
                     ->searchable(),
@@ -171,7 +175,7 @@ class OrderItemResource extends Resource
                     ->toggleable(isToggledHiddenByDefault: true),
             ])
             ->filters([
-                //
+                // Add filters if needed
             ])
             ->actions([
                 Tables\Actions\ActionGroup::make([
