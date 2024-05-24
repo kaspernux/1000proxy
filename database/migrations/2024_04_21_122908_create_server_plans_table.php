@@ -15,8 +15,8 @@ return new class extends Migration
             {
             $table->id();
             $table->foreignId('server_id')->constrained()->onDelete('cascade');
-            $table->foreignId('server_inbound_id')->constrained('server_inbounds')->onDelete('cascade');
-            $table->foreignId('category_id')->constrained('server_categories')->onDelete('cascade');
+            $table->foreignId('server_inbound_id')->constrained()->onDelete('cascade');
+            $table->foreignId('server_category_id')->constrained()->onDelete('cascade');
             $table->string('fileid');
             $table->string('acount');
             $table->integer('limitip');

@@ -4,23 +4,17 @@ namespace App\Filament\Clusters\CustomerManagement\Resources;
 
 use App\Filament\Clusters\CustomerManagement;
 use App\Filament\Clusters\CustomerManagement\Resources\PaymentMethodResource\Pages;
-use App\Filament\Clusters\CustomerManagement\Resources\PaymentMethodResource\RelationManagers;
 use App\Models\PaymentMethod;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
-use Filament\Forms\Components\DatePicker;
-use Filament\Forms\Components\DateTimePicker;
-use Filament\Forms\Components\TimePicker;
 use Filament\Forms\Components\Section;
 use Filament\Forms\Components\Group;
-use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Database\Eloquent\SoftDeletingScope;
 
 class PaymentMethodResource extends Resource
-    {
+{
     protected static ?string $model = PaymentMethod::class;
 
     protected static ?string $navigationIcon = 'heroicon-o-credit-card';
@@ -28,14 +22,16 @@ class PaymentMethodResource extends Resource
     protected static ?string $cluster = CustomerManagement::class;
 
     public static function form(Form $form): Form
-        {
+    {
         return $form
             ->schema([
-                Forms\Components\Group::make([
-                    Forms\Components\Section::make('General Information')
+                Group::make([
+                    Section::make('General Information')
                         ->schema([
                             Forms\Components\Select::make('customer_id')
                                 ->relationship('customer', 'name')
+                                ->searchable()
+                                ->preload()
                                 ->required(),
                             Forms\Components\TextInput::make('name')
                                 ->required()
@@ -46,15 +42,24 @@ class PaymentMethodResource extends Resource
                                 ->columnSpanFull(),
                         ])->columns(2),
                 ])->columnSpan(2),
-                Forms\Components\Group::make([
-                    Forms\Components\Section::make('Settings')
+                Group::make([
+                    Section::make('Settings')
                         ->schema([
                             Forms\Components\DateTimePicker::make('expiration_date')
                                 ->maxWidth(255),
-                            Forms\Components\TextInput::make('type')
-                                ->maxLength(255),
+                            Forms\Components\Select::make('type')
+                                ->options([
+                                    'Credit Card' => 'Credit Card',
+                                    'PayPal' => 'PayPal',
+                                    'Bitcoin' => 'Bitcoin',
+                                    'Monero' => 'Monero',
+                                    'Crypto' => 'Crypto',
+                                    // Add more cryptocurrency types as needed
+                                ])
+                                ->required()
+                                ->maxWidth(255),
                         ])->columns(2),
-                    Forms\Components\Section::make('Status')
+                    Section::make('Status')
                         ->schema([
                             Forms\Components\Toggle::make('is_default')
                                 ->required(),
@@ -63,20 +68,21 @@ class PaymentMethodResource extends Resource
                         ])->columns(2),
                 ])->columnSpan(2),
             ])->columns(4);
-        }
+    }
 
     public static function table(Table $table): Table
-        {
+    {
         return $table
             ->columns([
                 Tables\Columns\TextColumn::make('customer.name')
-                    ->numeric()
-                    ->sortable(),
+                    ->sortable()
+                    ->searchable(),
                 Tables\Columns\TextColumn::make('name')
                     ->searchable(),
                 Tables\Columns\IconColumn::make('is_default')
                     ->boolean(),
                 Tables\Columns\TextColumn::make('expiration_date')
+                    ->sortable()
                     ->searchable(),
                 Tables\Columns\TextColumn::make('type')
                     ->searchable(),
@@ -92,7 +98,7 @@ class PaymentMethodResource extends Resource
                     ->toggleable(isToggledHiddenByDefault: true),
             ])
             ->filters([
-                //
+                // Add filters as needed
             ])
             ->actions([
                 Tables\Actions\ActionGroup::make([
@@ -106,23 +112,22 @@ class PaymentMethodResource extends Resource
                     Tables\Actions\DeleteBulkAction::make(),
                 ]),
             ]);
-        }
+    }
 
     public static function getRelations(): array
-        {
+    {
         return [
-            //
+            // Define relationships as needed
         ];
-        }
+    }
 
     public static function getPages(): array
-        {
+    {
         return [
             'index' => Pages\ListPaymentMethods::route('/'),
             'create' => Pages\CreatePaymentMethod::route('/create'),
             'view' => Pages\ViewPaymentMethod::route('/{record}'),
             'edit' => Pages\EditPaymentMethod::route('/{record}/edit'),
         ];
-
-        }
     }
+}

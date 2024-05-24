@@ -14,8 +14,8 @@ class ServerPlan extends Model
 
     protected $fillable = [
         'server_id',
-        'server_inbound_id',
-        'server_category_id',
+        'inbound_id',
+        'category_id',
         'fileid',
         'acount',
         'limitip',
@@ -57,15 +57,5 @@ class ServerPlan extends Model
     public function serverInbounds(): HasMany
         {
         return $this->hasMany(ServerInbound::class);
-        }
-
-        public function orderItems(): HasMany
-        {
-        return $this->hasMany(OrderItem::class);
-        }
-
-        public function payments(): HasMany
-        {
-        return $this->hasMany(Payments::class);
         }
     }

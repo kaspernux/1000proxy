@@ -62,11 +62,15 @@ class ServerConfigResource extends Resource
                 Forms\Components\Group::make([
                     Forms\Components\Section::make('Server Details')
                         ->schema([
-                            Forms\Components\TextInput::make('server_id')
-                                ->required()
-                                ->numeric(),
+                            Forms\Components\Select::make('server_id')
+                                ->relationship('server', 'name')
+                                ->searchable()
+                                ->preload()
+                                ->columnSpan(2)
+                                ->required(),
                             Forms\Components\TextInput::make('type')
                                 ->required()
+                                ->columnSpan(2)
                                 ->maxLength(255),
                         ])->columns(2),
                     Forms\Components\Section::make('Authentication and Type')
@@ -76,7 +80,8 @@ class ServerConfigResource extends Resource
                                 ->maxLength(255),
                             Forms\Components\TextInput::make('password')
                                 ->password()
-                                ->required()
+                                ->dehydrated(fn ($state) => filled($state))
+                                ->required(fn ($livewire): bool => $livewire instanceof CreateRecord)
                                 ->maxLength(255),
                         ]),
                     Forms\Components\Section::make('Port and Reality Settings')

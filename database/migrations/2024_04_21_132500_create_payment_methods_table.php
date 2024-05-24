@@ -17,9 +17,9 @@ return new class extends Migration
             $table->string('name');
             $table->text('details')->nullable();
             $table->boolean('is_default')->default(false);
-            $table->string('expiration_date')->nullable();
+            $table->date('expiration_date')->nullable();
             $table->text('billing_address')->nullable();
-            $table->string('type')->nullable();
+            $table->string('type')->nullable(); // Type of payment method (e.g., Credit Card, PayPal, Bitcoin, Ethereum)
             $table->boolean('is_active')->default(true);
             $table->timestamps();
         });

@@ -4,11 +4,11 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class ServerInbound extends Model
-    {
+{
     use HasFactory;
 
     protected $fillable = [
@@ -39,27 +39,27 @@ class ServerInbound extends Model
     ];
 
     public function serverClients(): HasMany
-        {
+    {
         return $this->hasMany(ServerClient::class);
-        }
+    }
 
-    public function serverCategories(): HasMany
-        {
-        return $this->hasMany(ServerCategory::class);
-        }
+    public function serverCategory(): BelongsTo
+    {
+        return $this->belongsTo(ServerCategory::class);
+    }
 
     public function serverPlan(): BelongsTo
-        {
+    {
         return $this->belongsTo(ServerPlan::class);
-        }
+    }
 
     public function server(): BelongsTo
-        {
+    {
         return $this->belongsTo(Server::class);
-        }
+    }
 
     public function orderItem(): BelongsTo
-        {
+    {
         return $this->belongsTo(OrderItem::class);
-        }
     }
+}

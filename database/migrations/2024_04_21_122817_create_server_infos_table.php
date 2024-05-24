@@ -14,6 +14,7 @@ return new class extends Migration
         Schema::create('server_infos', function (Blueprint $table)
             {
             $table->id();
+            $table->foreignId('server_id')->constrained()->onDelete('cascade');
             $table->string('title');
             $table->integer('ucount')->default(0);
             $table->text('remark')->nullable();

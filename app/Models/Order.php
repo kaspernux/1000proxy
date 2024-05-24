@@ -14,7 +14,6 @@ class Order extends Model
 
     protected $fillable = [
         'customer_id',
-        'order_item_id',
         'order_date',
         'total_amount',
         'payment_method_id',
@@ -33,8 +32,8 @@ class Order extends Model
         return $this->hasMany(OrderItem::class);
     }
 
-    public function paymentMethods(): HasMany
-        {
-        return $this->hasMany(PaymentMethod::class);
-        }
+    public function paymentMethod(): BelongsTo
+    {
+        return $this->belongsTo(PaymentMethod::class, 'payment_method_id');
+    }
 }

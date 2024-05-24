@@ -32,17 +32,23 @@ class PaymentsResource extends Resource
                 Group::make([
                     Section::make('Payment Details')
                         ->schema([
-                            Forms\Components\TextInput::make('order_id')
+                            Forms\Components\Select::make('order_id')
+                                ->relationship('Order', 'id')
+                                ->searchable()
+                                ->preload()
                                 ->required()
-                                ->numeric()
                                 ->columnSpan(6),
-                            Forms\Components\TextInput::make('customer_id')
+                            Forms\Components\Select::make('customer_id')
+                                ->relationship('Customer', 'name')
+                                ->searchable()
+                                ->preload()
                                 ->required()
-                                ->numeric()
                                 ->columnSpan(6),
-                            Forms\Components\TextInput::make('payment_method_id')
+                            Forms\Components\Select::make('payment_method_id')
+                                ->relationship('paymentMethod', 'name')
+                                ->searchable()
+                                ->preload()
                                 ->required()
-                                ->maxLength(255)
                                 ->columnSpan(6),
                             Forms\Components\TextInput::make('type')
                                 ->required()
@@ -83,9 +89,11 @@ class PaymentsResource extends Resource
                 Group::make([
                     Section::make('Server and Volume Details')
                         ->schema([
-                            Forms\Components\TextInput::make('server_plan_id')
+                            Forms\Components\Select::make('server_plan_id')
+                                ->relationship('serverPlan', 'id')
+                                ->searchable()
+                                ->preload()
                                 ->required()
-                                ->numeric()
                                 ->columnSpan(6),
                             Forms\Components\TextInput::make('volume')
                                 ->required()
@@ -114,21 +122,22 @@ class PaymentsResource extends Resource
         {
         return $table
             ->columns([
-                Tables\Columns\TextColumn::make('order_id')
+                Tables\Columns\TextColumn::make('Order.id')
                     ->numeric()
                     ->sortable(),
-                Tables\Columns\TextColumn::make('customer_id')
+                Tables\Columns\TextColumn::make('Customer.name')
                     ->numeric()
                     ->sortable(),
                 Tables\Columns\TextColumn::make('hash_id')
                     ->searchable(),
                 Tables\Columns\TextColumn::make('description')
                     ->searchable(),
-                Tables\Columns\TextColumn::make('payment_method_id')
+                Tables\Columns\TextColumn::make('paymentMethod.name')
+                    ->sortable()
                     ->searchable(),
                 Tables\Columns\TextColumn::make('type')
                     ->searchable(),
-                Tables\Columns\TextColumn::make('server_plan_id')
+                Tables\Columns\TextColumn::make('serverPlan.id')
                     ->numeric()
                     ->sortable(),
                 Tables\Columns\TextColumn::make('volume')

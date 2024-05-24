@@ -32,9 +32,11 @@ class ServerCategoryResource extends Resource
                 Group::make()->schema([
                     Section::make('Server details')
                         ->schema([
-                            Forms\Components\TextInput::make('server_id')
-                                ->required()
-                                ->numeric(),
+                            Forms\Components\Select::make('server_id')
+                                ->relationship('server', 'name')
+                                ->searchable()
+                                ->preload()
+                                ->required(),
                             Forms\Components\TextInput::make('title')
                                 ->required()
                                 ->maxLength(255),
@@ -71,8 +73,8 @@ class ServerCategoryResource extends Resource
     {
         return $table
             ->columns([
-                Tables\Columns\TextColumn::make('server_id')
-                    ->numeric()
+                Tables\Columns\TextColumn::make('server.id')
+                    ->searchable()
                     ->sortable(),
                 Tables\Columns\TextColumn::make('title')
                     ->searchable(),

@@ -34,6 +34,8 @@ class ServerClientResource extends Resource
                             ->schema([
                                 Forms\Components\Select::make('server_inbound_id')
                                     ->relationship('serverInbound', 'id')
+                                    ->searchable()
+                                    ->preload()
                                     ->required(),
                                 Forms\Components\TextInput::make('email')
                                     ->email()

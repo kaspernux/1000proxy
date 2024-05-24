@@ -30,10 +30,13 @@ class OrderResource extends Resource
         return $form
             ->schema([
                 Forms\Components\Group::make([
-                    Forms\Components\Section::make('Order Details')
+                    Forms\Components\Section::make('Order Information')
                         ->schema([
                             Forms\Components\Select::make('customer_id')
+                                ->label('Customer')
                                 ->relationship('customer', 'name')
+                                ->searchable()
+                                ->preload()
                                 ->required(),
                             Forms\Components\DatePicker::make('order_date')
                                 ->required(),
@@ -44,9 +47,12 @@ class OrderResource extends Resource
                                 ->required()
                                 ->numeric()
                                 ->columnSpan(1),
-                            Forms\Components\TextInput::make('payment_method_id')
+                            Forms\Components\Select::make('payment_method_id')
+                                ->label('Payment Method')
+                                ->relationship('paymentMethod', 'name')
+                                ->searchable()
+                                ->preload()
                                 ->required()
-                                ->numeric()
                                 ->columnSpan(1),
                             Forms\Components\TextInput::make('transaction_id')
                                 ->required()

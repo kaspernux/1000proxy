@@ -33,8 +33,10 @@ class GiftListResource extends Resource
                         ->schema([
                             Forms\Components\Select::make('server_id')
                                 ->relationship('server', 'name')
+                                ->searchable()
+                                ->preload()
                                 ->required()
-                                ->columnSpan(1),
+                                ->columnSpan(3),
                         ]),
                 ])->columnSpan(1),
                 Group::make([

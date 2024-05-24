@@ -30,6 +30,12 @@ class ServerInfoResource extends Resource
             ->schema([
                 Group::make()->schema([
                     Section::make('Server Infos')->schema([
+                        Forms\Components\Select::make('server_id')
+                                ->relationship('server', 'name')
+                                ->searchable()
+                                ->preload()
+                                ->columnSpan(2)
+                                ->required(),
                         Forms\Components\TextInput::make('title')
                             ->required()
                             ->maxLength(255),
@@ -67,6 +73,9 @@ class ServerInfoResource extends Resource
     {
         return $table
             ->columns([
+                Tables\Columns\TextColumn::make('server.name')
+                    ->numeric()
+                    ->sortable(),
                 Tables\Columns\TextColumn::make('title')
                     ->searchable(),
                 Tables\Columns\TextColumn::make('ucount')

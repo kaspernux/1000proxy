@@ -35,33 +35,73 @@ class OrderItemResource extends Resource
                         ->schema([
                             Forms\Components\Select::make('order_id')
                                 ->relationship('order', 'id')
-                                ->required(),
+                                ->searchable()
+                                ->preload()
+                                ->required()
+                                ->columnSpan(6),
                             Forms\Components\Select::make('customer_id')
                                 ->relationship('customer', 'name')
-                                ->required(),
+                                ->searchable()
+                                ->preload()
+                                ->required()
+                                ->columnSpan(6),
                             Forms\Components\Select::make('server_id')
                                 ->relationship('server', 'name')
-                                ->required(),
+                                ->searchable()
+                                ->preload()
+                                ->required()
+                                ->columnSpan(6),
                             Forms\Components\Select::make('server_plan_id')
-                                ->relationship('serverPlan', 'title'),
+                                ->relationship('serverPlan', 'title')
+                                ->searchable()
+                                ->preload()
+                                ->required()
+                                ->columnSpan(6),
+                            Forms\Components\Select::make('server_inbound_id')
+                                ->relationship('serverInbound', 'id')
+                                ->searchable()
+                                ->preload()
+                                ->required()
+                                ->columnSpan(6),
                         ])->columns(2),
                     Section::make('Financial Details')
                         ->schema([
                             Forms\Components\Select::make('status')
                                 ->required()
-                                ->columnSpan(2)
                                 ->options([
                                     '0' => 'Pending',
                                     '1' => 'Paid',
                                     '2' => 'Failed',
-                                ]),
-                            Forms\Components\DatePicker::make('date')
-                                ->required(),
+                                ])
+                                ->columnSpan(3),
                             Forms\Components\Select::make('payments_id')
-                                ->relationship('payments', 'id'),
+                                ->relationship('payments', 'id')
+                                ->searchable()
+                                ->preload()
+                                ->required()
+                                ->columnSpan(3),
+                            Forms\Components\DatePicker::make('date')
+                                ->required()
+                                ->columnSpan(3),
                             Forms\Components\TextInput::make('amount')
                                 ->required()
+                                ->numeric()
+                                ->columnSpan(3),
+                        ])->columns(2),
+                ])->columnSpan(2),
+
+                Group::make([
+                    Section::make('Additional Information')
+                        ->schema([
+
+                            Forms\Components\TextInput::make('token')
+                                ->required()
+                                ->maxLength(255),
+                            Forms\Components\TextInput::make('fileid')
+                                ->required()
                                 ->numeric(),
+                            Forms\Components\TextInput::make('remark')
+                                ->maxLength(255),
                             Forms\Components\TextInput::make('notif')
                                 ->required()
                                 ->numeric()
@@ -74,22 +114,6 @@ class OrderItemResource extends Resource
                                 ->required()
                                 ->numeric()
                                 ->default(0),
-                        ])->columns(2),
-                ])->columnSpan(2),
-
-                Group::make([
-                    Section::make('Additional Information')
-                        ->schema([
-                            Forms\Components\Select::make('server_inbound_id')
-                                ->relationship('serverInbound', 'id'),
-                            Forms\Components\TextInput::make('token')
-                                ->required()
-                                ->maxLength(255),
-                            Forms\Components\TextInput::make('fileid')
-                                ->required()
-                                ->numeric(),
-                            Forms\Components\TextInput::make('remark')
-                                ->maxLength(255),
                         ])->columns(2),
                     Section::make('Technical Details')
                         ->schema([
@@ -127,7 +151,7 @@ class OrderItemResource extends Resource
                 Tables\Columns\TextColumn::make('serverPlan.title')
                     ->numeric()
                     ->sortable(),
-                Tables\Columns\TextColumn::make('server_inbound_id')
+                Tables\Columns\TextColumn::make('serverInbound.id')
                     ->numeric()
                     ->sortable(),
                 Tables\Columns\TextColumn::make('token')
