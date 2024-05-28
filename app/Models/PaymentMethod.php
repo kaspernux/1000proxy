@@ -26,8 +26,13 @@ class PaymentMethod extends Model
         return $this->belongsTo(Customer::class);
     }
 
-    public function orders(): HasMany
+    public function order(): BelongsTo
     {
-        return $this->hasMany(Order::class);
+        return $this->belongsTo(Order::class);
+    }
+
+    public function payment(): BelongsTo
+    {
+        return $this->belongsTo(Payments::class);
     }
 }

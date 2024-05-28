@@ -48,7 +48,7 @@ class ServerInbound extends Model
         return $this->belongsTo(ServerCategory::class);
     }
 
-    public function serverPlan(): BelongsTo
+    public function serverPlan()
     {
         return $this->belongsTo(ServerPlan::class);
     }

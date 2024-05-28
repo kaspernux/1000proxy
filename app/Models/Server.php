@@ -44,11 +44,6 @@ class Server extends Model
         return $this->hasMany(ServerConfig::class);
     }
 
-    public function serverPlans(): HasMany
-    {
-        return $this->hasMany(ServerPlan::class);
-    }
-
     public function giftLists(): HasMany
     {
         return $this->hasMany(GiftList::class);
@@ -77,5 +72,10 @@ class Server extends Model
     public function serverInfo(): HasOne
     {
         return $this->hasOne(ServerInfo::class);
+    }
+
+    public function serverPlans()
+    {
+        return $this->hasMany(ServerPlan::class);
     }
 }

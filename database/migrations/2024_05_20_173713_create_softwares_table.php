@@ -16,7 +16,7 @@ return new class extends Migration
             $table->string('image')->nullable();
             $table->string('title');
             $table->string('link');
-            $table->boolean('staus');
+            $table->boolean('status');
             $table->timestamps();
         });
     }

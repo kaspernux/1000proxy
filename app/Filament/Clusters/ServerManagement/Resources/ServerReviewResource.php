@@ -44,11 +44,15 @@ class ServerReviewResource extends Resource
                             Forms\Components\Select::make('server_id')
                                 ->relationship('server', 'name')
                                 ->required()
-                                ->label('Server'),
+                                ->searchable()
+                                ->preload()
+                                ->columnSpan(6),
                             Forms\Components\Select::make('customer_id')
                                 ->relationship('customer', 'name')
                                 ->required()
-                                ->label('Customer'),
+                                ->searchable()
+                                ->preload()
+                                ->columnSpan(6),
                         ])->columns(2),
                 ])->columnSpan(1),
             ])->columns(3);

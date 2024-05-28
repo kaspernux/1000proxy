@@ -13,9 +13,10 @@ class ServerPlan extends Model
     protected $table = 'server_plans';
 
     protected $fillable = [
+        'brand_id',
+        'server_category_id',
         'server_id',
-        'inbound_id',
-        'category_id',
+        'sever_inbound_id',
         'fileid',
         'acount',
         'limitip',
@@ -44,18 +45,35 @@ class ServerPlan extends Model
         'active' => 'boolean', // Cast 'active' to boolean
     ];
 
-    public function servers(): BelongsTo
-        {
+
+    public function server()
+    {
         return $this->belongsTo(Server::class);
-        }
-
-    public function serverCategories(): BelongsTo
-        {
-        return $this->belongsTo(ServerCategory::class);
-        }
-
-    public function serverInbounds(): HasMany
-        {
-        return $this->hasMany(ServerInbound::class);
-        }
     }
+
+    public function serverInbounds()
+    {
+        return $this->hasMany(ServerInbound::class);
+    }
+
+    public function serverCategory()
+    {
+        return $this->belongsTo(ServerCategory::class, 'category_id');
+    }
+
+     public function brands(): BelongsTo
+    {
+        return $this->belongsTo(Brand::class);
+    }
+    public function items(): HasMany
+    {
+        return $this->hasMany(OrderItem::class);
+    }
+
+    public function orderItems(): BelongsTo
+    {
+        return $this->hasMany(OrderItem::class);
+    }
+
+
+}

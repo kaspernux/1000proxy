@@ -4,15 +4,18 @@ namespace App\Filament\Clusters\ServerManagement\Resources;
 
 use App\Filament\Clusters\ServerManagement;
 use App\Filament\Clusters\ServerManagement\Resources\ServerPlanResource\Pages;
-use App\Filament\Clusters\ServerManagement\Resources\ServerPlanResource\RelationManagers;
 use App\Models\ServerPlan;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
-use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Database\Eloquent\SoftDeletingScope;
+use Filament\Forms\Components\Section;
+use Filament\Forms\Components\Group;
+use Filament\Forms\Components\TextInput;
+use Filament\Forms\Components\Textarea;
+use Filament\Forms\Components\Toggle;
+use Filament\Forms\Components\DateTimePicker;
 
 class ServerPlanResource extends Resource
 {
@@ -26,91 +29,132 @@ class ServerPlanResource extends Resource
     {
         return $form
             ->schema([
-                Forms\Components\TextInput::make('server_id')
-                    ->required()
-                    ->numeric(),
-                Forms\Components\TextInput::make('server_inbound_id')
-                    ->required()
-                    ->numeric(),
-                Forms\Components\TextInput::make('category_id')
-                    ->required()
-                    ->numeric(),
-                Forms\Components\TextInput::make('fileid')
-                    ->required()
-                    ->maxLength(255),
-                Forms\Components\TextInput::make('acount')
-                    ->required()
-                    ->maxLength(255),
-                Forms\Components\TextInput::make('limitip')
-                    ->required()
-                    ->numeric(),
-                Forms\Components\TextInput::make('title')
-                    ->required()
-                    ->maxLength(255),
-                Forms\Components\TextInput::make('protocol')
-                    ->required()
-                    ->maxLength(255),
-                Forms\Components\TextInput::make('days')
-                    ->required()
-                    ->numeric(),
-                Forms\Components\TextInput::make('volume')
-                    ->required()
-                    ->numeric(),
-                Forms\Components\TextInput::make('type')
-                    ->required()
-                    ->maxLength(255),
-                Forms\Components\TextInput::make('price')
-                    ->required()
-                    ->numeric()
-                    ->prefix('$'),
-                Forms\Components\Textarea::make('descr')
-                    ->required()
-                    ->columnSpanFull(),
-                Forms\Components\TextInput::make('pic')
-                    ->required()
-                    ->maxLength(255),
-                Forms\Components\Toggle::make('active')
-                    ->required(),
-                Forms\Components\TextInput::make('step')
-                    ->required()
-                    ->numeric(),
-                Forms\Components\DateTimePicker::make('date'),
-                Forms\Components\TextInput::make('rahgozar')
-                    ->required()
-                    ->maxLength(255),
-                Forms\Components\TextInput::make('dest')
-                    ->required()
-                    ->maxLength(255),
-                Forms\Components\TextInput::make('serverNames')
-                    ->required()
-                    ->maxLength(255),
-                Forms\Components\TextInput::make('spiderX')
-                    ->required()
-                    ->maxLength(255),
-                Forms\Components\TextInput::make('flow')
-                    ->required()
-                    ->maxLength(255),
-                Forms\Components\TextInput::make('custom_path')
-                    ->maxLength(255),
-                Forms\Components\TextInput::make('custom_port')
-                    ->numeric(),
-                Forms\Components\TextInput::make('custom_sni')
-                    ->maxLength(255),
-            ]);
+                Forms\Components\Group::make([
+                    Forms\Components\Section::make('Plan Information')
+                        ->schema([
+                            Forms\Components\TextInput::make('fileid')
+                                ->required()
+                                ->maxLength(255)
+                                ->columnSpan(6),
+                            Forms\Components\TextInput::make('acount')
+                                ->required()
+                                ->maxLength(255)
+                                ->columnSpan(6),
+                            Forms\Components\TextInput::make('limitip')
+                                ->required()
+                                ->numeric()
+                                ->columnSpan(6),
+                            Forms\Components\TextInput::make('title')
+                                ->required()
+                                ->maxLength(255)
+                                ->columnSpan(6),
+                            Forms\Components\TextInput::make('protocol')
+                                ->required()
+                                ->maxLength(255)
+                                ->columnSpan(6),
+                            Forms\Components\TextInput::make('days')
+                                ->required()
+                                ->numeric()
+                                ->columnSpan(6),
+                            Forms\Components\TextInput::make('volume')
+                                ->required()
+                                ->numeric()
+                                ->columnSpan(6),
+                            Forms\Components\TextInput::make('type')
+                                ->required()
+                                ->maxLength(255)
+                                ->columnSpan(6),
+                            Forms\Components\TextInput::make('price')
+                                ->required()
+                                ->numeric()
+                                ->prefix('$')
+                                ->columnSpan(6),
+                            Forms\Components\Textarea::make('descr')
+                                ->required()
+                                ->columnSpanFull(),
+                            Forms\Components\TextInput::make('pic')
+                                ->required()
+                                ->maxLength(255)
+                                ->columnSpan(6),
+                            Forms\Components\Toggle::make('active')
+                                ->required()
+                                ->columnSpan(6),
+                            Forms\Components\TextInput::make('step')
+                                ->required()
+                                ->numeric()
+                                ->columnSpan(6),
+                            Forms\Components\DateTimePicker::make('date')
+                                ->columnSpan(6),
+                            Forms\Components\TextInput::make('rahgozar')
+                                ->required()
+                                ->maxLength(255)
+                                ->columnSpan(6),
+                            Forms\Components\TextInput::make('dest')
+                                ->required()
+                                ->maxLength(255)
+                                ->columnSpan(6),
+                            Forms\Components\TextInput::make('serverNames')
+                                ->required()
+                                ->maxLength(255)
+                                ->columnSpan(6),
+                            Forms\Components\TextInput::make('spiderX')
+                                ->required()
+                                ->maxLength(255)
+                                ->columnSpan(6),
+                            Forms\Components\TextInput::make('flow')
+                                ->required()
+                                ->maxLength(255)
+                                ->columnSpan(6),
+                            Forms\Components\TextInput::make('custom_path')
+                                ->maxLength(255)
+                                ->columnSpan(6),
+                            Forms\Components\TextInput::make('custom_port')
+                                ->numeric()
+                                ->columnSpan(6),
+                            Forms\Components\TextInput::make('custom_sni')
+                                ->maxLength(255)
+                                ->columnSpan(6),
+                        ])
+                        ->columns(3),
+                ])->columnSpan(3),
+
+                Forms\Components\Group::make([
+                            Forms\Components\Section::make('Server Details')
+                                ->schema([
+                            Forms\Components\Select::make('server_id')
+                                ->relationship('server', 'name')
+                                ->required()
+                                ->searchable()
+                                ->preload()
+                                ->columnSpan(6),
+                            Forms\Components\Select::make('server_inbound_id')
+                                ->relationship('serverInbound', 'id')
+                                ->required()
+                                ->searchable()
+                                ->preload()
+                                ->columnSpan(6),
+                            Forms\Components\Select::make('category_id')
+                                ->relationship('serverCategory', 'title')
+                                ->required()
+                                ->searchable()
+                                ->preload()
+                                ->columnSpan(6),
+                        ])
+                        ->columns(1),
+                ])->columnSpan(1)
+            ])->columns(4);
     }
 
     public static function table(Table $table): Table
     {
         return $table
             ->columns([
-                Tables\Columns\TextColumn::make('server_id')
-                    ->numeric()
+                Tables\Columns\TextColumn::make('server.name')
                     ->sortable(),
                 Tables\Columns\TextColumn::make('server_inbound_id')
                     ->numeric()
                     ->sortable(),
-                Tables\Columns\TextColumn::make('category_id')
-                    ->numeric()
+                Tables\Columns\TextColumn::make('serverCategory.title')
                     ->sortable(),
                 Tables\Columns\TextColumn::make('fileid')
                     ->searchable(),

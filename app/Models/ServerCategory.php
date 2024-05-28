@@ -11,20 +11,25 @@ class ServerCategory extends Model
     use HasFactory;
 
     protected $fillable = [
-        'server_id',
         'title',
-        'parent',
-        'description',
-        'step',
-        'active',
+        'slug',
+        'image',
+        'is_active',
     ];
 
-    protected $casts = [
-        'options' => 'array',
-    ];
 
     public function server(): BelongsTo
     {
         return $this->belongsTo(Server::class);
+    }
+
+    public function serverPlans()
+    {
+        return $this->hasMany(ServerPlan::class, 'server_category_id');
+    }
+
+    public function serverClients()
+    {
+        return $this->hasMany(ServerClient::class);
     }
 }

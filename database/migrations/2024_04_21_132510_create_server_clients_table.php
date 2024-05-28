@@ -13,9 +13,18 @@ return new class extends Migration
     {
         Schema::create('server_clients', function (Blueprint $table) {
             $table->id();
+            $table->foreignId('brand_id')->constrained()->onDelete('cascade');
             $table->foreignId('server_inbound_id')->constrained('server_inbounds')->onDelete('cascade');
-            $table->boolean('enable')->default(true);
+            $table->foreignId('server_category_id')->constrained('server_categories')->onDelete('cascade');
+            $table->string('name');
             $table->string('email', 255)->nullable();
+            $table->json('images')->nullable();
+            $table->longText('description')->nullable();
+            $table->decimal('price', 10, 2);
+            $table->boolean('is_active')->default(true);
+            $table->boolean('is_featured')->default(false);
+            $table->boolean('in_stock')->default(true);
+            $table->boolean('enable')->default(true);
             $table->bigInteger('up')->default(0);
             $table->bigInteger('down')->default(0);
             $table->timestamp('expiry_time')->nullable();
@@ -31,5 +40,6 @@ return new class extends Migration
     public function down(): void
     {
         Schema::dropIfExists('server_clients');
-    }
+
+  }
 };

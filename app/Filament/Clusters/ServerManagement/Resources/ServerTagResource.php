@@ -43,7 +43,9 @@ class ServerTagResource extends Resource
                         ->schema([
                             Forms\Components\Select::make('server_id')
                                 ->relationship('server', 'name')
-                                ->required(),
+                                ->required()
+                                ->searchable()
+                                ->preload(),
                         ]),
                 ])->columnSpan(1),
             ])->columns(3);

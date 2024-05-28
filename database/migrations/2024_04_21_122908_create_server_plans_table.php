@@ -14,6 +14,7 @@ return new class extends Migration
         Schema::create('server_plans', function (Blueprint $table)
             {
             $table->id();
+            $table->foreignId('brand_id')->constrained()->onDelete('cascade');
             $table->foreignId('server_id')->constrained()->onDelete('cascade');
             $table->foreignId('server_inbound_id')->constrained()->onDelete('cascade');
             $table->foreignId('server_category_id')->constrained()->onDelete('cascade');

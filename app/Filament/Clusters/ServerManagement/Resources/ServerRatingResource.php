@@ -32,10 +32,14 @@ class ServerRatingResource extends Resource
                             Forms\Components\Select::make('server_id')
                                 ->relationship('server', 'name')
                                 ->required()
-                                ->columnSpan(2),
+                                ->searchable()
+                                ->preload()
+                                ->columnSpan(6),
                             Forms\Components\Select::make('customer_id')
                                 ->relationship('customer', 'name')
                                 ->required()
+                                ->searchable()
+                                ->preload()
                                 ->columnSpan(2),
                         ])->columns(2),
                 ])->columnSpan(2),
