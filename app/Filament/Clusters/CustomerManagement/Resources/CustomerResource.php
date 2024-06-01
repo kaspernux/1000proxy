@@ -118,42 +118,22 @@ class CustomerResource extends Resource
         return $table
             ->columns([
                 Tables\Columns\IconColumn::make('is_active')
-                    ->boolean(),
-                Tables\Columns\ImageColumn::make('image'),
+                    ->boolean()
+                    ->label('Active'),
+                Tables\Columns\ImageColumn::make('image')
+                    ->label('Picture'),
                 Tables\Columns\TextColumn::make('name')
                     ->searchable(),
                 Tables\Columns\TextColumn::make('email')
-                    ->searchable(),
+                    ->searchable()
+                    ->label('Email'),
                 Tables\Columns\TextColumn::make('telegram_id')
-                    ->searchable(),
-                Tables\Columns\TextColumn::make('refcode')
-                    ->searchable(),
+                    ->searchable()
+                    ->label('Telegram'),
                 Tables\Columns\TextColumn::make('wallet')
+                    ->label('Wallet')
                     ->numeric()
                     ->sortable(),
-                Tables\Columns\TextColumn::make('date')
-                    ->searchable(),
-                Tables\Columns\TextColumn::make('phone')
-                    ->searchable(),
-                Tables\Columns\TextColumn::make('refered_by')
-                    ->numeric()
-                    ->sortable(),
-                Tables\Columns\TextColumn::make('step')
-                    ->searchable(),
-                Tables\Columns\TextColumn::make('freetrial')
-                    ->searchable(),
-                Tables\Columns\TextColumn::make('first_start')
-                    ->searchable(),
-                Tables\Columns\TextColumn::make('is_agent')
-                    ->numeric()
-                    ->sortable(),
-                Tables\Columns\TextColumn::make('discount_percent')
-                    ->searchable(),
-                Tables\Columns\TextColumn::make('agent_date')
-                    ->numeric()
-                    ->sortable(),
-                Tables\Columns\TextColumn::make('spam_info')
-                    ->searchable(),
                 Tables\Columns\TextColumn::make('created_at')
                     ->dateTime()
                     ->sortable()

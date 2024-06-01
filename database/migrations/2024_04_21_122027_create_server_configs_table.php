@@ -16,17 +16,17 @@ return new class extends Migration
             $table->foreignId('server_id')->constrained()->onDelete('cascade');
             $table->string('panel_url');
             $table->string('ip');
-            $table->string('sni');
-            $table->string('header_type');
-            $table->string('request_header');
-            $table->string('response_header');
-            $table->string('security');
-            $table->string('tlsSettings');
-            $table->string('type');
+            $table->string('sni')->nullable();
+            $table->string('header_type')->nullable();
+            $table->string('request_header')->nullable();
+            $table->string('response_header')->nullable();
+            $table->string('security')->nullable();
+            $table->string('tlsSettings')->nullable();
+            $table->string('type')->nullable();
             $table->string('username');
             $table->string('password');
-            $table->string('port_type');
-            $table->string('reality');
+            $table->string('port_type')->nullable();
+            $table->string('reality')->nullable();
             $table->timestamps();
         });
     }

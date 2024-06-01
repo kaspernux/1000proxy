@@ -8,50 +8,42 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class ServerClient extends Model
 {
+    use HasFactory;
+
+    protected $table = 'server_clients';
+
     protected $fillable = [
-        'server_category_id',
-        'brand_id',
+        'customer_id',
         'server_inbound_id',
         'name',
         'slug',
-        'email',
-        'images',
         'description',
         'price',
-        'is_active',
+        'client_id',
+        'alter_id',
+        'email',
+        'limit_ip',
+        'total_gb',
+        'expiry_time',
+        'tg_id',
+        'sub_id',
+        'qr_code_sub',
+        'qr_code_sub_json',
+        'qr_code_client',
+        'enabled',
         'is_featured',
         'in_stock',
-        'enable',
-        'up',
-        'down',
-        'expiry_time',
-        'total',
+        'capacity',
         'reset',
     ];
 
-    protected $casts = [
-        'enable' => 'boolean', // Cast 'enable' to boolean
-        'expiry_time' => 'datetime', // Cast 'expiryTime' to datetime
-        'images' => 'array',
-    ];
+    public function customer(): BelongsTo
+    {
+        return $this->belongsTo(Customer::class, 'customer_id');
+    }
 
     public function serverInbound(): BelongsTo
     {
-        return $this->belongsTo(ServerInbound::class);
-    }
-
-    public function orderItems(): HasMany
-    {
-        return $this->hasMany(OrderItem::class);
-    }
-
-    public function serverCategory(): BelongsTo
-    {
-        return $this->belongsTo(ServerCategory::class);
-    }
-
-    public function brands(): BelongsTo
-    {
-        return $this->belongsTo(Brand::class);
+        return $this->belongsTo(ServerInbound::class, 'server_inbound_id');
     }
 }

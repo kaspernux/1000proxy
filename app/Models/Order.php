@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Str;
 
 class Order extends Model
 {
@@ -36,12 +37,25 @@ class Order extends Model
         return $this->hasMany(OrderItem::class);
     }
 
-    public function paymentMethod(): HasMany
+    public function paymentMethod(): BelongsTo
     {
-        return $this->hasMany(PaymentMethod::class, 'payment_method_id');
+        return $this->belongsTo(PaymentMethod::class);
     }
 
-    // Optionally define additional relationships if needed
+    public function invoices(): HasMany
+    {
+        return $this->hasMany(Invoice::class);
+    }
 
-    // Optionally define accessors, mutators, or other methods as required
+    // Boot method to generate transaction_id automatically
+    protected static function boot()
+    {
+        parent::boot();
+
+        static::creating(function ($order) {
+            $specialTag = 'ORD'; // Define your special tag here
+            $uuid = (string) Str::uuid();
+            $order->transaction_id = $specialTag . '-' . $uuid;
+        });
+    }
 }

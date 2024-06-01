@@ -11,55 +11,42 @@ class ServerInbound extends Model
 {
     use HasFactory;
 
+    protected $table = 'server_inbounds';
+
     protected $fillable = [
+        'server_id',
         'user_id',
         'up',
         'down',
         'total',
         'remark',
         'enable',
-        'expiryTime',
-        'clientStats',
+        'expiry_time',
         'listen',
         'port',
         'protocol',
         'settings',
-        'streamSettings',
-        'tag',
+        'stream_settings',
         'sniffing',
     ];
 
-    protected $casts = [
-        'enable' => 'boolean',
-        'expiryTime' => 'datetime',
-        'clientStats' => 'array',
-        'settings' => 'array',
-        'streamSettings' => 'array',
-        'sniffing' => 'array',
-    ];
-
-    public function serverClients(): HasMany
-    {
-        return $this->hasMany(ServerClient::class);
-    }
-
-    public function serverCategory(): BelongsTo
-    {
-        return $this->belongsTo(ServerCategory::class);
-    }
-
-    public function serverPlan()
-    {
-        return $this->belongsTo(ServerPlan::class);
-    }
-
     public function server(): BelongsTo
     {
-        return $this->belongsTo(Server::class);
+        return $this->belongsTo(Server::class, 'server_id');
     }
 
-    public function orderItem(): BelongsTo
+    public function plans(): HasMany
     {
-        return $this->belongsTo(OrderItem::class);
+        return $this->hasMany(ServerPlan::class, 'server_inbound_id');
+    }
+
+    public function clients(): HasMany
+    {
+        return $this->hasMany(ServerClient::class, 'server_inbound_id');
+    }
+
+    public function traffics(): HasMany
+    {
+        return $this->hasMany(ClientTraffic::class);
     }
 }

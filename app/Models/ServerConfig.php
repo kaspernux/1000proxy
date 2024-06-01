@@ -31,4 +31,5 @@ class ServerConfig extends Model
         {
         return $this->belongsTo(Server::class);
         }
+
     }

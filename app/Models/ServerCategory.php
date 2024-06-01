@@ -4,32 +4,46 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Str;
 
 class ServerCategory extends Model
 {
     use HasFactory;
 
+    protected $table = 'server_categories';
+
     protected $fillable = [
-        'title',
+        'name',
         'slug',
         'image',
         'is_active',
     ];
 
-
-    public function server(): BelongsTo
+    protected static function boot()
     {
-        return $this->belongsTo(Server::class);
+        parent::boot();
+
+        static::creating(function ($model) {
+            if (empty($model->slug)) {
+                $model->slug = Str::slug($model->name);
+            }
+        });
+
+        static::updating(function ($model) {
+            if (empty($model->slug)) {
+                $model->slug = Str::slug($model->name);
+            }
+        });
     }
 
-    public function serverPlans()
+    public function plans(): HasMany
     {
         return $this->hasMany(ServerPlan::class, 'server_category_id');
     }
 
-    public function serverClients()
+    public function servers(): HasMany
     {
-        return $this->hasMany(ServerClient::class);
+        return $this->hasMany(Server::class, 'server_category_id');
     }
 }

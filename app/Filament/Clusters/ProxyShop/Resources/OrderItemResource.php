@@ -23,6 +23,11 @@ class OrderItemResource extends Resource
 
     protected static ?string $cluster = ProxyShop::class;
 
+    public static function getLabel(): string
+    {
+        return 'Items';
+    }
+
     public static function form(Form $form): Form
     {
         return $form
@@ -34,21 +39,20 @@ class OrderItemResource extends Resource
                                 ->relationship('order', 'id')
                                 ->searchable()
                                 ->preload()
-                                ->required()
-                                ->columnSpan(6),
+                                ->required(),
                             Select::make('server_plan_id')
-                                ->relationship('serverPlan', 'title')
+                                ->relationship('serverPlan', 'name')
                                 ->searchable()
                                 ->preload()
-                                ->required()
-                                ->columnSpan(6),
+                                ->required(),
                             Select::make('server_client_id')
                                 ->relationship('serverClient', 'name')
                                 ->searchable()
                                 ->preload()
-                                ->required()
-                                ->columnSpan(6),
-                        ])->columns(3),
+                                ->required(),
+                        ])->columns(1),
+                ])->columnSpan(1),
+                Group::make([
                     Section::make('Financial Details')
                         ->schema([
                             TextInput::make('agent_bought')
@@ -57,17 +61,32 @@ class OrderItemResource extends Resource
                                 ->default(0),
                             TextInput::make('quantity')
                                 ->required()
-                                ->numeric(),
+                                ->numeric()
+                                ->default(1)
+                                ->reactive()
+                                ->afterStateUpdated(function ($state, $set, $get) {
+                                    $quantity = (int) $state;
+                                    $unitAmount = (float) $get('unit_amount');
+                                    $set('total_amount', $quantity * $unitAmount);
+                                }),
                             TextInput::make('unit_amount')
                                 ->required()
-                                ->numeric(),
+                                ->numeric()
+                                ->default(0)
+                                ->reactive()
+                                ->afterStateUpdated(function ($state, $set, $get) {
+                                    $quantity = (int) $get('quantity');
+                                    $unitAmount = (float) $state;
+                                    $set('total_amount', $quantity * $unitAmount);
+                                }),
                             TextInput::make('total_amount')
                                 ->required()
-                                ->numeric(),
-
+                                ->numeric()
+                                ->default(0)
+                                ->disabled(),
                         ])->columns(2),
-                ])->columnSpan(4),
-            ])->columns(4);
+                ])->columnSpan(2),
+            ])->columns(3);
     }
 
     public static function table(Table $table): Table
@@ -77,14 +96,11 @@ class OrderItemResource extends Resource
                 Tables\Columns\TextColumn::make('order.id')
                     ->numeric()
                     ->sortable(),
-                Tables\Columns\TextColumn::make('serverPlan.title')
+                Tables\Columns\TextColumn::make('serverPlan.name')
                     ->sortable(),
                 Tables\Columns\TextColumn::make('serverClient.name')
                     ->sortable(),
                 Tables\Columns\TextColumn::make('quantity')
-                    ->numeric()
-                    ->sortable(),
-                Tables\Columns\TextColumn::make('unit_amount')
                     ->numeric()
                     ->sortable(),
                 Tables\Columns\TextColumn::make('total_amount')
@@ -101,9 +117,6 @@ class OrderItemResource extends Resource
                     ->dateTime()
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),
-            ])
-            ->filters([
-                // Add filters if needed
             ])
             ->actions([
                 Tables\Actions\ActionGroup::make([

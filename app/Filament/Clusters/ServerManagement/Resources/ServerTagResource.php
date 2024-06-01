@@ -25,6 +25,11 @@ class ServerTagResource extends Resource
 
     protected static ?string $cluster = ServerManagement::class;
 
+    public static function getLabel(): string
+    {
+        return 'Tags';
+    }
+
     public static function form(Form $form): Form
         {
         return $form

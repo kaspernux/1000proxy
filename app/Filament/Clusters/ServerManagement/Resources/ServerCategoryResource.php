@@ -11,78 +11,87 @@ use Filament\Forms\Form;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
-use Filament\Forms\Components\Section;
-use Filament\Forms\Components\Group;
-use Filament\Forms\Components\MarkdownEditor;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\SoftDeletingScope;
 
+use Illuminate\Support\Str;
+use Filament\Forms\Components\MarkdownEditor;
+use Filament\Forms\Components\Section;
+use Filament\Forms\Components\Textarea;
+use Filament\Forms\Components\TextInput;
+use Filament\Forms\Components\Group;
+use Livewire\Features\SupportFileUploads\TemporaryUploadedFile;
+use Filament\Forms\Components\FileUpload;
+use Filament\Tables\Columns\ImageColumn;
+use Filament\Tables\Columns\IconColumn;
+use Filament\Forms\Components\Grid;
+use Filament\Forms\Components\Toggle;
+use Filament\Forms\Set;
+use Filament\Forms\Get;
+
+
 class ServerCategoryResource extends Resource
 {
-    protected static ?string $model = ServerCategory::class;
-
     protected static ?string $navigationIcon = 'heroicon-o-bookmark';
 
     protected static ?string $cluster = ServerManagement::class;
+
+    public static function getLabel(): string
+    {
+        return 'Category';
+    }
 
     public static function form(Form $form): Form
     {
         return $form
             ->schema([
-                Group::make()->schema([
-                    Section::make('Server details')
+                Section::make([
+                    Grid::make()
                         ->schema([
-                            Forms\Components\Select::make('server_id')
-                                ->relationship('server', 'name')
-                                ->searchable()
-                                ->preload()
-                                ->required(),
-                            Forms\Components\TextInput::make('title')
+                            TextInput::make('name')
                                 ->required()
-                                ->maxLength(255),
-                            Forms\Components\TextInput::make('options')
-                                ->maxLength(255),
-                            Forms\Components\TextInput::make('parent')
+                                ->maxLength(255)
+                                ->live(onBlur: true)
+                                ->afterStateUpdated(function (string $operation, $state, Set $set) {
+                                    if ($operation === 'create') {
+                                        $set('slug', Str::slug($state));
+                                    }
+                                }),
+
+                            TextInput::make('slug')
                                 ->required()
-                                ->maxLength(255),
-                            ])->columns(2),
+                                ->disabled()
+                                ->unique(ServerCategory::class, 'slug', ignoreRecord: true),
+                        ]),
 
-                    Section::make('Information about the server')
-                        ->schema([
-                        Forms\Components\MarkdownEditor::make('description')
-                            ->columnSpanFull()
-                            ->fileAttachmentsDirectory('ServerCategory'),
-                        ])
-                ])->columnSpan(2),
+                    FileUpload::make('image')
+                        ->image()
+                        ->directory('server_categories'),
 
-                Group::make()->schema([
-                    Section::make('Options')
-                        ->schema([
-                        Forms\Components\TextInput::make('step')
-                            ->required()
-                            ->maxLength(255),
-                        Forms\Components\Toggle::make('active')
-                            ->required(),
-                        ])
-                ])->columnSpan(1)
-
-            ])->columns(3);
+                    Toggle::make('is_active')
+                        ->required()
+                        ->default(true),
+                ])
+            ]);
     }
 
     public static function table(Table $table): Table
     {
         return $table
             ->columns([
-                Tables\Columns\TextColumn::make('server.id')
-                    ->searchable()
-                    ->sortable(),
-                Tables\Columns\TextColumn::make('title')
+                ImageColumn::make('image')
+                    ->label('Image')
+                    ->url(fn ($record) => $record->image),
+                Tables\Columns\TextColumn::make('name')
+                    ->label('Name')
+                    ->sortable()
                     ->searchable(),
-                Tables\Columns\TextColumn::make('parent')
+                Tables\Columns\TextColumn::make('slug')
+                    ->label('Slug')
+                    ->sortable()
                     ->searchable(),
-                Tables\Columns\TextColumn::make('step')
-                    ->searchable(),
-                Tables\Columns\IconColumn::make('active')
+                Tables\Columns\IconColumn::make('is_active')
+                    ->label('Is Active')
                     ->boolean(),
                 Tables\Columns\TextColumn::make('created_at')
                     ->dateTime()
@@ -125,5 +134,6 @@ class ServerCategoryResource extends Resource
             'view' => Pages\ViewServerCategory::route('/{record}'),
             'edit' => Pages\EditServerCategory::route('/{record}/edit'),
         ];
-    }
+
+   }
 }

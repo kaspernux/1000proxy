@@ -9,7 +9,9 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 class DownloadableItem extends Model
     {
 
-    protected $fillable = [
+        protected $table = 'downloadable_items';
+
+        protected $fillable = [
         'server_client_id',
         'file_url',
         'download_limit',

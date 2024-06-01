@@ -25,6 +25,11 @@ class ServerReviewResource extends Resource
 
     protected static ?string $cluster = ServerManagement::class;
 
+    public static function getLabel(): string
+    {
+        return 'Reviews';
+    }
+
     public static function form(Form $form): Form
         {
         return $form

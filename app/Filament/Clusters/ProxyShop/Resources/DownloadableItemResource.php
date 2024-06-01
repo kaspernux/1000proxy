@@ -24,6 +24,11 @@ class DownloadableItemResource extends Resource
 
     protected static ?string $cluster = ProxyShop::class;
 
+    public static function getLabel(): string
+    {
+        return 'Downloadable Files';
+    }
+
     public static function form(Form $form): Form
         {
         return $form

@@ -5,7 +5,6 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class OrderItem extends Model
 {
@@ -16,7 +15,6 @@ class OrderItem extends Model
     protected $fillable = [
         'order_id',
         'server_plan_id',
-        'server_client_id',
         'quantity',
         'unit_amount',
         'total_amount',
@@ -28,18 +26,7 @@ class OrderItem extends Model
         return $this->belongsTo(Order::class);
     }
 
-    public function payments(): HasOne
-    {
-        return $this->hasOne(Payments::class);
-    }
-
-    // Relationship with ServerClient (assuming one order item has many server clients)
-    public function serverClient(): BelongsTo
-    {
-        return $this->belongsTo(ServerClient::class);
-    }
-
-    public function serverPlan(): BelongsTo
+    public function plan(): BelongsTo
     {
         return $this->belongsTo(ServerPlan::class);
     }

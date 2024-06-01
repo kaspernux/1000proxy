@@ -4,7 +4,6 @@ namespace App\Filament\Clusters\ServerManagement\Resources;
 
 use App\Filament\Clusters\ServerManagement;
 use App\Filament\Clusters\ServerManagement\Resources\ServerInboundResource\Pages;
-use App\Filament\Clusters\ServerManagement\Resources\ServerInboundResource\RelationManagers;
 use App\Models\ServerInbound;
 use Filament\Forms;
 use Filament\Forms\Form;
@@ -13,9 +12,11 @@ use Filament\Tables;
 use Filament\Tables\Table;
 use Filament\Forms\Components\Section;
 use Filament\Forms\Components\Group;
-use Filament\Forms\Components\MarkdownEditor;
-use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Database\Eloquent\SoftDeletingScope;
+use Filament\Forms\Components\TextInput;
+use Filament\Forms\Components\Select;
+use Filament\Forms\Components\Toggle;
+use Filament\Forms\Components\DatePicker;
+
 
 class ServerInboundResource extends Resource
 {
@@ -25,68 +26,85 @@ class ServerInboundResource extends Resource
 
     protected static ?string $cluster = ServerManagement::class;
 
+    public static function getLabel(): string
+    {
+        return 'Configurations';
+    }
+
     public static function form(Form $form): Form
     {
         return $form
             ->schema([
-                Forms\Components\Group::make([
-                    Forms\Components\Section::make('User Information')
+                Group::make([
+                    Section::make('Server Details')
                         ->schema([
-                            Forms\Components\TextInput::make('user_id')
+                            Select::make('server_id')
+                                ->relationship('server', 'name')
                                 ->required()
+                                ->searchable()
+                                ->preload(),
+
+                            TextInput::make('user_id')
+                                ->required()
+                                ->numeric(),
+
+                            TextInput::make('remark')
                                 ->maxLength(255),
-                            Forms\Components\TextInput::make('remark')
-                                ->maxLength(255),
-                            Forms\Components\Toggle::make('enable')
-                                ->required(),
+
+                            Toggle::make('enable')
+                                ->required()
+                                ->default(true),
                         ])->columns(2),
 
-
-
-                    Forms\Components\Section::make('Connection Details')
+                    Section::make('Connection Details')
                         ->schema([
-                            Forms\Components\DateTimePicker::make('expiryTime'),
-                            Forms\Components\TextInput::make('clientStats'),
-                            Forms\Components\TextInput::make('listen')
+                            TextInput::make('listen')
                                 ->maxLength(255),
-                            Forms\Components\TextInput::make('port')
+
+                            TextInput::make('port')
                                 ->required()
                                 ->numeric(),
                         ])->columns(2),
 
-                    Forms\Components\Section::make('Protocol and Settings')
+                    Section::make('Protocol and Settings')
                         ->schema([
-                            Forms\Components\TextInput::make('protocol')
+                            TextInput::make('protocol')
                                 ->required()
                                 ->maxLength(50),
-                            Forms\Components\TextInput::make('settings'),
-                            Forms\Components\TextInput::make('streamSettings'),
-                        ])
+
+                            TextInput::make('settings')
+                                ->json(),
+
+                            TextInput::make('stream_settings')
+                                ->json(),
+
+                            Toggle::make('sniffing')
+                                ->default(false),
+                        ])->columns(2),
                 ])->columnSpan(2),
 
-                Forms\Components\Group::make([
-                    Forms\Components\Section::make('Data Usage')
+                Group::make([
+                    Section::make('Additional Info')
                         ->schema([
-                            Forms\Components\TextInput::make('up')
+                            TextInput::make('up')
                                 ->required()
                                 ->numeric()
                                 ->default(0),
-                            Forms\Components\TextInput::make('down')
+
+                            TextInput::make('down')
                                 ->required()
                                 ->numeric()
                                 ->default(0),
-                            Forms\Components\TextInput::make('total')
+
+                            TextInput::make('total')
                                 ->required()
                                 ->numeric()
                                 ->default(0),
+
+                            DatePicker::make('expiry_time')
+                                ->required(),
                         ]),
-                    Forms\Components\Section::make('Additional Info')
-                        ->schema([
-                            Forms\Components\TextInput::make('tag')
-                                ->maxLength(100),
-                            Forms\Components\TextInput::make('sniffing'),
-                        ])
-                ])->columnSpan(1)
+                ])->columnSpan(1),
             ])->columns(3);
     }
 
@@ -94,33 +112,36 @@ class ServerInboundResource extends Resource
     {
         return $table
             ->columns([
-                Tables\Columns\TextColumn::make('user_id')
+                Tables\Columns\TextColumn::make('server.name')
+                    ->label('Server')
                     ->searchable(),
-                Tables\Columns\TextColumn::make('up')
-                    ->numeric()
-                    ->sortable(),
-                Tables\Columns\TextColumn::make('down')
-                    ->numeric()
-                    ->sortable(),
+
                 Tables\Columns\TextColumn::make('total')
+                    ->label('Total Clients')
                     ->numeric()
                     ->sortable(),
-                Tables\Columns\TextColumn::make('remark')
-                    ->searchable(),
+
+                Tables\Columns\TextColumn::make('protocol')
+                    ->searchable()
+                    ->sortable(),
+
+                Tables\Columns\TextColumn::make('port')
+                    ->sortable(),
+
+                Tables\Columns\TextColumn::make('up')
+                    ->sortable(),
+
+                Tables\Columns\TextColumn::make('down')
+                    ->sortable(),
+
                 Tables\Columns\IconColumn::make('enable')
+                    ->label('Enabled')
                     ->boolean(),
-                Tables\Columns\TextColumn::make('expiryTime')
+
+                Tables\Columns\TextColumn::make('expiry_time')
                     ->dateTime()
                     ->sortable(),
-                Tables\Columns\TextColumn::make('listen')
-                    ->searchable(),
-                Tables\Columns\TextColumn::make('port')
-                    ->numeric()
-                    ->sortable(),
-                Tables\Columns\TextColumn::make('protocol')
-                    ->searchable(),
-                Tables\Columns\TextColumn::make('tag')
-                    ->searchable(),
+
                 Tables\Columns\TextColumn::make('created_at')
                     ->dateTime()
                     ->sortable()
@@ -131,7 +152,7 @@ class ServerInboundResource extends Resource
                     ->toggleable(isToggledHiddenByDefault: true),
             ])
             ->filters([
-                //
+                // Add filters if needed
             ])
             ->actions([
                 Tables\Actions\ActionGroup::make([
@@ -150,7 +171,7 @@ class ServerInboundResource extends Resource
     public static function getRelations(): array
     {
         return [
-            //
+            // Define your relations here
         ];
     }
 

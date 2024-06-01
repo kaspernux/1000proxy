@@ -13,9 +13,10 @@ return new class extends Migration
     {
         Schema::create('server_reviews', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('server_id')->constrained()->onDelete('cascade');
-            $table->foreignId('customer_id')->constrained()->onDelete('cascade');
+            $table->unsignedBigInteger('server_id');
+            $table->unsignedBigInteger('customer_id');
             $table->text('comments')->nullable();
+            $table->boolean('approved')->default(false);
             $table->timestamps();
         });
     }

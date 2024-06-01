@@ -2,22 +2,24 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class PaymentMethod extends Model
 {
+    use HasFactory;
+
     protected $table = 'payment_methods';
 
     protected $fillable = [
         'customer_id',
-        'name',           // Name of the payment method (e.g., Visa, MasterCard, PayPal, Bitcoin, Ethereum)
-        'details',        // Additional details related to the payment method (e.g., card number, PayPal email, crypto wallet address)
+        'name',
+        'details',
         'is_default',
         'expiration_date',
         'billing_address',
-        'type',           // Type of payment method (e.g., Credit Card, Crypto)
+        'type',
         'is_active',
     ];
 
@@ -26,13 +28,13 @@ class PaymentMethod extends Model
         return $this->belongsTo(Customer::class);
     }
 
-    public function order(): BelongsTo
+    public function orders(): HasMany
     {
-        return $this->belongsTo(Order::class);
+        return $this->hasMany(Order::class);
     }
 
-    public function payment(): BelongsTo
+    public function invoices(): HasMany
     {
-        return $this->belongsTo(Payments::class);
+        return $this->hasMany(Invoice::class);
     }
 }

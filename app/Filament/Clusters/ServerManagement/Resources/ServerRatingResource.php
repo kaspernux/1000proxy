@@ -22,6 +22,11 @@ class ServerRatingResource extends Resource
 
     protected static ?string $cluster = ServerManagement::class;
 
+    public static function getLabel(): string
+    {
+        return 'Ratings';
+    }
+
     public static function form(Form $form): Form
         {
         return $form

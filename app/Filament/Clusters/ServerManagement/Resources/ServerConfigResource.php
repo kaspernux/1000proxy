@@ -11,11 +11,12 @@ use Filament\Forms\Form;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\SoftDeletingScope;
 use Filament\Forms\Components\Section;
 use Filament\Forms\Components\Group;
 use Filament\Forms\Components\MarkdownEditor;
-use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Database\Eloquent\SoftDeletingScope;
+
 
 class ServerConfigResource extends Resource
 {
@@ -25,40 +26,16 @@ class ServerConfigResource extends Resource
 
     protected static ?string $cluster = ServerManagement::class;
 
+
+    public static function getLabel(): string
+    {
+        return 'Settings';
+    }
+
     public static function form(Form $form): Form
     {
         return $form
             ->schema([
-                Forms\Components\Group::make([
-                    Forms\Components\Section::make('Headers and Security')
-                        ->schema([
-                            Forms\Components\TextInput::make('panel_url')
-                                ->required()
-                                ->maxLength(255),
-                            Forms\Components\TextInput::make('ip')
-                                ->required()
-                                ->maxLength(255),
-                            Forms\Components\TextInput::make('sni')
-                                ->required()
-                                ->maxLength(255),
-                            Forms\Components\TextInput::make('header_type')
-                                ->required()
-                                ->maxLength(255),
-                            Forms\Components\TextInput::make('request_header')
-                                ->required()
-                                ->maxLength(255),
-                            Forms\Components\TextInput::make('response_header')
-                                ->required()
-                                ->maxLength(255),
-                            Forms\Components\TextInput::make('security')
-                                ->required()
-                                ->maxLength(255),
-                            Forms\Components\TextInput::make('tlsSettings')
-                                ->required()
-                                ->maxLength(255),
-                        ])
-                ])->columnSpan(2),
-
                 Forms\Components\Group::make([
                     Forms\Components\Section::make('Server Details')
                         ->schema([
@@ -66,13 +43,44 @@ class ServerConfigResource extends Resource
                                 ->relationship('server', 'name')
                                 ->searchable()
                                 ->preload()
-                                ->columnSpan(2)
                                 ->required(),
                             Forms\Components\TextInput::make('type')
-                                ->required()
-                                ->columnSpan(2)
                                 ->maxLength(255),
                         ])->columns(2),
+                    Forms\Components\Section::make('Headers and Security')
+                        ->schema([
+                            Forms\Components\TextInput::make('panel_url')
+                                ->required()
+                                ->maxLength(255),
+                            Forms\Components\TextInput::make('ip')
+                                ->label('IP')
+                                ->required()
+                                ->maxLength(255),
+                            Forms\Components\TextInput::make('sni')
+                                ->label('SNI')
+                                ->maxLength(255),
+                            Forms\Components\TextInput::make('header_type')
+                                ->maxLength(255),
+                            Forms\Components\TextInput::make('request_header')
+                                ->maxLength(255),
+                            Forms\Components\TextInput::make('response_header')
+                                ->maxLength(255),
+                            Forms\Components\TextInput::make('security')
+                                ->maxLength(255),
+                            Forms\Components\TextInput::make('tlsSettings')
+                                ->maxLength(255),
+                        ])->columns(2),
+
+                    Forms\Components\Section::make('Port and Reality Settings')
+                        ->schema([
+                            Forms\Components\TextInput::make('port_type')
+                                ->maxLength(255),
+                            Forms\Components\TextInput::make('reality')
+                                ->maxLength(255),
+                        ])->columns(2)
+                ])->columnSpan(2),
+
+                Forms\Components\Group::make([
                     Forms\Components\Section::make('Authentication and Type')
                         ->schema([
                             Forms\Components\TextInput::make('username')
@@ -84,15 +92,8 @@ class ServerConfigResource extends Resource
                                 ->required(fn ($livewire): bool => $livewire instanceof CreateRecord)
                                 ->maxLength(255),
                         ]),
-                    Forms\Components\Section::make('Port and Reality Settings')
-                        ->schema([
-                            Forms\Components\TextInput::make('port_type')
-                                ->required()
-                                ->maxLength(255),
-                            Forms\Components\TextInput::make('reality')
-                                ->required()
-                                ->maxLength(255),
-                        ])->columns(2)
+
+
                 ])->columnSpan(1)
             ])->columns(3);
     }
@@ -167,7 +168,8 @@ class ServerConfigResource extends Resource
             'index' => Pages\ListServerConfigs::route('/'),
             'create' => Pages\CreateServerConfig::route('/create'),
             'view' => Pages\ViewServerConfig::route('/{record}'),
-            'edit' => Pages\EditServerConfig::route('/{record}/edit'),
+
+           'edit' => Pages\EditServerConfig::route('/{record}/edit'),
         ];
     }
 }

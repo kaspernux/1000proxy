@@ -15,33 +15,37 @@ class Server extends Model
     protected $table = 'servers';
 
     protected $fillable = [
-        'ip',
+        'name',
+        'server_category_id',
+        'country',
+        'flag',
+        'ip_address',
+        'panel_url',
         'port',
         'username',
         'password',
-        'name',
-        'panel',
+        'description',
         'status',
     ];
 
-    public function serverCategory(): BelongsTo
-    {
-        return $this->belongsTo(ServerCategory::class);
-    }
-
-    public function serverInbounds(): HasMany
+    public function inbounds(): HasMany
     {
         return $this->hasMany(ServerInbound::class);
     }
 
-    public function serverClients(): HasMany
+    public function category(): BelongsTo
+    {
+        return $this->belongsTo(ServerCategory::class, 'server_category_id');
+    }
+
+    public function clients(): HasMany
     {
         return $this->hasMany(ServerClient::class);
     }
 
-    public function serverConfigs(): HasMany
+    public function config(): HasOne
     {
-        return $this->hasMany(ServerConfig::class);
+        return $this->hasOne(ServerConfig::class);
     }
 
     public function giftLists(): HasMany
@@ -54,14 +58,14 @@ class Server extends Model
         return $this->hasMany(ServerReview::class);
     }
 
-    public function ratings(): HasMany
+    public function serverRatings(): HasMany
     {
         return $this->hasMany(ServerRating::class, 'server_id');
     }
 
     public function averageRating(): float
     {
-        return $this->ratings()->avg('rating') ?? 0.0;
+        return $this->serverRatings()->avg('rating') ?? 0.0;
     }
 
     public function orderItems(): HasMany
@@ -72,10 +76,5 @@ class Server extends Model
     public function serverInfo(): HasOne
     {
         return $this->hasOne(ServerInfo::class);
-    }
-
-    public function serverPlans()
-    {
-        return $this->hasMany(ServerPlan::class);
     }
 }

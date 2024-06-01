@@ -24,6 +24,11 @@ class ServerInfoResource extends Resource
 
     protected static ?string $cluster = ServerManagement::class;
 
+    public static function getLabel(): string
+    {
+        return 'Info';
+    }
+
     public static function form(Form $form): Form
     {
         return $form

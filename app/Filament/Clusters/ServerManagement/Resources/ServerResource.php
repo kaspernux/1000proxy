@@ -4,33 +4,51 @@ namespace App\Filament\Clusters\ServerManagement\Resources;
 
 use App\Filament\Clusters\ServerManagement;
 use App\Filament\Clusters\ServerManagement\Resources\ServerResource\Pages;
-use App\Filament\Clusters\ServerManagement\Resources\ServerResource\RelationManagers;
 use App\Models\Server;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
+use Illuminate\Support\Str;
+use Filament\Forms\Components\MarkdownEditor;
 use Filament\Forms\Components\Section;
+use Filament\Forms\Components\Textarea;
+use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Group;
-use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Database\Eloquent\SoftDeletingScope;
+use Livewire\Features\SupportFileUploads\TemporaryUploadedFile;
+use Filament\Forms\Components\FileUpload;
 
 class ServerResource extends Resource
-    {
+{
     protected static ?string $model = Server::class;
 
     protected static ?string $navigationIcon = 'heroicon-o-server';
 
     protected static ?string $cluster = ServerManagement::class;
 
+    public static function getLabel(): string
+    {
+        return 'Servers';
+    }
+
     public static function form(Form $form): Form
-        {
+    {
         return $form
             ->schema([
                 Group::make()->schema([
                     Section::make('Basic Information')->schema([
                         Forms\Components\TextInput::make('name')
+                            ->required()
+                            ->maxLength(255),
+
+                        Forms\Components\Select::make('server_category_id')
+                            ->relationship('category', 'name')
+                            ->required()
+                            ->searchable()
+                            ->preload(),
+
+                        Forms\Components\TextInput::make('country')
                             ->required()
                             ->maxLength(255),
                         Forms\Components\Select::make('status')
@@ -43,20 +61,32 @@ class ServerResource extends Resource
                     ])->columns(2),
 
                     Section::make('Connection Information')->schema([
-                        Forms\Components\TextInput::make('ip')
+                        Forms\Components\TextInput::make('ip_address')
                             ->required()
                             ->maxLength(255),
                         Forms\Components\TextInput::make('port')
                             ->required()
                             ->numeric(),
-                        Forms\Components\TextInput::make('panel')
+                        Forms\Components\TextInput::make('panel_url')
                             ->required()
-                            ->maxLength(255),
+                            ->prefix('http://')
+                            ->maxLength(255)
+                            ->columnSpanFull(),
+                    ])->columns(2),
+
+                    Section::make('Description')->schema([
+                        Forms\Components\MarkdownEditor::make('description')
+                            ->fileAttachmentsDirectory('servers'),
                     ]),
                 ])->columnSpan(2),
-
                 Group::make()->schema([
-                    Section::make('Authentication details')->schema([
+                    Section::make('Country Flag')->schema([
+                        Forms\Components\FileUpload::make('flag')
+                            ->image()
+                            ->directory('servers')
+                    ])->columns(1),
+
+                    Section::make('Authentication Details')->schema([
                         Forms\Components\TextInput::make('username')
                             ->required()
                             ->maxLength(255),
@@ -64,27 +94,39 @@ class ServerResource extends Resource
                             ->password()
                             ->required()
                             ->maxLength(255),
-                    ])->columnSpan(1),
-                ]),
+                    ])->columns(1),
+                ])->columnSpan(1),
             ])->columns(3);
-        }
+    }
 
     public static function table(Table $table): Table
-        {
+    {
         return $table
             ->columns([
-                Tables\Columns\TextColumn::make('ip')
+                Tables\Columns\TextColumn::make('name')
+                    ->label('Name')
+                    ->sortable()
+                    ->searchable(),
+                Tables\Columns\TextColumn::make('category.name')
+                    ->label('Category')
+                    ->sortable()
+                    ->searchable(),
+                Tables\Columns\TextColumn::make('country')
+                    ->label('Country')
+                    ->sortable()
+                    ->searchable(),
+                Tables\Columns\TextColumn::make('ip_address')
+                    ->label('IP')
+                    ->searchable()
+                    ->sortable(),
+                Tables\Columns\TextColumn::make('panel_url')
+                    ->label('URL')
                     ->searchable(),
                 Tables\Columns\TextColumn::make('port')
-                    ->numeric()
+                    ->label('Port')
                     ->sortable(),
-                Tables\Columns\TextColumn::make('username')
-                    ->searchable(),
-                Tables\Columns\TextColumn::make('name')
-                    ->searchable(),
-                Tables\Columns\TextColumn::make('panel')
-                    ->searchable(),
                 Tables\Columns\TextColumn::make('status')
+                    ->label('Status')
                     ->searchable(),
                 Tables\Columns\TextColumn::make('created_at')
                     ->dateTime()
@@ -110,17 +152,17 @@ class ServerResource extends Resource
                     Tables\Actions\DeleteBulkAction::make(),
                 ]),
             ]);
-        }
+    }
 
     public static function getRelations(): array
-        {
+    {
         return [
             //
         ];
-        }
+    }
 
     public static function getPages(): array
-        {
+    {
         return [
             'index' => Pages\ListServers::route('/'),
             'create' => Pages\CreateServer::route('/create'),
@@ -128,5 +170,5 @@ class ServerResource extends Resource
             'edit' => Pages\EditServer::route('/{record}/edit'),
         ];
 
-        }
-    }
+   }
+}
