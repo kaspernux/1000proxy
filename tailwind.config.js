@@ -6,5 +6,13 @@ export default {
         './app/Filament/**/*.php',
         './resources/views/**/*.blade.php',
         './vendor/filament/**/*.blade.php',
+        'node_modules/preline/dist/*.js',
+
     ],
+    theme: {
+        extend: {},
+    },
+    plugins: [
+      require('preline/plugin'),
+  ],
 }
