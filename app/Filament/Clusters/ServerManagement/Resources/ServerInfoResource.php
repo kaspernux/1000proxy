@@ -4,7 +4,6 @@ namespace App\Filament\Clusters\ServerManagement\Resources;
 
 use App\Filament\Clusters\ServerManagement;
 use App\Filament\Clusters\ServerManagement\Resources\ServerInfoResource\Pages;
-use App\Filament\Clusters\ServerManagement\Resources\ServerInfoResource\RelationManagers;
 use App\Models\ServerInfo;
 use Filament\Forms;
 use Filament\Forms\Form;
@@ -13,8 +12,10 @@ use Filament\Tables;
 use Filament\Tables\Table;
 use Filament\Forms\Components\Section;
 use Filament\Forms\Components\Group;
-use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Database\Eloquent\SoftDeletingScope;
+use Filament\Forms\Components\Select;
+use Filament\Forms\Components\TextInput;
+use Filament\Forms\Components\Toggle;
+use Filament\Forms\Components\MarkdownEditor;
 
 class ServerInfoResource extends Resource
 {
@@ -35,43 +36,42 @@ class ServerInfoResource extends Resource
             ->schema([
                 Group::make()->schema([
                     Section::make('Server Infos')->schema([
-                        Forms\Components\Select::make('server_id')
-                                ->relationship('server', 'name')
-                                ->searchable()
-                                ->preload()
-                                ->columnSpan(2)
-                                ->required(),
-                        Forms\Components\TextInput::make('title')
+                        Select::make('server_id')
+                            ->relationship('server', 'name')
+                            ->searchable()
+                            ->preload()
+                            ->required()
+                            ->columnSpan(2),
+                        TextInput::make('title')
                             ->required()
                             ->maxLength(255),
-                        Forms\Components\TextInput::make('flag')
+                        TextInput::make('flag')
                             ->maxLength(255),
-                        Forms\Components\TextInput::make('ucount')
+                        TextInput::make('ucount')
                             ->required()
                             ->numeric()
                             ->default(0),
-                        Forms\Components\TextInput::make('state')
+                        Select::make('state')
                             ->required()
-                            ->numeric()
-                            ->default(0),
+                            ->options([
+                                'up' => 'Up',
+                                'down' => 'Down',
+                                'paused' => 'Paused',
+                            ]),
                     ])->columns(2),
-
-                Section::make('Details')->schema([
-                    Forms\Components\MarkdownEditor::make('remark')
+                    Section::make('Details')->schema([
+                        MarkdownEditor::make('remark')
                             ->columnSpanFull()
                             ->fileAttachmentsDirectory('ServerInfo'),
-                ])
+                    ])
                 ])->columnSpan(2),
-
                 Group::make()->schema([
                     Section::make('Enable')->schema([
-                    Forms\Components\Toggle::make('active')
+                        Toggle::make('active')
                             ->required(),
                     ])
-
                 ])->columnSpan(1)
             ])->columns(3);
-
     }
 
     public static function table(Table $table): Table
@@ -79,7 +79,7 @@ class ServerInfoResource extends Resource
         return $table
             ->columns([
                 Tables\Columns\TextColumn::make('server.name')
-                    ->numeric()
+                    ->searchable()
                     ->sortable(),
                 Tables\Columns\TextColumn::make('title')
                     ->searchable(),
@@ -91,7 +91,6 @@ class ServerInfoResource extends Resource
                 Tables\Columns\IconColumn::make('active')
                     ->boolean(),
                 Tables\Columns\TextColumn::make('state')
-                    ->numeric()
                     ->sortable(),
                 Tables\Columns\TextColumn::make('created_at')
                     ->dateTime()
@@ -103,7 +102,7 @@ class ServerInfoResource extends Resource
                     ->toggleable(isToggledHiddenByDefault: true),
             ])
             ->filters([
-                //
+                // Add filters if needed
             ])
             ->actions([
                 Tables\Actions\ActionGroup::make([
@@ -122,7 +121,7 @@ class ServerInfoResource extends Resource
     public static function getRelations(): array
     {
         return [
-            //
+            // Define your relations here
         ];
     }
 
@@ -134,6 +133,5 @@ class ServerInfoResource extends Resource
             'view' => Pages\ViewServerInfo::route('/{record}'),
             'edit' => Pages\EditServerInfo::route('/{record}/edit'),
         ];
-
-   }
+    }
 }

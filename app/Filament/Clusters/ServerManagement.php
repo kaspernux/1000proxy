@@ -7,4 +7,5 @@ use Filament\Clusters\Cluster;
 class ServerManagement extends Cluster
 {
     protected static ?string $navigationIcon = 'heroicon-o-server-stack';
+    protected static ?int $navigationSort = 3;
 }

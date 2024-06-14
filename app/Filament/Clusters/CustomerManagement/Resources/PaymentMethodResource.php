@@ -19,6 +19,8 @@ class PaymentMethodResource extends Resource
 
     protected static ?string $navigationIcon = 'heroicon-o-credit-card';
 
+    protected static ?string $recordTitleAttribute = 'name';
+
     protected static ?string $cluster = CustomerManagement::class;
 
     public static function form(Form $form): Form

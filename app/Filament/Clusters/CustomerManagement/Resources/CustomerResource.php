@@ -1,7 +1,7 @@
 <?php
 
 namespace App\Filament\Clusters\CustomerManagement\Resources;
-
+use App\Filament\Clusters\CustomerManagement\Resources\CustomerResource\RelationManagers\OrdersRelationManager;
 use App\Filament\Clusters\CustomerManagement;
 use App\Filament\Clusters\CustomerManagement\Resources\CustomerResource\Pages;
 use App\Filament\Clusters\CustomerManagement\Resources\CustomerResource\RelationManagers;
@@ -18,6 +18,8 @@ use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\MarkdownEditor;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\SoftDeletingScope;
+use Illuminate\Contracts\Support\Htmlable;
+
 
 class CustomerResource extends Resource
     {
@@ -27,6 +29,11 @@ class CustomerResource extends Resource
 
     protected static ?string $cluster = CustomerManagement::class;
 
+    protected static ?string $recordTitleAttribute = 'name';
+    public static function getLabel(): string
+    {
+        return 'Users';
+    }
     public static function form(Form $form): Form
         {
         return $form
@@ -163,7 +170,7 @@ class CustomerResource extends Resource
     public static function getRelations(): array
         {
         return [
-            //
+            RelationManagers\OrdersRelationManager::class
         ];
         }
 
@@ -176,7 +183,13 @@ class CustomerResource extends Resource
             'view' => Pages\ViewCustomer::route('/{record}'),
             'edit' => Pages\EditCustomer::route('/{record}/edit'),
         ];
+       }
+    public static function getNavigationBadge(): ?string {
+        return static::getModel()::count();
+    }
 
-
-        }
+    public static function getGloballySearchableAttributes(): array
+{
+    return ['name', 'email'];
+}
     }

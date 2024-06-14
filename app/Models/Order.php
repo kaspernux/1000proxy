@@ -6,13 +6,12 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Support\Str;
 
 class Order extends Model
 {
     use HasFactory;
-
-    protected $table = 'orders';
 
     protected $fillable = [
         'customer_id',
@@ -26,7 +25,6 @@ class Order extends Model
         'notes',
     ];
 
-    // Define the relationships with other models
     public function customer(): BelongsTo
     {
         return $this->belongsTo(Customer::class);
@@ -42,18 +40,17 @@ class Order extends Model
         return $this->belongsTo(PaymentMethod::class);
     }
 
-    public function invoices(): HasMany
+    public function invoice(): HasOne
     {
-        return $this->hasMany(Invoice::class);
+        return $this->hasOne(Invoice::class);
     }
 
-    // Boot method to generate transaction_id automatically
     protected static function boot()
     {
         parent::boot();
 
         static::creating(function ($order) {
-            $specialTag = 'ORD'; // Define your special tag here
+            $specialTag = 'ORD';
             $uuid = (string) Str::uuid();
             $order->transaction_id = $specialTag . '-' . $uuid;
         });

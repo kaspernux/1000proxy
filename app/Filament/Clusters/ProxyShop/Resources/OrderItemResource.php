@@ -6,14 +6,14 @@ use App\Filament\Clusters\ProxyShop;
 use App\Filament\Clusters\ProxyShop\Resources\OrderItemResource\Pages;
 use App\Models\OrderItem;
 use Filament\Forms;
-use Filament\Forms\Form;
 use Filament\Resources\Resource;
+use Filament\Forms\Components\Group;
+use Filament\Forms\Components\Section;
+use Filament\Forms\Components\Select;
+use Filament\Forms\Components\TextInput;
 use Filament\Tables;
 use Filament\Tables\Table;
-use Filament\Forms\Components\Section;
-use Filament\Forms\Components\Group;
-use Filament\Forms\Components\TextInput;
-use Filament\Forms\Components\Select;
+use Filament\Tables\Actions\DeleteBulkAction;
 
 class OrderItemResource extends Resource
 {
@@ -28,18 +28,13 @@ class OrderItemResource extends Resource
         return 'Items';
     }
 
-    public static function form(Form $form): Form
+    public static function form(Forms\Form $form): Forms\Form
     {
         return $form
             ->schema([
                 Group::make([
                     Section::make('Order Details')
                         ->schema([
-                            Select::make('order_id')
-                                ->relationship('order', 'id')
-                                ->searchable()
-                                ->preload()
-                                ->required(),
                             Select::make('server_plan_id')
                                 ->relationship('serverPlan', 'name')
                                 ->searchable()
@@ -127,7 +122,7 @@ class OrderItemResource extends Resource
             ])
             ->bulkActions([
                 Tables\Actions\BulkActionGroup::make([
-                    Tables\Actions\DeleteBulkAction::make(),
+                    DeleteBulkAction::make(),
                 ]),
             ]);
     }

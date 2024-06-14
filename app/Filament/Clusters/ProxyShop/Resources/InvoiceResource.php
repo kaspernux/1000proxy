@@ -4,18 +4,30 @@ namespace App\Filament\Clusters\ProxyShop\Resources;
 
 use App\Filament\Clusters\ProxyShop;
 use App\Filament\Clusters\ProxyShop\Resources\InvoiceResource\Pages;
+use App\Filament\Clusters\ProxyShop\Resources\InvoiceResource\RelationManagers;
 use App\Models\Invoice;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
-use Filament\Forms\Components\Section;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\SoftDeletingScope;
 use Filament\Forms\Components\Group;
+use Filament\Forms\Components\Section;
 use Filament\Forms\Components\Select;
-use Filament\Forms\Components\TextInput;
-use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\DatePicker;
+use Filament\Forms\Components\MarkdownEditor;
+use Filament\Forms\Components\Repeater;
+use Filament\Forms\Components\TextInput;
+use Filament\Forms\Components\Placeholder;
+use Filament\Forms\Components\Hidden;
+use Filament\Forms\Components\ToggleButtons;
+use Filament\Support\RawJs;
+use Illuminate\Support\Str;
+use Filament\Tables\Actions;
+use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Actions\DeleteBulkAction;
 
 class InvoiceResource extends Resource
 {
@@ -45,13 +57,14 @@ class InvoiceResource extends Resource
                             TextInput::make('day')
                                 ->numeric(),
 
-                            Textarea::make('description')
-                                ->columnSpanFull(),
+                            MarkdownEditor::make('description')
+                                ->columnSpanFull()
+                                ->fileAttachmentsDirectory('Invoices'),
                         ])->columns(2),
 
                     Section::make('Financial Details')
                         ->schema([
-                            TextInput::make('price')
+                            TextInput::make('amount')
                                 ->required()
                                 ->numeric()
                                 ->prefix('$'),
@@ -68,6 +81,18 @@ class InvoiceResource extends Resource
                                     'processing' => 'Processing',
                                     'completed' => 'Completed',
                                     'failed' => 'Failed',
+                                ])
+                                ->color([
+                                    'new' => 'info',
+                                    'processing' => 'warning',
+                                    'completed' => 'success',
+                                    'failed' => 'danger',
+                                ])
+                                ->icon([
+                                    'new' => 'heroicon-o-sparkles',
+                                    'processing' => 'heroicon-o-arrow-path',
+                                    'completed' => 'heroicon-o-check-badge',
+                                    'failed' => 'heroicon-o-eye',
                                 ])
                                 ->default('new'),
                         ])->columns(2),
@@ -104,46 +129,39 @@ class InvoiceResource extends Resource
                 Tables\Columns\TextColumn::make('order.id')
                     ->numeric()
                     ->sortable(),
-
                 Tables\Columns\TextColumn::make('customer.name')
+                    ->numeric()
                     ->sortable(),
-
                 Tables\Columns\TextColumn::make('hash_id')
                     ->searchable(),
-
                 Tables\Columns\TextColumn::make('type')
                     ->searchable(),
-
                 Tables\Columns\TextColumn::make('volume')
-                    ->numeric(),
-
+                    ->numeric()
+                    ->sortable(),
                 Tables\Columns\TextColumn::make('day')
-                    ->numeric(),
-
-                Tables\Columns\TextColumn::make('price')
-                    ->money(),
-
+                    ->numeric()
+                    ->sortable(),
+                Tables\Columns\TextColumn::make('amount')
+                    ->numeric()
+                    ->sortable(),
                 Tables\Columns\TextColumn::make('tron_price')
-                    ->numeric(),
-
+                    ->numeric()
+                    ->sortable(),
                 Tables\Columns\TextColumn::make('request_date')
                     ->date()
                     ->sortable(),
-
-                Tables\Columns\TextColumn::make('state')
-                    ->enum(['new', 'processing', 'completed', 'failed']),
-
+                Tables\Columns\TextColumn::make('state'),
                 Tables\Columns\TextColumn::make('agent_bought')
-                    ->numeric(),
-
+                    ->numeric()
+                    ->sortable(),
                 Tables\Columns\TextColumn::make('agent_count')
-                    ->numeric(),
-
+                    ->numeric()
+                    ->sortable(),
                 Tables\Columns\TextColumn::make('created_at')
                     ->dateTime()
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),
-
                 Tables\Columns\TextColumn::make('updated_at')
                     ->dateTime()
                     ->sortable()
@@ -153,11 +171,8 @@ class InvoiceResource extends Resource
                 //
             ])
             ->actions([
-                Tables\Actions\ActionGroup::make([
-                    Tables\Actions\EditAction::make(),
-                    Tables\Actions\ViewAction::make(),
-                    Tables\Actions\DeleteAction::make(),
-                ]),
+                Tables\Actions\ViewAction::make(),
+                Tables\Actions\EditAction::make(),
             ])
             ->bulkActions([
                 Tables\Actions\BulkActionGroup::make([

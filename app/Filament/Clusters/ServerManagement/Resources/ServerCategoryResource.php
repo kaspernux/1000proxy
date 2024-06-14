@@ -36,6 +36,8 @@ class ServerCategoryResource extends Resource
 
     protected static ?string $cluster = ServerManagement::class;
 
+    protected static ?string $recordTitleAttribute = 'name';
+
     public static function getLabel(): string
     {
         return 'Category';

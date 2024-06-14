@@ -46,4 +46,10 @@ class ServerClient extends Model
     {
         return $this->belongsTo(ServerInbound::class, 'server_inbound_id');
     }
+
+    public function orderItems(): HasMany
+    {
+        return $this->hasMany(OrderItem::class,);
+    }
+
 }

@@ -18,13 +18,13 @@ class InboundClientIPResource extends Resource
 {
     protected static ?string $model = InboundClientIP::class;
 
-    protected static ?string $navigationIcon = 'heroicon-o-tv';
+    protected static ?string $navigationIcon = 'heroicon-o-rss';
 
     protected static ?string $cluster = ServerManagement::class;
 
     public static function getLabel(): string
     {
-        return 'Inbounds by IP';
+        return 'IPs clients';
     }
 
     public static function form(Form $form): Form
@@ -32,7 +32,7 @@ class InboundClientIPResource extends Resource
         return $form
             ->schema([
                 Forms\Components\Group::make([
-                    Forms\Components\Section::make('Inbounds by IP address')
+                    Forms\Components\Section::make('IP address')
                         ->schema([
                             Forms\Components\TextInput::make('client_email')
                                 ->email()

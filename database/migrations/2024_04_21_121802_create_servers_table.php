@@ -23,7 +23,8 @@ return new class extends Migration
             $table->string('username');
             $table->string('password');
             $table->text('description')->nullable();
-            $table->enum('status', ['up', 'down', 'paused'])->default('up');            $table->timestamps();
+            $table->enum('status', ['up', 'down', 'paused'])->default('up');
+            $table->timestamps();
         });
     }
 

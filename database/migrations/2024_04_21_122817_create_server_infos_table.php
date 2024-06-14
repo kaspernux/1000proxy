@@ -4,15 +4,14 @@ use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
-return new class extends Migration
-    {
+class CreateServerInfosTable extends Migration
+{
     /**
      * Run the migrations.
      */
     public function up(): void
-        {
-        Schema::create('server_infos', function (Blueprint $table)
-            {
+    {
+        Schema::create('server_infos', function (Blueprint $table) {
             $table->id();
             $table->foreignId('server_id')->constrained()->onDelete('cascade');
             $table->string('title');
@@ -20,16 +19,16 @@ return new class extends Migration
             $table->text('remark')->nullable();
             $table->string('flag')->nullable();
             $table->boolean('active')->default(false);
-            $table->tinyInteger('state')->default(0); // 0: inactive, 1: active, 2: suspended
+            $table->enum('state', ['up', 'down', 'paused'])->default('up');
             $table->timestamps();
-            });
-        }
+        });
+    }
 
     /**
      * Reverse the migrations.
      */
     public function down(): void
-        {
+    {
         Schema::dropIfExists('server_infos');
-        }
-    };
+    }
+}

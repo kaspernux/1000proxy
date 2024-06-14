@@ -10,11 +10,9 @@ class OrderItem extends Model
 {
     use HasFactory;
 
-    protected $table = 'order_items';
-
     protected $fillable = [
-        'order_id',
         'server_plan_id',
+        'server_client_id',
         'quantity',
         'unit_amount',
         'total_amount',
@@ -26,7 +24,12 @@ class OrderItem extends Model
         return $this->belongsTo(Order::class);
     }
 
-    public function plan(): BelongsTo
+    public function serverClient(): BelongsTo
+    {
+        return $this->belongsTo(ServerClient::class);
+    }
+
+    public function serverPlan(): BelongsTo
     {
         return $this->belongsTo(ServerPlan::class);
     }

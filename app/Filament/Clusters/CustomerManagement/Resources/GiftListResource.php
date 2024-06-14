@@ -4,7 +4,6 @@ namespace App\Filament\Clusters\CustomerManagement\Resources;
 
 use App\Filament\Clusters\CustomerManagement;
 use App\Filament\Clusters\CustomerManagement\Resources\GiftListResource\Pages;
-use App\Filament\Clusters\CustomerManagement\Resources\GiftListResource\RelationManagers;
 use App\Models\GiftList;
 use Filament\Forms;
 use Filament\Forms\Form;
@@ -13,11 +12,9 @@ use Filament\Tables;
 use Filament\Tables\Table;
 use Filament\Forms\Components\Section;
 use Filament\Forms\Components\Group;
-use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Database\Eloquent\SoftDeletingScope;
 
 class GiftListResource extends Resource
-    {
+{
     protected static ?string $model = GiftList::class;
 
     protected static ?string $navigationIcon = 'heroicon-o-gift';
@@ -25,7 +22,7 @@ class GiftListResource extends Resource
     protected static ?string $cluster = CustomerManagement::class;
 
     public static function form(Form $form): Form
-        {
+    {
         return $form
             ->schema([
                 Group::make([
@@ -57,26 +54,22 @@ class GiftListResource extends Resource
                         ])->columns(2),
                 ])->columnSpan(2),
             ])->columns(3);
-        }
+    }
 
     public static function table(Table $table): Table
-        {
+    {
         return $table
             ->columns([
                 Tables\Columns\TextColumn::make('server.name')
-                    ->numeric()
                     ->sortable(),
                 Tables\Columns\TextColumn::make('volume')
-                    ->numeric()
                     ->sortable(),
                 Tables\Columns\TextColumn::make('day')
-                    ->numeric()
+                    ->dateTime()
                     ->sortable(),
                 Tables\Columns\TextColumn::make('offset')
-                    ->numeric()
                     ->sortable(),
                 Tables\Columns\TextColumn::make('server_offset')
-                    ->numeric()
                     ->sortable(),
                 Tables\Columns\TextColumn::make('created_at')
                     ->dateTime()
@@ -102,22 +95,22 @@ class GiftListResource extends Resource
                     Tables\Actions\DeleteBulkAction::make(),
                 ]),
             ]);
-        }
+    }
 
     public static function getRelations(): array
-        {
+    {
         return [
             //
         ];
-        }
+    }
 
     public static function getPages(): array
-        {
+    {
         return [
             'index' => Pages\ListGiftLists::route('/'),
             'create' => Pages\CreateGiftList::route('/create'),
             'view' => Pages\ViewGiftList::route('/{record}'),
             'edit' => Pages\EditGiftList::route('/{record}/edit'),
         ];
-        }
     }
+}
