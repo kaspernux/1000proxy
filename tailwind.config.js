@@ -20,7 +20,9 @@ export default {
                 'light-green': '#70E000',
                 'light-green-200': '#9EF01A',
                 'light-green-100': '#CCFF33',
-                'light-dark': '#2D2D2D'
+                'light-dark': '#2D2D2D',
+                'yellow-600':'#FFD60A',
+                'accent-yellow': '#FFC300'
             }
         },
     },

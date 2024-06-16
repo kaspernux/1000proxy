@@ -1,6 +1,6 @@
-<div class="w-full bg-gradient-to-r from-green-900 to-green-600 max-w-[85rem] py-10 px-4 sm:px-6 lg:px-8 mx-auto">
-    <div class="container mx-auto px-4">
-        <h1 class="text-2xl font-semibold mb-4">Shopping Cart</h1>
+<div class="w-full bg-gradient-to-r from-green-900 to-green-600 py-12 px-6 sm:px-8 lg:px-10 mx-auto max-w-[auto] flex justify-center">
+    <div class="container mx-auto px-4 max-w-7xl">
+        <h1 class="text-4xl my-10 font-bold text-white text-left">Shopping Cart</h1>
         <div class="flex flex-col md:flex-row gap-4">
             <div class="md:w-3/4">
                 <div class="bg-white overflow-x-auto rounded-lg shadow-md p-6 mb-4">
@@ -33,7 +33,7 @@
                                 </td>
                                 <td class="py-4">$19.99</td>
                                 <td><button
-                                        class="bg-slate-300 border-2 border-slate-400 rounded-lg px-3 py-1 hover:bg-red-500 hover:text-white hover:border-red-700">Remove</button>
+                                        class="bg-green-400 border-2 border-green-600 rounded-lg px-3 py-1 hover:bg-red-500 hover:text-white hover:border-yellow-600">Remove</button>
                                 </td>
                             </tr>
                             <!-- More product rows -->
@@ -61,7 +61,7 @@
                         <span class="font-semibold">Total</span>
                         <span class="font-semibold">$21.98</span>
                     </div>
-                    <button class="bg-blue-500 text-white py-2 px-4 rounded-lg mt-4 w-full">Checkout</button>
+                    <button class="bg-yellow-600 hover:bg-green-400 text-white py-2 px-4 rounded-lg mt-4 w-full">Checkout</button>
                 </div>
             </div>
         </div>

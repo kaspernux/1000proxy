@@ -3,7 +3,7 @@
     <nav class="max-w-[85rem] w-full mx-auto px-4 md:px-6 lg:px-8" aria-label="Global">
         <div class="relative md:flex md:items-center md:justify-between">
             <div class="flex items-center justify-between">
-                <a class="flex-none text-xl font-semibold text-white hover:text-green-400 dark:text-white dark:focus:outline-none dark:focus:ring-1 dark:focus:ring-green-600"
+                <a class="flex-none text-xl font-semibold text-white hover:text-yellow-600 dark:text-white dark:focus:outline-none dark:focus:ring-1 dark:focus:ring-green-600"
                     href="/" aria-label="Brand">1000 PROXIES</a>
                 <div class="md:hidden">
                     <button type="button"
@@ -32,22 +32,22 @@
                 <div
                     class="overflow-hidden overflow-y-auto max-h-[75vh] [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-track]:bg-green-400 [&::-webkit-scrollbar-thumb]:bg-green-600 dark:[&::-webkit-scrollbar-track]:bg-slate-700 dark:[&::-webkit-scrollbar-thumb]:bg-slate-500">
                     <div
-                        class="flex flex-col gap-x-0 mt-5 divide-y divide-dashed divide-gray-200 md:flex-row md:items-center md:justify-end md:gap-x-7 md:mt-0 md:ps-7 md:divide-y-0 md:divide-solid dark:divide-gray-700">
+                        class="flex flex-col gap-x-0 mt-5 divide-y divide-dashed divide-green-400 md:flex-row md:items-center md:justify-end md:gap-x-7 md:mt-0 md:ps-7 md:divide-y-0 md:divide-solid dark:divide-green-700">
 
-                        <a class="font-medium text-white hover:text-green-400 py-3 md:py-6 dark:text-green-400 dark:hover:text-green-700 dark:focus:outline-none dark:focus:ring-1 dark:focus:ring-green-600"
+                        <a class="font-medium {{request()->is('/') ? 'text-accent-yellow' : 'text-white'}} hover:text-yellow-600 py-3 md:py-6 dark:text-green-400 dark:hover:text-yellow-600 dark:focus:outline-none dark:focus:ring-1 dark:focus:ring-green-600"
                             href="/" aria-current="page">Home</a>
 
-                        <a class="font-medium text-white hover:text-green-400 py-3 md:py-6 dark:text-green-400 dark:hover:text-green-700 dark:focus:outline-none dark:focus:ring-1 dark:focus:ring-green-600"
+                        <a class="font-medium {{request()->is('categories') ? 'text-accent-yellow' : 'text-white'}} hover:text-yellow-600 py-3 md:py-6 dark:text-green-400 dark:hover:text-yellow-600 dark:focus:outline-none dark:focus:ring-1 dark:focus:ring-green-600"
                             href="/categories">
                             Categories
                         </a>
 
-                        <a class="font-medium text-white hover:text-green-400 py-3 md:py-6 dark:text-green-400 dark:hover:text-green-700 dark:focus:outline-none dark:focus:ring-1 dark:focus:ring-green-600"
+                        <a class="font-medium {{request()->is('products') ? 'text-accent-yellow' : 'text-white'}} hover:text-yellow-600 py-3 md:py-6 dark:text-green-400 dark:hover:text-yellow-600 dark:focus:outline-none dark:focus:ring-1 dark:focus:ring-green-600"
                             href="/products">
                             Products
                         </a>
 
-                        <a class="font-medium flex items-center text-white hover:text-green-400 py-3 md:py-6 dark:text-green-400 dark:hover:text-white dark:focus:outline-none dark:focus:ring-1 dark:focus:ring-green-600"
+                        <a class="font-medium flex items-center {{request()->is('cart') ? 'text-accent-yellow' : 'text-white'}} hover:text-yellow-600 py-3 md:py-6 dark:text-green-400 dark:hover:text-white dark:focus:outline-none dark:focus:ring-1 dark:focus:ring-green-600"
                             href="/cart">
                             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5"
                                 stroke="currentColor" class="flex-shrink-0 w-5 h-5 mr-1">
@@ -59,7 +59,7 @@
                         </a>
 
                         <div class="pt-3 md:pt-0">
-                            <a class="py-2.5 px-4 inline-flex items-center gap-x-2 text-sm font-semibold rounded-lg border border-transparent bg-green-600 text-white hover:bg-green-700 disabled:opacity-50 disabled:pointer-events-none dark:focus:outline-none dark:focus:ring-1 dark:focus:ring-gray-600"
+                            <a class="py-2.5 px-4 inline-flex items-center gap-x-2 text-sm font-semibold rounded-lg border border-transparent bg-green-600 text-white hover:bg-yellow-600 disabled:opacity-50 disabled:pointer-events-none dark:focus:outline-none dark:focus:ring-1 dark:focus:ring-green-600"
                                 href="/login">
                                 <svg class="flex-shrink-0 w-4 h-4" xmlns="http://www.w3.org/2000/svg" width="24"
                                     height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
@@ -72,7 +72,7 @@
                         </div>
 
                         {{-- <div class="hs-dropdown [--strategy:static] md:[--strategy:fixed] [--adaptive:none] md:[--trigger:hover] md:py-4">
-              <button type="button" class="flex items-center w-full text-green-600 hover:text-green-400 font-medium dark:text-green-400 dark:hover:text-green-600">
+              <button type="button" class="flex items-center w-full text-green-600 hover:text-yellow-600 font-medium dark:text-green-400 dark:hover:text-green-600">
                 User Name
             <svg class="ms-2 w-4 h-4" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
               <path d="m6 9 6 6 6-6" />
