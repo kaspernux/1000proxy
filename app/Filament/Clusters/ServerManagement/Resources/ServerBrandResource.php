@@ -3,9 +3,9 @@
 namespace App\Filament\Clusters\ServerManagement\Resources;
 
 use App\Filament\Clusters\ServerManagement;
-use App\Filament\Clusters\ServerManagement\Resources\ServerCategoryResource\Pages;
-use App\Filament\Clusters\ServerManagement\Resources\ServerCategoryResource\RelationManagers;
-use App\Models\ServerCategory;
+use App\Filament\Clusters\ServerManagement\Resources\ServerBrandResource\Pages;
+use App\Filament\Clusters\ServerManagement\Resources\ServerBrandResource\RelationManagers;
+use App\Models\ServerBrand;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;
@@ -29,18 +29,17 @@ use Filament\Forms\Components\Toggle;
 use Filament\Forms\Set;
 use Filament\Forms\Get;
 
-
-class ServerCategoryResource extends Resource
+class ServerBrandResource extends Resource
 {
-    protected static ?string $navigationIcon = 'heroicon-o-squares-plus';
+    protected static ?string $model = ServerBrand::class;
+
+    protected static ?string $navigationIcon = 'heroicon-o-bookmark';
 
     protected static ?string $cluster = ServerManagement::class;
 
-    protected static ?string $recordTitleAttribute = 'name';
-
     public static function getLabel(): string
     {
-        return 'Category';
+        return 'Brand';
     }
 
     public static function form(Form $form): Form
@@ -63,12 +62,16 @@ class ServerCategoryResource extends Resource
                             TextInput::make('slug')
                                 ->required()
                                 ->disabled()
-                                ->unique(ServerCategory::class, 'slug', ignoreRecord: true),
+                                ->unique(ServerBrand::class, 'slug', ignoreRecord: true),
                         ]),
 
                     FileUpload::make('image')
                         ->image()
-                        ->directory('server_categories'),
+                        ->directory('server_brands'),
+
+                    MarkdownEditor::make('desc')
+                        ->columnSpanFull()
+                        ->fileAttachmentsDirectory('server_brands'),
 
                     Toggle::make('is_active')
                         ->required()
@@ -131,11 +134,11 @@ class ServerCategoryResource extends Resource
     public static function getPages(): array
     {
         return [
-            'index' => Pages\ListServerCategories::route('/'),
-            'create' => Pages\CreateServerCategory::route('/create'),
-            'view' => Pages\ViewServerCategory::route('/{record}'),
-            'edit' => Pages\EditServerCategory::route('/{record}/edit'),
-        ];
+            'index' => Pages\ListServerBrands::route('/'),
+            'create' => Pages\CreateServerBrand::route('/create'),
+            'view' => Pages\ViewServerBrand::route('/{record}'),
+            'edit' => Pages\EditServerBrand::route('/{record}/edit'),
 
-   }
+       ];
+    }
 }

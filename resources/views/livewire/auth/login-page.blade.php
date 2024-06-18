@@ -8,7 +8,7 @@
                         <h1 class="block text-2xl font-bold text-gray-800 dark:text-white">Sign in</h1>
                         <p class="mt-2 text-sm text-gray-600 dark:text-gray-400">
                             Don't have an account yet?
-                            <a class="text-accent-yellow decoration-2 hover:underline font-medium dark:focus:outline-none dark:focus:ring-1 dark:focus:ring-gray-600"
+                            <a wire:navigate class="text-accent-yellow decoration-2 hover:underline font-medium dark:focus:outline-none dark:focus:ring-1 dark:focus:ring-gray-600"
                                 href="/register">
                                 Sign up here
                             </a>
@@ -28,7 +28,7 @@
                                         class="py-3 px-4 block w-full border border-gray-200 rounded-lg text-sm focus:border-accent-yellow focus:ring-accent-yellow disabled:opacity-50 disabled:pointer-events-none dark:bg-slate-900 dark:border-gray-700 dark:text-gray-400 dark:focus:ring-gray-600"
                                         required aria-describedby="email-error">
                                     <div
-                                        class="hidden absolute inset-y-0 end-0 flex items-center pointer-events-none pe-3">
+                                        class="hidden absolute inset-y-0 end-0 items-center pointer-events-none pe-3">
                                         <svg class="h-5 w-5 text-red-500" width="16" height="16" fill="currentColor"
                                             viewBox="0 0 16 16" aria-hidden="true">
                                             <path
@@ -45,7 +45,7 @@
                             <div>
                                 <div class="flex justify-between items-center">
                                     <label for="password" class="block text-sm mb-2 dark:text-white">Password</label>
-                                    <a class="text-sm text-accent-yellow decoration-2 hover:underline font-medium dark:focus:outline-none dark:focus:ring-1 dark:focus:ring-gray-600"
+                                    <a wire:navigate class="text-sm text-accent-yellow decoration-2 hover:underline font-medium dark:focus:outline-none dark:focus:ring-1 dark:focus:ring-gray-600"
                                         href="/forgot">Forgot password?</a>
                                 </div>
                                 <div class="relative">
@@ -53,7 +53,7 @@
                                         class="py-3 px-4 block w-full border border-gray-200 rounded-lg text-sm focus:border-accent-yellow focus:ring-accent-yellow disabled:opacity-50 disabled:pointer-events-none dark:bg-slate-900 dark:border-gray-700 dark:text-gray-400 dark:focus:ring-gray-600"
                                         required aria-describedby="password-error">
                                     <div
-                                        class="hidden absolute inset-y-0 end-0 flex items-center pointer-events-none pe-3">
+                                        class="hidden absolute inset-y-0 end-0 items-center pointer-events-none pe-3">
                                         <svg class="h-5 w-5 text-red-500" width="16" height="16" fill="currentColor"
                                             viewBox="0 0 16 16" aria-hidden="true">
                                             <path

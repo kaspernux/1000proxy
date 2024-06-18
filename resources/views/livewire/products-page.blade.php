@@ -169,7 +169,7 @@
                         <div class="w-full px-3 mb-6 sm:w-1/2 md:w-1/3">
                             <div class="border-2 bg-green-900 border-double rounded-lg border-yellow-600 dark:border-yellow-600">
                                 <div class="relative bg-green-600">
-                                    <a href="/products/product_one" class="">
+                                    <a wire:navigate href="/products/product_one" class="">
                                         <img src="https://i.postimg.cc/hj6h6Vwv/pexels-artem-beliaikin-2292919.jpg"
                                             alt="" class="object-cover w-full h-56 mx-auto ">
                                     </a>
@@ -202,7 +202,7 @@
                         <div class="w-full px-3 mb-6 sm:w-1/2 md:w-1/3">
                             <div class="border-2 bg-green-900 border-double rounded-lg border-yellow-600 dark:border-yellow-600">
                                 <div class="relative bg-green-600">
-                                    <a href="/products/product_one" class="">
+                                    <a wire:navigate href="/products/product_one" class="">
                                         <img src="https://i.postimg.cc/hj6h6Vwv/pexels-artem-beliaikin-2292919.jpg" alt=""
                                             class="object-cover w-full h-56 mx-auto ">
                                     </a>
@@ -235,7 +235,7 @@
                         <div class="w-full px-3 mb-6 sm:w-1/2 md:w-1/3">
                             <div class="border-2 bg-green-900 border-double rounded-lg border-yellow-600 dark:border-yellow-600">
                                 <div class="relative bg-green-600">
-                                    <a href="/products/product_one" class="">
+                                    <a wire:navigate href="/products/product_one" class="">
                                         <img src="https://i.postimg.cc/hj6h6Vwv/pexels-artem-beliaikin-2292919.jpg" alt=""
                                             class="object-cover w-full h-56 mx-auto ">
                                     </a>
@@ -268,7 +268,7 @@
                         <div class="w-full px-3 mb-6 sm:w-1/2 md:w-1/3">
                             <div class="border-2 bg-green-900 border-double rounded-lg border-yellow-600 dark:border-yellow-600">
                                 <div class="relative bg-green-600">
-                                    <a href="/products/product_one" class="">
+                                    <a wire:navigate href="/products/product_one" class="">
                                         <img src="https://i.postimg.cc/hj6h6Vwv/pexels-artem-beliaikin-2292919.jpg" alt=""
                                             class="object-cover w-full h-56 mx-auto ">
                                     </a>
@@ -301,7 +301,7 @@
                         <div class="w-full px-3 mb-6 sm:w-1/2 md:w-1/3">
                             <div class="border-2 bg-green-900 border-double rounded-lg border-yellow-600 dark:border-yellow-600">
                                 <div class="relative bg-green-600">
-                                    <a href="/products/product_one" class="">
+                                    <a wire:navigate href="/products/product_one" class="">
                                         <img src="https://i.postimg.cc/hj6h6Vwv/pexels-artem-beliaikin-2292919.jpg" alt=""
                                             class="object-cover w-full h-56 mx-auto ">
                                     </a>
@@ -334,7 +334,7 @@
                         <div class="w-full px-3 mb-6 sm:w-1/2 md:w-1/3">
                             <div class="border-2 bg-green-900 border-double rounded-lg border-yellow-600 dark:border-yellow-600">
                                 <div class="relative bg-green-600">
-                                    <a href="/products/product_one" class="">
+                                    <a wire:navigate href="/products/product_one" class="">
                                         <img src="https://i.postimg.cc/hj6h6Vwv/pexels-artem-beliaikin-2292919.jpg" alt=""
                                             class="object-cover w-full h-56 mx-auto ">
                                     </a>
@@ -372,27 +372,27 @@
                             <ul class="flex list-style-none">
                                 <li class="page-item disabled ">
                                     <a href="#"
-                                        class="relative block pointer-events-none px-3 py-1.5 mr-3 text-white text-green-700 transition-all duration-300  rounded-md dark:text-green-400 hover:text-yellow-600 hover:bg-yellow-600">Previous
+                                        class="relative block px-3 py-1.5 text-white hover:text-green-900 transition-all duration-300 dark:text-yellow-600 dark:hover:bg-green-900 hover:bg-yellow-600 rounded-md mr-3">Previous
                                     </a>
                                 </li>
                                 <li class="page-item ">
                                     <a href="#"
-                                        class="relative block px-3 py-1.5 mr-3 text-white hover:text-accent-yellow transition-all duration-300 hover:bg-yellow-600 dark:hover:text-yellow-600 dark:hover:bg-yellow-600 rounded-md text-green-400 bg-yellow-600">1
+                                        class="relative block px-3 py-1.5 text-white hover:text-green-900 transition-all duration-300 dark:text-yellow-600 dark:hover:bg-green-900 hover:bg-yellow-600 rounded-md mr-3">1
                                     </a>
                                 </li>
                                 <li class="page-item ">
                                     <a href="#"
-                                        class="relative block px-3 py-1.5 text-white text-green-700 transition-all duration-300 dark:text-green-400 dark:hover:bg-yellow-600 hover:bg-yellow-600 rounded-md mr-3  ">2
+                                        class="relative block px-3 py-1.5 text-white hover:text-green-900 transition-all duration-300 dark:text-yellow-600 dark:hover:bg-green-900 hover:bg-yellow-600 rounded-md mr-3">2
                                     </a>
                                 </li>
                                 <li class="page-item ">
                                     <a href="#"
-                                        class="relative block px-3 py-1.5 text-white text-green-700 transition-all duration-300 dark:text-green-400 dark:hover:bg-yellow-600 hover:bg-yellow-600 rounded-md mr-3 ">3
+                                        class="relative block px-3 py-1.5 text-white hover:text-green-900 transition-all duration-300 dark:text-yellow-600 dark:hover:bg-green-900 hover:bg-yellow-600 rounded-md mr-3 ">3
                                     </a>
                                 </li>
                                 <li class="page-item ">
                                     <a href="#"
-                                        class="relative block px-3 py-1.5 text-white text-green-700 transition-all duration-300 dark:text-green-400 dark:hover:bg-yellow-600 hover:bg-yellow-600 rounded-md ">Next
+                                        class="relative block px-3 py-1.5 text-white hover:text-green-900 transition-all duration-300 dark:text-yellow-600 dark:hover:bg-green-900 hover:bg-yellow-600 rounded-md mr-3 ">Next
                                     </a>
                                 </li>
                             </ul>

@@ -93,7 +93,7 @@ class CustomerResource extends Resource
                                 ->columnSpan(2)
                                 ->getUploadedFileNameForStorageUsing(
                                     fn(TemporaryUploadedFile $file): string => (string) str($file->getClientOriginalName())
-                                        ->prepend('custom-prefix-'),
+                                        ->prepend('customer-'),
                                 ),
                         ]),
                     Section::make('Status Information')
