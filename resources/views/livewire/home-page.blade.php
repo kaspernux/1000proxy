@@ -1,7 +1,7 @@
 <div>
     {{-- Hero Section Start  --}}
     <div
-        class="w-full max-h-auto py-auto font-mono bg-gradient-to-r from-green-900 to-green-600 px-4 sm:px-6 lg:px-8 mx-auto relative">
+        class="w-full max-h-auto pt-3 py-auto font-mono bg-gradient-to-r from-green-900 to-green-600 px-4 sm:px-6 lg:px-8 mx-auto relative">
         <div class="max-w-[85rem] mx-auto px-4 sm:px-6 lg:px-8">
             <!-- Grid -->
             <div class="grid md:grid-cols-2 gap-4 md:gap-8 xl:gap-20 md:items-center">
@@ -161,7 +161,7 @@
                 <!-- End Col -->
 
                 <div>
-                    <img class="relative py-auto justify-center z-auto items-center mx-auto w-full max-w-lg sm:max-w-sm md:max-w-full"
+                    <img class="relative py-auto size-auto justify-center items-center mx-auto w-full max-w-full sm:max-w-full md:max-w-full"
                         src="{{ asset('storage/uploads/hero_white_2.svg') }}" alt="#">
                 </div>
                 <!-- End Col -->
@@ -172,7 +172,7 @@
     {{-- Hero Section End  --}}
 
     {{-- Categories Section Start  --}}
-    <div class="w-full py-auto font-mono bg-gradient-to-r from-green-900 to-green-600">
+    <div class="w-full py-auto font-mono bg-gradient-to-r from-green-900 to-green-600 py-6">
         <div class="max-w-7xl mx-auto px-10 py-6 lg:py-8 md:px-10">
             <div class="text-center ">
                 <div class="relative flex flex-col items-center">
@@ -183,7 +183,7 @@
                         </div>
                     </div>
                 </div>
-                <p class="mb-12 text-xl text-center font-mono text-white py-3">
+                <p class="mb-6 text-lg justify-left font-mono text-white py-3">
                     Experience blazing fast speeds and top-notch security with our cutting-edge proxy services. Whether you need to browse
                     anonymously, access restricted content, or safeguard your data, our proxies have got you covered.
                 </p>
@@ -224,8 +224,8 @@
     {{-- Categories Section End  --}}
 
     {{-- Server Start  --}}
-    <section class="w-full pt-8 m-auto -mt-0 font-mono bg-gradient-to-r from-green-900 to-green-600">
-        <div class="max-w-7xl mx-auto">
+    <section class="w-full pt-8 m-auto -mt-0 font-mono bg-gradient-to-r from-green-900 to-green-600 py-6">
+        <div class="max-w-7xl mx-auto px-10 py-6 lg:py-8 md:px-10">
             <div class="text-center ">
                 <div class="relative flex flex-col items-center">
                     <h1 class="text-5xl font-bold font-mono text-white py-3">Global Network <span class="text-green-400">&</span>
@@ -235,21 +235,21 @@
                         <div class="flex-1 h-2 bg-gradient-to-r from-green-400 to-yellow-600"></div>
                     </div>
                 </div>
-                <p class="text-xl mb-12 text-center text-white py-3 font-mono">
+                <p class="mb-6 text-lg justify-left font-mono text-white py-3">
                     Unlock the internet's full potential with our global proxy network. Connect from anywhere, bypass geo-restrictions, and
                     access content seamlessly. Designed for simplicity, our proxies offer quick setup and easy integration for developers,
                     businesses, and individual users.
                 </p>
             </div>
         </div>
-        <div class="justify-center max-w-7xl size-full md:size-auto mx-auto lg:py-0">
+        <div class="flex flex-wrap items-center justify-between max-w-auto px-4 sm:px-6 lg:px-8 mx-auto">
             <div class="grid grid-cols-1 gap-6 lg:grid-cols-4 md:grid-cols-2">
 
                 @foreach ($brands as $serverBrand)
-                    <div class="py-3 px-4 justify-center items-center rounded-lg border border-transparent bg-dark-green hover:bg-green-400 hover:text-green-900 disabled:opacity-50 disabled:pointer-events-none dark:focus:outline-none dark:focus:ring-1 dark:focus:ring-green-600 wire:key={{ $serverBrand->id}}">
+                    <div class="py-6 px-4 justify-center items-center rounded-lg border border-transparent bg-dark-green hover:bg-green-400 hover:text-green-900 disabled:opacity-50 disabled:pointer-events-none dark:focus:outline-none dark:focus:ring-1 dark:focus:ring-green-600 wire:key={{ $serverBrand->id}}">
                         <a href="#" class="">
                             <img src="{{ url('storage/'.$serverBrand->image)}}" alt="{{$serverBrand->name}}"
-                                class="object-cover justify-center size-auto max-h-64 max-w-64 my-3 px-3 rounded-t-lg">
+                                class="object-cover justify-center size-[32rem] max-h-lg max-w-auto my-3 px-3 rounded-t-lg">
                         </a>
                         <div class="p-5 text-center">
                             <a href="" class="text-2xl font-bold tracking-tight text-white hover:text-green-900">{{$serverBrand->name}}</a>
@@ -275,7 +275,7 @@
                             <div class="flex-1 h-2 bg-gradient-to-r from-green-400 to-yellow-600"></div>
                         </div>
                     </div>
-                    <p class="text-xl mb-12 text-center font-mono text-white py-3">
+                    <p class="mb-6 text-lg justify-left font-mono text-white py-3">
                         Discover what customers say about our VPN and proxy services. Read their testimonials on our secure and reliable network
                         solutions. Our 24/7 support team is here to assist with any questions, ensuring the best experience with our
                         proxy services.
