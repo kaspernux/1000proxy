@@ -172,7 +172,7 @@
     {{-- Hero Section End  --}}
 
     {{-- Categories Section Start  --}}
-    <div class="w-full py-auto font-mono bg-gradient-to-r from-green-900 to-green-600 py-6">
+    <div class="w-full h-auto py-auto font-mono bg-gradient-to-r from-green-900 to-green-600 py-6">
         <div class="max-w-7xl mx-auto px-10 py-6 lg:py-8 md:px-10">
             <div class="text-center ">
                 <div class="relative flex flex-col items-center">
@@ -190,7 +190,7 @@
             </div>
         </div>
 
-        <div class="max-w-7xl px-4 sm:px-6 lg:px-8 mx-auto">
+        <div class="max-w-7xl mx-auto px-10 py-6 lg:py-8 md:px-10">
             <div class="grid sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
                 @foreach($categories as $serverCategory)
                 <a class="group flex flex-col justify-center items-center border-transparent bg-dark-green hover:bg-green-400 hover:text-green-900 disabled:opacity-50 disabled:pointer-events-none dark:focus:ring-green-600 border shadow-sm rounded-xl hover:shadow-md transition dark:bg-dark-green dark:border-gray-800 dark:focus:outline-none dark:focus:ring-1"
@@ -224,7 +224,7 @@
     {{-- Categories Section End  --}}
 
     {{-- Server Start  --}}
-    <section class="w-full pt-8 m-auto -mt-0 font-mono bg-gradient-to-r from-green-900 to-green-600 py-6">
+    <section class="w-full h-auto pt-8 m-auto -mt-0 font-mono bg-gradient-to-r from-green-900 to-green-600 py-6">
         <div class="max-w-7xl mx-auto px-10 py-6 lg:py-8 md:px-10">
             <div class="text-center ">
                 <div class="relative flex flex-col items-center">
@@ -242,28 +242,28 @@
                 </p>
             </div>
         </div>
-        <div class="flex flex-wrap items-center justify-between max-w-auto px-4 sm:px-6 lg:px-8 mx-auto">
+        <div class="max-w-7xl mx-auto px-10 py-6 lg:py-8 md:px-10">
             <div class="grid grid-cols-1 gap-6 lg:grid-cols-4 md:grid-cols-2">
-
                 @foreach ($brands as $serverBrand)
-                    <div class="py-6 px-4 justify-center items-center rounded-lg border border-transparent bg-dark-green hover:bg-green-400 hover:text-green-900 disabled:opacity-50 disabled:pointer-events-none dark:focus:outline-none dark:focus:ring-1 dark:focus:ring-green-600 wire:key={{ $serverBrand->id}}">
-                        <a href="#" class="">
-                            <img src="{{ url('storage/'.$serverBrand->image)}}" alt="{{$serverBrand->name}}"
-                                class="object-cover justify-center size-[32rem] max-h-lg max-w-auto my-3 px-3 rounded-t-lg">
-                        </a>
-                        <div class="p-5 text-center">
-                            <a href="" class="text-2xl font-bold tracking-tight text-white hover:text-green-900">{{$serverBrand->name}}</a>
-                        </div>
+                <div class="py-6 px-4 justify-center items-center rounded-lg border border-transparent bg-dark-green hover:bg-green-400 hover:text-green-900 disabled:opacity-50 disabled:pointer-events-none dark:focus:outline-none dark:focus:ring-1 dark:focus:ring-green-600"
+                    wire:key="{{ $serverBrand->id }}">
+                    <a href="#" class="block">
+                        <img src="{{ url('storage/'.$serverBrand->image) }}" alt="{{ $serverBrand->name }}"
+                            class="object-cover w-full h-full max-w-full max-h-full my-3 px-3 rounded-t-lg">
+                    </a>
+                    <div class="p-5 text-center">
+                        <a href=""
+                            class="text-2xl font-bold tracking-tight text-white hover:text-green-900">{{ $serverBrand->name }}</a>
                     </div>
+                </div>
                 @endforeach
-
             </div>
         </div>
     </section>
     {{-- Server End  --}}
 
     {{-- Customer Reviews Start  --}}
-    <section class="w-full pt-8 m-auto -mt-0 font-mono bg-gradient-to-r from-green-900 to-green-600">
+    <section class="w-full h-auto pt-8 m-auto -mt-0 font-mono bg-gradient-to-r from-green-900 to-green-600">
         <div class="max-w-7xl mx-auto px-10 py-6 lg:py-8 md:px-10">
             <div class="max-w-7xl mx-auto">
                 <div class="text-center ">
