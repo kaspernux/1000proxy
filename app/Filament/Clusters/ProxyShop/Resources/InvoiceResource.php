@@ -28,6 +28,9 @@ use Illuminate\Support\Str;
 use Filament\Tables\Actions;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Actions\DeleteBulkAction;
+use Filament\Forms\Components\SelectColumn;
+use GuzzleHttp\Client;
+use Filament\Forms\Components\Toggle;
 
 class InvoiceResource extends Resource
 {
@@ -42,6 +45,17 @@ class InvoiceResource extends Resource
         return $form
             ->schema([
                 Group::make([
+                    Section::make('Financial Details')
+                        ->schema([
+                            TextInput::make('amount')
+                                ->required()
+                                ->numeric()
+                                ->prefix('$'),
+
+                            TextInput::make('tron_price')
+                                ->numeric(),
+                        ])->columns(2),
+
                     Section::make('Invoice Details')
                         ->schema([
                             TextInput::make('hash_id')
@@ -60,47 +74,14 @@ class InvoiceResource extends Resource
                             MarkdownEditor::make('description')
                                 ->columnSpanFull()
                                 ->fileAttachmentsDirectory('Invoices'),
-                        ])->columns(2),
-
-                    Section::make('Financial Details')
-                        ->schema([
-                            TextInput::make('amount')
-                                ->required()
-                                ->numeric()
-                                ->prefix('$'),
-
-                            TextInput::make('tron_price')
-                                ->numeric(),
-
-                            DatePicker::make('request_date'),
-
-                            Select::make('state')
-                                ->required()
-                                ->options([
-                                    'new' => 'New',
-                                    'processing' => 'Processing',
-                                    'completed' => 'Completed',
-                                    'failed' => 'Failed',
-                                ])
-                                ->color([
-                                    'new' => 'info',
-                                    'processing' => 'warning',
-                                    'completed' => 'success',
-                                    'failed' => 'danger',
-                                ])
-                                ->icon([
-                                    'new' => 'heroicon-o-sparkles',
-                                    'processing' => 'heroicon-o-arrow-path',
-                                    'completed' => 'heroicon-o-check-badge',
-                                    'failed' => 'heroicon-o-eye',
-                                ])
-                                ->default('new'),
-                        ])->columns(2),
+                        ])->columns(2)
                 ])->columnSpan(2),
 
                 Group::make([
                     Section::make('Order Information')
                         ->schema([
+                            DatePicker::make('request_date')
+                            ->label('Date'),
                             Select::make('order_id')
                                 ->relationship('order', 'id')
                                 ->required(),
@@ -108,16 +89,44 @@ class InvoiceResource extends Resource
                             Select::make('customer_id')
                                 ->relationship('customer', 'name')
                                 ->required(),
-                        ])->columns(2),
+                        ])->columns(1),
 
                     Section::make('Agent Details')
                         ->schema([
-                            TextInput::make('agent_bought')
-                                ->numeric(),
+                            Toggle::make('agent_bought')
+                                ->required()
+                                ->default(false),
 
-                            TextInput::make('agent_count')
-                                ->numeric(),
+                            Toggle::make('agent_count')
+                                ->required()
+                                ->default(false)
                         ])->columns(2),
+
+                        Section::make('Agent Details')
+                        ->schema([
+                            ToggleButtons::make('state')
+                                ->required()
+                                ->options([
+                                    'new' => 'New',
+                                    'failed' => 'Failed',
+                                    'processing' => 'Processing',
+                                    'completed' => 'Completed',
+                                ])
+                                ->colors([
+                                    'new' => 'info',
+                                    'processing' => 'warning',
+                                    'completed' => 'success',
+                                    'failed' => 'danger',
+                                ])
+                                ->icons([
+                                    'new' => 'heroicon-o-sparkles',
+                                    'processing' => 'heroicon-o-arrow-path',
+                                    'completed' => 'heroicon-o-check-badge',
+                                    'failed' => 'heroicon-o-eye',
+                                ])
+                                ->columns(2)
+                                ->default('new'),
+                            ])
                 ])->columnSpan(1),
             ])->columns(3);
     }

@@ -100,7 +100,7 @@
                         </div>
                     </div>
                     <div class="flex items-center justify-start gap-4 px-4 mt-6 ">
-                        <a href="/products"
+                        <a href="/servers"
                             class="w-full text-center px-4 py-2 text-green-400 border border-yellow-600 rounded-md md:w-auto hover:text-white hover:bg-yellow-600 dark:border-gray-700 dark:hover:bg-gray-700 dark:text-gray-300">
                             Go back shopping
                         </a>

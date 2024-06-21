@@ -43,7 +43,7 @@
                         </a>
 
                         <a wire:navigate class="font-medium {{request()->is('products') ? 'text-accent-yellow' : 'text-white'}} hover:text-yellow-600 py-3 md:py-6 dark:text-green-400 dark:hover:text-yellow-600 dark:focus:outline-none dark:focus:ring-1 dark:focus:ring-green-600"
-                            href="/products">
+                            href="/servers">
                             Products
                         </a>
 

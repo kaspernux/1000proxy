@@ -16,9 +16,7 @@ class ServerClient extends Model
         'customer_id',
         'server_inbound_id',
         'name',
-        'slug',
         'description',
-        'price',
         'client_id',
         'alter_id',
         'email',
@@ -31,9 +29,6 @@ class ServerClient extends Model
         'qr_code_sub_json',
         'qr_code_client',
         'enabled',
-        'is_featured',
-        'in_stock',
-        'capacity',
         'reset',
     ];
 
@@ -47,9 +42,8 @@ class ServerClient extends Model
         return $this->belongsTo(ServerInbound::class, 'server_inbound_id');
     }
 
-    public function orderItems(): HasMany
+    public function serverPlan(): BelongsTo
     {
-        return $this->hasMany(OrderItem::class,);
+        return $this->belongsTo(ServerPlan::class);
     }
-
 }

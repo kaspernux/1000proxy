@@ -26,6 +26,8 @@ class ServerInboundResource extends Resource
 
     protected static ?string $cluster = ServerManagement::class;
 
+    protected static ?int $navigationSort = 7;
+
     protected static ?string $recordTitleAttribute = 'server_id';
 
     public static function getLabel(): string

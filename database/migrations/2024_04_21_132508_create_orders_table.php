@@ -17,7 +17,6 @@ return new class extends Migration
             $table->decimal('grand_amount', 10, 2);
             $table->string('currency', 3);
             $table->foreignId('payment_method_id')->constrained('payment_methods')->onDelete('cascade');
-            $table->string('transaction_id')->unique();
             $table->enum('payment_status', ['pending','paid','failed'])->default('pending');
             $table->enum('order_status', ['new','processing','completed','dispute'])->default('new');
             $table->date('order_date');

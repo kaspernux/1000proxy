@@ -6,7 +6,7 @@ use App\Filament\Clusters\ProxyShop;
 use App\Filament\Clusters\ProxyShop\Resources\OrderResource\Pages;
 use App\Filament\Clusters\ProxyShop\Resources\OrderResource\RelationManagers\InvoiceRelationManager;
 use App\Models\Order;
-use App\Models\ServerClient;
+use App\Models\ServerPlan;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Forms\Set;
@@ -25,6 +25,8 @@ use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\MarkdownEditor;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\DatePicker;
+use GuzzleHttp\Client;
+use Filament\Forms\Components\Toggle;
 
 class OrderResource extends Resource
 {
@@ -62,21 +64,17 @@ class OrderResource extends Resource
                                 ->relationship()
                                 ->schema([
                                     Select::make('server_plan_id')
-                                        ->relationship('serverPlan', 'name')
+                                        ->relationship('ServerPlan', 'name')
                                         ->searchable()
-                                        ->preload()
-                                        ->required(),
-                                    Select::make('server_client_id')
-                                        ->relationship('serverClient', 'id')
-                                        ->searchable()
+                                        ->columnSpan(2)
                                         ->preload()
                                         ->required()
                                         ->distinct()
                                         ->disableOptionsWhenSelectedInSiblingRepeaterItems()
                                         ->reactive()
                                         ->afterStateUpdated(function ($state, Set $set, Get $get) {
-                                            $serverClient = ServerClient::find($state);
-                                            $unitAmount = (float) ($serverClient->price ?? 0);
+                                            $ServerPlan = ServerPlan::find($state);
+                                            $unitAmount = (float) ($ServerPlan->price ?? 0);
                                             $quantity = (int) ($get('quantity') ?? 1);
                                             $set('unit_amount', $unitAmount);
                                             $set('total_amount', $unitAmount * $quantity);
@@ -86,6 +84,7 @@ class OrderResource extends Resource
                                     TextInput::make('quantity')
                                         ->required()
                                         ->numeric()
+                                        ->columnSpan(2)
                                         ->default(1)
                                         ->reactive()
                                         ->afterStateUpdated(function ($state, Set $set, Get $get) {
@@ -96,6 +95,7 @@ class OrderResource extends Resource
                                         })
                                         ->minValue(1),
                                     TextInput::make('unit_amount')
+                                        ->columnSpan(2)
                                         ->required()
                                         ->numeric()
                                         ->reactive()
@@ -106,19 +106,19 @@ class OrderResource extends Resource
                                             self::updatePaymentTotalAmount($get, $set);
                                         }),
                                     TextInput::make('total_amount')
+                                        ->columnSpan(2)
                                         ->required()
                                         ->numeric()
                                         ->dehydrated(false),
-                                    TextInput::make('agent_bought')
+                                    Toggle::make('agent_bought')
                                         ->required()
-                                        ->numeric()
-                                        ->default(0),
-                                ])
+                                        ->default(false)
+                                ])->columns(8)
                                 ->reactive()
                                 ->afterStateUpdated(function (Get $get, Set $set) {
                                     self::updatePaymentTotalAmount($get, $set);
                                 }),
-                        ]),
+                        ])
                 ])->columnSpan(3),
 
                 Group::make([
@@ -126,18 +126,21 @@ class OrderResource extends Resource
                         ->schema([
                             Placeholder::make('grand_amount_placeholder')
                                 ->label('Grand Total')
+                                ->columnSpanFull()
                                 ->content(function (Get $get, Set $set) {
-                                    $total = 0;
-                                    if (!$repeaters = $get('items')) {
-                                        return '$ ' . number_format($total, 2);
-                                    }
-
-                                    foreach ($repeaters as $key => $repeater) {
-                                        $total += (float) $get("items.{$key}.total_amount");
-                                    }
-                                    $set('grand_amount', $total);
-
+                                    $total = self::calculateTotalAmount($get, $set);
                                     $currency = $get('currency') ?? 'usd';
+                                    $conversionRates = self::getConversionRates();
+
+                                    // Check if the currency key exists in conversionRates
+                                    if (!isset($conversionRates[$currency])) {
+                                        // Fallback to USD if conversion rate is not available
+                                        $currency = 'usd';
+                                    }
+
+                                    $conversionRate = $conversionRates[$currency] ?? 1; // Default to 1 if the rate is still not found
+                                    $convertedTotal = $total * $conversionRate;
+
                                     $currencySymbols = [
                                         'usd' => '$',
                                         'rub' => '₽',
@@ -147,7 +150,7 @@ class OrderResource extends Resource
                                     ];
 
                                     $decimalPlaces = in_array($currency, ['btc', 'xmr']) ? 8 : 2;
-                                    return $currencySymbols[$currency] . ' ' . number_format($total, $decimalPlaces);
+                                    return $currencySymbols[$currency] . ' ' . number_format($convertedTotal, $decimalPlaces);
                                 }),
 
                             Hidden::make('grand_amount')
@@ -173,16 +176,13 @@ class OrderResource extends Resource
                                 ->preload()
                                 ->required()
                                 ->columnSpan(2),
-                            TextInput::make('transaction_id')
-                                ->required()
-                                ->maxLength(255)
-                                ->columnSpan(2),
                         ])->columns(2),
 
                     Section::make('Order Status')
                         ->schema([
                             ToggleButtons::make('order_status')
                                 ->required()
+                                ->columnSpanFull()
                                 ->default('new')
                                 ->options([
                                     'new' => 'New',
@@ -208,6 +208,7 @@ class OrderResource extends Resource
                         ->schema([
                             ToggleButtons::make('payment_status')
                                 ->required()
+                                ->columnSpanFull()
                                 ->default('pending')
                                 ->options([
                                     'pending' => 'Pending',
@@ -235,13 +236,8 @@ class OrderResource extends Resource
             ->columns([
                 Tables\Columns\TextColumn::make('customer.name')
                     ->label('Customer')
-                    ->sortable(),
-                Tables\Columns\TextColumn::make('grand_amount')
-                    ->numeric()
-                    ->sortable(),
-                Tables\Columns\TextColumn::make('currency')
-                    ->searchable()
-                    ->sortable(),
+                    ->sortable()
+                    ->searchable(),
                 Tables\Columns\SelectColumn::make('order_status')
                     ->options([
                             'new' => 'New',
@@ -251,6 +247,15 @@ class OrderResource extends Resource
                         ])
                     ->searchable()
                     ->sortable(),
+                Tables\Columns\TextColumn::make('grand_amount')
+                    ->numeric()
+                    ->sortable()
+                    ->money('USD'),
+                Tables\Columns\TextColumn::make('currency')
+                    ->label('Payment Currency')
+                    ->searchable()
+                    ->sortable()
+                    ->toggleable(isToggledHiddenByDefault: true),
                 Tables\Columns\TextColumn::make('paymentMethod.name')
                     ->label('Payment Method')
                     ->sortable(),
@@ -272,7 +277,7 @@ class OrderResource extends Resource
                     ->toggleable(isToggledHiddenByDefault: true),
             ])
             ->filters([
-                // Add filters if needed
+                //
             ])
             ->actions([
                 Tables\Actions\ActionGroup::make([
@@ -286,6 +291,31 @@ class OrderResource extends Resource
                     Tables\Actions\DeleteBulkAction::make(),
                 ]),
             ]);
+    }
+
+    public static function updatePaymentTotalAmount(Get $get, Set $set)
+    {
+        $total = 0;
+        if (!$repeaters = $get('items')) {
+            $set('grand_amount', $total);
+            return;
+        }
+
+        foreach ($repeaters as $key => $repeater) {
+            $total += (float) $get("items.{$key}.total_amount");
+        }
+
+        $set('grand_amount', $total);
+    }
+
+    public static function calculateTotalAmount(Get $get, Set $set)
+    {
+        $items = $get('items');
+        $total = 0;
+        foreach ($items as $item) {
+            $total += (float) ($item['total_amount'] ?? 0);
+        }
+        return $total;
     }
 
     public static function getRelations(): array
@@ -305,30 +335,52 @@ class OrderResource extends Resource
         ];
     }
 
-    protected static function updatePaymentTotalAmount(Get $get, Set $set)
-    {
-        $items = $get('items') ?? [];
-        $totalAmount = array_reduce($items, function ($carry, $item) {
-            return $carry + (float) ($item['total_amount'] ?? 0);
-        }, 0);
-
-        $set('grand_amount', $totalAmount);
-
-        $currency = $get('currency') ?? 'usd';
-        $currencySymbols = [
-            'usd' => '$',
-            'rub' => '₽',
-            'xmr' => 'ɱ',
-            'btc' => '₿',
-            'others' => '',
-        ];
-
-        $decimalPlaces = in_array($currency, ['btc', 'xmr']) ? 8 : 2;
-        $formattedTotal = $currencySymbols[$currency] . ' ' . number_format($totalAmount, $decimalPlaces);
-        $set('grand_amount_placeholder', $formattedTotal);
-    }
-
     public static function getNavigationBadge(): ?string {
         return static::getModel()::count();
     }
+    public static function getNavigationBadgeColor(): string|array|null {
+        return static::getModel()::count() > 10 ? 'success':'danger';
+    }
+
+    protected static function getConversionRates(): array
+{
+    $client = new Client();
+    $rates = [];
+
+    try {
+        $response = $client->get('https://api.coingecko.com/api/v3/simple/price', [
+            'query' => [
+                'ids' => 'bitcoin,monero',
+                'vs_currencies' => 'usd',
+            ],
+        ]);
+        $data = json_decode($response->getBody()->getContents(), true);
+
+        // Add USD conversion rate
+        $rates['usd'] = 1;
+
+        // Extract and store the conversion rates
+        if (isset($data['bitcoin']['usd'])) {
+            $rates['btc'] = 1 / (float) $data['bitcoin']['usd'];
+        }
+
+        if (isset($data['monero']['usd'])) {
+            $rates['xmr'] = 1 / (float) $data['monero']['usd'];
+        }
+
+        // Fetch RUB to USD conversion rate
+        $rubResponse = $client->get('https://v6.exchangerate-api.com/v6/b6c4172d7241466e49c86234/latest/USD');
+        $rubData = json_decode($rubResponse->getBody()->getContents(), true);
+        if (isset($rubData['conversion_rates']['RUB'])) {
+            $rates['rub'] = (float) $rubData['conversion_rates']['RUB'];
+        }
+    } catch (\Exception $e) {
+        // Handle exception gracefully, possibly log it
+        // Ensure the USD rate is set in case of an error
+        $rates['usd'] = 1;
+    }
+
+    return $rates;
+}
+
 }

@@ -35,6 +35,8 @@ class ServerBrandResource extends Resource
 
     protected static ?string $navigationIcon = 'heroicon-o-bookmark';
 
+    protected static ?int $navigationSort = 2;
+
     protected static ?string $cluster = ServerManagement::class;
 
     public static function getLabel(): string
@@ -67,6 +69,8 @@ class ServerBrandResource extends Resource
 
                     FileUpload::make('image')
                         ->image()
+                        ->avatar()
+                        ->circleCropper()
                         ->directory('server_brands'),
 
                     MarkdownEditor::make('desc')

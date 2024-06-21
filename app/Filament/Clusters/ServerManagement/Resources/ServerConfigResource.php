@@ -26,6 +26,7 @@ class ServerConfigResource extends Resource
 
     protected static ?string $cluster = ServerManagement::class;
 
+    protected static ?int $navigationSort = 8;
 
     public static function getLabel(): string
     {

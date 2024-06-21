@@ -16,7 +16,7 @@ class OrderStats extends BaseWidget
             Stat::make('Processing', Order::query()->where('order_status','processing')->count()),
             // Stat::make('Completed', Order::query()->where('order_status','completed')->count()),
             Stat::make('Disputes', Order::query()->where('order_status','dispute')->count()),
-            Stat::make('Average Price', Number::currency(Order::query()->avg('grand_amount') ?? 0, 'RUB'))
+            Stat::make('Total Sales', Number::currency(Order::query()->sum('grand_amount') ?? 0, 'USD' ))
         ];
     }
 }

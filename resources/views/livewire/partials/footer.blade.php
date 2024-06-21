@@ -15,9 +15,9 @@
                     <p><a wire:navigate class="inline-flex gap-x-2 text-green-400 hover:text-yellow-600 dark:focus:outline-none dark:focus:ring-1 dark:focus:ring-green-600"
                             href="/categories">Categories</a></p>
                     <p><a wire:navigate class="inline-flex gap-x-2 text-green-400 hover:text-yellow-600 dark:focus:outline-none dark:focus:ring-1 dark:focus:ring-green-600"
-                            href="/products">All Servers</a></p>
+                            href="/servers">All Servers</a></p>
                     <p><a wire:navigate class="inline-flex gap-x-2 text-green-400 hover:text-yellow-600 dark:focus:outline-none dark:focus:ring-1 dark:focus:ring-green-600"
-                            href="/products">Featured Servers</a></p>
+                            href="/servers">Featured Servers</a></p>
                 </div>
             </div>
             <!-- End Col -->

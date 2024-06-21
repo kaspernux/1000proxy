@@ -10,6 +10,8 @@ use Filament\Forms\Form;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
+use Filament\Forms\Components\MarkdownEditor;
+
 
 class ServerClientResource extends Resource
 {
@@ -18,6 +20,8 @@ class ServerClientResource extends Resource
     protected static ?string $navigationIcon = 'heroicon-o-user-group';
 
     protected static ?string $cluster = ServerManagement::class;
+
+    protected static ?int $navigationSort = 6;
 
     public static function getLabel(): string
     {
@@ -30,7 +34,18 @@ class ServerClientResource extends Resource
             ->schema([
                 Forms\Components\Group::make()
                     ->schema([
-                        Forms\Components\Section::make('Server Client Details')
+                        Forms\Components\Section::make('Client Information')
+                            ->schema([
+                                Forms\Components\TextInput::make('name')
+                                    ->label('Name')
+                                    ->required()
+                                    ->maxLength(255),
+                                Forms\Components\MarkdownEditor::make('description')
+                                    ->label('Description')
+                                    ->columnSpanFull(),
+                            ])->columns(1),
+
+                        Forms\Components\Section::make('Client Details')
                             ->schema([
                                 Forms\Components\TextInput::make('client_id')
                                     ->label('Client ID')
@@ -66,22 +81,9 @@ class ServerClientResource extends Resource
                                     ->maxLength(255),
                             ])->columns(2),
 
-                        Forms\Components\Section::make('Client Information')
-                            ->schema([
-                                Forms\Components\TextInput::make('name')
-                                    ->label('Name')
-                                    ->required()
-                                    ->maxLength(255),
-                                Forms\Components\TextInput::make('slug')
-                                    ->label('Slug')
-                                    ->required()
-                                    ->maxLength(255),
-                                Forms\Components\Textarea::make('description')
-                                    ->label('Description')
-                                    ->columnSpanFull(),
-                            ])->columns(2),
 
-                        Forms\Components\Section::make('QR-CODE FILES')
+
+                        Forms\Components\Section::make('QR-Codes')
                             ->schema([
                                 Forms\Components\Textarea::make('qr_code_client')
                                     ->label('Client QR-code')
@@ -98,16 +100,7 @@ class ServerClientResource extends Resource
 
                 Forms\Components\Group::make()
                     ->schema([
-                        Forms\Components\Section::make('Price')
-                            ->schema([
-                                Forms\Components\TextInput::make('price')
-                                    ->label('Price')
-                                    ->required()
-                                    ->numeric()
-                                    ->prefix('$'),
-                            ]),
-
-                        Forms\Components\Section::make('Server Details')
+                        Forms\Components\Section::make('Owner Details')
                             ->schema([
                                 Forms\Components\Select::make('customer_id')
                                     ->label('Customer Name')
@@ -121,28 +114,18 @@ class ServerClientResource extends Resource
                                     ->required()
                                     ->searchable()
                                     ->preload(),
-                                Forms\Components\TextInput::make('capacity')
-                                    ->label('Total Clients')
-                                    ->required()
-                                    ->numeric()
-                                    ->default(0),
-                                Forms\Components\Toggle::make('reset')
-                                    ->label('Reset')
-                                    ->required(),
+
                             ]),
 
-                        Forms\Components\Section::make('Status')
+                        Forms\Components\Section::make('Options')
                             ->schema([
                                 Forms\Components\Toggle::make('enabled')
                                     ->label('Enable')
                                     ->required()
                                     ->default(true),
-                                Forms\Components\Toggle::make('is_featured')
-                                    ->label('Featured')
-                                    ->default(false),
-                                Forms\Components\Toggle::make('in_stock')
-                                    ->label('In Stock')
-                                    ->default(true),
+                                Forms\Components\Toggle::make('reset')
+                                    ->label('Reset')
+                                    ->required(),
                             ])
                     ])->columnSpan(1),
             ])->columns(3);
@@ -160,10 +143,6 @@ class ServerClientResource extends Resource
                     ->sortable(),
                 Tables\Columns\TextColumn::make('name')
                     ->searchable(),
-                Tables\Columns\TextColumn::make('price')
-                    ->label('Price')
-                    ->money()
-                    ->sortable(),
                 Tables\Columns\TextColumn::make('email')
                     ->label('Email')
                     ->searchable(),
@@ -188,16 +167,6 @@ class ServerClientResource extends Resource
                 Tables\Columns\IconColumn::make('enabled')
                     ->label('Enable')
                     ->boolean(),
-                Tables\Columns\IconColumn::make('is_featured')
-                    ->label('Featured')
-                    ->boolean(),
-                Tables\Columns\IconColumn::make('in_stock')
-                    ->label('In Stock')
-                    ->boolean(),
-                Tables\Columns\TextColumn::make('capacity')
-                    ->label('Total Clients')
-                    ->numeric()
-                    ->sortable(),
                 Tables\Columns\IconColumn::make('reset')
                     ->label('Reset')
                     ->boolean(),

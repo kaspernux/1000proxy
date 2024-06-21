@@ -13,12 +13,14 @@ class Order extends Model
 {
     use HasFactory;
 
+    protected $table = 'orders';
+
+
     protected $fillable = [
         'customer_id',
         'grand_amount',
         'currency',
         'payment_method_id',
-        'transaction_id',
         'payment_status',
         'order_status',
         'order_date',
@@ -45,14 +47,5 @@ class Order extends Model
         return $this->hasOne(Invoice::class);
     }
 
-    protected static function boot()
-    {
-        parent::boot();
 
-        static::creating(function ($order) {
-            $specialTag = 'ORD';
-            $uuid = (string) Str::uuid();
-            $order->transaction_id = $specialTag . '-' . $uuid;
-        });
-    }
 }

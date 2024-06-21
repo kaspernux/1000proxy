@@ -18,6 +18,8 @@ use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Group;
 use Livewire\Features\SupportFileUploads\TemporaryUploadedFile;
 use Filament\Forms\Components\FileUpload;
+use Filament\Tables\Columns\ImageColumn;
+
 
 class ServerResource extends Resource
 {
@@ -26,6 +28,8 @@ class ServerResource extends Resource
     protected static ?string $navigationIcon = 'heroicon-o-server';
 
     protected static ?string $cluster = ServerManagement::class;
+
+    protected static ?int $navigationSort = 1;
 
     protected static ?string $recordTitleAttribute = 'name';
 
@@ -49,7 +53,6 @@ class ServerResource extends Resource
                             ->required()
                             ->searchable()
                             ->preload(),
-
                         Forms\Components\TextInput::make('country')
                             ->required()
                             ->maxLength(255),
@@ -105,6 +108,9 @@ class ServerResource extends Resource
     {
         return $table
             ->columns([
+                Tables\Columns\ImageColumn::make('flag')
+                    ->label('Flag')
+                    ->url(fn ($record) => $record->flag),
                 Tables\Columns\TextColumn::make('name')
                     ->label('Name')
                     ->sortable()
@@ -171,6 +177,12 @@ class ServerResource extends Resource
             'view' => Pages\ViewServer::route('/{record}'),
             'edit' => Pages\EditServer::route('/{record}/edit'),
         ];
+    }
 
-   }
+    public static function getNavigationBadge(): ?string {
+        return static::getModel()::count();
+    }
+    public static function getNavigationBadgeColor(): string|array|null {
+        return static::getModel()::count() > 5 ? 'success':'danger';
+    }
 }

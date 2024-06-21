@@ -25,6 +25,8 @@ class ServerTagResource extends Resource
 
     protected static ?string $cluster = ServerManagement::class;
 
+    protected static ?int $navigationSort = 4;
+
     public static function getLabel(): string
     {
         return 'Tags';

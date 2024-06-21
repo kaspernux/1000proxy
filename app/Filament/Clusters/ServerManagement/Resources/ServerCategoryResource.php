@@ -36,6 +36,8 @@ class ServerCategoryResource extends Resource
 
     protected static ?string $cluster = ServerManagement::class;
 
+    protected static ?int $navigationSort = 3;
+
     protected static ?string $recordTitleAttribute = 'name';
 
     public static function getLabel(): string
@@ -68,6 +70,8 @@ class ServerCategoryResource extends Resource
 
                     FileUpload::make('image')
                         ->image()
+                        ->avatar()
+                        ->circleCropper()
                         ->directory('server_categories'),
 
                     Toggle::make('is_active')
@@ -137,5 +141,6 @@ class ServerCategoryResource extends Resource
             'edit' => Pages\EditServerCategory::route('/{record}/edit'),
         ];
 
-   }
+
+  }
 }

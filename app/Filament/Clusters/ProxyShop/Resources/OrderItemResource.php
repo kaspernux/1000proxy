@@ -4,6 +4,7 @@ namespace App\Filament\Clusters\ProxyShop\Resources;
 
 use App\Filament\Clusters\ProxyShop;
 use App\Filament\Clusters\ProxyShop\Resources\OrderItemResource\Pages;
+use App\Filament\Clusters\ProxyShop\Resources\OrderItemResource\RelationManagers;
 use App\Models\OrderItem;
 use Filament\Forms;
 use Filament\Resources\Resource;
@@ -14,6 +15,9 @@ use Filament\Forms\Components\TextInput;
 use Filament\Tables;
 use Filament\Tables\Table;
 use Filament\Tables\Actions\DeleteBulkAction;
+use Filament\Tables\Columns\IconColumn;
+use Filament\Forms\Components\Toggle;
+
 
 class OrderItemResource extends Resource
 {
@@ -35,13 +39,13 @@ class OrderItemResource extends Resource
                 Group::make([
                     Section::make('Order Details')
                         ->schema([
-                            Select::make('server_plan_id')
-                                ->relationship('serverPlan', 'name')
+                            Select::make('order_id')
+                                ->relationship('Order', 'id')
                                 ->searchable()
                                 ->preload()
                                 ->required(),
-                            Select::make('server_client_id')
-                                ->relationship('serverClient', 'name')
+                            Select::make('server_plan_id')
+                                ->relationship('serverPlan', 'name')
                                 ->searchable()
                                 ->preload()
                                 ->required(),
@@ -50,20 +54,6 @@ class OrderItemResource extends Resource
                 Group::make([
                     Section::make('Financial Details')
                         ->schema([
-                            TextInput::make('agent_bought')
-                                ->required()
-                                ->numeric()
-                                ->default(0),
-                            TextInput::make('quantity')
-                                ->required()
-                                ->numeric()
-                                ->default(1)
-                                ->reactive()
-                                ->afterStateUpdated(function ($state, $set, $get) {
-                                    $quantity = (int) $state;
-                                    $unitAmount = (float) $get('unit_amount');
-                                    $set('total_amount', $quantity * $unitAmount);
-                                }),
                             TextInput::make('unit_amount')
                                 ->required()
                                 ->numeric()
@@ -74,11 +64,25 @@ class OrderItemResource extends Resource
                                     $unitAmount = (float) $state;
                                     $set('total_amount', $quantity * $unitAmount);
                                 }),
+                            TextInput::make('quantity')
+                                ->required()
+                                ->numeric()
+                                ->default(1)
+                                ->reactive()
+                                ->afterStateUpdated(function ($state, $set, $get) {
+                                    $quantity = (int) $state;
+                                    $unitAmount = (float) $get('unit_amount');
+                                    $set('total_amount', $quantity * $unitAmount);
+                                }),
+
                             TextInput::make('total_amount')
                                 ->required()
                                 ->numeric()
                                 ->default(0)
                                 ->disabled(),
+                            Toggle::make('agent_bought')
+                                ->required()
+                                ->default(false),
                         ])->columns(2),
                 ])->columnSpan(2),
             ])->columns(3);
@@ -92,18 +96,19 @@ class OrderItemResource extends Resource
                     ->numeric()
                     ->sortable(),
                 Tables\Columns\TextColumn::make('serverPlan.name')
-                    ->sortable(),
-                Tables\Columns\TextColumn::make('serverClient.name')
+                    ->numeric()
                     ->sortable(),
                 Tables\Columns\TextColumn::make('quantity')
+                    ->numeric()
+                    ->sortable(),
+                Tables\Columns\TextColumn::make('unit_amount')
                     ->numeric()
                     ->sortable(),
                 Tables\Columns\TextColumn::make('total_amount')
                     ->numeric()
                     ->sortable(),
-                Tables\Columns\TextColumn::make('agent_bought')
-                    ->numeric()
-                    ->sortable(),
+                Tables\Columns\IconColumn::make('agent_bought')
+                    ->boolean(),
                 Tables\Columns\TextColumn::make('created_at')
                     ->dateTime()
                     ->sortable()
@@ -112,6 +117,9 @@ class OrderItemResource extends Resource
                     ->dateTime()
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),
+            ])
+            ->filters([
+                //
             ])
             ->actions([
                 Tables\Actions\ActionGroup::make([
@@ -122,7 +130,7 @@ class OrderItemResource extends Resource
             ])
             ->bulkActions([
                 Tables\Actions\BulkActionGroup::make([
-                    DeleteBulkAction::make(),
+                    Tables\Actions\DeleteBulkAction::make(),
                 ]),
             ]);
     }
@@ -130,11 +138,12 @@ class OrderItemResource extends Resource
     public static function getRelations(): array
     {
         return [
-            // Define any additional relations if necessary
+            //
         ];
     }
 
-    public static function getPages(): array
+
+   public static function getPages(): array
     {
         return [
             'index' => Pages\ListOrderItems::route('/'),

@@ -23,6 +23,8 @@ class ServerReviewResource extends Resource
 
     protected static ?string $navigationIcon = 'heroicon-o-megaphone';
 
+    protected static ?int $navigationSort = 11;
+
     protected static ?string $cluster = ServerManagement::class;
 
     public static function getLabel(): string

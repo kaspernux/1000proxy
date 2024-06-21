@@ -7,7 +7,6 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Str;
 
-
 class ServerBrand extends Model
 {
     use HasFactory;
@@ -42,5 +41,10 @@ class ServerBrand extends Model
     public function serverCategories(): HasMany
     {
         return $this->hasMany(ServerCategory::class);
+    }
+
+    public function serverPlans(): HasMany
+    {
+        return $this->hasMany(ServerPlan::class);
     }
 }

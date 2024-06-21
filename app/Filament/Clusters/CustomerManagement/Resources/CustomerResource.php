@@ -82,7 +82,7 @@ class CustomerResource extends Resource
                                 ->required()
                                 ->numeric()
                                 ->default(0),
-                        ])->columns(2),
+                       ])->columns(2),
                 ])->columnSpan(2),
 
                 Group::make([
@@ -90,11 +90,7 @@ class CustomerResource extends Resource
                         ->schema([
                             Forms\Components\FileUpload::make('image')
                                 ->image()
-                                ->columnSpan(2)
-                                ->getUploadedFileNameForStorageUsing(
-                                    fn(TemporaryUploadedFile $file): string => (string) str($file->getClientOriginalName())
-                                        ->prepend('customer-'),
-                                ),
+                                ->columnSpan(2),
                         ]),
                     Section::make('Status Information')
                         ->schema([
@@ -184,12 +180,16 @@ class CustomerResource extends Resource
             'edit' => Pages\EditCustomer::route('/{record}/edit'),
         ];
        }
+
+    public static function getGloballySearchableAttributes(): array
+    {
+        return ['name', 'email'];
+    }
+
     public static function getNavigationBadge(): ?string {
         return static::getModel()::count();
     }
-
-    public static function getGloballySearchableAttributes(): array
-{
-    return ['name', 'email'];
-}
+    public static function getNavigationBadgeColor(): string|array|null {
+        return static::getModel()::count() > 10 ? 'success':'danger';
     }
+}
