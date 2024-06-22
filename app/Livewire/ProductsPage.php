@@ -3,6 +3,7 @@
 namespace App\Livewire;
 
 use Livewire\Component;
+use App\Models\Server;
 use App\Models\ServerBrand;
 use App\Models\ServerCategory;
 use App\Models\ServerPlan;
@@ -22,7 +23,11 @@ class ProductsPage extends Component
         $serverQuery = ServerPlan::query()->where('is_active', 1);
 
         return view('livewire.products-page', [
-            'serverPlans' => $serverQuery->paginate(12),
+            'serverPlans' => $serverQuery->paginate(9),
+            'brands' => ServerBrand::where('is_active', 1)->get(['id', 'name', 'slug']),
+            'categories' => ServerCategory::where('is_active', 1)->get(['id', 'name', 'slug']),
+            'servers' => Server::where('status', 'up')->get('country'),
+
         ]);
 
    }

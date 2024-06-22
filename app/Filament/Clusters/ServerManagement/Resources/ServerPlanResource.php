@@ -59,18 +59,20 @@ class ServerPlanResource extends Resource
                 Section::make('Server Plan Information')
                     ->schema([
                         TextInput::make('name')
-                            ->required()
-                            ->maxLength(255)
-                            ->live(onBlur: true)
-                            ->afterStateUpdated(function (string $operation, $state, Set $set) {
-                                if ($operation === 'create') {
-                                    $set('slug', Str::slug($state));
-                                }
-                            }),
-                        TextInput::make('slug')
-                            ->required()
-                            ->disabled()
-                            ->unique(ServerPlan::class, 'slug', ignoreRecord: true),
+                                ->required()
+                                ->maxLength(255)
+                                ->live(onBlur: true)
+                                ->afterStateUpdated(function (string $operation, $state, Set $set) {
+                                    if ($operation === 'create') {
+                                        $set('slug', Str::slug($state));
+                                    }
+                                }),
+
+                            TextInput::make('slug')
+                                ->required()
+                                ->disabled()
+                                ->unique(ServerCategory::class, 'slug', ignoreRecord: true),
+
                         TextInput::make('price')
                             ->required()
                             ->numeric()
@@ -101,9 +103,10 @@ class ServerPlanResource extends Resource
                     ]),
                 Section::make('Product Image')
                     ->schema([
-                            Forms\Components\FileUpload::make('product_image')
-                                ->image()
-                                ->columnSpan(2),
+                        Forms\Components\FileUpload::make('product_image')
+                            ->image()
+                            ->columnSpan(2)
+                            ->directory('server_plans')
                         ]),
             ])
             ->columnSpan(2),

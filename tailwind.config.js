@@ -7,6 +7,9 @@ export default {
         './resources/views/**/*.blade.php',
         './vendor/filament/**/*.blade.php',
         'node_modules/preline/dist/*.js',
+        './resources/views/**/*.blade.php',
+        './resources/views/*.blade.php',
+        './resources/js/**/*.js',
 
     ],
     theme: {

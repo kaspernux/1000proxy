@@ -26,7 +26,7 @@ Route::get('/', HomePage::class);
 Route::get('/categories', CategoriesPage::class);
 Route::get('/servers', ProductsPage::class);
 Route::get('/cart', CartPage::class);
-Route::get('/servers/{server}', ProductDetailPage::class);
+Route::get('/servers/{slug}', ProductDetailPage::class);
 
 Route::get('/checkout', CheckoutPage::class);
 Route::get('/my-orders', MyOrdersPage::class);
