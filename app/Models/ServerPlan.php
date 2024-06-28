@@ -49,19 +49,9 @@ class ServerPlan extends Model
         });
     }
 
-    public function inbound(): BelongsTo
-    {
-        return $this->belongsTo(ServerInbound::class, 'server_inbound_id');
-    }
-
     public function brand(): BelongsTo
     {
         return $this->belongsTo(ServerBrand::class, 'server_brand_id');
-    }
-
-    public function clients(): HasMany
-    {
-        return $this->hasMany(ServerClient::class);
     }
 
     public function category(): BelongsTo
@@ -72,5 +62,14 @@ class ServerPlan extends Model
     public function orderItems(): HasMany
     {
         return $this->hasMany(OrderItem::class);
+    }
+    public function inbound(): BelongsTo
+    {
+        return $this->belongsTo(ServerInbound::class, 'server_inbound_id');
+    }
+
+    public function clients(): HasMany
+    {
+        return $this->hasMany(ServerClient::class);
     }
 }

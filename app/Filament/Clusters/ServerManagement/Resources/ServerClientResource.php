@@ -10,7 +10,7 @@ use Filament\Forms\Form;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
-use Filament\Forms\Components\MarkdownEditor;
+use Filament\Forms\Components\RichEditor;
 
 
 class ServerClientResource extends Resource
@@ -40,7 +40,7 @@ class ServerClientResource extends Resource
                                     ->label('Name')
                                     ->required()
                                     ->maxLength(255),
-                                Forms\Components\MarkdownEditor::make('description')
+                                Forms\Components\RichEditor::make('description')
                                     ->label('Description')
                                     ->columnSpanFull(),
                             ])->columns(1),

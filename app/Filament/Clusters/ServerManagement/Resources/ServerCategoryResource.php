@@ -3,6 +3,7 @@
 namespace App\Filament\Clusters\ServerManagement\Resources;
 
 use App\Filament\Clusters\ServerManagement;
+use App\Filament\Clusters\ServerManagement\Resources\ServerCategoryResource;
 use App\Filament\Clusters\ServerManagement\Resources\ServerCategoryResource\Pages;
 use App\Filament\Clusters\ServerManagement\Resources\ServerCategoryResource\RelationManagers;
 use App\Models\ServerCategory;
@@ -15,7 +16,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\SoftDeletingScope;
 
 use Illuminate\Support\Str;
-use Filament\Forms\Components\MarkdownEditor;
+use Filament\Forms\Components\RichEditor;
 use Filament\Forms\Components\Section;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;

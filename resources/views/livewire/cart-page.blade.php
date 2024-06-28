@@ -1,4 +1,5 @@
-<div class="w-full bg-gradient-to-r from-green-900 to-green-600 py-12 px-6 sm:px-8 lg:px-10 mx-auto max-w-[auto] flex justify-center">
+<div
+    class="w-full bg-gradient-to-r from-green-900 to-green-600 py-12 px-6 sm:px-8 lg:px-10 mx-auto max-w-[auto] flex justify-center">
     <div class="container mx-auto px-4 max-w-7xl">
         <h1 class="text-4xl my-10 font-bold text-white text-left">Shopping Cart</h1>
         <div class="flex flex-col md:flex-row gap-4">
@@ -15,28 +16,39 @@
                             </tr>
                         </thead>
                         <tbody>
-                            <tr>
+                            @forelse ($order_items as $item)
+                            <tr wire:key='{{ $item['server_plan_id'] }}'>
                                 <td class="py-4">
                                     <div class="flex items-center">
-                                        <img class="h-16 w-16 mr-4" src="https://via.placeholder.com/150"
-                                            alt="Product image">
-                                        <span class="font-semibold">Product name</span>
+                                        <img class="h-16 w-16 mr-4" src="{{ url('storage/' . $item['product_image']) }}"
+                                            alt="{{ $item['name'] }}">
+                                        <span class="font-semibold">{{ $item['name'] }}</span>
                                     </div>
                                 </td>
-                                <td class="py-4">$19.99</td>
+                                <td class="py-4">{{ Number::currency($item['price']) }}</td>
                                 <td class="py-4">
                                     <div class="flex items-center">
-                                        <button class="border rounded-md py-2 px-4 mr-2">-</button>
-                                        <span class="text-center w-8">1</span>
-                                        <button class="border rounded-md py-2 px-4 ml-2">+</button>
+                                        <button wire:click='decreaseQty({{ $item['server_plan_id'] }})'
+                                            class="border rounded-md py-2 px-4 mr-2">-</button>
+                                        <span class="text-center w-8">{{ $item['quantity'] }}</span>
+                                        <button wire:click='increaseQty({{ $item['server_plan_id'] }})'
+                                            class="border rounded-md py-2 px-4 ml-2">+</button>
                                     </div>
                                 </td>
-                                <td class="py-4">$19.99</td>
-                                <td><button
-                                        class="bg-green-400 border-2 border-green-600 rounded-lg px-3 py-1 hover:bg-red-500 hover:text-white hover:border-yellow-600">Remove</button>
+                                <td class="py-4">{{ Number::currency($item['total_amount']) }}</td>
+                                <td>
+                                    <button wire:click='removeItem({{ $item['server_plan_id'] }})'
+                                        class="bg-green-400 border-2 border-green-600 rounded-lg px-3 py-1 hover:bg-red-500 hover:text-white hover:border-yellow-600">
+                                        <span wire:loading.remove wire:target='removeItem({{ $item['server_plan_id'] }})'>Remove</span>
+                                        <span wire:loading wire:target='removeItem({{ $item['server_plan_id'] }})'>Removing...</span>
+                                    </button>
                                 </td>
                             </tr>
-                            <!-- More product rows -->
+                            @empty
+                            <tr>
+                                <td colspan="5" class="text-center py-4 text-4xl font-bold text-mono">No items available in cart</td>
+                            </tr>
+                            @endforelse
                         </tbody>
                     </table>
                 </div>
@@ -46,22 +58,25 @@
                     <h2 class="text-lg font-semibold mb-4">Summary</h2>
                     <div class="flex justify-between mb-2">
                         <span>Subtotal</span>
-                        <span>$19.99</span>
+                        <span>{{ Number::currency($grand_amount) }}</span>
                     </div>
                     <div class="flex justify-between mb-2">
                         <span>Taxes</span>
-                        <span>$1.99</span>
+                        <span>{{ Number::currency(0) }}</span>
                     </div>
                     <div class="flex justify-between mb-2">
                         <span>Shipping</span>
-                        <span>$0.00</span>
+                        <span>{{ Number::currency(0) }}</span>
                     </div>
                     <hr class="my-2">
                     <div class="flex justify-between mb-2">
                         <span class="font-semibold">Total</span>
-                        <span class="font-semibold">$21.98</span>
+                        <span class="font-semibold">{{ Number::currency($grand_amount) }}</span>
                     </div>
-                    <button class="bg-yellow-600 hover:bg-green-400 text-white py-2 px-4 rounded-lg mt-4 w-full">Checkout</button>
+                    @if ($order_items)
+                    <a href="/checkout"
+                        class="bg-yellow-600 block text-center hover:bg-green-400 text-white py-2 px-4 rounded-lg mt-4 w-full">Checkout</a>
+                    @endif
                 </div>
             </div>
         </div>

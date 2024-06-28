@@ -11,7 +11,7 @@ use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
 use Illuminate\Support\Str;
-use Filament\Forms\Components\MarkdownEditor;
+use Filament\Forms\Components\RichEditor;
 use Filament\Forms\Components\Section;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
@@ -80,7 +80,7 @@ class ServerResource extends Resource
                     ])->columns(2),
 
                     Section::make('Description')->schema([
-                        Forms\Components\MarkdownEditor::make('description')
+                        Forms\Components\RichEditor::make('description')
                             ->fileAttachmentsDirectory('servers'),
                     ]),
                 ])->columnSpan(2),

@@ -4,6 +4,8 @@ namespace App\Livewire;
 
 use Livewire\Component;
 
+#[Title('Order Detail - 1000 PROXIES')]
+
 class MyOrderDetailPage extends Component
 {
     public function render()

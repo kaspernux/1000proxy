@@ -3,7 +3,7 @@
         <div class="grid sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-4 sm:gap-6">
             @foreach($categories as $serverCategory)
             <a class="group flex flex-col justify-center items-left border-transparent bg-dark-green hover:bg-green-400 hover:text-green-900 disabled:opacity-50 disabled:pointer-events-none dark:focus:ring-green-600 border shadow-sm rounded-xl hover:shadow-md transition dark:bg-dark-green dark:border-gray-800 dark:focus:outline-none dark:focus:ring-1"
-                href="#" wire:key="{{ $serverCategory->id }}">
+                href="/servers?selected_categories[0]={{ $serverCategory->id }}" wire:key="{{ $serverCategory->id }}">
                 <div class="p-4 md:p-5">
                     <div class="flex justify-between items-center">
                         <div class="flex items-center">

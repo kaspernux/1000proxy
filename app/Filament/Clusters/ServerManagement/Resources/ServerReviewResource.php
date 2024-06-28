@@ -13,7 +13,7 @@ use Filament\Tables;
 use Filament\Tables\Table;
 use Filament\Forms\Components\Section;
 use Filament\Forms\Components\Group;
-use Filament\Forms\Components\MarkdownEditor;
+use Filament\Forms\Components\RichEditor;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\SoftDeletingScope;
 
@@ -39,7 +39,7 @@ class ServerReviewResource extends Resource
                 Forms\Components\Group::make([
                     Forms\Components\Section::make('Review Details')
                         ->schema([
-                            Forms\Components\MarkdownEditor::make('comments')
+                            Forms\Components\RichEditor::make('comments')
                                 ->columnSpanFull()
                                 ->fileAttachmentsDirectory('ServerReview'),
                         ]),

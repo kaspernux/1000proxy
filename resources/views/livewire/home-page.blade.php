@@ -194,7 +194,7 @@
             <div class="grid sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
                 @foreach($categories as $serverCategory)
                 <a class="group flex flex-col justify-center items-center border-transparent bg-dark-green hover:bg-green-400 hover:text-green-900 disabled:opacity-50 disabled:pointer-events-none dark:focus:ring-green-600 border shadow-sm rounded-xl hover:shadow-md transition dark:bg-dark-green dark:border-gray-800 dark:focus:outline-none dark:focus:ring-1"
-                    href="#" wire:key="{{$serverCategory->id}}">
+                    href="/servers?selected_categories[0]={{ $serverCategory->id }}" wire:key="{{$serverCategory->id}}">
                     <div class="p-4 md:p-5">
                         <div class="flex justify-between items-center">
                             <div class="flex items-center">
@@ -247,7 +247,7 @@
                 @foreach ($brands as $serverBrand)
                 <div class="py-6 px-4 justify-center items-center rounded-lg border border-transparent bg-dark-green hover:bg-green-400 hover:text-green-900 disabled:opacity-50 disabled:pointer-events-none dark:focus:outline-none dark:focus:ring-1 dark:focus:ring-green-600"
                     wire:key="{{ $serverBrand->id }}">
-                    <a href="#" class="block">
+                    <a href="/servers?selected_brands[0]={{ $serverBrand->id }}" class="block">
                         <img src="{{ url('storage/'.$serverBrand->image) }}" alt="{{ $serverBrand->name }}"
                             class="object-cover w-full h-full max-w-full max-h-full my-3 px-3 rounded-t-lg">
                     </a>

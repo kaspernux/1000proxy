@@ -17,7 +17,7 @@ use Filament\Forms\Components\Section;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Group;
 use Filament\Forms\Components\FileUpload;
-use Filament\Forms\Components\MarkdownEditor;
+use Filament\Forms\Components\RichEditor;
 use Filament\Forms\Components\Toggle;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Set;
@@ -71,7 +71,7 @@ class ServerPlanResource extends Resource
                             TextInput::make('slug')
                                 ->required()
                                 ->disabled()
-                                ->unique(ServerCategory::class, 'slug', ignoreRecord: true),
+                                ->unique(ServerPlan::class, 'slug', ignoreRecord: true),
 
                         TextInput::make('price')
                             ->required()
@@ -96,10 +96,27 @@ class ServerPlanResource extends Resource
 
                 Section::make('Description')
                     ->schema([
-                        MarkdownEditor::make('description')
+                        RichEditor::make('description')
                             ->label('')
                             ->fileAttachmentsDirectory('serverPlans')
-                            ->columnSpanFull(),
+                            ->columnSpanFull()
+                            ->toolbarButtons([
+                                'attachFiles',
+                                'blockquote',
+                                'bold',
+                                'textColor',
+                                'bulletList',
+                                'codeBlock',
+                                'h2',
+                                'h3',
+                                'italic',
+                                'link',
+                                'orderedList',
+                                'redo',
+                                'strike',
+                                'underline',
+                                'undo',
+                            ]),
                     ]),
                 Section::make('Product Image')
                     ->schema([

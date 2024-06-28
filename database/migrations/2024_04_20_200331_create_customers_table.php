@@ -18,13 +18,14 @@ return new class extends Migration
             $table->string('image')->nullable();
             $table->string('name');
             $table->string('email')->unique();
+            $table->string('password');
             $table->string('telegram_id')->nullable();
-            $table->string('refcode', 50);
+            $table->string('refcode', 50)->nullable();
             $table->integer('wallet')->default(0);
-            $table->string('date', 50);
+            $table->string('date', 50)->nullable();
             $table->string('phone', 15)->nullable();
             $table->unsignedBigInteger('refered_by')->nullable();
-            $table->string('step', 1000)->default('none');
+            $table->string('step', 1000)->default('none')->nullable();
             $table->string('freetrial', 10)->nullable();
             $table->string('first_start', 10)->nullable();
             $table->text('temp')->nullable();
