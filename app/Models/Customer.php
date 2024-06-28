@@ -3,15 +3,14 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Relations\HasMany;
-use Illuminate\Notifications\Notifiable;
 use Illuminate\Foundation\Auth\User as Authenticatable;
-use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Notifications\Notifiable;
 
 class Customer extends Authenticatable
 {
     use HasFactory, Notifiable;
+
+    protected $guard = 'customer'; // Ensure the correct guard is set
 
     protected $table = 'customers';
 
@@ -37,54 +36,53 @@ class Customer extends Authenticatable
         'spam_info'
     ];
 
-    public function orders(): HasMany
+    // Define relationships
+    public function orders()
     {
         return $this->hasMany(Order::class);
     }
 
-    public function invoices(): HasMany
+    public function invoices()
     {
         return $this->hasMany(Invoice::class);
     }
 
-    public function reviews(): HasMany
+    public function reviews()
     {
         return $this->hasMany(ServerReview::class);
     }
 
-    public function ratings(): HasMany
+    public function ratings()
     {
         return $this->hasMany(ServerRating::class);
     }
 
-    public function items(): HasMany
+    public function items()
     {
         return $this->hasMany(OrderItem::class);
     }
 
-    public function paymentMethods(): HasMany
+    public function paymentMethods()
     {
         return $this->hasMany(PaymentMethod::class);
     }
 
-    // Define the relationship indicating the customer who referred this customer
-    public function referrer(): BelongsTo
+    public function referrer()
     {
         return $this->belongsTo(Customer::class, 'refered_by');
     }
 
-    // Define the relationship indicating customers referred by this customer
-    public function referredCustomers(): HasMany
+    public function referredCustomers()
     {
         return $this->hasMany(Customer::class, 'refered_by');
     }
 
-    public function clients(): HasMany
+    public function clients()
     {
         return $this->hasMany(ServerClient::class, 'refered_by');
     }
 
-    public function traffics(): HasMany
+    public function traffics()
     {
         return $this->hasMany(ClientTraffic::class);
     }

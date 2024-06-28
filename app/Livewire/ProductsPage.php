@@ -18,7 +18,6 @@ class ProductsPage extends Component
     use WithPagination;
     use LivewireAlert;
 
-
     #[Url]
     public $selected_categories = [];
 
@@ -59,6 +58,13 @@ class ProductsPage extends Component
             'toast' => true,
             'timerProgressBar' => true,
         ]);
+    }
+
+    // Apply filters method
+    public function applyFilters()
+    {
+        // Trigger re-render with updated filters
+        $this->render();
     }
 
     public function render()

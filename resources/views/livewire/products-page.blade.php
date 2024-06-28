@@ -105,7 +105,7 @@
 
                     <!-- Apply Filters Button -->
                     <div class="p-4 mb-5">
-                        <button wire:click="applyFilters"
+                        <button wire:click='applyFilters'
                             class="inline-flex justify-center w-full gap-2 py-2 border-2 border-double border-yellow-600 text-lg font-bold text-white bg-green-900 rounded-md shadow-sm hover:bg-yellow-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-yellow-600 dark:bg-green-900 dark:hover:bg-yellow-600 dark:focus:ring-offset-green-900 dark:text-green-900">
                             Search
                         </button>

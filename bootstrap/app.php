@@ -11,7 +11,7 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware) {
-        //
+        // You can use append here if you want to add it to the global middleware stack
     })
     ->withExceptions(function (Exceptions $exceptions) {
         //

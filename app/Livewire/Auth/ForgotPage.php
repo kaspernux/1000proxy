@@ -37,11 +37,11 @@ class ForgotPage extends Component
     {
         // Check if the email belongs to a User
         if (User::where('email', $this->email)->exists()) {
-            return 'customers';
+            return 'users';
         }
 
         // Otherwise, assume it belongs to a Customer
-        return 'users';
+        return 'customers';
     }
 
     public function render()
