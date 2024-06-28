@@ -20,8 +20,9 @@
 
                     <!-- Flash Message -->
                     @if (session()->has('error'))
-                    <div class="bg-red-500 text-white p-3 rounded mb-4">
-                        {{ session('error') }}
+                    <div class="mt-2 bg-red-400 border mb-4 border-red-600 text-sm text-red-800 rounded-lg p-4 dark:bg-red-800/10 dark:border-red-900 dark:text-red-500"
+                        role="alert">
+                        {{session('error')}}
                     </div>
                     @endif
 
