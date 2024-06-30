@@ -1,6 +1,7 @@
 <?php
 
 use Illuminate\Foundation\Application;
+use App\Http\Middleware\RedirectIfCustomer;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
 
@@ -11,7 +12,7 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware) {
-        // You can use append here if you want to add it to the global middleware stack
+        $middleware->append(RedirectIfCustomer::class);
     })
     ->withExceptions(function (Exceptions $exceptions) {
         //

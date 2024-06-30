@@ -18,11 +18,12 @@ use Illuminate\Session\Middleware\AuthenticateSession;
 use Illuminate\Session\Middleware\StartSession;
 use Illuminate\View\Middleware\ShareErrorsFromSession;
 use App\Filament\Clusters\ProxyShop\Resources\OrderResource\Widgets\OrderStats;
+use App\Http\Middleware\RedirectIfCustomer;
 
 class AdminPanelProvider extends PanelProvider
-    {
+{
     public function panel(Panel $panel): Panel
-        {
+    {
         return $panel
             ->default()
             ->id('admin')
@@ -56,10 +57,10 @@ class AdminPanelProvider extends PanelProvider
                 SubstituteBindings::class,
                 DisableBladeIconComponents::class,
                 DispatchServingFilamentEvent::class,
+                RedirectIfCustomer::class, // Redirect Customer to Product page
             ])
             ->authMiddleware([
                 Authenticate::class,
             ]);
-
-   }
     }
+}
