@@ -13,12 +13,9 @@ return new class extends Migration
     {
         Schema::create('payment_methods', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('customer_id')->constrained()->onDelete('cascade');
             $table->string('name');
-            $table->text('details')->nullable();
-            $table->boolean('is_default')->default(false);
-            $table->date('expiration_date')->nullable();
-            $table->text('billing_address')->nullable();
+            $table->string('image')->nullable();
+            $table->text('notes')->nullable();
             $table->string('type')->nullable(); // Type of payment method (e.g., Credit Card, PayPal, Bitcoin, Ethereum)
             $table->boolean('is_active')->default(true);
             $table->timestamps();

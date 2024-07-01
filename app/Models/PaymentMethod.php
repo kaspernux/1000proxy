@@ -14,13 +14,10 @@ class PaymentMethod extends Model
     protected $table = 'payment_methods';
 
     protected $fillable = [
-        'customer_id',
+        'image',
         'name',
-        'details',
-        'is_default',
-        'expiration_date',
-        'billing_address',
         'type',
+        'notes',
         'is_active',
     ];
 
@@ -29,10 +26,10 @@ class PaymentMethod extends Model
         return $this->belongsTo(Customer::class);
     }
 
-    public function orders(): HasMany
+    /* public function orders(): HasMany
     {
         return $this->hasMany(Order::class);
-    }
+    } */
 
     public function invoices(): HasMany
     {

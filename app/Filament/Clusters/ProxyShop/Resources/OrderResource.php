@@ -146,7 +146,7 @@ class OrderResource extends Resource
                                         'rub' => '₽',
                                         'xmr' => 'ɱ',
                                         'btc' => '₿',
-                                        'others' => '',
+                                        'stripe' => '$',
                                     ];
 
                                     $decimalPlaces = in_array($currency, ['btc', 'xmr']) ? 8 : 2;
@@ -165,13 +165,19 @@ class OrderResource extends Resource
                                     'rub' => 'RUB',
                                     'xmr' => 'XMR',
                                     'btc' => 'BTC',
-                                    'others' => 'Others',
+                                    'stripe' => 'USD',
                                 ])
                                 ->reactive(),
 
-                            Select::make('payment_method_id')
+                            Select::make('payment_method')
+                                ->options([
+                                    'stripe' => 'Stripe',
+                                    'btc' => 'Bitcoin',
+                                    'xmr' => 'Monero',
+                                    'rub' => 'Ruble',
+                                    'usd' => 'USD',
+                                ])
                                 ->label('Payment Method')
-                                ->relationship('paymentMethod', 'name')
                                 ->searchable()
                                 ->preload()
                                 ->required()
@@ -256,8 +262,9 @@ class OrderResource extends Resource
                     ->searchable()
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),
-                Tables\Columns\TextColumn::make('paymentMethod.name')
+                Tables\Columns\TextColumn::make('payment_method')
                     ->label('Payment Method')
+                    ->searchable()
                     ->sortable(),
                 Tables\Columns\SelectColumn::make('payment_status')
                     ->searchable()

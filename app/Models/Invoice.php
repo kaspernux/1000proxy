@@ -20,25 +20,20 @@ class Invoice extends Model
     protected $table = 'invoices';
 
     protected $fillable = [
+        'payment_method_id',
         'order_id',
-        'customer_id',
-        'hash_id',
-        'description',
-        'type',
-        'volume',
-        'day',
-        'amount',
-        'tron_price',
-        'request_date',
-        'state',
-        'agent_bought',
-        'agent_count',
+        'order_description',
+        'price_amount',
+        'price_currency',
+        'pay_currency',
+        'ipn_callback_url',
+        'invoice_url',
+        'success_url',
+        'cancel_url',
+        'partially_paid_url',
+        'is_fixed_rate',
+        'is_fee_paid_by_user',
     ];
-
-    public function customer(): BelongsTo
-    {
-        return $this->belongsTo(Customer::class, 'customer_id');
-    }
 
     public function order(): BelongsTo
     {
@@ -50,9 +45,9 @@ class Invoice extends Model
         return $this->belongsTo(ServerPlan::class, 'server_plan_id');
     }
 
-    public function paymentMethods(): HasMany
+    public function paymentMethod(): BelongsTo
     {
-        return $this->hasMany(PaymentMethod::class);
+        return $this->belongsTo(PaymentMethod::class);
     }
 
     public function orderItems(): HasMany

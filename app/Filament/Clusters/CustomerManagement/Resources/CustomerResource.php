@@ -19,6 +19,7 @@ use Filament\Forms\Components\RichEditor;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\SoftDeletingScope;
 use Illuminate\Contracts\Support\Htmlable;
+use App\Models\PaymentMethod;
 
 
 class CustomerResource extends Resource

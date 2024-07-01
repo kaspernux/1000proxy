@@ -20,10 +20,8 @@ class Order extends Model
         'customer_id',
         'grand_amount',
         'currency',
-        'payment_method_id',
         'payment_status',
         'order_status',
-        'order_date',
         'notes',
     ];
 
@@ -37,10 +35,10 @@ class Order extends Model
         return $this->hasMany(OrderItem::class);
     }
 
-    public function paymentMethod(): BelongsTo
+    /* public function paymentMethod(): BelongsTo
     {
         return $this->belongsTo(PaymentMethod::class);
-    }
+    } */
 
     public function invoice(): HasOne
     {

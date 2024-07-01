@@ -47,86 +47,66 @@ class InvoiceResource extends Resource
                 Group::make([
                     Section::make('Financial Details')
                         ->schema([
-                            TextInput::make('amount')
+                            TextInput::make('price_amount')
                                 ->required()
                                 ->numeric()
                                 ->prefix('$'),
-
-                            TextInput::make('tron_price')
+                            TextInput::make('price_currency')
+                                ->required()
                                 ->numeric(),
+                            TextInput::make('pay_currency')
+                                ->required(),
                         ])->columns(2),
 
                     Section::make('Invoice Details')
                         ->schema([
-                            TextInput::make('hash_id')
-                                ->required()
-                                ->maxLength(255),
+                            TextInput::make('customer_id')
+                                ->relationship('customer', 'name')
+                                ->required(),
 
-                            TextInput::make('type')
-                                ->maxLength(255),
+                                TextInput::make('order_description')
+                                ->required(),
 
-                            TextInput::make('volume')
-                                ->numeric(),
-
-                            TextInput::make('day')
-                                ->numeric(),
-
-                            RichEditor::make('description')
-                                ->columnSpanFull()
-                                ->fileAttachmentsDirectory('Invoices'),
-                        ])->columns(2)
-                ])->columnSpan(2),
-
-                Group::make([
-                    Section::make('Order Information')
-                        ->schema([
-                            DatePicker::make('request_date')
-                            ->label('Date'),
-                            Select::make('order_id')
+                            TextInput::make('order_id')
                                 ->relationship('order', 'id')
                                 ->required(),
 
-                            Select::make('customer_id')
-                                ->relationship('customer', 'name')
+                            TextInput::make('payment_method_id')
+                                ->relationship('order', 'id')
                                 ->required(),
-                        ])->columns(1),
-
-                    Section::make('Agent Details')
-                        ->schema([
-                            Toggle::make('agent_bought')
-                                ->required()
-                                ->default(false),
-
-                            Toggle::make('agent_count')
-                                ->required()
-                                ->default(false)
                         ])->columns(2),
 
-                        Section::make('Agent Details')
+                ])->columnSpan(2),
+
+                Group::make([
+                    Section::make('Payment Status URLs')
                         ->schema([
-                            ToggleButtons::make('state')
+                            TextInput::make('ipn_callback_url')
+                                ->required(),
+
+                            TextInput::make('invoice_url')
+                                ->required(),
+
+                            TextInput::make('success_url')
+                                ->required(),
+
+                            TextInput::make('cancel_url')
+                                ->nullable(),
+
+                            TextInput::make('partially_paid_url')
+                                ->nullable(),
+                        ])->columns(2),
+
+                    Section::make('Rate & Commissions')
+                        ->schema([
+                            Toggle::make('is_fixed_rate')
                                 ->required()
-                                ->options([
-                                    'new' => 'New',
-                                    'failed' => 'Failed',
-                                    'processing' => 'Processing',
-                                    'completed' => 'Completed',
-                                ])
-                                ->colors([
-                                    'new' => 'info',
-                                    'processing' => 'warning',
-                                    'completed' => 'success',
-                                    'failed' => 'danger',
-                                ])
-                                ->icons([
-                                    'new' => 'heroicon-o-sparkles',
-                                    'processing' => 'heroicon-o-arrow-path',
-                                    'completed' => 'heroicon-o-check-badge',
-                                    'failed' => 'heroicon-o-eye',
-                                ])
-                                ->columns(2)
-                                ->default('new'),
-                            ])
+                                ->default(true),
+
+                            Toggle::make('is_fee_paid_by_user')
+                                ->required()
+                                ->default(true),
+                        ]),
                 ])->columnSpan(1),
             ])->columns(3);
     }
@@ -135,43 +115,61 @@ class InvoiceResource extends Resource
     {
         return $table
             ->columns([
-                Tables\Columns\TextColumn::make('order.id')
+                TextColumn::make('paymentMethod.name')
                     ->numeric()
                     ->sortable(),
-                Tables\Columns\TextColumn::make('customer.name')
+                TextColumn::make('order.id')
                     ->numeric()
                     ->sortable(),
-                Tables\Columns\TextColumn::make('hash_id')
-                    ->searchable(),
-                Tables\Columns\TextColumn::make('type')
-                    ->searchable(),
-                Tables\Columns\TextColumn::make('volume')
+
+                TextColumn::make('order_description')
+                    ->sortable(),
+
+                TextColumn::make('price_amount')
+                    ->numeric()
+                    ->sortable()
+                    ->money('USD'),
+
+                TextColumn::make('price_currency')
                     ->numeric()
                     ->sortable(),
-                Tables\Columns\TextColumn::make('day')
-                    ->numeric()
+
+                TextColumn::make('pay_currency')
                     ->sortable(),
-                Tables\Columns\TextColumn::make('amount')
-                    ->numeric()
+
+                TextColumn::make('ipn_callback_url')
+                    ->sortable()
+                    ->toggleable(isToggledHiddenByDefault: true),
+
+                TextColumn::make('invoice_url')
                     ->sortable(),
-                Tables\Columns\TextColumn::make('tron_price')
-                    ->numeric()
-                    ->sortable(),
-                Tables\Columns\TextColumn::make('request_date')
-                    ->date()
-                    ->sortable(),
-                Tables\Columns\TextColumn::make('state'),
-                Tables\Columns\TextColumn::make('agent_bought')
-                    ->numeric()
-                    ->sortable(),
-                Tables\Columns\TextColumn::make('agent_count')
-                    ->numeric()
-                    ->sortable(),
-                Tables\Columns\TextColumn::make('created_at')
+
+                TextColumn::make('success_url')
+                    ->sortable()
+                    ->toggleable(isToggledHiddenByDefault: true),
+
+                TextColumn::make('cancel_url')
+                    ->sortable()
+                    ->toggleable(isToggledHiddenByDefault: true),
+
+                TextColumn::make('partially_paid_url')
+                    ->sortable()
+                    ->toggleable(isToggledHiddenByDefault: true),
+
+                TextColumn::make('is_fixed_rate')
+                    ->sortable()
+                    ->toggleable(isToggledHiddenByDefault: true),
+
+                TextColumn::make('is_fee_paid_by_user')
+                    ->sortable()
+                    ->toggleable(isToggledHiddenByDefault: true),
+
+                TextColumn::make('created_at')
                     ->dateTime()
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),
-                Tables\Columns\TextColumn::make('updated_at')
+
+                TextColumn::make('updated_at')
                     ->dateTime()
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),

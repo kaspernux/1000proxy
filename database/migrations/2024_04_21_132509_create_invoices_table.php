@@ -15,19 +15,19 @@ class CreateInvoicesTable extends Migration
     {
         Schema::create('invoices', function (Blueprint $table) {
             $table->id();
+            $table->foreignId('payment_method_id')->constrained()->onDelete('cascade');
             $table->foreignId('order_id')->constrained()->onDelete('cascade');
-            $table->foreignId('customer_id')->constrained()->onDelete('cascade');
-            $table->string('hash_id')->unique();
-            $table->text('description')->nullable();
-            $table->string('type')->nullable();
-            $table->integer('volume')->nullable();
-            $table->integer('day')->nullable();
-            $table->decimal('amount', 15, 2);
-            $table->decimal('tron_price', 15, 2)->nullable();
-            $table->date('request_date')->nullable();
-            $table->enum('state', ['new','processing','completed','failed'])->default('new');
-            $table->integer('agent_bought')->nullable();
-            $table->integer('agent_count')->nullable();
+            $table->text('order_description')->nullable();
+            $table->decimal('price_amount', 15, 2);
+            $table->decimal('price_currency', 15, 2);
+            $table->string('pay_currency');
+            $table->string('ipn_callback_url');
+            $table->string('invoice_url');
+            $table->string('success_url');
+            $table->string('cancel_url')->nullable();
+            $table->string('partially_paid_url')->nullable();
+            $table->boolean('is_fixed_rate')->default(true);
+            $table->boolean('is_fee_paid_by_user')->default(true);
             $table->timestamps();
         });
     }
