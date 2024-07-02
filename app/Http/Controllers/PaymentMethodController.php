@@ -2,8 +2,10 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Order;
 use App\Models\Invoice;
 use Illuminate\Http\Request;
+use App\Models\PaymentMethod;
 use Illuminate\Support\Facades\Log;
 use App\Http\Controllers\Controller;
 
@@ -16,6 +18,15 @@ class PaymentMethodController extends Controller
     {
         $this->ipn_secret = env('NOWPAYMENTS_IPN_SECRET');
         $this->api_nowPay = env('NOWPAYMENTS_API_KEY');
+    }
+
+    public static function getPaymentMethods()
+    {
+        // Fetch all payment methods from the database
+        $paymentMethods = PaymentMethod::all();
+
+        // Return the payment methods
+        return $paymentMethods;
     }
 
 
@@ -62,72 +73,45 @@ class PaymentMethodController extends Controller
         // Set the API endpoint
         $url = 'https://api.nowpayments.io/v1/invoice';
 
-        // Get data from the request
-        $data = [
-            'price_amount' => $request->input('price_amount'),
-            'price_currency' => $request->input('price_currency'),
-            'order_id' => $request->input('order_id'),
-            'order_description' =>$request->input('order_description'),
-            'ipn_callback_url' => $request->input('ipn_callback_url'),
-            'success_url' => $request->input('success_url'),
-            'cancel_url' => $request->input('cancel_url'),
-            'partially_paid_url' => $request->input('partially_paid_url'),
-            'is_fixed_rate' => $request->input('is_fixed_rate'),
-            'is_fee_paid_by_user' => $request->input('is_fee_paid_by_user'),
-        ];
+        // Assuming you have an order and required parameters
+        $order = Order::find($request->order_id);
 
         // Initiate cURL session
-        $ch = curl_init();
-
-        // Set cURL options
-        curl_setopt($ch, CURLOPT_URL, $url);
-        curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
-        curl_setopt($ch, CURLOPT_POST, 1);
-        curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($data));
-        curl_setopt($ch, CURLOPT_HTTPHEADER, [
-            'x-api-key:'.env('NOWPAYMENTS_API_KEY'),
-            'Content-Type: application/json'
+        $response = Http::withHeaders([
+            'x-api-key' => env('NOWPAYMENTS_API_KEY'),
+            'Content-Type' => 'application/json',
+        ])->post('https://api.nowpayments.io/v1/invoice', [
+            'price_amount' => $order->total_price,
+            'price_currency' => 'usd',
+            'order_id' => $order->id,
+            'order_description' => $order->description,
+            'ipn_callback_url' => route('webhook.payment'),
+            'success_url' => route('success'),
+            'cancel_url' => route('cancel'),
         ]);
 
-        // Execute cURL request and get the response
-        $response = curl_exec($ch);
+        if ($response->successful()) {
 
-        // Check for cURL errors
-        if(curl_errno($ch)){
-            $error_msg = curl_error($ch);
-        }
+            $invoiceData = $response->json();
+            // Create and store the invoice
+            $invoice = new Invoice();
+            $invoice->order_id = $order->id;
+            $invoice->invoice_url = $invoiceData['invoice_url'];
+            $invoice->save();
 
-        // Close cURL session
-        curl_close($ch);
-
-        // If there was an error, return it
-        if (isset($error_msg)){
-            return response()->json(['error' => $error_msg], 500);
-        }
+            return response()->json(['message' => 'Invoice created successfully']);
+            }
 
         // Decode the JSON response
         $invoiceData = json_decode($response, true);
 
         // Check if the necessary keys exist in the response
         if (!isset($invoiceData['id'])) {
-            return response()->json(['error' => 'Invoice ID not found in response'], 500);
+            return response()->json(['message' => 'Failed to create invoice'], 500);
         }
 
         // Log the raw response for debugging
         Log::info('NowPayments response: ' . $response);
-
-        // Store the invoice in the database
-        $invoice = new Invoice();
-        $invoice->order_id = $invoiceData['id'] ?? null;
-        $invoice->order_description = $invoiceData['order_description'] ?? '';
-        $invoice->price_amount = $invoiceData['price_amount'] ?? 0;
-        $invoice->price_currency = $invoiceData['price_currency'] ?? '';
-        $invoice->pay_currency = $invoiceData['pay_currency'] ?? '';
-        $invoice->ipn_callback_url = $invoiceData['ipn_callback_url'] ?? '';
-        $invoice->invoice_url = $invoiceData['invoice_url'] ?? '';
-        $invoice->success_url = $invoiceData['success_url'] ?? '';
-        $invoice->cancel_url = $invoiceData['cancel_url'] ?? '';
-        $invoice->save();
 
         // Return the invoice data as JSON response
         return response()->json($invoiceData);

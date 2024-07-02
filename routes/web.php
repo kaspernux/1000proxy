@@ -1,6 +1,6 @@
 <?php
 
-use App\Http\Controllers\PaymentMethodController;
+use App\Models\Invoice;
 use App\Livewire\CartPage;
 use App\Livewire\HomePage;
 use App\Livewire\CancelPage;
@@ -14,8 +14,10 @@ use App\Livewire\Auth\ForgotPage;
 use App\Livewire\Auth\RegisterPage;
 use App\Livewire\MyOrderDetailPage;
 use App\Livewire\ProductDetailPage;
-use App\Livewire\Auth\ResetPasswordPage;
 use Illuminate\Support\Facades\Route;
+use App\Livewire\Auth\ResetPasswordPage;
+use App\Http\Middleware\RedirectIfCustomer;
+use App\Http\Controllers\PaymentMethodController;
 
 Route::get('/', HomePage::class);
 Route::get('/categories', CategoriesPage::class);
@@ -36,7 +38,7 @@ Route::middleware(['auth:web,customer'])->group(function () {
         return redirect('/');
     })->name('logout');
 
-    Route::get('/checkout/{orderId}', CheckoutPage::class)->name('checkout');
+    Route::get('/checkout', CheckoutPage::class)->name('checkout');
     Route::get('/my-orders', MyOrdersPage::class)->name('my.orders');
     Route::get('/my-orders/{order}', MyOrderDetailPage::class)->name('my.order.detail');
     Route::get('/success', SuccessPage::class)->name('success');
@@ -47,6 +49,7 @@ Route::middleware(['auth:web,customer'])->group(function () {
     Route::post('/create-invoice', [PaymentMethodController::class, 'createInvoice'])->name('create.invoice');
     Route::get('/payment-status/{payment_id}', [PaymentMethodController::class, 'getPaymentStatus'])->name('payment.status');
     Route::get('/payments', [PaymentMethodController::class, 'listPayments'])->name('payments');
+    Route::get('/invoice/{order}', [InvoiceController::class, 'show'])->name('invoice');
 
     Route::post('/callback_ipn/payment', [PaymentMethodController::class, 'handleWebhook'])->name('webhook.payment');
     Route::get('/partial/{order}', [PaymentMethodController::class, 'orderPartial'])->name('order.partial');

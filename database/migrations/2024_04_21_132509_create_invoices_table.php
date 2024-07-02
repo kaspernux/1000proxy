@@ -18,9 +18,9 @@ class CreateInvoicesTable extends Migration
             $table->foreignId('payment_method_id')->constrained()->onDelete('cascade');
             $table->foreignId('order_id')->constrained()->onDelete('cascade');
             $table->text('order_description')->nullable();
-            $table->decimal('price_amount', 15, 2);
-            $table->decimal('price_currency', 15, 2);
-            $table->string('pay_currency');
+            $table->decimal('price_amount', 10, 2); // Add this line
+            $table->string('price_currency', 10)->nullable();
+            $table->string('pay_currency', 10)->nullable();
             $table->string('ipn_callback_url');
             $table->string('invoice_url');
             $table->string('success_url');

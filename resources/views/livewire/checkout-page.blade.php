@@ -29,7 +29,7 @@
                                     id="name" type="text" wire:model="name" disabled>
                                 </input>
                                 @error('name')
-                                    <div class="text-red-600 text-sm">{{$message}}</div>
+                                <div class="text-red-600 text-sm">{{$message}}</div>
                                 @enderror
                             </div>
                             <div class="mt-4">
@@ -37,11 +37,11 @@
                                     Email
                                 </label>
                                 <input
-                                    class="w-full rounded-lg border py-2 px-3 dark:bg-gray-700 dark:text-white dark:border-none @error('name') border-red-600 @enderror"
+                                    class="w-full rounded-lg border py-2 px-3 dark:bg-gray-700 dark:text-white dark:border-none @error('email') border-red-600 @enderror"
                                     id="email" type="text" wire:model="email" disabled>
                                 </input>
                                 @error('email')
-                                    <div class="text-red-600 text-sm">{{$message}}</div>
+                                <div class="text-red-600 text-sm">{{$message}}</div>
                                 @enderror
                             </div>
                             <div class="mt-4">
@@ -49,11 +49,11 @@
                                     Phone
                                 </label>
                                 <input
-                                    class="w-full rounded-lg border py-2 px-3 dark:bg-gray-700 dark:text-white dark:border-none @error('name') border-red-600 @enderror"
+                                    class="w-full rounded-lg border py-2 px-3 dark:bg-gray-700 dark:text-white dark:border-none @error('phone') border-red-600 @enderror"
                                     id="phone" type="text" wire:model="phone">
                                 </input>
                                 @error('phone')
-                                    <div class="text-red-600 text-sm">{{$message}}</div>
+                                <div class="text-red-600 text-sm">{{$message}}</div>
                                 @enderror
                             </div>
                             <div class="mt-4">
@@ -61,11 +61,11 @@
                                     Telegram ID
                                 </label>
                                 <input
-                                    class="w-full rounded-lg border py-2 px-3 dark:bg-gray-700 dark:text-white dark:border-none @error('name') border-red-600 @enderror"
+                                    class="w-full rounded-lg border py-2 px-3 dark:bg-gray-700 dark:text-white dark:border-none @error('telegram_id') border-red-600 @enderror"
                                     id="telegram_id" type="text" wire:model="telegram_id">
                                 </input>
                                 @error('telegram_id')
-                                    <div class="text-red-600 text-sm">{{$message}}</div>
+                                <div class="text-red-600 text-sm">{{$message}}</div>
                                 @enderror
                             </div>
                         </div>
@@ -74,10 +74,10 @@
                             Select Payment Method
                         </div>
                         <ul class="grid w-full gap-6 md:grid-cols-2">
-                            @foreach($paymentMethods as $paymentMethod)
+                            @foreach($payment_methods as $paymentMethod)
                             <li>
                                 <input wire:model='selectedPaymentMethod' class="hidden peer" id="{{ $paymentMethod->id }}" type="radio"
-                                    value="{{ $paymentMethod->name }}" />
+                                    value="{{ $paymentMethod->id }}" />
                                 <label
                                     class="inline-flex items-center justify-between w-full p-5 text-gray-500 bg-white border border-gray-200 rounded-lg cursor-pointer dark:hover:text-gray-300 dark:border-gray-700 dark:peer-checked:text-blue-500 peer-checked:border-blue-600 peer-checked:text-blue-600 hover:text-gray-600 hover:bg-gray-100 dark:text-gray-400 dark:bg-gray-800 dark:hover:bg-gray-700"
                                     for="{{ $paymentMethod->id }}">
@@ -96,9 +96,8 @@
                                 </label>
                             </li>
                             @endforeach
-
                         </ul>
-                        @error('paymentMethod')
+                        @error('selectedPaymentMethod')
                         <div class="text-red-600 text-sm">{{$message}}</div>
                         @enderror
                     </div>
@@ -113,7 +112,7 @@
                                 Subtotal
                             </span>
                             <span>
-                                {{ Number::currency($grand_amount) }}
+                                {{ Number::currency($grand_amount ?? 0) }}
                             </span>
                         </div>
                         <div class="flex justify-between mb-2 font-bold">

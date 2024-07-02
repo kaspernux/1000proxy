@@ -16,8 +16,11 @@ return new class extends Migration
             $table->foreignId('customer_id')->constrained('customers')->onDelete('cascade');
             $table->decimal('grand_amount', 10, 2);
             $table->string('currency', 3);
+             $table->unsignedBigInteger('payment_method')->nullable();
+            $table->string('payment_method', 3);
             $table->enum('payment_status', ['pending','paid','failed'])->default('pending');
             $table->enum('order_status', ['new','processing','completed','dispute'])->default('new');
+            $table->string('payment_invoice_url')->nullable();
             $table->text('notes')->nullable();
             $table->timestamps();
         });

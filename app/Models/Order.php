@@ -2,12 +2,16 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Database\Eloquent\Relations\HasMany;
-use Illuminate\Database\Eloquent\Relations\HasOne;
+use App\Models\Invoice;
+use App\Models\Customer;
+use App\Models\OrderItem;
 use Illuminate\Support\Str;
+use App\Models\PaymentMethod;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\HasOne;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 
 class Order extends Model
 {
@@ -20,8 +24,10 @@ class Order extends Model
         'customer_id',
         'grand_amount',
         'currency',
+        'payment_method',
         'payment_status',
         'order_status',
+        'payment_invoice_url',
         'notes',
     ];
 
@@ -44,6 +50,5 @@ class Order extends Model
     {
         return $this->hasOne(Invoice::class);
     }
-
 
 }

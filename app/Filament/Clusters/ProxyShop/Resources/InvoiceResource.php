@@ -45,41 +45,18 @@ class InvoiceResource extends Resource
         return $form
             ->schema([
                 Group::make([
-                    Section::make('Financial Details')
+                    Section::make('Order Details')
                         ->schema([
-                            TextInput::make('price_amount')
-                                ->required()
-                                ->numeric()
-                                ->prefix('$'),
-                            TextInput::make('price_currency')
-                                ->required()
-                                ->numeric(),
-                            TextInput::make('pay_currency')
-                                ->required(),
-                        ])->columns(2),
-
-                    Section::make('Invoice Details')
-                        ->schema([
-                            TextInput::make('customer_id')
-                                ->relationship('customer', 'name')
-                                ->required(),
-
-                                TextInput::make('order_description')
-                                ->required(),
-
-                            TextInput::make('order_id')
+                            Select::make('order_id')
                                 ->relationship('order', 'id')
-                                ->required(),
+                                ->required()
+                                ->columns(1),
+                            TextInput::make('order_description')
+                                ->required()
+                                ->columnSpan(5),
+                        ])->columns(6),
 
-                            TextInput::make('payment_method_id')
-                                ->relationship('order', 'id')
-                                ->required(),
-                        ])->columns(2),
-
-                ])->columnSpan(2),
-
-                Group::make([
-                    Section::make('Payment Status URLs')
+                     Section::make('Payment Status URLs')
                         ->schema([
                             TextInput::make('ipn_callback_url')
                                 ->required(),
@@ -95,9 +72,30 @@ class InvoiceResource extends Resource
 
                             TextInput::make('partially_paid_url')
                                 ->nullable(),
+                        ])->columns(1),
+
+
+                ])->columnSpan(2),
+
+                Group::make([
+                    Section::make('Financial Details')
+                        ->schema([
+                            TextInput::make('price_amount')
+                                ->required()
+                                ->numeric()
+                                ->prefix('$'),
+                            TextInput::make('price_currency')
+                                ->required()
+                                ->maxLength(3),
+                            Select::make('payment_method_id')
+                                ->relationship('paymentMethod', 'name')
+                                ->required(),
+                            TextInput::make('pay_currency')
+                                ->required()
+                                ->maxLength(3),
                         ])->columns(2),
 
-                    Section::make('Rate & Commissions')
+                   Section::make('Rate & Commissions')
                         ->schema([
                             Toggle::make('is_fixed_rate')
                                 ->required()
@@ -116,10 +114,8 @@ class InvoiceResource extends Resource
         return $table
             ->columns([
                 TextColumn::make('paymentMethod.name')
-                    ->numeric()
                     ->sortable(),
                 TextColumn::make('order.id')
-                    ->numeric()
                     ->sortable(),
 
                 TextColumn::make('order_description')
