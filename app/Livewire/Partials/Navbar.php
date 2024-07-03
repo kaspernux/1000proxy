@@ -11,12 +11,13 @@ class Navbar extends Component
 {
     public $total_count = 0;
 
+    protected $listeners = ['update-cart-count' => 'updateCartCount'];
+
     public function mount()
     {
         $this->total_count = count(CartManagement::getCartItemsFromCookie());
     }
-
-    #[On('update-cart-count')]
+    #[On('updateCartCount')]
     public function updateCartCount($total_count)
     {
         $this->total_count = $total_count;

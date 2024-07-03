@@ -16,6 +16,7 @@ use App\Livewire\MyOrderDetailPage;
 use App\Livewire\ProductDetailPage;
 use Illuminate\Support\Facades\Route;
 use App\Livewire\Auth\ResetPasswordPage;
+use App\Http\Controllers\InvoiceController;
 use App\Http\Middleware\RedirectIfCustomer;
 use App\Http\Controllers\PaymentMethodController;
 
