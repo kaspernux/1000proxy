@@ -3,11 +3,10 @@
 namespace App\Http\Controllers;
 
 use App\Models\Order;
-use App\Models\Invoice;
-use Illuminate\Http\Request;
 use App\Models\PaymentMethod;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
-use App\Http\Controllers\Controller;
+use Illuminate\Support\Facades\Http;
 
 class PaymentMethodController extends Controller
 {
@@ -22,386 +21,86 @@ class PaymentMethodController extends Controller
 
     public static function getPaymentMethods()
     {
-        // Fetch all payment methods from the database
-        $paymentMethods = PaymentMethod::all();
-
-        // Return the payment methods
-        return $paymentMethods;
+        return PaymentMethod::all();
     }
 
-
-    public function getAvailableCurrencies()
+    public function createInvoiceNowPayments(Order $order)
     {
-        // Set the API endpoint
-        $url = 'https://api.nowpayments.io/v1/currencies';
-
-        // Initiate cURL session
-        $ch = curl_init();
-
-        // Set cURL options
-        curl_setopt($ch, CURLOPT_URL, $url);
-        curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
-        curl_setopt($ch, CURLOPT_HTTPHEADER, [
-            'x-api-key:'.env('NOWPAYMENTS_API_KEY')
-        ]);
-
-        // Execute cURL request and get the response
-        $response = curl_exec($ch);
-
-        // Check for cURL errors
-        if(curl_errno($ch)){
-            $error_msg = curl_error($ch);
-        }
-
-        // Close cURL session
-        curl_close($ch);
-
-        // If there was an error, return it
-        if (isset($error_msg)){
-            return response()->json(['error' => $error_msg], 500);
-        }
-
-        // Decode the JSON response
-        $currencies = json_decode($response, true);
-
-        // Return the currencies as JSON response
-        return response()->json($currencies);
-    }
-
-    public function createInvoice(Request $request)
-    {
-        // Set the API endpoint
-        $url = 'https://api.nowpayments.io/v1/invoice';
-
-        // Assuming you have an order and required parameters
-        $order = Order::find($request->order_id);
-
-        // Initiate cURL session
         $response = Http::withHeaders([
-            'x-api-key' => env('NOWPAYMENTS_API_KEY'),
+            'x-api-key' => $this->api_nowPay,
             'Content-Type' => 'application/json',
         ])->post('https://api.nowpayments.io/v1/invoice', [
-            'price_amount' => $order->total_price,
+            'price_amount' => $order->grand_amount,
             'price_currency' => 'usd',
-            'order_id' => $order->id,
-            'order_description' => $order->description,
-            'ipn_callback_url' => route('webhook.payment'),
-            'success_url' => route('success'),
-            'cancel_url' => route('cancel'),
+            'order_id' => (string) $order->id,
+            'order_description' => $order->notes,
+            'ipn_callback_url' => route('webhook.nowpay'),
+            'success_url' => route('success', ['order' => $order->id]),
+            'cancel_url' => route('cancel', ['order' => $order->id]),
         ]);
 
         if ($response->successful()) {
-
-            $invoiceData = $response->json();
-            // Create and store the invoice
-            $invoice = new Invoice();
-            $invoice->order_id = $order->id;
-            $invoice->invoice_url = $invoiceData['invoice_url'];
-            $invoice->save();
-
-            return response()->json(['message' => 'Invoice created successfully']);
-            }
-
-        // Decode the JSON response
-        $invoiceData = json_decode($response, true);
-
-        // Check if the necessary keys exist in the response
-        if (!isset($invoiceData['id'])) {
-            return response()->json(['message' => 'Failed to create invoice'], 500);
+            return [
+                'status' => 'success',
+                'data' => $response->json()
+            ];
+        } else {
+            Log::error('NowPayments response: ' . $response->status() . ' - ' . $response->body());
+            return [
+                'status' => 'error',
+                'message' => 'Failed to create invoice: ' . $response->body()
+            ];
         }
 
-        // Log the raw response for debugging
-        Log::info('NowPayments response: ' . $response);
-
-        // Return the invoice data as JSON response
-        return response()->json($invoiceData);
-    }
-
-    public function getPaymentStatus(Order $order)
-    {
-        // Set the API endpoint
-        $url = "https://api.nowpayments.io/v1/payment/{$order->payment_id}";
-
-        // Initiate cURL session
-        $ch = curl_init();
-
-        // Set cURL options
-        curl_setopt($ch, CURLOPT_URL, $url);
-        curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
-        curl_setopt($ch, CURLOPT_HTTPHEADER, [
-            'x-api-key: ' . env('NOWPAYMENTS_API_KEY'),
+        Log::info('NowPayments Request Payload:', [
+            'price_amount' => $order->grand_amount,
+            'price_currency' => 'usd',
+            'order_id' => $order->id,
+            'order_description' => $order->notes,
+            'ipn_callback_url' => route('webhook.nowpay'),
+            'success_url' => route('success', ['order' => $order->id]),
+            'cancel_url' => route('cancel', ['order' => $order->id]),
         ]);
 
-        // Execute cURL request and get the response
-        $response = curl_exec($ch);
-
-        // Check for cURL errors
-        if (curl_errno($ch)) {
-            $error_msg = curl_error($ch);
-        }
-
-        // Close cURL session
-        curl_close($ch);
-
-        // If there was an error, log and return it
-        if (isset($error_msg)) {
-            Log::error('cURL error: ' . $error_msg);
-            return response()->json(['error' => $error_msg], 500);
-        }
-
-        // Decode the JSON response
-        $paymentStatus = json_decode($response, true);
-
-        // Log the payment status
-        Log::info('Payment status:', $paymentStatus);
-
-        // Determine which view to return based on the payment status
-        switch ($paymentStatus['payment_status']) {
-            case 'finished':
-                return $this->orderSuccess($order);
-            case 'failed':
-            case 'expired':
-            case 'refunded':
-                return $this->orderCancel($order);
-            case 'partially_paid':
-                return $this->orderPartial($order);
-            default:
-                return response()->json(['status' => $paymentStatus['payment_status']], 200);
-        }
     }
 
-    public function orderSuccess(Order $order)
+    public function handleWebhookNowPayments(Request $request)
     {
-        // Handle order success logic here
-        Log::info('Order successful:', $order->toArray());
-
-        // Update order status
-        $order->status = 'successful';
-        $order->save();
-
-        // Additional logic for successful orders can be added here
-
-        return view('order.success', compact('order'));
-    }
-
-    public function orderCancel(Order $order)
-    {
-        // Handle order cancel logic here
-        Log::info('Order canceled:', $order->toArray());
-
-        // Update order status
-        $order->status = 'canceled';
-        $order->save();
-
-        // Additional logic for canceled orders can be added here
-
-        return view('order.cancel', compact('order'));
-    }
-
-    public function orderPartial(Order $order)
-    {
-        // Handle order partial payment logic here
-        Log::info('Order partially paid:', $order->toArray());
-
-        // Update order status
-        $order->status = 'partially_paid';
-        $order->save();
-
-        // Additional logic for partially paid orders can be added here
-
-        return view('order.partial', compact('order'));
-    }
-
-    public function updateMerchantEstimate($payment_id)
-    {
-        // Set the API endpoint
-        $url = "https://api.nowpayments.io/v1/payment/{$payment_id}/update-merchant-estimate";
-
-        // Initiate cURL session
-        $ch = curl_init();
-
-        // Set cURL options
-        curl_setopt($ch, CURLOPT_URL, $url);
-        curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
-        curl_setopt($ch, CURLOPT_POST, 1);
-        curl_setopt($ch, CURLOPT_HTTPHEADER, [
-            'x-api-key: ' . env('NOWPAYMENTS_API_KEY'),
-            'Content-Type: application/json',
-        ]);
-
-        // Execute cURL request and get the response
-        $response = curl_exec($ch);
-
-        // Check for cURL errors
-        if (curl_errno($ch)) {
-            $error_msg = curl_error($ch);
-        }
-
-        // Close cURL session
-        curl_close($ch);
-
-        // If there was an error, log and return it
-        if (isset($error_msg)) {
-            Log::error('cURL error: ' . $error_msg);
-            return response()->json(['error' => $error_msg], 500);
-        }
-
-        // Decode the JSON response
-        $estimateResponse = json_decode($response, true);
-
-        // Log the estimate response
-        Log::info('Estimate response:', $estimateResponse);
-
-        // Return the estimate response
-        return response()->json($estimateResponse);
-    }
-
-    public function getEstimatedPrice(Request $request)
-    {
-        // Get request parameters
-        $amount = $request->input('amount');
-        $currency_from = $request->input('currency_from');
-        $currency_to = $request->input('currency_to');
-
-        // Set the API endpoint
-        $url = "https://api.nowpayments.io/v1/estimate?amount={$amount}&currency_from={$currency_from}&currency_to={$currency_to}";
-
-        // Initiate cURL session
-        $ch = curl_init();
-
-        // Set cURL options
-        curl_setopt($ch, CURLOPT_URL, $url);
-        curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
-        curl_setopt($ch, CURLOPT_HTTPHEADER, [
-            'x-api-key: ' . env('NOWPAYMENTS_API_KEY'),
-        ]);
-
-        // Execute cURL request and get the response
-        $response = curl_exec($ch);
-
-        // Check for cURL errors
-        if (curl_errno($ch)) {
-            $error_msg = curl_error($ch);
-        }
-
-        // Close cURL session
-        curl_close($ch);
-
-        // If there was an error, log and return it
-        if (isset($error_msg)) {
-            Log::error('cURL error: ' . $error_msg);
-            return response()->json(['error' => $error_msg], 500);
-        }
-
-        // Decode the JSON response
-        $estimatePrice = json_decode($response, true);
-
-        // Log the estimated price
-        Log::info('Estimated price:', $estimatePrice);
-
-        // Return the estimated price response
-        return response()->json($estimatePrice);
-    }
-
-
-    public function listPayments(Request $request)
-    {
-        // Set the API endpoint
-        $url = 'https://api.nowpayments.io/v1/payment/';
-
-        // Prepare query parameters
-        $queryParams = http_build_query([
-            'limit' => $request->input('limit', 10),
-            'page' => $request->input('page', 0),
-            'sortBy' => $request->input('sortBy', 'created_at'),
-            'orderBy' => $request->input('orderBy', 'asc'),
-            'dateFrom' => $request->input('dateFrom'),
-            'dateTo' => $request->input('dateTo'),
-            'invoiceId' => $request->input('invoiceId'),
-        ]);
-
-        // Append query parameters to the URL
-        $url .= '?' . $queryParams;
-
-        // Initiate cURL session
-        $ch = curl_init();
-
-        // Set cURL options
-        curl_setopt($ch, CURLOPT_URL, $url);
-        curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
-        curl_setopt($ch, CURLOPT_HTTPHEADER, [
-            'x-api-key: ' . env('NOWPAYMENTS_API_KEY'),
-        ]);
-
-        // Execute cURL request and get the response
-        $response = curl_exec($ch);
-
-        // Check for cURL errors
-        if (curl_errno($ch)) {
-            $error_msg = curl_error($ch);
-        }
-
-        // Close cURL session
-        curl_close($ch);
-
-        // If there was an error, return it
-        if (isset($error_msg)) {
-            return response()->json(['error' => $error_msg], 500);
-        }
-
-        // Decode the JSON response
-        $payments = json_decode($response, true);
-
-        // Return the payments as JSON response
-        return response()->json($payments);
-    }
-
-    public function handleWebhook(Request $request)
-    {
-        // Log the incoming request for debugging
         Log::info('Webhook received:', $request->all());
-
-        // Check if the x-nowpayments-sig header is present
         if (!$request->hasHeader('x-nowpayments-sig')) {
             Log::error('No HMAC signature sent.');
             return response()->json(['error' => 'No HMAC signature sent.'], 400);
         }
 
-        $recived_hmac = $request->header('x-nowpayments-sig');
+        $received_hmac = $request->header('x-nowpayments-sig');
         $request_data = $request->all();
-
-        // Sort the request data by keys and convert it to a JSON string
         $this->tksort($request_data);
         $sorted_request_json = json_encode($request_data, JSON_UNESCAPED_SLASHES);
+        $calc_hmac = hash_hmac("sha512", $sorted_request_json, $this->ipn_secret);
 
-        // Generate HMAC signature using the IPN secret key
-        $hmac = hash_hmac("sha512", $sorted_request_json, trim($this->ipn_secret));
-
-        // Verify the HMAC signature
-        if ($hmac !== $recived_hmac) {
-            Log::error('HMAC signature does not match.');
-            return response()->json(['error' => 'HMAC signature does not match.'], 400);
+        if ($calc_hmac !== $received_hmac) {
+            Log::error('Invalid HMAC signature.');
+            return response()->json(['error' => 'Invalid HMAC signature.'], 400);
         }
 
-        // Process the webhook request data
         $this->processWebhookData($request_data);
 
-        return response()->json(['status' => 'success']);
+        return response()->json(['message' => 'Webhook processed successfully.'], 200);
     }
 
     private function tksort(&$array)
     {
+        if (!is_array($array)) {
+            return false;
+        }
         ksort($array);
-        foreach (array_keys($array) as $k) {
-            if (is_array($array[$k])) {
-                $this->tksort($array[$k]);
-            }
+        foreach ($array as $k => $v) {
+            $this->tksort($array[$k]);
         }
     }
 
     private function processWebhookData($data)
     {
-        // Example: Update the order status based on the webhook data
         $order_id = $data['order_id'] ?? null;
         $status = $data['payment_status'] ?? null;
 
@@ -410,22 +109,18 @@ class PaymentMethodController extends Controller
             if ($order) {
                 switch ($status) {
                     case 'finished':
-                        $order->payment_status = 'completed';
-                        $order->order_status = 'processed';
+                        $order->update(['payment_status' => 'completed', 'order_status' => 'processed']);
                         break;
                     case 'failed':
-                        $order->payment_status = 'failed';
-                        $order->order_status = 'canceled';
+                        $order->update(['payment_status' => 'failed', 'order_status' => 'canceled']);
                         break;
                     case 'partially_paid':
-                        $order->payment_status = 'partially_paid';
-                        $order->order_status = 'pending';
+                        $order->update(['payment_status' => 'partially_paid', 'order_status' => 'pending']);
                         break;
                     default:
                         Log::info('Unhandled payment status: ' . $status);
                         break;
                 }
-                $order->save();
                 Log::info('Order updated:', $order->toArray());
             } else {
                 Log::error('Order not found: ' . $order_id);
@@ -435,5 +130,126 @@ class PaymentMethodController extends Controller
         }
     }
 
+    public function getAvailableCurrenciesNowPayments()
+    {
+        $response = Http::withHeaders([
+            'x-api-key' => $this->api_nowPay,
+        ])->get('https://api.nowpayments.io/v1/currencies');
 
+        if ($response->successful()) {
+            return response()->json($response->json());
+        }
+
+        return response()->json(['error' => $response->body()], 500);
+    }
+
+    public function getPaymentStatus(Order $order)
+    {
+        $response = Http::withHeaders([
+            'x-api-key' => $this->api_nowPay,
+        ])->get("https://api.nowpayments.io/v1/payment/{$order->payment_id}");
+
+        if ($response->successful()) {
+            $paymentStatus = $response->json();
+            Log::info('Payment status:', $paymentStatus);
+
+            switch ($paymentStatus['payment_status']) {
+                case 'finished':
+                    return $this->orderSuccess($order);
+                case 'failed':
+                case 'expired':
+                case 'refunded':
+                    return $this->orderCancel($order);
+                case 'partially_paid':
+                    return $this->orderPartial($order);
+                default:
+                    return response()->json(['status' => $paymentStatus['payment_status']], 200);
+            }
+        }
+
+        Log::error('cURL error: ' . $response->body());
+        return response()->json(['error' => $response->body()], 500);
+    }
+
+    public function orderSuccess(Order $order)
+    {
+        Log::info('Order successful:', $order->toArray());
+        $order->update(['status' => 'successful']);
+        return view('order.success', compact('order'));
+    }
+
+    public function orderCancel(Order $order)
+    {
+        Log::info('Order canceled:', $order->toArray());
+        $order->update(['status' => 'canceled']);
+        return view('order.cancel', compact('order'));
+    }
+
+    public function orderPartial(Order $order)
+    {
+        Log::info('Order partially paid:', $order->toArray());
+        $order->update(['status' => 'partially_paid']);
+        return view('order.partial', compact('order'));
+    }
+
+    public function updateMerchantEstimate($payment_id)
+    {
+        $response = Http::withHeaders([
+            'x-api-key' => $this->api_nowPay,
+            'Content-Type' => 'application/json',
+        ])->post("https://api.nowpayments.io/v1/payment/{$payment_id}/update-merchant-estimate");
+
+        if ($response->successful()) {
+            Log::info('Estimate response:', $response->json());
+            return response()->json($response->json());
+        }
+
+        Log::error('cURL error: ' . $response->body());
+        return response()->json(['error' => $response->body()], 500);
+    }
+
+    public function getEstimatedPrice(Request $request)
+    {
+        $amount = $request->input('amount');
+        $currency_from = $request->input('currency_from');
+        $currency_to = $request->input('currency_to');
+
+        $response = Http::withHeaders([
+            'x-api-key' => $this->api_nowPay,
+        ])->get("https://api.nowpayments.io/v1/estimate", [
+            'amount' => $amount,
+            'currency_from' => $currency_from,
+            'currency_to' => $currency_to
+        ]);
+
+        if ($response->successful()) {
+            Log::info('Estimated price:', $response->json());
+            return response()->json($response->json());
+        }
+
+        Log::error('cURL error: ' . $response->body());
+        return response()->json(['error' => $response->body()], 500);
+    }
+
+    public function listPayments(Request $request)
+    {
+        $response = Http::withHeaders([
+            'x-api-key' => $this->api_nowPay,
+        ])->get('https://api.nowpayments.io/v1/payment', [
+            'limit' => $request->input('limit', 10),
+            'page' => $request->input('page', 0),
+            'sortBy' => $request->input('sortBy', 'created_at'),
+            'orderBy' => $request->input('orderBy', 'asc'),
+            'dateFrom' => $request->input('dateFrom'),
+            'dateTo' => $request->input('dateTo'),
+            'invoiceId' => $request->input('invoiceId'),
+        ]);
+
+        if ($response->successful()) {
+            return response()->json($response->json());
+        }
+
+        Log::error('cURL error: ' . $response->body());
+        return response()->json(['error' => $response->body()], 500);
+    }
 }

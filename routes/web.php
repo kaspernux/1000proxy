@@ -46,13 +46,14 @@ Route::middleware(['auth:web,customer'])->group(function () {
     Route::get('/cancel', CancelPage::class)->name('cancel');
 
     // PaymentMethodController routes
-    Route::get('/currencies', [PaymentMethodController::class, 'getAvailableCurrencies'])->name('currencies');
-    Route::post('/create-invoice', [PaymentMethodController::class, 'createInvoice'])->name('create.invoice');
-    Route::get('/payment-status/{payment_id}', [PaymentMethodController::class, 'getPaymentStatus'])->name('payment.status');
+    Route::get('/currencies', [PaymentMethodController::class, 'getAvailableCurrenciesNowPayments'])->name('currencies');
+    Route::post('/create-invoice/nowpayments/{order}', [PaymentMethodController::class, 'createInvoiceNowPayments'])->name('create.invoice.nowpay');
+    Route::post('/create-invoice/stripe/{order}', [PaymentMethodController::class, 'createInvoiceStripe'])->name('create.invoice.stripe');
+    Route::get('/payment-status/{order}', [PaymentMethodController::class, 'getPaymentStatus']);
     Route::get('/payments', [PaymentMethodController::class, 'listPayments'])->name('payments');
     Route::get('/invoice/{order}', [InvoiceController::class, 'show'])->name('invoice');
 
-    Route::post('/callback_ipn/payment', [PaymentMethodController::class, 'handleWebhook'])->name('webhook.payment');
+    Route::post('/webhook', [PaymentMethodController::class, 'handleWebhookNowPayments'])->name('webhook.nowpay');
     Route::get('/partial/{order}', [PaymentMethodController::class, 'orderPartial'])->name('order.partial');
 });
 

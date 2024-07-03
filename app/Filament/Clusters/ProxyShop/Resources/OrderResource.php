@@ -27,6 +27,8 @@ use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\DatePicker;
 use GuzzleHttp\Client;
 use Filament\Forms\Components\Toggle;
+use App\Models\PaymentMethod;
+
 
 class OrderResource extends Resource
 {
@@ -51,8 +53,8 @@ class OrderResource extends Resource
                                 ->searchable()
                                 ->preload()
                                 ->required(),
-                            DatePicker::make('order_date')
-                                ->required(),
+                            TextInput::make('created_at')
+                                ->label('Order date'),
                             RichEditor::make('notes')
                                 ->columnSpanFull()
                                 ->fileAttachmentsDirectory('Order'),
@@ -170,14 +172,13 @@ class OrderResource extends Resource
                                 ->reactive(),
 
                             Select::make('payment_method')
-                                ->options([
-                                    'stripe' => 'Stripe',
-                                    'btc' => 'Bitcoin',
-                                    'xmr' => 'Monero',
-                                    'rub' => 'Ruble',
-                                    'usd' => 'USD',
-                                ])
                                 ->label('Payment Method')
+                                ->options([
+                                        '1' => 'Wallet',
+                                        '2' => 'Stripe',
+                                        '3' => 'NowPayments',
+                                        '4' => 'MIR',
+                                ])
                                 ->searchable()
                                 ->preload()
                                 ->required()
@@ -262,9 +263,14 @@ class OrderResource extends Resource
                     ->searchable()
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),
-                Tables\Columns\TextColumn::make('payment_method')
+                Tables\Columns\SelectColumn::make('payment_method')
                     ->label('Payment Method')
-                    ->searchable()
+                    ->options([
+                            '1' => 'Wallet',
+                            '2' => 'Stripe',
+                            '3' => 'NowPayments',
+                            '4' => 'MIR',
+                    ])
                     ->sortable(),
                 Tables\Columns\SelectColumn::make('payment_status')
                     ->searchable()
