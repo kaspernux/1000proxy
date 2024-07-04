@@ -17,6 +17,7 @@ use App\Livewire\ProductDetailPage;
 use Illuminate\Support\Facades\Route;
 use App\Livewire\Auth\ResetPasswordPage;
 use App\Http\Controllers\InvoiceController;
+use App\Http\Controllers\PaymentController;
 use App\Http\Middleware\RedirectIfCustomer;
 use App\Http\Controllers\PaymentMethodController;
 
@@ -45,16 +46,17 @@ Route::middleware(['auth:web,customer'])->group(function () {
     Route::get('/success', SuccessPage::class)->name('success');
     Route::get('/cancel', CancelPage::class)->name('cancel');
 
-    // PaymentMethodController routes
-    Route::get('/currencies', [PaymentMethodController::class, 'getAvailableCurrenciesNowPayments'])->name('currencies');
-    Route::post('/create-invoice/nowpayments/{order}', [PaymentMethodController::class, 'createInvoiceNowPayments'])->name('create.invoice.nowpay');
-    Route::post('/create-invoice/stripe/{order}', [PaymentMethodController::class, 'createInvoiceStripe'])->name('create.invoice.stripe');
-    Route::get('/payment-status/{order}', [PaymentMethodController::class, 'getPaymentStatus']);
-    Route::get('/payments', [PaymentMethodController::class, 'listPayments'])->name('payments');
-    Route::get('/invoice/{order}', [InvoiceController::class, 'show'])->name('invoice');
+    // PaymentController routes for Nowpayments
+    Route::post('/create-invoice/nowpayments/{order}', [PaymentController::class, 'createCryptoPayment'])->name('create.invoice.nowpay');
+    Route::get('/payment-status/{order}', [PaymentController::class, 'getPaymentStatus']);
+    Route::get('/payments', [PaymentController::class, 'listPayments'])->name('payments');
+    Route::get('/invoice/{order}', [PaymentController::class, 'showInvoice'])->name('invoice');
 
-    Route::post('/webhook', [PaymentMethodController::class, 'handleWebhookNowPayments'])->name('webhook.nowpay');
-    Route::get('/partial/{order}', [PaymentMethodController::class, 'orderPartial'])->name('order.partial');
+    // Additional Nowpayments routes in PaymentController
+    Route::get('/currencies', [PaymentController::class, 'getCurrencies'])->name('currencies');
+    Route::post('/create-invoice/stripe/{order}', [PaymentMethodController::class, 'createInvoice'])->name('create.invoice.stripe');
+    Route::post('/webhook/nowpayments', [PaymentController::class, 'handleWebhookNowPayments'])->name('webhook.nowpay');
+    Route::get('/partial/{order}', [PaymentController::class, 'orderPartial'])->name('order.partial');
 });
 
 Route::middleware(['redirect.customer'])->group(function () {

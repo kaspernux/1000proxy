@@ -7,16 +7,20 @@ use Stripe\Stripe;
 use App\Models\Order;
 use App\Models\Invoice;
 use Livewire\Component;
+use App\Mail\OrderPlaced;
 use App\Models\OrderItem;
-use Stripe\Checkout\Session;
 use App\Models\ServerPlan;
+use Illuminate\Http\Request;
+use Stripe\Checkout\Session;
+use App\Models\PaymentMethod;
+use App\Helpers\CartManagement;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Mail;
+use App\Http\Controllers\PaymentController;
 use Jantinnerezo\LivewireAlert\LivewireAlert;
 use App\Http\Controllers\PaymentMethodController;
-use App\Models\PaymentMethod;
-use App\Helpers\CartManagement;
 
 #[Title('Checkout - 1000 PROXIES')]
 class CheckoutPage extends Component
@@ -34,28 +38,22 @@ class CheckoutPage extends Component
     public $selectedPaymentMethod;
 
     public function placeOrder()
-{
-    // Ensure you have the correct PaymentMethod instance for the selected ID
-    $selectedPaymentMethod = PaymentMethod::find($this->selectedPaymentMethod);
+    {
+        // Validate form inputs
+        $validatedData = $this->validate([
+            'name' => 'required|string|max:255',
+            'email' => 'required|email|max:255',
+            'phone' => 'nullable|string|max:20',
+            'telegram_id' => 'nullable|string|max:255',
+            'selectedPaymentMethod' => 'required|exists:payment_methods,id',
+        ]);
 
-    // Validate form inputs
-    $validatedData = $this->validate([
-        'name' => 'required|string|max:255',
-        'email' => 'required|email|max:255',
-        'phone' => 'nullable|string|max:20',
-        'telegram_id' => 'nullable|string|max:255',
-        'selectedPaymentMethod' => 'required|exists:payment_methods,id',
-    ]);
+        DB::beginTransaction();
 
-    $order_items = CartManagement::getCartItemsFromCookie();
-    $line_items = [];
-    $data = [];
-    $redirect_url = '';
+        $order_items = CartManagement::getCartItemsFromCookie();
+        $line_items = [];
 
-    DB::beginTransaction();
-
-    try {
-        // Handle payment processing based on the selected payment method
+        // Initialize payment method
         $paymentMethod = PaymentMethod::find($validatedData['selectedPaymentMethod']);
 
         // Create new order instance
@@ -67,62 +65,8 @@ class CheckoutPage extends Component
         $order->order_status = 'new';
         $order->notes = 'Order placed by: ' . auth()->user()->name . ' (ID #: ' . auth()->user()->id . ') | Total amount: ' . $order->grand_amount . '$ | Placed at: ' . now();
 
-        // Save the order before proceeding to save the order items
+        // Save the order before proceeding
         $order->save();
-
-        // Create order items and relate them to the order
-        foreach ($order_items as $item) {
-            $orderItem = new OrderItem();
-            $orderItem->order_id = $order->id;
-            $orderItem->server_plan_id = $item['server_plan_id'];
-            $orderItem->quantity = $item['quantity'];
-            $orderItem->unit_amount = $item['price'];
-            $orderItem->total_amount = $item['total_amount'];
-            $orderItem->save();
-
-            // Log order item creation
-            Log::info('Order Item Created:', $orderItem->toArray());
-
-            if ($paymentMethod->id == 2) {
-                // Stripe payment logic
-                Stripe::setApiKey(env('STRIPE_SECRET'));
-
-                $line_items[] = [
-                    'price_data' => [
-                        'currency' => 'usd',
-                        'unit_amount' => intval($item['price'] * 100), // Convert to cents
-                        'product_data' => [
-                            'name' => $item['name'],
-                        ],
-                    ],
-                    'quantity' => $item['quantity'],
-                ];
-            } elseif ($paymentMethod->id == 3) {
-                // NowPayments payment logic
-                $paymentController = new PaymentMethodController();
-                $invoice = $paymentController->createInvoiceNowPayments($order);
-
-                if ($invoice['status'] === 'success' && isset($invoice['data']['invoice_url'])) {
-                    $invoiceUrl = $invoice['data']['invoice_url'];
-                    $redirect_url = $invoiceUrl;
-                } else {
-                    throw new Exception('Failed to create invoice: ' . $invoice['message']);
-                }
-            }
-        }
-
-        if ($paymentMethod->id == 2) {
-            $sessionCheckout = Session::create([
-                'payment_method_types' => ['card'],
-                'customer_email' => auth()->user()->email,
-                'line_items' => $line_items,
-                'mode' => 'payment',
-                'success_url' => route('success').'?session_id={CHECKOUT_SESSION_ID}',
-                'cancel_url' => route('cancel'),
-            ]);
-
-            $redirect_url = $sessionCheckout->url;
-        }
 
         // Create new invoice instance
         $invoice = new Invoice();
@@ -133,35 +77,120 @@ class CheckoutPage extends Component
         $invoice->price_currency = 'usd'; // Ensure this is a string
         $invoice->pay_currency = $order->currency; // Ensure this is a string
         $invoice->ipn_callback_url = route('webhook.nowpay');
-        $invoice->invoice_url = $redirect_url;
+        $invoice->invoice_url = route('invoice', ['order' => $order->id]);
         $invoice->success_url = route('success', ['order' => $order->id]);
         $invoice->cancel_url = route('cancel', ['order' => $order->id]);
-        $invoice->partially_paid_url = route('cancel');
+        $invoice->partially_paid_url = route('cancel', ['order' => $order->id]);
         $invoice->is_fixed_rate = true;
         $invoice->is_fee_paid_by_user = true;
+
+        // Save the invoice
         $invoice->save();
+
+        // Create order items and relate them to the order
+        foreach ($order_items as $item) {
+            $line_items[] = [
+                'price_data' => [
+                    'currency' => 'usd',
+                    'unit_amount' => intval($item['price'] * 100), // Convert to cents
+                    'product_data' => [
+                        'name' => $item['name'],
+                    ],
+                ],
+                'quantity' => $item['quantity'],
+            ];
+
+            $data[] = [
+                'server_plan_id' => $item['server_plan_id'],
+                'quantity' => $item['quantity'],
+                'unit_amount' => $item['price'],
+                'total_amount' => $item['price'] * $item['quantity'],
+                'order_id' => $order->id,
+                'updated_at' => now(),
+                'created_at' => now(),
+            ];
+        }
+
+        // Save the order items
+        $order->items()->createMany($data);
 
         // Log order and invoice creation
         Log::info('Order Created:', $order->toArray());
+        Log::info('Order Items Created:', $order_items);
         Log::info('Invoice Created:', $invoice->toArray());
+
+        // Create Stripe or NowPayments session based on selected payment method
+        $redirect_url = '';
+
+        if ($paymentMethod->id == 2) {
+            // Stripe payment logic
+            Stripe::setApiKey(env('STRIPE_SECRET'));
+
+            // Create Stripe session
+            $sessionCheckout = Session::create([
+                'payment_method_types' => ['card'],
+                'customer_email' => auth()->user()->email,
+                'line_items' => $line_items,
+                'mode' => 'payment',
+                'success_url' => route('success').'?session_id={CHECKOUT_SESSION_ID}',
+                'cancel_url' => route('cancel'),
+            ]);
+
+            $redirect_url = $sessionCheckout->url;
+        } elseif ($paymentMethod->id == 3) {
+            // NowPayments payment logic
+            $paymentController = new PaymentController();
+
+            // Create the payment
+            $payOrder = $paymentController->createInvoice($order);
+
+            // Check if the response is successful
+            if ($payOrder->status() === 200) {
+                // Decode the JSON response body
+                $invoiceResponse = json_decode($payOrder->getContent(), true);
+
+                // Check if the necessary keys exist in the response
+                if (isset($invoiceResponse['invoice_url'])) {
+                    $redirect_url = $invoiceResponse['invoice_url'];
+                } else {
+                    throw new Exception('Failed to create invoice: ' . ($invoiceResponse['message'] ?? 'Unknown error'));
+                }
+            } else {
+                throw new Exception('Failed to create invoice: ' . $payOrder->getContent());
+            }
+        } elseif ($paymentMethod->id == 1) {
+            // Wallet payment logic
+            $customer = Auth::user();
+            if ($customer->wallet->balance >= $order->grand_amount) {
+                $customer->wallet->balance -= $order->grand_amount;
+                $customer->wallet->save();
+                // Log wallet deduction
+                Log::info('Wallet deduction:', [
+                    'customer_id' => $customer->id,
+                    'amount_deducted' => $order->grand_amount,
+                    'remaining_balance' => $customer->wallet->balance,
+                ]);
+
+                // No need for redirect URL as the payment is completed instantly
+                $redirect_url = route('success', ['order' => $order->id]);
+
+            } else {
+                throw new \Exception('Insufficient balance in wallet.');
+            }
+        }
 
         // Commit the transaction before redirecting
         DB::commit();
 
         // Clear the cart after order placement
         CartManagement::clearCartItems();
-        $this->order_items = [];
+
+        // Send Notifications/Email after Payment
+        Mail::to(request()->user())->send(new OrderPlaced($order));
 
         // Redirect to the appropriate URL based on payment method
         return redirect($redirect_url);
-
-    } catch (\Exception $e) {
-        DB::rollBack();
-        session()->flash('error', 'Order placement failed: ' . $e->getMessage());
     }
-}
-
-
 
     public function fetchPaymentMethods()
     {
@@ -183,6 +212,11 @@ class CheckoutPage extends Component
 
         // Initialize payment methods
         $this->fetchPaymentMethods();
+
+        if (count($this->order_items) == 0) {
+            $order_items = $this->order_items;
+            return redirect('/servers');
+        }
     }
 
     public function render()
