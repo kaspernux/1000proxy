@@ -21,7 +21,7 @@ return new class extends Migration
             $table->string('password');
             $table->string('telegram_id')->nullable();
             $table->string('refcode', 50)->nullable();
-            $table->integer('wallet')->default(0);
+            $table->decimal('wallet', 10, 2)->default(0);
             $table->string('date', 50)->nullable();
             $table->string('phone', 15)->nullable();
             $table->unsignedBigInteger('refered_by')->nullable();

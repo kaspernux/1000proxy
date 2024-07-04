@@ -68,24 +68,29 @@ class CheckoutPage extends Component
         // Save the order before proceeding
         $order->save();
 
-        // Create new invoice instance
-        $invoice = new Invoice();
-        $invoice->payment_method_id = $paymentMethod->id;
-        $invoice->order_id = $order->id;
-        $invoice->order_description = 'Order placed by: ' . auth()->user()->name . ' (ID #: ' . auth()->user()->id . ') | Total amount: ' . $order->grand_amount . '$ | Placed at: ' . now();
-        $invoice->price_amount = intval(CartManagement::calculateGrandTotal($order_items)); // Convert to cents
-        $invoice->price_currency = 'usd'; // Ensure this is a string
-        $invoice->pay_currency = $order->currency; // Ensure this is a string
-        $invoice->ipn_callback_url = route('webhook.nowpay');
-        $invoice->invoice_url = route('invoice', ['order' => $order->id]);
-        $invoice->success_url = route('success', ['order' => $order->id]);
-        $invoice->cancel_url = route('cancel', ['order' => $order->id]);
-        $invoice->partially_paid_url = route('cancel', ['order' => $order->id]);
-        $invoice->is_fixed_rate = true;
-        $invoice->is_fee_paid_by_user = true;
-
-        // Save the invoice
-        $invoice->save();
+        // Create new invoice instance to store payment details
+        Invoice::create([
+            'customer_id' => $order->customer_id,
+            'order_id' => $order->id,
+            'payment_method_id' => $paymentMethod->id,
+            'payment_id' => $paymentDetails['payment_id'],
+            'payment_status' => $paymentDetails['payment_status'],
+            'pay_address' => $paymentDetails['pay_address'],
+            'price_amount' => CartManagement::calculateGrandTotal($order_items),
+            'price_currency' => 'usd',
+            'pay_amount' => CartManagement::calculateGrandTotal($order_items),
+            'pay_currency' => $this->pay_currency,
+            'order_description' => 'Order placed by: ' . auth()->user()->name . ' (ID #: ' . auth()->user()->id . ') | Total amount: ' . $order->grand_amount . '$ | Placed at: ' . now(),
+            'ipn_callback_url' => 'https://1000proxybot/webhook',
+            'invoice_url' => route('success', ['order' => $order->id]),
+            'success_url' => route('success', ['order' => $order->id]),
+            'cancel_url' => route('cancel', ['order' => $order->id]),
+            'partially_paid_url' => route('cancel', ['order' => $order->id]),
+            'is_fixed_rate' => true,
+            'is_fee_paid_by_user' => true,
+            'created_at' => now(),
+            'updated_at' => now()
+        ]);
 
         // Create order items and relate them to the order
         foreach ($order_items as $item) {
@@ -161,14 +166,14 @@ class CheckoutPage extends Component
         } elseif ($paymentMethod->id == 1) {
             // Wallet payment logic
             $customer = Auth::user();
-            if ($customer->wallet->balance >= $order->grand_amount) {
-                $customer->wallet->balance -= $order->grand_amount;
-                $customer->wallet->save();
+            if ($customer->wallet >= $order->grand_amount) {
+                $customer->wallet -= $order->grand_amount;
+                $customer->save();
                 // Log wallet deduction
                 Log::info('Wallet deduction:', [
                     'customer_id' => $customer->id,
                     'amount_deducted' => $order->grand_amount,
-                    'remaining_balance' => $customer->wallet->balance,
+                    'remaining_balance' => $customer->wallet,
                 ]);
 
                 // No need for redirect URL as the payment is completed instantly

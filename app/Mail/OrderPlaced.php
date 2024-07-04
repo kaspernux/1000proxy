@@ -19,8 +19,6 @@ class OrderPlaced extends Mailable
 
     /**
      * Create a new message instance.
-     *
-     * @param Order $order The order instance to be passed to the Mailable.
      */
     public function __construct(Order $order)
     {
@@ -30,11 +28,33 @@ class OrderPlaced extends Mailable
     /**
      * Get the message envelope.
      */
-    public function build()
+    public function envelope(): Envelope
     {
-        return $this
-            ->subject('Order Placed - 1000 PROXIES')
-            ->markdown('mail.orders.placed')
-            ->with('url', route('my-orders.show', $this->order));
+        return new Envelope(
+            subject: 'Order Placed - 1000 PROXIES',
+        );
+    }
+
+    /**
+     * Get the message content definition.
+     */
+    public function content(): Content
+    {
+        return new Content(
+            markdown: 'mail.orders.placed',
+            with: [
+                'url' => route('my-orders.show', $this->order)
+            ]
+        );
+    }
+
+    /**
+     * Get the attachments for the message.
+     *
+     * @return array<int, \Illuminate\Mail\Mailables\Attachment>
+     */
+    public function attachments(): array
+    {
+        return [];
     }
 }

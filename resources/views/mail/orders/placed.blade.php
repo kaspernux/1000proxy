@@ -7,7 +7,7 @@ Go back to your account dashboard to download the configuration files and connec
 
 
 <x-mail::button :url="$url">
-Button Text
+View Order
 </x-mail::button>
 
 Thanks,<br>

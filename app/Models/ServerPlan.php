@@ -72,4 +72,9 @@ class ServerPlan extends Model
     {
         return $this->hasMany(ServerClient::class);
     }
+
+    public function invoices(): HasMany
+    {
+        return $this->hasMany(Invoice::class);
+    }
 }

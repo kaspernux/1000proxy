@@ -82,8 +82,4 @@ class Customer extends Authenticatable
         return $this->hasMany(ClientTraffic::class);
     }
 
-    public function payments(): HasMany
-    {
-        return $this->hasMany(Payment::class);
-    }
 }

@@ -146,7 +146,14 @@
                     <button
                         class="bg-yellow-600 hover:bg-green-400 text-white mt-4 w-full p-3 text-lg font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline"
                         type="submit">
-                        Place Order
+                        <span wire:loading.remove>Place Order</span>
+                        <span wire:loading class="flex items-center">
+                            <div class="animate-spin inline-block w-4 h-4 border-[3px] border-current border-t-transparent text-blue-600 rounded-full dark:text-blue-500 mr-2"
+                                role="status" aria-label="loading">
+                                <span class="sr-only">Processing...</span>
+                            </div>
+                            Processing...
+                        </span>
                     </button>
 
                     <div class="bg-white mt-4 rounded-xl shadow p-4 sm:p-7 dark:bg-slate-900">

@@ -69,16 +69,34 @@ class PaymentController extends Controller
         }
     }
 
+    /**
+     * Get the status of a payment by Order ID
+     * @param string $orderId
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function getPaymentStatusByOrder($order_id)
+    {
+        try {
+            $order = Order::findOrFail($order_id);
+            $paymentId = $order->invoice->payment_id; // Assuming you store payment_id in orders table
+
+            $status = Nowpayments::getPaymentStatus($paymentId);
+            return response()->json($status);
+        } catch (\Exception $e) {
+            return response()->json(['error' => $e->getMessage()], 400);
+        }
+    }
+
 
     /**
      * Get the status of a payment
      * @param string $paymentId
      * @return \Illuminate\Http\JsonResponse
      */
-    public function getPaymentStatus($paymentId)
+    public function getPaymentStatus($payment_id)
     {
         try {
-            $status = Nowpayments::getPaymentStatus($paymentId);
+            $status = Nowpayments::getPaymentStatus($payment_id);
             return response()->json($status);
         } catch (\Exception $e) {
             return response()->json(['error' => $e->getMessage()], 400);
