@@ -10,6 +10,7 @@ class CreateInvoicesTable extends Migration
     {
         Schema::create('invoices', function (Blueprint $table) {
             $table->id();
+            $table->string('iid')->nullable();
             $table->foreignId('customer_id')->constrained()->onDelete('cascade');
             $table->foreignId('payment_method_id')->constrained()->onDelete('cascade');
             $table->string('payment_id')->nullable();
@@ -35,7 +36,7 @@ class CreateInvoicesTable extends Migration
             $table->integer('time_limit')->nullable();
             $table->timestamp('expiration_estimate_date')->nullable();
             $table->boolean('is_fixed_rate')->default(false);
-            $table->boolean('is_fee_paid_by_user')->default(false);
+            $table->boolean('is_fee_paid_by_user')->default(true);
             $table->timestamp('valid_until')->nullable();
             $table->string('type')->nullable();
             $table->string('redirect_url')->nullable();
