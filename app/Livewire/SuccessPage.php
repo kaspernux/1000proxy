@@ -34,7 +34,7 @@ class SuccessPage extends Component
                 $latest_order->payment_status = 'paid';
                 $latest_order->save();
             }
-        } elseif ($this->payment_id) {
+        } elseif ($latest_order->payment_method == 2) {
             // Call the controller method to get payment status
             $response = Http::get(route('payment.status', ['orderId' => $latest_order->id]));
 
@@ -45,15 +45,18 @@ class SuccessPage extends Component
                     $latest_order->payment_status = 'paid';
                     $latest_order->save();
                 } else {
-                    $latest_order->payment_status = 'failed';
+                    $latest_order->payment_status = 'processing';
                     $latest_order->save();
-                    return redirect()->route('cancel');
+                    return redirect()->route('Pending');
                 }
             } else {
                 $latest_order->payment_status = 'failed';
                 $latest_order->save();
                 return redirect()->route('cancel');
             }
+        } elseif ($latest_order->payment_method == 1) {
+            $latest_order->payment_status = 'paid';
+            $latest_order->save();
         }
 
         return view('livewire.success-page', [
