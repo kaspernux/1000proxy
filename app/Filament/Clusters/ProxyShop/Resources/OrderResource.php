@@ -352,7 +352,7 @@ class OrderResource extends Resource
         return static::getModel()::count();
     }
     public static function getNavigationBadgeColor(): string|array|null {
-        return static::getModel()::count() > 10 ? 'success':'danger';
+        return static::getModel()::count() > 1000 ? 'success':'danger';
     }
 
     protected static function getConversionRates(): array

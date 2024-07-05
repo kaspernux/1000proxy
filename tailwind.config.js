@@ -25,7 +25,9 @@ export default {
                 'light-green-100': '#CCFF33',
                 'light-dark': '#2D2D2D',
                 'yellow-600':'#FFD60A',
-                'accent-yellow': '#FFC300'
+                'accent-yellow': '#FFC300',
+                'blue-500': '#2196F3',
+                'orange-800': '#F9A825'
             }
         },
     },

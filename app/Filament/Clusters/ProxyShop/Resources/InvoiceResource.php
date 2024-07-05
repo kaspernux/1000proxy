@@ -38,7 +38,14 @@ class InvoiceResource extends Resource
 
     protected static ?string $navigationIcon = 'heroicon-o-banknotes';
 
+/*     protected static ?string $recordTitleAttribute = 'order_id';
+ */
     protected static ?string $cluster = ProxyShop::class;
+
+    public static function getLabel(): string
+    {
+        return 'Invoices';
+    }
 
     public static function form(Form $form): Form
     {
@@ -50,31 +57,19 @@ class InvoiceResource extends Resource
                             Select::make('order_id')
                                 ->relationship('order', 'id')
                                 ->required()
-                                ->columns(1),
+                                ->columnSpan(1),
                             TextInput::make('order_description')
-                                ->required()
-                                ->columnSpan(5),
-                        ])->columns(6),
+                                ->columnSpan(4),
+                        ])->columns(5),
 
-                     Section::make('Payment Status URLs')
+                    Section::make('Payment Status URLs')
                         ->schema([
-                            TextInput::make('ipn_callback_url')
-                                ->required(),
-
-                            TextInput::make('invoice_url')
-                                ->required(),
-
-                            TextInput::make('success_url')
-                                ->required(),
-
-                            TextInput::make('cancel_url')
-                                ->nullable(),
-
-                            TextInput::make('partially_paid_url')
-                                ->nullable(),
+                            TextInput::make('ipn_callback_url'),
+                            TextInput::make('invoice_url'),
+                            TextInput::make('success_url'),
+                            TextInput::make('cancel_url')->nullable(),
+                            TextInput::make('partially_paid_url')->nullable(),
                         ])->columns(1),
-
-
                 ])->columnSpan(2),
 
                 Group::make([
@@ -91,16 +86,14 @@ class InvoiceResource extends Resource
                                 ->relationship('paymentMethod', 'name')
                                 ->required(),
                             TextInput::make('pay_currency')
-                                ->required()
                                 ->maxLength(3),
                         ])->columns(2),
 
-                   Section::make('Rate & Commissions')
+                    Section::make('Rate & Commissions')
                         ->schema([
                             Toggle::make('is_fixed_rate')
                                 ->required()
                                 ->default(true),
-
                             Toggle::make('is_fee_paid_by_user')
                                 ->required()
                                 ->default(true),
@@ -113,59 +106,115 @@ class InvoiceResource extends Resource
     {
         return $table
             ->columns([
-                TextColumn::make('paymentMethod.name')
+                Tables\Columns\TextColumn::make('iid')
+                    ->searchable()
+                    ->label('Session ID')
+                    ->toggleable(isToggledHiddenByDefault: true),
+                Tables\Columns\TextColumn::make('customer_id')
+                    ->label('Customer ID')
+                    ->sortable()
+                    ->searchable()
+                    ->toggleable(isToggledHiddenByDefault: true),
+                Tables\Columns\TextColumn::make('order.id')
+                    ->label('Order ID')
                     ->sortable(),
-                TextColumn::make('order.id')
-                    ->sortable(),
-
-                TextColumn::make('order_description')
-                    ->sortable(),
-
-                TextColumn::make('price_amount')
+                Tables\Columns\TextColumn::make('price_amount')
                     ->numeric()
                     ->sortable()
-                    ->money('USD'),
-
-                TextColumn::make('price_currency')
+                    ->money('USD')
+                    ->label('Amount'),
+                Tables\Columns\TextColumn::make('payment_id')
+                    ->searchable()
+                    ->label('Invoice ID'),
+                Tables\Columns\TextColumn::make('pay_currency')
+                    ->sortable()
+                    ->label('Currency'),
+                Tables\Columns\TextColumn::make('payment_status')
+                    ->searchable()
+                    ->label('Status'),
+                Tables\Columns\TextColumn::make('paymentMethod.name')
+                    ->sortable(),
+                Tables\Columns\TextColumn::make('price_currency')
+                    ->label('Total Paid')
                     ->numeric()
                     ->sortable(),
-
-                TextColumn::make('pay_currency')
-                    ->sortable(),
-
-                TextColumn::make('ipn_callback_url')
+                Tables\Columns\TextColumn::make('pay_address')
+                    ->searchable()
+                    ->toggleable(isToggledHiddenByDefault: true),
+                Tables\Columns\TextColumn::make('pay_amount')
+                    ->numeric()
                     ->sortable()
+                    ->label('Payout Amount')
                     ->toggleable(isToggledHiddenByDefault: true),
 
-                TextColumn::make('invoice_url')
-                    ->sortable(),
-
-                TextColumn::make('success_url')
+                Tables\Columns\TextColumn::make('order_description')
+                    ->sortable()
+                    ->label('Order Description')
+                    ->toggleable(isToggledHiddenByDefault: false),
+                Tables\Columns\TextColumn::make('ipn_callback_url')
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),
-
-                TextColumn::make('cancel_url')
+                Tables\Columns\TextColumn::make('invoice_url')
+                    ->sortable()
+                    ->toggleable(isToggledHiddenByDefault: false),
+                Tables\Columns\TextColumn::make('success_url')
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),
-
-                TextColumn::make('partially_paid_url')
+                Tables\Columns\TextColumn::make('cancel_url')
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),
-
-                TextColumn::make('is_fixed_rate')
+                Tables\Columns\TextColumn::make('partially_paid_url')
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),
-
-                TextColumn::make('is_fee_paid_by_user')
+                Tables\Columns\TextColumn::make('purchase_id')
+                    ->searchable()
+                    ->toggleable(isToggledHiddenByDefault: true),
+                Tables\Columns\TextColumn::make('amount_received')
+                    ->numeric()
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),
-
-                TextColumn::make('created_at')
+                Tables\Columns\TextColumn::make('payin_extra_id')
+                    ->searchable()
+                    ->toggleable(isToggledHiddenByDefault: true),
+                Tables\Columns\TextColumn::make('smart_contract')
+                    ->searchable(),
+                Tables\Columns\TextColumn::make('network')
+                    ->searchable()
+                    ->toggleable(isToggledHiddenByDefault: true),
+                Tables\Columns\TextColumn::make('network_precision')
+                    ->numeric()
+                    ->sortable()
+                    ->toggleable(isToggledHiddenByDefault: true),
+                Tables\Columns\TextColumn::make('time_limit')
+                    ->numeric()
+                    ->sortable()
+                    ->toggleable(isToggledHiddenByDefault: true),
+                Tables\Columns\TextColumn::make('expiration_estimate_date')
                     ->dateTime()
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),
-
-                TextColumn::make('updated_at')
+                Tables\Columns\IconColumn::make('is_fixed_rate')
+                    ->label('Fixed rate')
+                    ->boolean()
+                    ->toggleable(isToggledHiddenByDefault: true),
+                Tables\Columns\IconColumn::make('is_fee_paid_by_user')
+                    ->label('Customer Fees')
+                    ->boolean()
+                    ->default(true),
+                Tables\Columns\TextColumn::make('valid_until')
+                    ->dateTime()
+                    ->sortable()
+                    ->toggleable(isToggledHiddenByDefault: true),
+                Tables\Columns\TextColumn::make('type')
+                    ->searchable()
+                    ->toggleable(isToggledHiddenByDefault: true),
+                Tables\Columns\TextColumn::make('redirect_url')
+                    ->searchable(),
+                Tables\Columns\TextColumn::make('created_at')
+                    ->dateTime()
+                    ->sortable()
+                    ->toggleable(isToggledHiddenByDefault: true),
+                Tables\Columns\TextColumn::make('updated_at')
                     ->dateTime()
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),
@@ -174,8 +223,11 @@ class InvoiceResource extends Resource
                 //
             ])
             ->actions([
-                Tables\Actions\ViewAction::make(),
-                Tables\Actions\EditAction::make(),
+                Tables\Actions\ActionGroup::make([
+                    Tables\Actions\EditAction::make(),
+                    Tables\Actions\ViewAction::make(),
+                    Tables\Actions\DeleteAction::make(),
+                ]),
             ])
             ->bulkActions([
                 Tables\Actions\BulkActionGroup::make([
@@ -199,5 +251,12 @@ class InvoiceResource extends Resource
             'view' => Pages\ViewInvoice::route('/{record}'),
             'edit' => Pages\EditInvoice::route('/{record}/edit'),
         ];
+    }
+
+    public static function getNavigationBadge(): ?string {
+        return static::getModel()::count();
+    }
+    public static function getNavigationBadgeColor(): string|array|null {
+        return static::getModel()::count() > 1000 ? 'success':'danger';
     }
 }

@@ -121,7 +121,7 @@
                             <div
                                 class="hs-dropdown-menu bg-green-400 transition-[opacity,margin] duration-[0.1ms] md:duration-[150ms] hs-dropdown-open:opacity-100 opacity-0 md:w-48 hidden z-10 md:shadow-md rounded-lg p-2 dark:bg-green-400 md:dark:border dark:border-yellow-600 dark:divide-green-900 before:absolute top-full md:border before:-top-5 before:start-0 before:w-full before:h-5">
                                 <a class="flex items-center gap-x-3.5 hover:text-green-900 py-2 px-3 rounded-lg text-sm text-white hover:bg-green-400 focus:ring-2 focus:ring-yellow-600 dark:text-green-400 dark:hover:bg-green-400 dark:hover:text-green-900 dark:focus:outline-none dark:focus:ring-1 dark:focus:ring-yellow-600"
-                                    href="#">
+                                    wire:navigate href="/my-orders">
                                     My Orders
                                 </a>
 
