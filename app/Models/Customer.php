@@ -20,7 +20,7 @@ class Customer extends Authenticatable
         'name',
         'email',
         'password',
-        'telegram_id',
+        'tgId',
         'refcode',
         'wallet',
         'date',
@@ -35,6 +35,20 @@ class Customer extends Authenticatable
         'agent_date',
         'spam_info'
     ];
+
+    /**
+     * Get the attributes that should be cast.
+     *
+     * @return array<string, string>
+     */
+    protected function casts(): array
+        {
+        return [
+            'email_verified_at' => 'datetime',
+            'password' => 'hashed',
+        ];
+        }
+
 
     // Define relationships
     public function orders()

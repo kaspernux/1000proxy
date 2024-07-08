@@ -15,7 +15,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\SoftDeletingScope;
 
 use Illuminate\Support\Str;
-use Filament\Forms\Components\RichEditor;
+use Filament\Forms\Components\MarkdownEditor;
 use Filament\Forms\Components\Section;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
@@ -51,37 +51,39 @@ class ServerBrandResource extends Resource
                 Section::make([
                     Grid::make()
                         ->schema([
-                            TextInput::make('name')
-                                ->required()
-                                ->maxLength(255)
-                                ->live(onBlur: true)
-                                ->afterStateUpdated(function (string $operation, $state, Set $set) {
-                                    if ($operation === 'create') {
-                                        $set('slug', Str::slug($state));
-                                    }
-                                }),
+                            Section::make([
+                                TextInput::make('name')
+                                        ->required()
+                                        ->maxLength(255)
+                                        ->live(onBlur: true)
+                                        ->afterStateUpdated(function (string $operation, $state, Set $set) {
+                                            if ($operation === 'create') {
+                                                $set('slug', Str::slug($state));
+                                            }
+                                        }),
+                                TextInput::make('slug')
+                                    ->required()
+                                    ->disabled()
+                                    ->unique(ServerBrand::class, 'slug', ignoreRecord: true),
 
-                            TextInput::make('slug')
-                                ->required()
-                                ->disabled()
-                                ->unique(ServerBrand::class, 'slug', ignoreRecord: true),
+                                FileUpload::make('image')
+                                    ->image()
+                                    ->directory('server_brands')
+                                    ->columnSpanFull(),
+                            ])->columns(2),
+                            MarkdownEditor::make('desc')
+                                ->label('Description')
+                                ->columnSpanFull()
+                                ->fileAttachmentsDirectory('server_brands'),
+
+                            Section::make([
+                                Toggle::make('is_active')
+                                    ->required()
+                                    ->default(true),
+                            ])->grow(false),
                         ]),
-
-                    FileUpload::make('image')
-                        ->image()
-                        ->avatar()
-                        ->circleCropper()
-                        ->directory('server_brands'),
-
-                    RichEditor::make('desc')
-                        ->columnSpanFull()
-                        ->fileAttachmentsDirectory('server_brands'),
-
-                    Toggle::make('is_active')
-                        ->required()
-                        ->default(true),
                 ])
-            ]);
+            ])->columns(3);
     }
 
     public static function table(Table $table): Table

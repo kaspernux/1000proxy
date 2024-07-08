@@ -15,29 +15,33 @@ class ServerInbound extends Model
 
     protected $fillable = [
         'server_id',
-        'user_id',
+        'userId',
         'up',
         'down',
         'total',
         'remark',
         'enable',
-        'expiry_time',
+        'expiryTime',
+        'clientStats',
         'listen',
         'port',
         'protocol',
         'settings',
-        'stream_settings',
+        'streamSettings',
+        'tag',
         'sniffing',
+    ];
+
+    protected $casts = [
+        'clientStats' => 'array',
+        'settings' => 'array',
+        'streamSettings' => 'array',
+        'sniffing' => 'array',
     ];
 
     public function server(): BelongsTo
     {
         return $this->belongsTo(Server::class, 'server_id');
-    }
-
-    public function plans(): HasMany
-    {
-        return $this->hasMany(ServerPlan::class, 'server_inbound_id');
     }
 
     public function clients(): HasMany

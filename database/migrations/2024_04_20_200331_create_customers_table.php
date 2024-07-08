@@ -19,7 +19,7 @@ return new class extends Migration
             $table->string('name');
             $table->string('email')->unique();
             $table->string('password');
-            $table->string('telegram_id')->nullable();
+            $table->string('tgId')->nullable();
             $table->string('refcode', 50)->nullable();
             $table->decimal('wallet', 10, 2)->default(0);
             $table->string('date', 50)->nullable();
@@ -27,12 +27,13 @@ return new class extends Migration
             $table->unsignedBigInteger('refered_by')->nullable();
             $table->string('step', 1000)->default('none')->nullable();
             $table->string('freetrial', 10)->nullable();
-            $table->string('first_start', 10)->nullable();
+            $table->dateTime('first_start')->nullable();
             $table->text('temp')->nullable();
             $table->integer('is_agent')->default(0);
             $table->string('discount_percent', 1000)->nullable();
-            $table->integer('agent_date')->default(0);
+            $table->dateTime('agent_date')->nullable();
             $table->string('spam_info', 500)->nullable();
+            $table->string('email_verified_at', 500)->nullable();
             $table->rememberToken();
             $table->timestamps();
             });

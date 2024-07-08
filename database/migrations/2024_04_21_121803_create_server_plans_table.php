@@ -13,15 +13,14 @@ class CreateServerPlansTable extends Migration
     {
         Schema::create('server_plans', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('server_category_id')->constrained()->onDelete('cascade');
-            $table->foreignId('server_brand_id')->constrained()->onDelete('cascade');
+            $table->foreignId('server_id')->constrained()->onDelete('cascade');
             $table->string('name');
             $table->string('slug')->unique();
             $table->string('product_image')->nullable();
             $table->text('description')->nullable();
             $table->integer('capacity')->nullable();
             $table->decimal('price', 10, 2);
-            $table->enum('type', ['single', 'multiple', 'dedicated']);
+            $table->enum('type', ['single', 'multiple', 'dedicated', 'branded']);
             $table->integer('days');
             $table->integer('volume');
             $table->boolean('is_active')->default(true);

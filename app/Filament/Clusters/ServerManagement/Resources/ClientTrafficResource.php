@@ -15,7 +15,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\SoftDeletingScope;
 
 use Illuminate\Support\Str;
-use Filament\Forms\Components\RichEditor;
+use Filament\Forms\Components\MarkdownEditor;
 use Filament\Forms\Components\Section;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
@@ -44,17 +44,18 @@ class ClientTrafficResource extends Resource
                     Forms\Components\Section::make('Inbound Details')
                         ->schema([
                             Forms\Components\Select::make('server_inbound_id')
-                                ->relationship('serverInbound', 'remark')
-                                ->required()
-                                ->searchable()
-                                ->preload(),
+                                    ->relationship('inbound', 'userId')
+                                    ->required()
+                                    ->searchable()
+                                    ->preload(),
                             Forms\Components\Select::make('customer_id')
                                 ->relationship('customer', 'name')
                                 ->required()
                                 ->searchable()
                                 ->preload(),
-                            Forms\Components\DatePicker::make('expiryTime')
-                                ->required(),
+                            Forms\Components\TextInput::make('email')
+                                ->required()
+                                ->maxLength(255),
                             Forms\Components\Toggle::make('enable')
                                 ->required(),
                         ])
@@ -63,9 +64,9 @@ class ClientTrafficResource extends Resource
                 Forms\Components\Group::make([
                     Forms\Components\Section::make('Traffic Info')
                         ->schema([
-                            Forms\Components\TextInput::make('email')
-                                ->required()
-                                ->maxLength(255),
+                            Forms\Components\DatePicker::make('expiryTime')
+                                ->required(),
+
                             Forms\Components\TextInput::make('up')
                                 ->required()
                                 ->numeric(),
@@ -92,6 +93,9 @@ class ClientTrafficResource extends Resource
                     ->label('Customer')
                     ->numeric()
                     ->sortable(),
+                Tables\Columns\TextColumn::make('email')
+                    ->label('Email')
+                    ->searchable(),
                 Tables\Columns\TextColumn::make('server_inbound_id')
                     ->label('Inbound ID')
                     ->numeric()
@@ -99,9 +103,6 @@ class ClientTrafficResource extends Resource
                 Tables\Columns\IconColumn::make('enable')
                     ->label('Active')
                     ->boolean(),
-                Tables\Columns\TextColumn::make('email')
-                    ->label('Email')
-                    ->searchable(),
                 Tables\Columns\TextColumn::make('up')
                     ->label('UP')
                     ->numeric()

@@ -2,20 +2,21 @@
 
 namespace App\Filament\Clusters\ServerManagement\Resources;
 
+use Filament\Forms;
+use Filament\Tables;
+use Filament\Forms\Form;
+use Filament\Tables\Table;
+use App\Models\ServerConfig;
+use Filament\Resources\Resource;
+use Filament\Forms\Components\Group;
+use Filament\Forms\Components\Section;
+use Filament\Tables\Filters\SelectFilter;
+use Illuminate\Database\Eloquent\Builder;
 use App\Filament\Clusters\ServerManagement;
+use Filament\Forms\Components\MarkdownEditor;
+use Illuminate\Database\Eloquent\SoftDeletingScope;
 use App\Filament\Clusters\ServerManagement\Resources\ServerConfigResource\Pages;
 use App\Filament\Clusters\ServerManagement\Resources\ServerConfigResource\RelationManagers;
-use App\Models\ServerConfig;
-use Filament\Forms;
-use Filament\Forms\Form;
-use Filament\Resources\Resource;
-use Filament\Tables;
-use Filament\Tables\Table;
-use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Database\Eloquent\SoftDeletingScope;
-use Filament\Forms\Components\Section;
-use Filament\Forms\Components\Group;
-use Filament\Forms\Components\RichEditor;
 
 
 class ServerConfigResource extends Resource
@@ -71,14 +72,6 @@ class ServerConfigResource extends Resource
                             Forms\Components\TextInput::make('tlsSettings')
                                 ->maxLength(255),
                         ])->columns(2),
-
-                    Forms\Components\Section::make('Port and Reality Settings')
-                        ->schema([
-                            Forms\Components\TextInput::make('port_type')
-                                ->maxLength(255),
-                            Forms\Components\TextInput::make('reality')
-                                ->maxLength(255),
-                        ])->columns(2)
                 ])->columnSpan(2),
 
                 Forms\Components\Group::make([
@@ -93,8 +86,13 @@ class ServerConfigResource extends Resource
                                 ->required(fn ($livewire): bool => $livewire instanceof CreateRecord)
                                 ->maxLength(255),
                         ]),
-
-
+                    Forms\Components\Section::make('Port and Reality Settings')
+                        ->schema([
+                            Forms\Components\TextInput::make('port')
+                                ->maxLength(255),
+                            Forms\Components\TextInput::make('reality')
+                                ->maxLength(255),
+                        ])->columns(2)
                 ])->columnSpan(1)
             ])->columns(3);
     }
@@ -126,7 +124,7 @@ class ServerConfigResource extends Resource
                     ->searchable(),
                 Tables\Columns\TextColumn::make('username')
                     ->searchable(),
-                Tables\Columns\TextColumn::make('port_type')
+                Tables\Columns\TextColumn::make('port')
                     ->searchable(),
                 Tables\Columns\TextColumn::make('reality')
                     ->searchable(),
@@ -140,7 +138,11 @@ class ServerConfigResource extends Resource
                     ->toggleable(isToggledHiddenByDefault: true),
             ])
             ->filters([
-                //
+                SelectFilter::make('server')
+                    ->label('Servers')
+                    ->relationship('server', 'name'),
+                SelectFilter::make('panel_url')
+                    ->label('Panel URL'),
             ])
             ->actions([
                 Tables\Actions\ActionGroup::make([

@@ -162,7 +162,7 @@
 
                 <div>
                     <img class="relative py-auto size-auto justify-center items-center mx-auto w-full max-w-full sm:max-w-full md:max-w-full"
-                        src="{{ asset('storage/uploads/hero_white_2.svg') }}" alt="#">
+                        src="{{ asset('storage/uploads/hero.png') }}" alt="#">
                 </div>
                 <!-- End Col -->
             </div>

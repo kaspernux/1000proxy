@@ -2,23 +2,24 @@
 
 namespace App\Filament\Clusters\ServerManagement\Resources;
 
-use App\Filament\Clusters\ServerManagement;
-use App\Filament\Clusters\ServerManagement\Resources\ServerResource\Pages;
-use App\Models\Server;
 use Filament\Forms;
-use Filament\Forms\Form;
-use Filament\Resources\Resource;
 use Filament\Tables;
+use App\Models\Server;
+use Filament\Forms\Form;
 use Filament\Tables\Table;
 use Illuminate\Support\Str;
-use Filament\Forms\Components\RichEditor;
+use Filament\Resources\Resource;
+use Filament\Forms\Components\Group;
 use Filament\Forms\Components\Section;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
-use Filament\Forms\Components\Group;
-use Livewire\Features\SupportFileUploads\TemporaryUploadedFile;
-use Filament\Forms\Components\FileUpload;
 use Filament\Tables\Columns\ImageColumn;
+use Filament\Forms\Components\FileUpload;
+use Filament\Tables\Filters\SelectFilter;
+use App\Filament\Clusters\ServerManagement;
+use Filament\Forms\Components\MarkdownEditor;
+use Livewire\Features\SupportFileUploads\TemporaryUploadedFile;
+use App\Filament\Clusters\ServerManagement\Resources\ServerResource\Pages;
 
 
 class ServerResource extends Resource
@@ -47,40 +48,24 @@ class ServerResource extends Resource
                         Forms\Components\TextInput::make('name')
                             ->required()
                             ->maxLength(255),
-
+                        Forms\Components\TextInput::make('country')
+                            ->required()
+                            ->maxLength(255),
                         Forms\Components\Select::make('server_category_id')
                             ->relationship('category', 'name')
                             ->required()
                             ->searchable()
                             ->preload(),
-                        Forms\Components\TextInput::make('country')
+                        Forms\Components\Select::make('server_brand_id')
+                            ->relationship('brand', 'name')
                             ->required()
-                            ->maxLength(255),
-                        Forms\Components\Select::make('status')
-                            ->required()
-                            ->options([
-                                'up' => 'Up',
-                                'down' => 'Down',
-                                'paused' => 'Paused',
-                            ]),
-                    ])->columns(2),
+                            ->searchable()
+                            ->preload(),
 
-                    Section::make('Connection Information')->schema([
-                        Forms\Components\TextInput::make('ip_address')
-                            ->required()
-                            ->maxLength(255),
-                        Forms\Components\TextInput::make('port')
-                            ->required()
-                            ->numeric(),
-                        Forms\Components\TextInput::make('panel_url')
-                            ->required()
-                            ->prefix('http://')
-                            ->maxLength(255)
-                            ->columnSpanFull(),
                     ])->columns(2),
 
                     Section::make('Description')->schema([
-                        Forms\Components\RichEditor::make('description')
+                        Forms\Components\MarkdownEditor::make('description')
                             ->fileAttachmentsDirectory('servers'),
                     ]),
                 ])->columnSpan(2),
@@ -88,17 +73,14 @@ class ServerResource extends Resource
                     Section::make('Country Flag')->schema([
                         Forms\Components\FileUpload::make('flag')
                             ->image()
-                            ->directory('servers')
-                    ])->columns(1),
-
-                    Section::make('Authentication Details')->schema([
-                        Forms\Components\TextInput::make('username')
+                            ->directory('servers'),
+                        Forms\Components\Select::make('status')
                             ->required()
-                            ->maxLength(255),
-                        Forms\Components\TextInput::make('password')
-                            ->password()
-                            ->required()
-                            ->maxLength(255),
+                            ->options([
+                                'up' => 'Up',
+                                'down' => 'Down',
+                                'paused' => 'Paused',
+                            ]),
                     ])->columns(1),
                 ])->columnSpan(1),
             ])->columns(3);
@@ -119,19 +101,16 @@ class ServerResource extends Resource
                     ->label('Category')
                     ->sortable()
                     ->searchable(),
+                Tables\Columns\TextColumn::make('brand.name')
+                    ->label('Brand')
+                    ->sortable()
+                    ->searchable(),
                 Tables\Columns\TextColumn::make('country')
                     ->label('Country')
                     ->sortable()
                     ->searchable(),
-                Tables\Columns\TextColumn::make('ip_address')
-                    ->label('IP')
-                    ->searchable()
-                    ->sortable(),
-                Tables\Columns\TextColumn::make('panel_url')
-                    ->label('URL')
-                    ->searchable(),
-                Tables\Columns\TextColumn::make('port')
-                    ->label('Port')
+                Tables\Columns\TextColumn::make('description')
+                    ->label('Description')
                     ->sortable(),
                 Tables\Columns\TextColumn::make('status')
                     ->label('Status')
@@ -146,7 +125,11 @@ class ServerResource extends Resource
                     ->toggleable(isToggledHiddenByDefault: true),
             ])
             ->filters([
-                //
+                SelectFilter::make('server_category_id')
+                    ->label('Categories')
+                    ->relationship('category', 'name'),
+                SelectFilter::make('country')
+                    ->label('Countries'),
             ])
             ->actions([
                 Tables\Actions\ActionGroup::make([

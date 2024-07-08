@@ -62,7 +62,7 @@ class CheckoutPage extends Component
             $order = new Order();
             $order->customer_id = auth()->user()->id;
             $order->grand_amount = CartManagement::calculateGrandTotal($order_items);
-            $order->currency = 'usd'; // Adjust currency as needed
+            $order->currency = 'usd';
             $order->payment_method = $validatedData['selectedPaymentMethod'];
             $order->order_status = 'new';
             $order->notes = 'Order placed by: ' . auth()->user()->name . ' (ID #: ' . auth()->user()->id . ') | Total amount: ' . $order->grand_amount . '$ | Placed at: ' . now();
@@ -75,17 +75,17 @@ class CheckoutPage extends Component
                 'customer_id' => $order->customer_id,
                 'order_id' => $order->id,
                 'payment_method_id' => $paymentMethod->id,
-                'payment_id' => session('paymentId'), // Assuming paymentId is stored in session
-                'iid' => session('iid'), // Assuming iid is stored in session
-                'payment_status' => session('payment_status'), // Adjust as per your session data
-                'pay_address' => session('pay_address'), // Adjust as per your session data
+                'payment_id' => session('paymentId'),
+                'iid' => session('iid'),
+                'payment_status' => session('payment_status'),
+                'pay_address' => session('pay_address'),
                 'price_amount' => CartManagement::calculateGrandTotal($order_items),
                 'price_currency' => 'usd',
                 'pay_amount' => CartManagement::calculateGrandTotal($order_items),
-                'pay_currency' => 'xmr', // Adjust as per your session data
+                'pay_currency' => 'xmr',
                 'order_description' => 'Order placed by: ' . auth()->user()->name . ' (ID #: ' . auth()->user()->id . ') | Total amount: ' . $order->grand_amount . '$ | Placed at: ' . now(),
                 'ipn_callback_url' => 'https://1000proxybot/webhook',
-                'invoice_url' => "https://nowpayments.io/payment?iid=" . session('iid') . "&paymentId=" . session('paymentId'), // Correctly interpolate iid and paymentId
+                'invoice_url' => "https://nowpayments.io/payment?iid=" . session('iid') . "&paymentId=" . session('paymentId'),
                 'success_url' => route('success', ['order' => $order->id]),
                 'cancel_url' => route('cancel', ['order' => $order->id]),
                 'partially_paid_url' => route('cancel', ['order' => $order->id]),
@@ -100,7 +100,7 @@ class CheckoutPage extends Component
                 $line_items[] = [
                     'price_data' => [
                         'currency' => 'usd',
-                        'unit_amount' => intval($item['price'] * 100), // Convert to cents
+                        'unit_amount' => intval($item['price'] * 100),
                         'product_data' => [
                             'name' => $item['name'],
                         ],
@@ -130,7 +130,7 @@ class CheckoutPage extends Component
             // Create Stripe or NowPayments session based on selected payment method
             $redirect_url = '';
 
-            if ($paymentMethod->id == 2) {
+            if ($paymentMethod->slug == 'stripe') {
                 // Stripe payment logic
                 Stripe::setApiKey(env('STRIPE_SECRET'));
 
@@ -145,7 +145,7 @@ class CheckoutPage extends Component
                 ]);
 
                 $redirect_url = $sessionCheckout->url;
-            } elseif ($paymentMethod->id == 3) {
+            } elseif ($paymentMethod->slug == 'nowpayments') {
                 // NowPayments payment logic
                 $paymentController = new PaymentController();
 
@@ -169,7 +169,7 @@ class CheckoutPage extends Component
                     $this->alert('warning', 'Failed to create invoice. Try another payment method.');
                     return;
                 }
-            } elseif ($paymentMethod->id == 1) {
+            } elseif ($paymentMethod->slug == 'wallet') {
                 // Wallet payment logic
                 $customer = Auth::user();
                 Log::info('Customer wallet balance:', ['balance' => $customer->wallet]);

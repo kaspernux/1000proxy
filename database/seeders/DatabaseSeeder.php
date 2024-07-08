@@ -3,8 +3,11 @@
 namespace Database\Seeders;
 
 use App\Models\User;
+use App\Models\Customer;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 
 class DatabaseSeeder extends Seeder
 {
@@ -21,12 +24,29 @@ class DatabaseSeeder extends Seeder
             'password' => Hash::make('Admin123'),
         ]);
 
-        // Create a regular user
-        User::factory()->create([
-            'name' => 'Test User',
-            'username'=>'Teranova',
-            'email' => 'user@email.com',
-            'password' => Hash::make('Userd123'),
+        // Create Customer
+        $this->call([
+            CustomerSeeder::class,
+            // other seeders
         ]);
+
+        $this->call([
+            ServerCategorySeeder::class,
+            // Add other seeders here
+        ]);
+
+        $this->call([
+            ServerBrandSeeder::class,
+            // Add other seeders here
+        ]);
+
+        $this->call([
+            PaymentMethodSeeder::class,
+            // Add other seeders here
+        ]);
+
+
+
+
     }
 }

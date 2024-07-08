@@ -2,20 +2,21 @@
 
 namespace App\Filament\Clusters\ServerManagement\Resources;
 
+use Filament\Forms;
+use Filament\Tables;
+use Filament\Forms\Form;
+use App\Models\ServerTag;
+use Filament\Tables\Table;
+use Filament\Resources\Resource;
+use Filament\Forms\Components\Group;
+use Filament\Forms\Components\Section;
+use Filament\Forms\Components\Split;
+use Illuminate\Database\Eloquent\Builder;
 use App\Filament\Clusters\ServerManagement;
+use Filament\Forms\Components\MarkdownEditor;
+use Illuminate\Database\Eloquent\SoftDeletingScope;
 use App\Filament\Clusters\ServerManagement\Resources\ServerTagResource\Pages;
 use App\Filament\Clusters\ServerManagement\Resources\ServerTagResource\RelationManagers;
-use App\Models\ServerTag;
-use Filament\Forms;
-use Filament\Forms\Form;
-use Filament\Resources\Resource;
-use Filament\Tables;
-use Filament\Tables\Table;
-use Filament\Forms\Components\Section;
-use Filament\Forms\Components\Group;
-use Filament\Forms\Components\RichEditor;
-use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Database\Eloquent\SoftDeletingScope;
 
 class ServerTagResource extends Resource
     {
@@ -39,23 +40,24 @@ class ServerTagResource extends Resource
                 Group::make([
                     Section::make('Tag Information')
                         ->schema([
-                            Forms\Components\TextInput::make('name')
-                                ->required()
-                                ->maxLength(255),
-                        ]),
-                ])->columnSpan(2),
+                            Split::make([
+                                Section::make([
+                                    Forms\Components\TextInput::make('name')
+                                        ->required()
+                                        ->maxLength(255),
+                                ]),
+                                Section::make([
+                                    Forms\Components\Select::make('server_id')
+                                        ->relationship('server', 'name')
+                                        ->required()
+                                        ->searchable()
+                                        ->preload(),
+                                ])->grow(false),
+                            ])->from('md')
 
-                Group::make([
-                    Section::make('Server Association')
-                        ->schema([
-                            Forms\Components\Select::make('server_id')
-                                ->relationship('server', 'name')
-                                ->required()
-                                ->searchable()
-                                ->preload(),
                         ]),
-                ])->columnSpan(1),
-            ])->columns(3);
+                ]),
+            ]);
         }
 
     public static function table(Table $table): Table

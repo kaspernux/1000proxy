@@ -9,6 +9,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 class ClientTraffic extends Model
 {
     use HasFactory;
+
     protected $table = 'client_traffics';
 
     protected $fillable = [

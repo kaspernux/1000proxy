@@ -1,6 +1,24 @@
 <div
     class="w-full bg-gradient-to-r from-green-900 to-green-600 container max-w-auto py-10 px-4 sm:px-6 lg:px-8 mx-auto">
     <div class="container mx-auto px-4 max-w-7xl">
+        @if (session()->has('success'))
+        <div class="bg-green-500 text-white p-3 rounded mb-4">
+            {{ session('success') }}
+        </div>
+        @endif
+
+        @if (session()->has('warning'))
+        <div class="bg-yellow-500 text-white p-3 rounded mb-4">
+            {{ session('warning') }}
+        </div>
+        @endif
+
+        @if (session()->has('error'))
+        <div class="bg-red-500 text-white p-3 rounded mb-4">
+            {{ session('error') }}
+        </div>
+        @endif
+
         <h1 class="text-4xl my-10 font-bold text-white text-left">
             Checkout
         </h1>
@@ -74,7 +92,7 @@
                             Select Payment Method
                         </div>
                         <ul class="grid w-full gap-6 md:grid-cols-2">
-                            @foreach($payment_methods as $paymentMethod)
+                            @foreach($payment_methods->where('is_active', true) as $paymentMethod)
                             <li>
                                 <input wire:model='selectedPaymentMethod' class="hidden peer" id="{{ $paymentMethod->id }}" type="radio"
                                     value="{{ $paymentMethod->id }}" />
@@ -166,7 +184,7 @@
                                 <div class="flex items-center">
                                     <div class="flex-shrink-0">
                                         <img alt="{{$ci['name']}}" class="w-12 h-12 rounded-full"
-                                            src="{{ url('storage/'.$ci['product_image']) }}">
+                                            src="{{ url('storage/'.$ci['pic']) }}">
                                         </img>
                                     </div>
                                     <div class="flex-1 min-w-0 ms-4">

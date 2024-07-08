@@ -16,12 +16,13 @@ return new class extends Migration
             $table->foreignId('server_id')->constrained()->onDelete('cascade');
             $table->string('panel_url');
             $table->string('ip');
+            $table->integer('port');
             $table->string('sni')->nullable();
             $table->string('header_type')->nullable();
             $table->string('request_header')->nullable();
             $table->string('response_header')->nullable();
             $table->string('security')->nullable();
-            $table->string('tlsSettings')->nullable();
+            $table->json('tlsSettings')->nullable();
             $table->string('type')->nullable();
             $table->string('username');
             $table->string('password');

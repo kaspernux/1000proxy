@@ -15,13 +15,9 @@ return new class extends Migration
             $table->id();
             $table->string('name');
             $table->foreignId('server_category_id')->constrained()->onDelete('cascade');
+            $table->foreignId('server_brand_id')->constrained()->onDelete('cascade');
             $table->string('country');
             $table->string('flag');
-            $table->string('ip_address');
-            $table->string('panel_url');
-            $table->integer('port');
-            $table->string('username');
-            $table->string('password');
             $table->text('description')->nullable();
             $table->enum('status', ['up', 'down', 'paused'])->default('up');
             $table->timestamps();

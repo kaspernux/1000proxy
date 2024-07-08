@@ -15,7 +15,7 @@ use Filament\Forms\Components\Section;
 use Filament\Forms\Components\Group;
 use Livewire\Features\SupportFileUploads\TemporaryUploadedFile;
 use Filament\Forms\Components\FileUpload;
-use Filament\Forms\Components\RichEditor;
+use Filament\Forms\Components\MarkdownEditor;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\SoftDeletingScope;
 use Illuminate\Contracts\Support\Htmlable;
@@ -33,7 +33,7 @@ class CustomerResource extends Resource
     protected static ?string $recordTitleAttribute = 'name';
     public static function getLabel(): string
     {
-        return 'Users';
+        return 'Customers';
     }
     public static function form(Form $form): Form
         {
@@ -45,7 +45,7 @@ class CustomerResource extends Resource
                             Forms\Components\TextInput::make('name')
                                 ->required()
                                 ->maxLength(255),
-                            Forms\Components\TextInput::make('telegram_id')
+                            Forms\Components\TextInput::make('tgId')
                                 ->tel()
                                 ->maxLength(255),
                             Forms\Components\TextInput::make('email')
@@ -83,6 +83,8 @@ class CustomerResource extends Resource
                                 ->required()
                                 ->numeric()
                                 ->default(0),
+                            Forms\Components\TextInput::make('spam_info')
+                                ->maxLength(500),
                        ])->columns(2),
                 ])->columnSpan(2),
 
@@ -91,6 +93,11 @@ class CustomerResource extends Resource
                         ->schema([
                             Forms\Components\FileUpload::make('image')
                                 ->image()
+                                ->getUploadedFileNameForStorageUsing(
+                                    fn (TemporaryUploadedFile $file): string => (string) str($file->getClientOriginalName())
+                                        ->prepend('customer-'),
+                                )
+                                ->directory('customer-images')
                                 ->columnSpan(2),
                         ]),
                     Section::make('Status Information')
@@ -110,8 +117,7 @@ class CustomerResource extends Resource
                         ->schema([
                             Forms\Components\Textarea::make('temp')
                                 ->columnSpanFull(),
-                            Forms\Components\TextInput::make('spam_info')
-                                ->maxLength(500),
+
                         ]),
                 ]),
             ])->columns(3);
@@ -131,7 +137,7 @@ class CustomerResource extends Resource
                 Tables\Columns\TextColumn::make('email')
                     ->searchable()
                     ->label('Email'),
-                Tables\Columns\TextColumn::make('telegram_id')
+                Tables\Columns\TextColumn::make('tgId')
                     ->searchable()
                     ->label('Telegram'),
                 Tables\Columns\TextColumn::make('wallet')

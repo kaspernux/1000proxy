@@ -15,8 +15,7 @@ class ServerPlan extends Model
     protected $table = 'server_plans';
 
     protected $fillable = [
-        'server_category_id',
-        'server_brand_id',
+        'server_id',
         'name',
         'slug',
         'product_image',
@@ -49,32 +48,19 @@ class ServerPlan extends Model
         });
     }
 
-    public function brand(): BelongsTo
+    public function server(): BelongsTo
     {
-        return $this->belongsTo(ServerBrand::class, 'server_brand_id');
-    }
-
-    public function category(): BelongsTo
-    {
-        return $this->belongsTo(ServerCategory::class, 'server_category_id');
+        return $this->belongsTo(Server::class, 'server_id');
     }
 
     public function orderItems(): HasMany
     {
         return $this->hasMany(OrderItem::class);
     }
-    public function inbound(): BelongsTo
-    {
-        return $this->belongsTo(ServerInbound::class, 'server_inbound_id');
-    }
-
-    public function clients(): HasMany
-    {
-        return $this->hasMany(ServerClient::class);
-    }
 
     public function invoices(): HasMany
     {
         return $this->hasMany(Invoice::class);
     }
+
 }

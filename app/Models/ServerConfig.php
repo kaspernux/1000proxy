@@ -2,17 +2,21 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
-
 class ServerConfig extends Model
-    {
+{
+    use HasFactory;
+
     protected $table = 'server_configs';
 
     protected $fillable = [
+        'server_id',
         'panel_url',
         'ip',
+        'port',
         'sni',
         'header_type',
         'request_header',
@@ -24,12 +28,10 @@ class ServerConfig extends Model
         'password',
         'port_type',
         'reality',
-        'server_id',
     ];
 
     public function server(): BelongsTo
-        {
-        return $this->belongsTo(Server::class);
-        }
-
+    {
+        return $this->belongsTo(Server::class, 'server_id');
     }
+}

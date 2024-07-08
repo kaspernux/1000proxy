@@ -14,13 +14,13 @@ return new class extends Migration
         Schema::create('client_traffics', function (Blueprint $table) {
             $table->id();
             $table->foreignId('customer_id')->nullable()->constrained('customers')->onDelete('cascade');
-            $table->foreignId('server_inbound_id')->nullable()->constrained('server_plans')->onDelete('cascade');
+            $table->foreignId('server_inbound_id')->nullable()->constrained('server_inbounds')->onDelete('cascade');
             $table->boolean('enable')->default(false);
             $table->string('email')->nullable();
-            $table->integer('up')->nullable();
-            $table->integer('down')->nullable();
-            $table->dateTime('expiryTime')->nullable();
-            $table->integer('total')->nullable();
+            $table->bigInteger('up')->nullable();
+            $table->bigInteger('down')->nullable();
+            $table->bigInteger('expiryTime')->nullable();
+            $table->bigInteger('total')->nullable();
             $table->boolean('reset')->default(false);
             $table->timestamps();
         });
@@ -32,6 +32,5 @@ return new class extends Migration
     public function down(): void
     {
         Schema::dropIfExists('client_traffics');
-
-  }
+    }
 };

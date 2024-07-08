@@ -29,7 +29,7 @@
                     ax-load
                 @endif
                 ax-load-src="{{ \Filament\Support\Facades\FilamentAsset::getAlpineComponentSrc('rich-editor', 'filament/forms') }}"
-                x-data="richEditorFormComponent({
+                x-data="MarkdownEditorFormComponent({
                             state: $wire.{{ $applyStateBindingModifiers("\$entangle('{$statePath}')", isOptimisticallyLive: false) }},
                         })"
                 x-ignore

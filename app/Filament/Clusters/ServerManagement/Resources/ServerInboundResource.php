@@ -2,20 +2,22 @@
 
 namespace App\Filament\Clusters\ServerManagement\Resources;
 
-use App\Filament\Clusters\ServerManagement;
-use App\Filament\Clusters\ServerManagement\Resources\ServerInboundResource\Pages;
-use App\Models\ServerInbound;
 use Filament\Forms;
-use Filament\Forms\Form;
-use Filament\Resources\Resource;
 use Filament\Tables;
+use Filament\Forms\Form;
 use Filament\Tables\Table;
-use Filament\Forms\Components\Section;
+use App\Models\ServerInbound;
+use Filament\Resources\Resource;
 use Filament\Forms\Components\Group;
-use Filament\Forms\Components\TextInput;
+use Filament\Forms\Components\Split;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Toggle;
+use Filament\Forms\Components\Section;
+use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\DatePicker;
+use Filament\Tables\Filters\SelectFilter;
+use App\Filament\Clusters\ServerManagement;
+use App\Filament\Clusters\ServerManagement\Resources\ServerInboundResource\Pages;
 
 
 class ServerInboundResource extends Resource
@@ -32,7 +34,7 @@ class ServerInboundResource extends Resource
 
     public static function getLabel(): string
     {
-        return 'Configurations';
+        return 'Inbounds';
     }
 
     public static function form(Form $form): Form
@@ -42,23 +44,32 @@ class ServerInboundResource extends Resource
                 Group::make([
                     Section::make('Server Details')
                         ->schema([
-                            Select::make('server_id')
-                                ->relationship('server', 'name')
-                                ->required()
-                                ->searchable()
-                                ->preload(),
-
-                            TextInput::make('user_id')
-                                ->required()
-                                ->numeric(),
-
-                            TextInput::make('remark')
-                                ->maxLength(255),
-
-                            Toggle::make('enable')
-                                ->required()
-                                ->default(true),
-                        ])->columns(2),
+                            Split::make([
+                                Section::make([
+                                    Select::make('server_id')
+                                        ->relationship('server', 'name')
+                                        ->required()
+                                        ->searchable()
+                                        ->preload()
+                                        ->columns(1),
+                                    TextInput::make('userId')
+                                        ->required()
+                                        ->numeric()
+                                        ->columns(1),
+                                    TextInput::make('remark')
+                                        ->maxLength(255)
+                                        ->columnSpanFull(),
+                                ]),
+                                Section::make([
+                                    Toggle::make('enable')
+                                        ->required()
+                                        ->default(true),
+                                    Forms\Components\Textarea::make('sniffing')
+                                    ->label('Sniffing (JSON)')
+                                    ->json(),
+                                ])->grow(false),
+                            ])->from('md'),
+                        ]),
 
                     Section::make('Connection Details')
                         ->schema([
@@ -76,14 +87,12 @@ class ServerInboundResource extends Resource
                                 ->required()
                                 ->maxLength(50),
 
-                            TextInput::make('settings')
+                            Forms\Components\Textarea::make('settings')
+                                ->label('Settings (JSON)')
                                 ->json(),
-
-                            TextInput::make('stream_settings')
+                            Forms\Components\Textarea::make('streamSettings')
+                                ->label('Stream Settings (JSON)')
                                 ->json(),
-
-                            Toggle::make('sniffing')
-                                ->default(false),
                         ])->columns(2),
                 ])->columnSpan(2),
 
@@ -105,9 +114,9 @@ class ServerInboundResource extends Resource
                                 ->numeric()
                                 ->default(0),
 
-                            DatePicker::make('expiry_time')
+                            DatePicker::make('expiryTime')
                                 ->required(),
-                        ]),
+                        ])->columns(2),
                 ])->columnSpan(1),
             ])->columns(3);
     }
@@ -142,7 +151,7 @@ class ServerInboundResource extends Resource
                     ->label('Enabled')
                     ->boolean(),
 
-                Tables\Columns\TextColumn::make('expiry_time')
+                Tables\Columns\TextColumn::make('expiryTime')
                     ->dateTime()
                     ->sortable(),
 
@@ -156,7 +165,11 @@ class ServerInboundResource extends Resource
                     ->toggleable(isToggledHiddenByDefault: true),
             ])
             ->filters([
-                // Add filters if needed
+                SelectFilter::make('server')
+                    ->label('Servers')
+                    ->relationship('server', 'name'),
+                SelectFilter::make('userId')
+                    ->label('Proxy User'),
             ])
             ->actions([
                 Tables\Actions\ActionGroup::make([

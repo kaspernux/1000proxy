@@ -2,38 +2,26 @@
 
 namespace App\Filament\Clusters\ServerManagement\Resources;
 
-use App\Filament\Clusters\ServerManagement;
-use App\Filament\Clusters\ServerManagement\Resources\ServerPlanResource\Pages;
-use App\Filament\Clusters\ServerManagement\Resources\ServerPlanResource\RelationManagers;
-use App\Models\ServerPlan;
 use Filament\Forms;
-use Filament\Forms\Form;
-use Filament\Resources\Resource;
 use Filament\Tables;
+use Filament\Forms\Form;
+use App\Models\ServerPlan;
 use Filament\Tables\Table;
-use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Database\Eloquent\SoftDeletingScope;
-use Filament\Forms\Components\Section;
-use Filament\Forms\Components\TextInput;
-use Filament\Forms\Components\Group;
-use Filament\Forms\Components\FileUpload;
-use Filament\Forms\Components\RichEditor;
-use Filament\Forms\Components\Toggle;
-use Filament\Forms\Components\Select;
-use Filament\Forms\Set;
-use Filament\Tables\Columns\TextColumn;
-use Filament\Tables\Columns\ImageColumn;
-use Filament\Tables\Actions\ActionGroup;
-use Filament\Tables\Actions\EditAction;
-use Filament\Tables\Actions\ViewAction;
-use Filament\Tables\Actions\DeleteAction;
-use Filament\Tables\Actions\BulkActionGroup;
-use Filament\Tables\Actions\DeleteBulkAction;
-use Filament\Tables\Columns\IconColumn;
-use Filament\Tables\Filters\SelectFilter;
 use Illuminate\Support\Str;
-
-
+use Filament\Resources\Resource;
+use Filament\Forms\Components\Group;
+use Filament\Forms\Components\Select;
+use Filament\Forms\Components\Toggle;
+use Filament\Forms\Components\Section;
+use Filament\Tables\Columns\IconColumn;
+use Filament\Tables\Columns\TextColumn;
+use Filament\Forms\Components\TextInput;
+use Filament\Tables\Columns\ImageColumn;
+use Filament\Forms\Components\FileUpload;
+use Filament\Tables\Filters\SelectFilter;
+use App\Filament\Clusters\ServerManagement;
+use Filament\Forms\Components\MarkdownEditor;
+use App\Filament\Clusters\ServerManagement\Resources\ServerPlanResource\Pages;
 
 class ServerPlanResource extends Resource
 {
@@ -59,20 +47,18 @@ class ServerPlanResource extends Resource
                 Section::make('Server Plan Information')
                     ->schema([
                         TextInput::make('name')
-                                ->required()
-                                ->maxLength(255)
-                                ->live(onBlur: true)
-                                ->afterStateUpdated(function (string $operation, $state, Set $set) {
-                                    if ($operation === 'create') {
-                                        $set('slug', Str::slug($state));
-                                    }
-                                }),
-
-                            TextInput::make('slug')
-                                ->required()
-                                ->disabled()
-                                ->unique(ServerPlan::class, 'slug', ignoreRecord: true),
-
+                            ->required()
+                            ->maxLength(255)
+                            ->live(onBlur: true)
+                            ->afterStateUpdated(function (string $operation, $state, $set) {
+                                if ($operation === 'create') {
+                                    $set('slug', Str::slug($state));
+                                }
+                            }),
+                        TextInput::make('slug')
+                            ->required()
+                            ->disabled()
+                            ->unique(ServerPlan::class, 'slug', ignoreRecord: true),
                         TextInput::make('price')
                             ->required()
                             ->numeric()
@@ -80,7 +66,7 @@ class ServerPlanResource extends Resource
                         TextInput::make('volume')
                             ->required()
                             ->default('500')
-                            ->prefix('Go')
+                            ->prefix('GB')
                             ->numeric(),
                         TextInput::make('days')
                             ->required()
@@ -91,12 +77,10 @@ class ServerPlanResource extends Resource
                             ->default('1')
                             ->required()
                             ->numeric(),
-
                     ])->columns(2),
-
                 Section::make('Description')
                     ->schema([
-                        RichEditor::make('description')
+                        MarkdownEditor::make('description')
                             ->label('')
                             ->fileAttachmentsDirectory('serverPlans')
                             ->columnSpanFull()
@@ -120,14 +104,12 @@ class ServerPlanResource extends Resource
                     ]),
                 Section::make('Product Image')
                     ->schema([
-                        Forms\Components\FileUpload::make('product_image')
+                        FileUpload::make('product_image')
                             ->image()
                             ->columnSpan(2)
                             ->directory('server_plans')
-                        ]),
-            ])
-            ->columnSpan(2),
-
+                    ]),
+            ])->columnSpan(2),
             Group::make([
                 Section::make('Server Details')
                     ->schema([
@@ -137,26 +119,20 @@ class ServerPlanResource extends Resource
                                 'single' => 'Single',
                                 'multiple' => 'Multiple',
                                 'dedicated' => 'Dedicated',
+                                'branded' => 'Branded',
                             ]),
-                        Select::make('server_category_id')
-                            ->label('Category')
-                            ->relationship('category', 'name')
+                        Select::make('server_id')
+                            ->label('Server')
+                            ->relationship('server', 'name')
                             ->required()
                             ->searchable()
                             ->preload(),
-                        Select::make('server_brand_id')
-                            ->label('Brand')
-                            ->relationship('brand', 'name')
-                            ->required()
-                            ->searchable()
-                            ->preload(),
-                ]),
-
-                Section::make('Server Details')
+                    ]),
+                Section::make('Status')
                     ->schema([
                         Toggle::make('is_active')
                             ->label('Active')
-                            ->default(false),
+                            ->default(true),
                         Toggle::make('is_featured')
                             ->label('Featured')
                             ->default(false),
@@ -167,7 +143,6 @@ class ServerPlanResource extends Resource
                             ->label('On Sale')
                             ->default(true),
                     ]),
-
             ])->columnSpan(1),
         ])->columns(3);
     }
@@ -176,58 +151,52 @@ class ServerPlanResource extends Resource
     {
         return $table
             ->columns([
-                Tables\Columns\ImageColumn::make('product_image')
+                ImageColumn::make('product_image')
                     ->label('Product Image'),
-                Tables\Columns\TextColumn::make('name')
+                TextColumn::make('name')
                     ->searchable(),
-                Tables\Columns\TextColumn::make('category.name')
+                TextColumn::make('server.name')
                     ->sortable(),
-                Tables\Columns\TextColumn::make('brand.name')
-                    ->sortable(),
-                Tables\Columns\TextColumn::make('price')
+                TextColumn::make('price')
                     ->money('USD')
                     ->sortable(),
-                Tables\Columns\TextColumn::make('type'),
-                Tables\Columns\TextColumn::make('days')
+                TextColumn::make('type'),
+                TextColumn::make('days')
                     ->numeric()
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),
-
-                Tables\Columns\TextColumn::make('volume')
+                TextColumn::make('volume')
                     ->numeric()
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),
-
-                Tables\Columns\IconColumn::make('is_active')
+                TextColumn::make('created_at')
+                    ->dateTime()
+                    ->sortable()
+                    ->toggleable(isToggledHiddenByDefault: true),
+                TextColumn::make('updated_at')
+                    ->dateTime()
+                    ->sortable()
+                    ->toggleable(isToggledHiddenByDefault: true),
+                IconColumn::make('is_active')
                     ->label('Active')
                     ->boolean(),
-                Tables\Columns\IconColumn::make('is_featured')
+                IconColumn::make('is_featured')
                     ->label('Featured')
                     ->boolean(),
-                Tables\Columns\IconColumn::make('in_stock')
+                IconColumn::make('in_stock')
                     ->label('In Stock')
                     ->boolean(),
-                Tables\Columns\IconColumn::make('on_sale')
+                IconColumn::make('on_sale')
                     ->label('On Sale')
                     ->boolean(),
-                Tables\Columns\TextColumn::make('created_at')
-                    ->dateTime()
-                    ->sortable()
-                    ->toggleable(isToggledHiddenByDefault: true),
-                Tables\Columns\TextColumn::make('updated_at')
-                    ->dateTime()
-                    ->sortable()
-                    ->toggleable(isToggledHiddenByDefault: true),
-
-
             ])
             ->filters([
-                SelectFilter::make('category')
-                    ->label('Categories')
-                    ->relationship('category', 'name'),
-                SelectFilter::make('brand')
-                    ->label('Brands')
-                    ->relationship('brand', 'name'),
+                SelectFilter::make('server')
+                    ->label('Servers')
+                    ->relationship('server', 'name'),
+                SelectFilter::make('price')
+                    ->label('Price'),
+
             ])
             ->actions([
                 Tables\Actions\ActionGroup::make([
@@ -241,13 +210,12 @@ class ServerPlanResource extends Resource
                     Tables\Actions\DeleteBulkAction::make(),
                 ]),
             ]);
-
-   }
+    }
 
     public static function getRelations(): array
     {
         return [
-            //
+            // Define relations here if any
         ];
     }
 
@@ -263,13 +231,14 @@ class ServerPlanResource extends Resource
 
     public static function getGloballySearchableAttributes(): array
     {
-        return ['name', 'category', 'brand'];
+        return ['name', 'server.name'];
     }
 
     public static function getNavigationBadge(): ?string {
         return static::getModel()::count();
     }
+
     public static function getNavigationBadgeColor(): string|array|null {
-        return static::getModel()::count() > 10 ? 'success':'danger';
+        return static::getModel()::count() > 10 ? 'success' : 'danger';
     }
 }

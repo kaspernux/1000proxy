@@ -13,23 +13,20 @@ return new class extends Migration
     {
         Schema::create('server_clients', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('customer_id')->constrained()->onDelete('cascade');
             $table->foreignId('server_inbound_id')->constrained()->onDelete('cascade');
-            $table->string('name');
-            $table->longText('description')->nullable();
-            $table->uuid('client_id');
-            $table->integer('alter_id')->default(0);
             $table->string('email');
-            $table->integer('limit_ip')->nullable();
-            $table->bigInteger('total_gb');
-            $table->bigInteger('expiry_time');
-            $table->string('tg_id')->nullable();
-            $table->string('sub_id')->nullable();
+            $table->string('password');
+            $table->string('flow')->default('None');
+            $table->integer('limitIp')->nullable();
+            $table->bigInteger('totalGB')->nullable();
+            $table->dateTime('expiryTime')->nullable();
+            $table->string('tgId')->nullable();
+            $table->string('subId')->nullable();
+            $table->boolean('enable')->default(true);
+            $table->integer('reset')->nullable();
             $table->text('qr_code_sub')->nullable();
             $table->text('qr_code_sub_json')->nullable();
             $table->text('qr_code_client')->nullable();
-            $table->boolean('enabled')->default(true);
-            $table->boolean('reset')->default(false);
             $table->timestamps();
         });
     }
@@ -40,6 +37,5 @@ return new class extends Migration
     public function down(): void
     {
         Schema::dropIfExists('server_clients');
-
-  }
+    }
 };

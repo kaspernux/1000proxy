@@ -13,9 +13,11 @@ use Filament\Tables;
 use Filament\Tables\Table;
 use Filament\Forms\Components\Section;
 use Filament\Forms\Components\Group;
-use Filament\Forms\Components\RichEditor;
+use Filament\Forms\Components\MarkdownEditor;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\SoftDeletingScope;
+use Filament\Forms\Components\ToggleButtons;
+
 
 class ServerReviewResource extends Resource
     {
@@ -37,9 +39,9 @@ class ServerReviewResource extends Resource
         return $form
             ->schema([
                 Forms\Components\Group::make([
-                    Forms\Components\Section::make('Review Details')
+                    Forms\Components\Section::make('Message')
                         ->schema([
-                            Forms\Components\RichEditor::make('comments')
+                            Forms\Components\MarkdownEditor::make('comments')
                                 ->columnSpanFull()
                                 ->fileAttachmentsDirectory('ServerReview'),
                         ]),
@@ -52,15 +54,18 @@ class ServerReviewResource extends Resource
                                 ->relationship('server', 'name')
                                 ->required()
                                 ->searchable()
-                                ->preload()
-                                ->columnSpan(6),
+                                ->preload(),
                             Forms\Components\Select::make('customer_id')
                                 ->relationship('customer', 'name')
                                 ->required()
                                 ->searchable()
-                                ->preload()
-                                ->columnSpan(6),
+                                ->preload(),
                         ])->columns(2),
+
+                        ToggleButtons::make('approved')
+                            ->label('Approve the review?')
+                            ->boolean()
+                            ->grouped(),
                 ])->columnSpan(1),
             ])->columns(3);
         }
@@ -75,6 +80,9 @@ class ServerReviewResource extends Resource
                 Tables\Columns\TextColumn::make('customer.name')
                     ->numeric()
                     ->sortable(),
+                Tables\Columns\IconColumn::make('approved')
+                    ->label('Approve')
+                    ->boolean(),
                 Tables\Columns\TextColumn::make('created_at')
                     ->dateTime()
                     ->sortable()

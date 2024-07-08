@@ -17,35 +17,31 @@ class Server extends Model
     protected $fillable = [
         'name',
         'server_category_id',
+        'server_brand_id',
         'country',
         'flag',
-        'ip_address',
-        'panel_url',
-        'port',
-        'username',
-        'password',
         'description',
         'status',
     ];
-
-    public function inbounds(): HasMany
-    {
-        return $this->hasMany(ServerInbound::class);
-    }
 
     public function category(): BelongsTo
     {
         return $this->belongsTo(ServerCategory::class, 'server_category_id');
     }
 
-    public function clients(): HasMany
+    public function brand(): BelongsTo
     {
-        return $this->hasMany(ServerClient::class);
+        return $this->belongsTo(ServerBrand::class, 'server_brand_id');
     }
 
-    public function config(): HasOne
+    public function config(): hasOne
     {
         return $this->hasOne(ServerConfig::class);
+    }
+
+    public function plans(): HasMany
+    {
+        return $this->hasMany(ServerPlan::class);
     }
 
     public function giftLists(): HasMany

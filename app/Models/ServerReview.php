@@ -15,6 +15,7 @@ class ServerReview extends Model
         'server_id',
         'customer_id',
         'comments',
+        'approved',
     ];
 
     public function server(): BelongsTo

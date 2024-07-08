@@ -22,7 +22,7 @@ use Filament\Forms\Components\ToggleButtons;
 use Filament\Forms\Components\Placeholder;
 use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Hidden;
-use Filament\Forms\Components\RichEditor;
+use Filament\Forms\Components\MarkdownEditor;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\DatePicker;
 use GuzzleHttp\Client;
@@ -55,7 +55,7 @@ class OrderResource extends Resource
                                 ->required(),
                             TextInput::make('created_at')
                                 ->label('Order date'),
-                            RichEditor::make('notes')
+                            MarkdownEditor::make('notes')
                                 ->columnSpanFull()
                                 ->fileAttachmentsDirectory('Order'),
                         ])->columns(2),

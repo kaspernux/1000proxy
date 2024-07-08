@@ -14,19 +14,21 @@ class CreateServerInboundsTable extends Migration
         Schema::create('server_inbounds', function (Blueprint $table) {
             $table->id();
             $table->foreignId('server_id')->constrained()->onDelete('cascade');
-            $table->string('user_id');
-            $table->integer('up')->nullable();
-            $table->integer('down')->nullable();
-            $table->integer('total')->nullable();
+            $table->integer('userId');
+            $table->bigInteger('up')->nullable();
+            $table->bigInteger('down')->nullable();
+            $table->bigInteger('total')->nullable();
             $table->string('remark')->nullable();
             $table->boolean('enable')->default(false);
-            $table->dateTime('expiry_time')->nullable();
+            $table->datetime('expiryTime')->nullable();
+            $table->json('clientStats')->nullable();
             $table->string('listen')->nullable();
             $table->integer('port')->nullable();
             $table->string('protocol')->nullable();
             $table->json('settings')->nullable();
-            $table->json('stream_settings')->nullable();
-            $table->boolean('sniffing')->default(false);
+            $table->json('streamSettings')->nullable();
+            $table->string('tag')->unique()->nullable();
+            $table->json('sniffing')->nullable();
             $table->timestamps();
         });
     }

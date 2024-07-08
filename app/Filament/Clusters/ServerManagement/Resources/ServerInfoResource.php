@@ -15,7 +15,7 @@ use Filament\Forms\Components\Group;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
-use Filament\Forms\Components\RichEditor;
+use Filament\Forms\Components\MarkdownEditor;
 
 class ServerInfoResource extends Resource
 {
@@ -62,7 +62,7 @@ class ServerInfoResource extends Resource
                             ]),
                     ])->columns(2),
                     Section::make('Details')->schema([
-                        RichEditor::make('remark')
+                        MarkdownEditor::make('remark')
                             ->columnSpanFull()
                             ->fileAttachmentsDirectory('ServerInfo'),
                     ])
