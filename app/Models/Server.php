@@ -34,11 +34,6 @@ class Server extends Model
         return $this->belongsTo(ServerBrand::class, 'server_brand_id');
     }
 
-    public function config(): hasOne
-    {
-        return $this->hasOne(ServerConfig::class);
-    }
-
     public function plans(): HasMany
     {
         return $this->hasMany(ServerPlan::class);
@@ -72,5 +67,24 @@ class Server extends Model
     public function serverInfo(): HasOne
     {
         return $this->hasOne(ServerInfo::class);
+    }
+
+    // Define the relationship with ServerConfig
+    public function serverConfig()
+    {
+        return $this->hasOne(ServerConfig::class);
+    }
+
+    // Example method to get XUI parameters
+    public function getXUIParameters()
+    {
+        if ($this->serverConfig) {
+            return [
+                'panel_url' => $this->serverConfig->panel_url,
+                'username' => $this->serverConfig->username,
+                'password' => $this->serverConfig->password,
+            ];
+        }
+        return [];
     }
 }

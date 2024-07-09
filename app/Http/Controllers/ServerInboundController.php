@@ -13,7 +13,6 @@ class ServerInboundController extends Controller
     public function store(Request $request)
     {
         $request->validate([
-            'server_id' => 'required|exists:servers,id',
             'up' => 'nullable|integer',
             'down' => 'nullable|integer',
             'total' => 'nullable|integer',
@@ -33,6 +32,7 @@ class ServerInboundController extends Controller
         DB::beginTransaction();
 
         try {
+            // Assuming $request->server_id is used to find the Server model
             $server = Server::findOrFail($request->server_id);
             $xuiService = new XUIService($server);
 
@@ -43,9 +43,11 @@ class ServerInboundController extends Controller
                 return response()->json($xuiResponse, 400);
             }
 
-            $userId = $xuiResponse['userId']; // Assuming 'userId' is returned from the XUI server
+            $userId = $xuiResponse['userId'] ?? null;
 
-            $inbound = ServerInbound::create(array_merge($request->all(), ['userId' => $userId]));
+            // Creating ServerInbound without server_id
+            $inboundData = array_merge($request->all(), ['userId' => $userId]);
+            $inbound = ServerInbound::create($inboundData);
 
             DB::commit();
             return response()->json($inbound, 201);
@@ -57,17 +59,21 @@ class ServerInboundController extends Controller
 
     public function getInbound(Request $request, $inboundId)
     {
-        $server = Server::findOrFail($request->server_id);
-        $xuiService = new XUIService($server);
+        try {
+            // Assuming $request->server_id is used to find the Server model
+            $server = Server::findOrFail($request->server_id);
+            $xuiService = new XUIService($server);
 
-        $inbound = $xuiService->getInbound($inboundId);
-        return response()->json($inbound);
+            $inbound = $xuiService->getInbound($inboundId);
+            return response()->json($inbound);
+        } catch (\Exception $e) {
+            return response()->json(['error' => $e->getMessage()], 500);
+        }
     }
 
     public function update(Request $request, $inboundId)
     {
         $request->validate([
-            'server_id' => 'required|exists:servers,id',
             'up' => 'nullable|integer',
             'down' => 'nullable|integer',
             'total' => 'nullable|integer',
@@ -87,6 +93,7 @@ class ServerInboundController extends Controller
         DB::beginTransaction();
 
         try {
+            // Assuming $request->server_id is used to find the Server model
             $server = Server::findOrFail($request->server_id);
             $xuiService = new XUIService($server);
 
@@ -113,6 +120,7 @@ class ServerInboundController extends Controller
         DB::beginTransaction();
 
         try {
+            // Assuming $request->server_id is used to find the Server model
             $server = Server::findOrFail($request->server_id);
             $xuiService = new XUIService($server);
 
@@ -136,20 +144,29 @@ class ServerInboundController extends Controller
 
     public function listInbounds(Request $request)
     {
-        $server = Server::findOrFail($request->server_id);
-        $xuiService = new XUIService($server);
+        try {
+            // Assuming $request->server_id is used to find the Server model
+            $server = Server::findOrFail($request->server_id);
+            $xuiService = new XUIService($server);
 
-        $inbounds = $xuiService->listInbounds();
-        return response()->json($inbounds);
+            $inbounds = $xuiService->listInbounds();
+            return response()->json($inbounds);
+        } catch (\Exception $e) {
+            return response()->json(['error' => $e->getMessage()], 500);
+        }
     }
 
     public function deleteDepletedClients(Request $request, $inboundId = null)
     {
-        $server = Server::findOrFail($request->server_id);
-        $xuiService = new XUIService($server);
+        try {
+            // Assuming $request->server_id is used to find the Server model
+            $server = Server::findOrFail($request->server_id);
+            $xuiService = new XUIService($server);
 
-        $response = $xuiService->deleteDepletedClients($inboundId);
-        return response()->json($response);
+            $response = $xuiService->deleteDepletedClients($inboundId);
+            return response()->json($response);
+        } catch (\Exception $e) {
+            return response()->json(['error' => $e->getMessage()], 500);
+        }
     }
-
 }

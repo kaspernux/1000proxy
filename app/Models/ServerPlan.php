@@ -63,4 +63,20 @@ class ServerPlan extends Model
         return $this->hasMany(Invoice::class);
     }
 
+    // Example method to manage plans
+    public function managePlan()
+    {
+        $xuiService = app(XUIService::class);
+        // Use $this->server_id to fetch server-specific details
+        $server = $this->server;
+
+        // Example: Fetch plans
+        $plans = $xuiService->fetchPlans($server->getXUIParameters());
+
+        // Example: Process plans
+        foreach ($plans as $plan) {
+            // Process each plan as needed
+        }
+    }
+
 }

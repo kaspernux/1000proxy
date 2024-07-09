@@ -39,4 +39,20 @@ class ServerClient extends Model
     {
         return $this->belongsTo(ServerPlan::class);
     }
+
+    // Example method to manage clients
+    public function manageClients()
+    {
+        $xuiService = app(XUIService::class);
+        // Use $this->server_id to fetch server-specific details
+        $server = $this->server;
+
+        // Example: Fetch clients
+        $clients = $xuiService->fetchClients($server->getXUIParameters());
+
+        // Example: Process clients
+        foreach ($clients as $client) {
+            // Process each client as needed
+        }
+    }
 }

@@ -41,6 +41,7 @@
                 <h4 class="font-bold font-mono text-lg text-white hover:text-yellow-600 dark:text-green-400 dark:hover:text-yellow-600 dark:focus:outline-none dark:focus:ring-1 dark:focus:ring-green-600">Stay up to date</h4>
 
                 <form>
+                    @csrf
                     <div
                         class="mt-4 flex flex-col font-mono items-center gap-2 sm:flex-row sm:gap-3 bg-white rounded-lg p-2 dark:bg-green-800">
                         <div class="w-full">

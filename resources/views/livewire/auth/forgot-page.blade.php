@@ -33,6 +33,7 @@
 
                         <!-- Form -->
                         <form wire:submit.prevent='save'>
+                            @csrf
                             <div class="grid gap-y-4">
                                 <!-- Form Group -->
                                 <div>

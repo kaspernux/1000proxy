@@ -53,4 +53,20 @@ class ServerInbound extends Model
     {
         return $this->hasMany(ClientTraffic::class);
     }
+
+    // Example method to manage inbounds
+    public function manageInbounds()
+    {
+        $xuiService = app(XUIService::class);
+        // Use $this->server_id to fetch server-specific details
+        $server = $this->server;
+
+        // Example: Fetch inbounds
+        $inbounds = $xuiService->fetchInbounds($server->getXUIParameters());
+
+        // Example: Process inbounds
+        foreach ($inbounds as $inbound) {
+            // Process each inbound as needed
+        }
+    }
 }

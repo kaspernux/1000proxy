@@ -15,7 +15,7 @@ class ServerClientController extends Controller
     public function store(Request $request)
     {
         $request->validate([
-            'server_inbound_id' => 'required|exists:server_inbounds,id',
+            'server_inbound_id' => 'nullable|exists:server_inbounds,id',
             'password' => 'required|string',
             'flow' => 'nullable|string',
             'limitIp' => 'nullable|integer',
@@ -34,7 +34,7 @@ class ServerClientController extends Controller
 
         try {
             // Generate a UUID for the email parameter
-            $uuidEmail = Uuid::uuid4()->toString();
+            $uuid = Uuid::uuid4()->toString();
 
             $inbound = ServerInbound::findOrFail($request->server_inbound_id);
             $server = $inbound->server;
@@ -42,7 +42,7 @@ class ServerClientController extends Controller
 
             // Prepare data for the remote server
             $data = $request->all();
-            $data['email'] = $uuidEmail;
+            $data['email'] = $uuid;
 
             // Synchronize with XUI server
             $xuiResponse = $xuiService->createClient($data);
