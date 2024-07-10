@@ -2,155 +2,117 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Server;
 use App\Models\ServerClient;
-use App\Models\ServerInbound;
 use App\Services\XUIService;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
-use Ramsey\Uuid\Uuid;
+use Illuminate\Support\Facades\Log;
 
 class ServerClientController extends Controller
 {
+    protected $xuiService;
+
+    public function __construct(XUIService $xuiService)
+    {
+        $this->xuiService = $xuiService;
+    }
+
+    // Retrieve a server client
+    public function show(ServerClient $serverClient)
+    {
+        return response()->json($serverClient);
+    }
+
+    // Update a server client
+    public function update(Request $request, ServerClient $serverClient)
+    {
+        // Validate incoming request data here if needed
+
+        // Update Server Client
+        $serverClient->update($request->all());
+
+        return response()->json($serverClient);
+    }
+
+    // Delete a server client
+    public function destroy(ServerClient $serverClient)
+    {
+        // Delete Server Client
+        $serverClient->delete();
+
+        return response()->json(['message' => 'Server client deleted successfully']);
+    }
+
+    // Add a new server client
     public function store(Request $request)
     {
-        $request->validate([
-            'server_inbound_id' => 'nullable|exists:server_inbounds,id',
-            'password' => 'required|string',
-            'flow' => 'nullable|string',
-            'limitIp' => 'nullable|integer',
-            'totalGb' => 'nullable|integer',
-            'expiryTime' => 'nullable|integer',
-            'tgId' => 'nullable|string',
-            'subId' => 'nullable|string',
-            'enable' => 'required|boolean',
-            'reset' => 'nullable|integer',
-            'qr_code_sub' => 'nullable|string',
-            'qr_code_sub_json' => 'nullable|string',
-            'qr_code_client' => 'nullable|string',
-        ]);
+        // Validate incoming request data here if needed
 
-        DB::beginTransaction();
+        // Create Server Client
+        $serverClient = ServerClient::create($request->all());
 
+        return response()->json($serverClient, 201);
+    }
+
+    // List all server clients
+    public function index()
+    {
+        $serverClients = ServerClient::all();
+        return response()->json($serverClients);
+    }
+
+    // Example method to manage server clients
+    public function manageServerClients()
+    {
         try {
-            // Generate a UUID for the email parameter
-            $uuid = Uuid::uuid4()->toString();
+            // Example: Fetch server clients from remote XUI
+            $remoteServerClients = $this->xuiService->fetchServerClients();
 
-            $inbound = ServerInbound::findOrFail($request->server_inbound_id);
-            $server = $inbound->server;
-            $xuiService = new XUIService($server);
-
-            // Prepare data for the remote server
-            $data = $request->all();
-            $data['email'] = $uuid;
-
-            // Synchronize with XUI server
-            $xuiResponse = $xuiService->createClient($data);
-
-            if (isset($xuiResponse['error'])) {
-                DB::rollBack();
-                return response()->json($xuiResponse, 400);
+            // Example: Process server clients
+            foreach ($remoteServerClients as $remoteServerClient) {
+                // Process each remote server client as needed
+                Log::info('Processing server client: ' . $remoteServerClient['uuid']);
+                // Example: Add server client to local database if needed
+                ServerClient::create([
+                    'uuid' => $remoteServerClient['uuid'],
+                    'server_id' => $remoteServerClient['server_id'],
+                    // Add other fields as required
+                ]);
             }
 
-            $clientId = $xuiResponse['clientId']; // Assuming 'clientId' is returned from the XUI server
-
-            // Create local ServerClient record
-            $client = ServerClient::create(array_merge($data, ['clientId' => $clientId]));
-
-            DB::commit();
-            return response()->json($client, 201);
+            return response()->json(['message' => 'Server clients processed successfully']);
         } catch (\Exception $e) {
-            DB::rollBack();
-            return response()->json(['error' => $e->getMessage()], 500);
+            Log::error('Error processing server clients: ' . $e->getMessage());
+            return response()->json(['error' => 'Failed to process server clients'], 500);
         }
     }
 
-    public function getClient(Request $request, $clientId)
+    // Enable or disable server client
+    public function toggleServerClientStatus($uuid, $status)
     {
-        $server = Server::findOrFail($request->server_id);
-        $xuiService = new XUIService($server);
-
-        $client = $xuiService->getClient($clientId);
-        return response()->json($client);
-    }
-
-    public function update(Request $request, $clientId)
-    {
-        $request->validate([
-            'server_inbound_id' => 'required|exists:server_inbounds,id',
-            'password' => 'nullable|string',
-            'flow' => 'nullable|string',
-            'limitIp' => 'nullable|integer',
-            'totalGb' => 'nullable|integer',
-            'expiryTime' => 'nullable|integer',
-            'tgId' => 'nullable|string',
-            'subId' => 'nullable|string',
-            'enable' => 'nullable|boolean',
-            'reset' => 'nullable|integer',
-            'qr_code_sub' => 'nullable|string',
-            'qr_code_sub_json' => 'nullable|string',
-            'qr_code_client' => 'nullable|string',
-        ]);
-
-        DB::beginTransaction();
-
         try {
-            $inbound = ServerInbound::findOrFail($request->server_inbound_id);
-            $server = $inbound->server;
-            $xuiService = new XUIService($server);
+            // Call XUIService method to toggle server client status
+            $response = $this->xuiService->toggleServerClientStatus($uuid, $status);
 
-            $data = $request->all();
-            $xuiResponse = $xuiService->updateClient($clientId, $data);
-
-            if (isset($xuiResponse['error'])) {
-                DB::rollBack();
-                return response()->json($xuiResponse, 400);
-            }
-
-            $client = ServerClient::where('clientId', $clientId)->firstOrFail();
-            $client->update($data);
-
-            DB::commit();
-            return response()->json($client, 200);
+            return response()->json($response);
         } catch (\Exception $e) {
-            DB::rollBack();
-            return response()->json(['error' => $e->getMessage()], 500);
+            Log::error('Error toggling server client status: ' . $e->getMessage());
+            return response()->json(['error' => 'Failed to toggle server client status'], 500);
         }
     }
 
-    public function delete(Request $request, $clientId)
+    // Fetch server client details
+    public function fetchServerClientDetails($uuid)
     {
-        DB::beginTransaction();
-
         try {
-            $inbound = ServerInbound::findOrFail($request->server_inbound_id);
-            $server = $inbound->server;
-            $xuiService = new XUIService($server);
+            // Call XUIService method to fetch server client details
+            $response = $this->xuiService->fetchServerClientDetails($uuid);
 
-            $xuiResponse = $xuiService->deleteClient($clientId);
-
-            if (isset($xuiResponse['error'])) {
-                DB::rollBack();
-                return response()->json($xuiResponse, 400);
-            }
-
-            $client = ServerClient::where('clientId', $clientId)->firstOrFail();
-            $client->delete();
-
-            DB::commit();
-            return response()->json(null, 204);
+            return response()->json($response);
         } catch (\Exception $e) {
-            DB::rollBack();
-            return response()->json(['error' => $e->getMessage()], 500);
+            Log::error('Error fetching server client details: ' . $e->getMessage());
+            return response()->json(['error' => 'Failed to fetch server client details'], 500);
         }
     }
 
-    public function resetTraffic(Request $request, $clientId)
-    {
-        $server = Server::findOrFail($request->server_id);
-        $xuiService = new XUIService($server);
-
-        $response = $xuiService->resetClientTraffic($clientId);
-        return response()->json($response);
-    }
+    // Implement other methods similarly based on your application's requirements and XUIService capabilities
 }

@@ -85,7 +85,7 @@ class PaymentMethodResource extends Resource
                         ])->columns(2),
                 ])->columnSpan(2),
                 Group::make([
-                    Section::make('Payment Method Type')
+                    Section::make('Logo')
                         ->schema([
                             FileUpload::make('image')
                                 ->image()

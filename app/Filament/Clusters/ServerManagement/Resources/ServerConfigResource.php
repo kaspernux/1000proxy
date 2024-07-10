@@ -46,8 +46,16 @@ class ServerConfigResource extends Resource
                                 ->searchable()
                                 ->preload()
                                 ->required(),
-                            Forms\Components\TextInput::make('type')
-                                ->maxLength(255),
+                            Forms\Components\Select::make('type')
+                                ->options([
+                                    'sanaei' => 'X-RAY',
+                                    'alireza' => 'Alireza',
+                                    'marzban' => 'Marzban',
+                                    'Other' => 'Others',
+                                    // Add more cryptocurrency types as needed
+                                ])
+                                ->required()
+                                ->maxWidth(255),
                         ])->columns(2),
                     Forms\Components\Section::make('Headers and Security')
                         ->schema([

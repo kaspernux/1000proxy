@@ -83,9 +83,15 @@ class ServerInboundResource extends Resource
 
                     Section::make('Protocol and Settings')
                         ->schema([
-                            TextInput::make('protocol')
+                            Forms\Components\Select::make('protocol')
+                                ->options([
+                                    'vlss' => 'VLSS',
+                                    'vmss' => 'VMSS',
+                                    'trojan' => 'TROJAN',
+                                    // Add more protocol types as needed
+                                ])
                                 ->required()
-                                ->maxLength(50),
+                                ->maxWidth(255),
 
                             Forms\Components\Textarea::make('settings')
                                 ->label('Settings (JSON)')

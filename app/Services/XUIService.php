@@ -2,12 +2,14 @@
 
 namespace App\Http\Controllers;
 
+use Exception;
 use App\Models\Server;
-use App\Models\ServerConfig;
-use App\Models\ServerPlan;
-use App\Models\ServerInfo;
 use GuzzleHttp\Client;
+use App\Models\ServerInfo;
+use App\Models\ServerPlan;
+use App\Models\ServerConfig;
 use Illuminate\Http\Request;
+use App\Http\Controllers\Controller;
 
 class XUIController extends Controller
 {
@@ -24,8 +26,8 @@ class XUIController extends Controller
         $this->password = $server->config->password;
 
         $this->httpClient = new Client([
-            'base_uri' => $this->baseUrl,
-            'cookies' => true, // Enable cookies handling
+        'base_uri' => $this->baseUrl,
+        'cookies' => true,
         ]);
 
         $this->token = $this->login();
@@ -34,45 +36,50 @@ class XUIController extends Controller
     protected function login()
     {
         $response = $this->httpClient->post('/login', [
-            'form_params' => [
-                'username' => $this->username,
-                'password' => $this->password,
-            ],
+        'form_params' => [
+        'username' => $this->username,
+        'password' => $this->password,
+        ],
         ]);
 
         return $response->getHeader('Set-Cookie');
     }
 
-    function RandomString($count = 9, $type = "all")
+    protected function getJson($server_id)
     {
-        if ($type == "all") {
-            $characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz123456789';
-        } elseif ($type == "small") {
-            $characters = 'abcdef123456789';
-        } elseif ($type == "domain") {
-            $characters = 'abcdefghijklmnopqrstuvwxyz';
-        }
+        $server = Server::findOrFail($server_id);
+        $response = $this->httpClient->get('/xui/inbounds', [
+        'headers' => [
+        'Cookie' => $this->token,
+        ],
+        ]);
 
-        $randstring = '';
-
-        for ($i = 0; $i < $count; $i++) {
-            $randstring .= $characters[rand(0, strlen($characters) - 1)];
-            }
-
-        return $randstring;
+        return json_decode($response->getBody()->getContents());
     }
 
-    function generateUID()
+    protected function executeCurlRequest($url, $session, $dataArr)
     {
-        $randomString = openssl_random_pseudo_bytes(16);
-        $time_low = bin2hex(substr($randomString, 0, 4));
-        $time_mid = bin2hex(substr($randomString, 4, 2));
-        $time_hi_and_version = bin2hex(substr($randomString, 6, 2));
-        $clock_seq_hi_and_reserved = bin2hex(substr($randomString, 8, 2));
-        $node = bin2hex(substr($randomString, 10, 6));
+        $response = $this->httpClient->post($url, [
+        'form_params' => $dataArr,
+        'headers' => [
+        'Cookie' => $session,
+        ],
+        ]);
 
-        $time_hi_and_version = hexdec($time_hi_and_version);
-        $time_hi_and_version = $time_hi_and_version >> 4;
+        return $response->getBody()->getContents();
+    }
+
+    function RandomString($count = 9, $type = "all")
+    {
+        $characters = $type === "all" ? 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz123456789' : ($type === "small" ?
+        'abcdef123456789' : 'abcdefghijklmnopqrstuvwxyz');
+        $randstring = '';
+
+        for ($i = 0; $i < $count; $i++) { $randstring .=$characters[rand(0, strlen($characters) - 1)]; } return $randstring;
+    }
+    function generateUID() { $randomString=openssl_random_pseudo_bytes(16); $time_low=bin2hex(substr($randomString, 0,4)); $time_mid=bin2hex(substr($randomString, 4, 2)); $time_hi_and_version=bin2hex(substr($randomString, 6, 2));
+        $clock_seq_hi_and_reserved=bin2hex(substr($randomString, 8, 2)); $node=bin2hex(substr($randomString, 10, 6));
+        $time_hi_and_version=hexdec($time_hi_and_version); $time_hi_and_version=$time_hi_and_version>> 4;
         $time_hi_and_version = $time_hi_and_version | 0x4000;
 
         $clock_seq_hi_and_reserved = hexdec($clock_seq_hi_and_reserved);
@@ -80,12 +87,12 @@ class XUIController extends Controller
         $clock_seq_hi_and_reserved = $clock_seq_hi_and_reserved | 0x8000;
 
         return sprintf(
-            '%08s-%04s-%04x-%04x-%012s',
-            $time_low,
-            $time_mid,
-            $time_hi_and_version,
-            $clock_seq_hi_and_reserved,
-            $node
+        '%08s-%04s-%04x-%04x-%012s',
+        $time_low,
+        $time_mid,
+        $time_hi_and_version,
+        $clock_seq_hi_and_reserved,
+        $node
         );
     }
 
@@ -106,52 +113,69 @@ class XUIController extends Controller
         return $res['step'];
     }
 
-    function generateRandomString($length, $protocol)
+    function summarize($amount)
     {
-        return ($protocol == 'trojan') ? substr(md5(time()), 5, 15) : generateUID();
+        $gb = $amount / (1024 * 1024 * 1024);
+        if ($gb >= 1) {
+            return round($gb, 2) . " GB";
+        } else {
+            $mb = $amount / (1024 * 1024);
+            return round($mb, 2) . " MB";
+        }
     }
 
-    public function addInboundAccount(Request $request, $server_id, $customer_id, $server_inbound_id, $expiryTime, $remark, $volume, $limitIp = 1, $newarr = '', $planId = null)
+    function summarize2($amount)
     {
-        $server_info = Server::findOrFail($server_id)->config;
+        $gb = $amount / (1024 * 1024 * 1024);
+        return round($gb, 2);
+    }
 
-        $response = $this->getJson($server_id);
-        if (!$response) return null;
-        $response = $response->obj;
+    function generateRandomString($length, $protocol)
+    {
+        return ($protocol == 'trojan') ? substr(md5(time()), 5, 15) : $this->generateUID();
+    }
 
-        foreach ($response as $row) {
+    public function addInboundAccount(Request $request, $server_id, $customer_id, $server_inbound_id, $expiryTime,$remark, $volume, $limitIp = 1, $newarr = '', $planId = null)
+    {
+            $server_info = Server::findOrFail($server_id)->config;
+
+            $response = $this->getJson($server_id);
+            if (!$response) return null;
+            $response = $response->obj;
+
+            foreach ($response as $row) {
             if ($row->id == $server_inbound_id) {
-                $iid = $row->id;
-                $protocol = $row->protocol;
-                break;
+            $iid = $row->id;
+            $protocol = $row->protocol;
+            break;
             }
-        }
+            }
 
-        if (!intval($iid)) return "Inbound not found";
+            if (!intval($iid)) return "Inbound not found";
 
-        $settings = json_decode($row->settings, true);
-        $id_label = $protocol == 'trojan' ? 'password' : 'id';
+            $settings = json_decode($row->settings, true);
+            $id_label = $protocol == 'trojan' ? 'password' : 'id';
 
-        if ($newarr == '') {
+            if ($newarr == '') {
             $newClient = [
-                "$id_label" => $customer_id,
-                "enable" => true,
-                "email" => $remark,
-                "limitIp" => $limitIp,
-                "totalGB" => $volume,
-                "expiryTime" => $expiryTime,
-                "subId" => RandomString(16)
+            "$id_label" => $customer_id,
+            "enable" => true,
+            "email" => $remark,
+            "limitIp" => $limitIp,
+            "totalGB" => $volume,
+            "expiryTime" => $expiryTime,
+            "subId" => $this->RandomString(16)
             ];
 
             $settings['clients'][] = $newClient;
-        } elseif (is_array($newarr)) {
+            } elseif (is_array($newarr)) {
             $settings['clients'][] = $newarr;
-        }
+            }
 
-        $settings['clients'] = array_values($settings['clients']);
-        $settings = json_encode($settings);
+            $settings['clients'] = array_values($settings['clients']);
+            $settings = json_encode($settings);
 
-        $dataArr = [
+            $dataArr = [
             'up' => $row->up,
             'down' => $row->down,
             'total' => $row->total,
@@ -164,18 +188,13 @@ class XUIController extends Controller
             'settings' => $settings,
             'streamSettings' => $row->streamSettings,
             'sniffing' => $row->sniffing,
-        ];
+            ];
 
-        $url = $server_info->type == 'sanaei' ? '/panel/inbound/addClient/' : '/xui/inbound/addClient/';
+            $url = $server_info->type == 'sanaei' ? '/panel/inbound/addClient/' : '/xui/inbound/addClient/';
 
-        $response = $this->httpClient->post($url, [
-            'form_params' => $dataArr,
-            'headers' => [
-                'Cookie' => $this->token,
-            ],
-        ]);
+            $response = $this->executeCurlRequest($url, $this->token, $dataArr);
 
-        return $response->getBody()->getContents();
+            return $response;
     }
 
     public function deleteInbound(Request $request, $server_id, $uuid, $delete = 0)
@@ -186,43 +205,41 @@ class XUIController extends Controller
         if (!$response) return null;
         $response = $response->obj;
 
+        $inbound_id = null;
         foreach ($response as $row) {
-            $clients = json_decode($row->settings)->clients;
-            if ($clients[0]->id == $uuid || $clients[0]->password == $uuid) {
-                $inbound_id = $row->id;
-                $protocol = $row->protocol;
-                $uniqid = $protocol == 'trojan' ? $clients[0]->password : $clients[0]->id;
-                $netType = json_decode($row->streamSettings)->network;
-                $oldData = [
-                    'total' => $row->total,
-                    'up' => $row->up,
-                    'down' => $row->down,
-                    'volume' => ((int)$row->total - (int)$row->up - (int)$row->down),
-                    'port' => $row->port,
-                    'protocol' => $protocol,
-                    'expiryTime' => $row->expiryTime,
-                    'uniqid' => $uniqid,
-                    'netType' => $netType,
-                    'security' => json_decode($row->streamSettings)->security,
-                ];
-                break;
+            if (isset($row->clients)) {
+                foreach ($row->clients as $client) {
+                    if ($client->id === $uuid || $client->password === $uuid) {
+                    $inbound_id = $row->id;
+                    break 2;
+                    }
+                }
             }
         }
 
-        if ($delete == 1) {
-            $url = $server_info->type == 'sanaei' ? '/panel/inbound/del/' . $inbound_id : '/xui/inbound/del/' . $inbound_id;
+        if (!intval($inbound_id)) return "Inbound not found";
 
-            $response = $this->httpClient->post($url, [
-                'form_params' => [],
-                'headers' => [
-                    'Cookie' => $this->token,
-                ],
-            ]);
+        $dataArr = [
+        'up' => $row->up,
+        'down' => $row->down,
+        'total' => $row->total,
+        'remark' => $row->remark,
+        'enable' => 'true',
+        'expiryTime' => $row->expiryTime,
+        'listen' => '',
+        'port' => $row->port,
+        'protocol' => $row->protocol,
+        'settings' => json_encode($row->settings),
+        'streamSettings' => $row->streamSettings,
+        'sniffing' => $row->sniffing,
+        ];
 
-            return $response->getBody()->getContents();
-        }
+        $url = $server_info->type == 'sanaei' ? "/panel/inbound/delClient/$inbound_id" :
+        "/xui/inbound/delClient/$inbound_id";
 
-        return $oldData;
+        $response = $this->executeCurlRequest($url, $this->token, $dataArr);
+
+        return $response;
     }
 
     function editInbound($server_id, $uniqid, $uuid, $protocol, $netType = 'tcp', $security = 'none', $bypass = false)
@@ -255,7 +272,7 @@ class XUIController extends Controller
         }
 
         // Fetch inbound details
-        $response = getJson($server_id);
+        $response = $this->getJson($server_id);
         if (!$response) return null;
         $response = $response->obj;
         $found = false;
@@ -273,7 +290,7 @@ class XUIController extends Controller
         if (!$found || !intval($iid)) return;
 
         // Prepare headers
-        $headers = getNewHeaders($netType, $request_header, $response_header, $header_type);
+        $headers = $this->getNewHeaders($netType, $request_header, $response_header, $header_type);
         $headers = empty($headers) ? "{}" : $headers;
 
         // Prepare stream settings based on network type and security
@@ -383,7 +400,7 @@ class XUIController extends Controller
                         "limitIp": 0,
                         "totalGB": 0,
                         "expiryTime": 0,
-                        "subId": "' . RandomString(16) . '"
+                        "subId": "' . $this->RandomString(16) . '"
                     }],
                     "decryption": "none",
                     "fallbacks": []
@@ -417,57 +434,19 @@ class XUIController extends Controller
             'sniffing' => $row->sniffing
         ];
 
-        // Prepare login and session handling
-        $serverName = $server_info['username'];
-        $serverPass = $server_info['password'];
-        $loginUrl = $panel_url . '/login';
-        $postFields = [
-            "username" => $serverName,
-            "password" => $serverPass
-        ];
-
-        // Perform login
-        $curl = curl_init();
-        curl_setopt($curl, CURLOPT_URL, $loginUrl);
-        curl_setopt($curl, CURLOPT_FOLLOWLOCATION, 1);
-        curl_setopt($curl, CURLOPT_RETURNTRANSFER, 1);
-        curl_setopt($curl, CURLOPT_POST, 1);
-        curl_setopt($curl, CURLOPT_CONNECTTIMEOUT, 3);
-        curl_setopt($curl, CURLOPT_TIMEOUT, 3);
-        curl_setopt($curl, CURLOPT_POSTFIELDS, http_build_query($postFields));
-        curl_setopt($curl, CURLOPT_HEADER, 1);
-        $response = curl_exec($curl);
-        $header_size = curl_getinfo($curl, CURLINFO_HEADER_SIZE);
-        $header = substr($response, 0, $header_size);
-        $body = substr($response, $header_size);
-        preg_match('/^Set-Cookie:\s*([^;]*)/mi', $header, $match);
-        $session = $match[1];
+        // Perform login and get session
+        $session = $this->authenticateAndGetSession($server_info);
 
         // Check login response
-        $loginResponse = json_decode($body, true);
-        if (!$loginResponse['success']) {
-            curl_close($curl);
-            return $loginResponse;
+        if (!$session) {
+            return ['success' => false, 'message' => 'Failed to authenticate'];
         }
 
         // Define endpoint URL based on server type
         $url = ($serverType == "sanaei") ? "$panel_url/panel/inbound/update/$iid" : "$panel_url/xui/inbound/update/$iid";
 
         // Configure and execute CURL request to update inbound settings
-        curl_setopt_array($curl, [
-            CURLOPT_URL => $url,
-            CURLOPT_RETURNTRANSFER => true,
-            CURLOPT_FOLLOWLOCATION => true,
-            CURLOPT_POST => true,
-            CURLOPT_POSTFIELDS => json_encode($dataArr),
-            CURLOPT_HTTPHEADER => [
-                "Accept: application/json",
-                "Content-Type: application/json",
-                "Cookie: $session"
-            ]
-        ]);
-        $response = curl_exec($curl);
-        curl_close($curl);
+        $response = $this->executeCurlRequest($url, $dataArr, $session);
 
         return $response;
     }
@@ -487,7 +466,7 @@ class XUIController extends Controller
         $serverType = $server_info['type'];
 
         // Get JSON response
-        $response = getJson($server_id);
+        $response = $this->getJson($server_id);
         if (!$response) return null;
         $response = $response->obj;
 
@@ -495,339 +474,70 @@ class XUIController extends Controller
         foreach ($response as $row) {
             $clients = json_decode($row->settings)->clients;
             if ($clients[0]->id == $uuid || $clients[0]->password == $uuid) {
-                $inbound_id = $row->id;
-                $total = $row->total;
-                $up = $row->up;
-                $down = $row->down;
-                $expiryTime = $row->expiryTime;
-                $port = $row->port;
-                $netType = json_decode($row->streamSettings)->network;
-                $email = $clients[0]->email;
+                $iid = $row->id;
+                $remark = $row->remark;
+                $found = true;
                 break;
             }
         }
 
-        // Update expiry date if days are provided
-        if ($days != 0) {
-            $now_microdate = floor(microtime(true) * 1000);
-            $extend_date = (864000 * $days * 100);
-            $expire_microdate = ($editType == "renew") ? $now_microdate + $extend_date : max($now_microdate, $expiryTime) + $extend_date;
+        if (!$found || !intval($iid)) return;
+
+        // Prepare volume and expiry time adjustments
+        $addVolume = 1073741824 * $volume;
+        $addTime = $days * 86400;
+        $newVolume = $row->total + $addVolume;
+        $newExpiryTime = $row->expiryTime + $addTime;
+
+        // Adjustments based on editType
+        if ($editType == "traffic") {
+            $dataArr = [
+                'up' => $row->up,
+                'down' => $row->down,
+                'total' => $newVolume,
+                'remark' => $remark,
+                'enable' => 'true',
+                'expiryTime' => $row->expiryTime,
+                'listen' => '',
+                'port' => $row->port,
+                'protocol' => $row->protocol,
+                'settings' => $row->settings,
+                'streamSettings' => $row->streamSettings,
+                'sniffing' => $row->sniffing
+            ];
+        } elseif ($editType == "time") {
+            $dataArr = [
+                'up' => $row->up,
+                'down' => $row->down,
+                'total' => $row->total,
+                'remark' => $remark,
+                'enable' => 'true',
+                'expiryTime' => $newExpiryTime,
+                'listen' => '',
+                'port' => $row->port,
+                'protocol' => $row->protocol,
+                'settings' => $row->settings,
+                'streamSettings' => $row->streamSettings,
+                'sniffing' => $row->sniffing
+            ];
         }
 
-        // Update volume if provided
-        if ($volume != 0) {
-            $leftGB = $total - $up - $down;
-            $extend_volume = floor($volume * 1073741824);
-            if ($editType == "renew") {
-                $total = $extend_volume;
-                $up = 0;
-                $down = 0;
-                resetClientTraffic($server_id, $email, $inbound_id);
-            } else {
-                $total = max($leftGB, 0) + $extend_volume;
-            }
+        // Perform login and get session
+        $session = $this->authenticateAndGetSession($server_info);
+
+        // Check login response
+        if (!$session) {
+            return ['success' => false, 'message' => 'Failed to authenticate'];
         }
 
-        // Prepare data array for updating inbound
-        $dataArr = [
-            'up' => $up,
-            'down' => $down,
-            'total' => $total ?? $row->total,
-            'remark' => $row->remark,
-            'enable' => 'true',
-            'expiryTime' => $expire_microdate ?? $row->expiryTime,
-            'listen' => '',
-            'port' => $row->port,
-            'protocol' => $row->protocol,
-            'settings' => $row->settings,
-            'streamSettings' => $row->streamSettings,
-            'sniffing' => $row->sniffing
-        ];
+        // Define endpoint URL based on server type
+        $url = ($serverType == "sanaei") ? "$panel_url/panel/inbound/update/$iid" : "$panel_url/xui/inbound/update/$iid";
 
-        // Login to panel
-        $serverName = $server_info['username'];
-        $serverPass = $server_info['password'];
-        $loginUrl = $panel_url . '/login';
-        $postFields = ['username' => $serverName, 'password' => $serverPass];
+        // Configure and execute CURL request to update inbound traffic settings
+        $response = $this->executeCurlRequest($url, $dataArr, $session);
 
-        $curl = curl_init();
-        curl_setopt_array($curl, [
-            CURLOPT_URL => $loginUrl,
-            CURLOPT_RETURNTRANSFER => true,
-            CURLOPT_POST => true,
-            CURLOPT_POSTFIELDS => http_build_query($postFields),
-            CURLOPT_HEADER => true,
-            CURLOPT_CONNECTTIMEOUT => 3,
-            CURLOPT_TIMEOUT => 3,
-        ]);
-
-        $response = curl_exec($curl);
-        $header_size = curl_getinfo($curl, CURLINFO_HEADER_SIZE);
-        $header = substr($response, 0, $header_size);
-        $body = substr($response, $header_size);
-        preg_match('/^Set-Cookie:\s*([^;]*)/mi', $header, $match);
-        $session = $match[1];
-
-        $loginResponse = json_decode($body, true);
-        if (!$loginResponse['success']) {
-            curl_close($curl);
-            return $loginResponse;
-        }
-
-        // Update inbound
-        $url = ($serverType == "sanaei") ? "$panel_url/panel/inbound/update/$inbound_id" : "$panel_url/xui/inbound/update/$inbound_id";
-        curl_setopt_array($curl, [
-            CURLOPT_URL => $url,
-            CURLOPT_RETURNTRANSFER => true,
-            CURLOPT_POST => true,
-            CURLOPT_POSTFIELDS => $dataArr,
-            CURLOPT_HTTPHEADER => [
-                'User-Agent: Mozilla/5.0',
-                'Accept: application/json, text/plain, */*',
-                'Accept-Language: en-US,en;q=0.5',
-                'Cookie: ' . $session
-            ],
-        ]);
-
-        $response = curl_exec($curl);
-        curl_close($curl);
-        resetIpLog($server_id, $email);
-        return json_decode($response);
-    }
-
-    function changeInboundState($server_id, $uuid)
-    {
-        global $connection;
-
-        // Retrieve server configuration
-        $stmt = $connection->prepare("SELECT * FROM server_config WHERE id=?");
-        $stmt->bind_param("i", $server_id);
-        $stmt->execute();
-        $server_info = $stmt->get_result()->fetch_assoc();
-        $stmt->close();
-
-        $panel_url = $server_info['panel_url'];
-        $serverType = $server_info['type'];
-
-        // Get JSON response
-        $response = getJson($server_id);
-        if (!$response) return null;
-        $response = $response->obj;
-
-        // Find the inbound based on uuid
-        foreach ($response as $row) {
-            $settings = json_decode($row->settings, true);
-            $clients = $settings['clients'];
-            if ($clients[0]['id'] == $uuid || $clients[0]['password'] == $uuid) {
-                $inbound_id = $row->id;
-                $enable = $row->enable;
-                break;
-            }
-        }
-
-        // Add missing fields if necessary
-        if (!isset($settings['clients'][0]['subId']) && ($serverType == "sanaei" || $serverType == "alireza")) {
-            $settings['clients'][0]['subId'] = RandomString(16);
-        }
-        if (!isset($settings['clients'][0]['enable']) && ($serverType == "sanaei" || $serverType == "alireza")) {
-            $settings['clients'][0]['enable'] = true;
-        }
-
-        // Toggle enable state
-        $newEnable = !$enable;
-
-        // Prepare data array for updating inbound
-        $dataArr = [
-            'up' => $row->up,
-            'down' => $row->down,
-            'total' => $row->total,
-            'remark' => $row->remark,
-            'enable' => $newEnable,
-            'expiryTime' => $row->expiryTime,
-            'listen' => '',
-            'port' => $row->port,
-            'protocol' => $row->protocol,
-            'settings' => json_encode($settings, 488),
-            'streamSettings' => $row->streamSettings,
-            'sniffing' => $row->sniffing
-        ];
-
-        // Login to panel
-        $serverName = $server_info['username'];
-        $serverPass = $server_info['password'];
-        $loginUrl = $panel_url . '/login';
-        $postFields = ['username' => $serverName, 'password' => $serverPass];
-
-        $curl = curl_init();
-        curl_setopt_array($curl, [
-            CURLOPT_URL => $loginUrl,
-            CURLOPT_RETURNTRANSFER => true,
-            CURLOPT_POST => true,
-            CURLOPT_POSTFIELDS => http_build_query($postFields),
-            CURLOPT_HEADER => true,
-            CURLOPT_CONNECTTIMEOUT => 3,
-            CURLOPT_TIMEOUT => 3,
-        ]);
-
-        $response = curl_exec($curl);
-        $header_size = curl_getinfo($curl, CURLINFO_HEADER_SIZE);
-        $header = substr($response, 0, $header_size);
-        $body = substr($response, $header_size);
-        preg_match('/^Set-Cookie:\s*([^;]*)/mi', $header, $match);
-        $session = $match[1];
-
-        $loginResponse = json_decode($body, true);
-        if (!$loginResponse['success']) {
-            curl_close($curl);
-            return $loginResponse;
-        }
-
-        // Update inbound
-        $url = ($serverType == "sanaei") ? "$panel_url/panel/inbound/update/$inbound_id" : "$panel_url/xui/inbound/update/$inbound_id";
-        curl_setopt_array($curl, [
-            CURLOPT_URL => $url,
-            CURLOPT_RETURNTRANSFER => true,
-            CURLOPT_POST => true,
-            CURLOPT_POSTFIELDS => $dataArr,
-            CURLOPT_HTTPHEADER => [
-                'User-Agent: Mozilla/5.0',
-                'Accept: application/json, text/plain, */*',
-                'Accept-Language: en-US,en;q=0.5',
-                'Cookie: ' . $session
-            ],
-        ]);
-
-        $response = curl_exec($curl);
-        curl_close($curl);
-
-        return json_decode($response);
-    }
-
-    function renewInboundUuid($server_id, $uuid)
-    {
-        global $connection;
-
-        // Retrieve server configuration
-        $stmt = $connection->prepare("SELECT * FROM server_config WHERE id=?");
-        $stmt->bind_param("i", $server_id);
-        $stmt->execute();
-        $server_info = $stmt->get_result()->fetch_assoc();
-        $stmt->close();
-
-        $panel_url = $server_info['panel_url'];
-        $serverType = $server_info['type'];
-
-        // Get JSON response
-        $response = getJson($server_id);
-        if (!$response) return null;
-        $response = $response->obj;
-
-        // Find the inbound based on uuid
-        foreach ($response as $row) {
-            $settings = json_decode($row->settings, true);
-            $clients = $settings['clients'];
-            if ($clients[0]['id'] == $uuid || $clients[0]['password'] == $uuid) {
-                $inbound_id = $row->id;
-                $total = $row->total;
-                $up = $row->up;
-                $down = $row->down;
-                $expiryTime = $row->expiryTime;
-                $port = $row->port;
-                $protocol = $row->protocol;
-                $netType = json_decode($row->streamSettings)->network;
-                break;
-            }
-        }
-
-        // Generate new UUID
-        $newUuid = generateRandomString(42, $protocol);
-        if ($protocol == "trojan") {
-            $settings['clients'][0]['password'] = $newUuid;
-        } else {
-            $settings['clients'][0]['id'] = $newUuid;
-        }
-
-        // Add missing fields if necessary
-        if (!isset($settings['clients'][0]['subId']) && ($serverType == "sanaei" || $serverType == "alireza")) {
-            $settings['clients'][0]['subId'] = RandomString(16);
-        }
-        if (!isset($settings['clients'][0]['enable']) && ($serverType == "sanaei" || $serverType == "alireza")) {
-            $settings['clients'][0]['enable'] = true;
-        }
-
-        // Update settings JSON
-        $settings = json_encode($settings, 488);
-
-        // Prepare data array for updating inbound
-        $dataArr = [
-            'up' => $row->up,
-            'down' => $row->down,
-            'total' => $row->total,
-            'remark' => $row->remark,
-            'enable' => 'true',
-            'expiryTime' => $row->expiryTime,
-            'listen' => '',
-            'port' => $row->port,
-            'protocol' => $row->protocol,
-            'settings' => $settings,
-            'streamSettings' => $row->streamSettings,
-            'sniffing' => $row->sniffing
-        ];
-
-        // Login to panel
-        $serverName = $server_info['username'];
-        $serverPass = $server_info['password'];
-        $loginUrl = $panel_url . '/login';
-        $postFields = ['username' => $serverName, 'password' => $serverPass];
-
-        $curl = curl_init();
-        curl_setopt_array($curl, [
-            CURLOPT_URL => $loginUrl,
-            CURLOPT_RETURNTRANSFER => true,
-            CURLOPT_POST => true,
-            CURLOPT_POSTFIELDS => http_build_query($postFields),
-            CURLOPT_HEADER => true,
-            CURLOPT_CONNECTTIMEOUT => 3,
-            CURLOPT_TIMEOUT => 3,
-        ]);
-
-        $response = curl_exec($curl);
-        $header_size = curl_getinfo($curl, CURLINFO_HEADER_SIZE);
-        $header = substr($response, 0, $header_size);
-        $body = substr($response, $header_size);
-        preg_match('/^Set-Cookie:\s*([^;]*)/mi', $header, $match);
-        $session = $match[1];
-
-        $loginResponse = json_decode($body, true);
-        if (!$loginResponse['success']) {
-            curl_close($curl);
-            return $loginResponse;
-        }
-
-        // Update inbound
-        $url = ($serverType == "sanaei") ? "$panel_url/panel/inbound/update/$inbound_id" : "$panel_url/xui/inbound/update/$inbound_id";
-        curl_setopt_array($curl, [
-            CURLOPT_URL => $url,
-            CURLOPT_RETURNTRANSFER => true,
-            CURLOPT_POST => true,
-            CURLOPT_POSTFIELDS => $dataArr,
-            CURLOPT_HTTPHEADER => [
-                'User-Agent: Mozilla/5.0',
-                'Accept: application/json, text/plain, */*',
-                'Accept-Language: en-US,en;q=0.5',
-                'Cookie: ' . $session
-            ],
-        ]);
-
-        $response = curl_exec($curl);
-        curl_close($curl);
-
-        $response = json_decode($response);
-        $response->newUuid = $newUuid;
         return $response;
     }
-
-
 
     function addUser($server_id, $client_id, $protocol, $port, $expiryTime, $remark, $volume, $netType, $security = 'none', $bypass = false, $planId = null)
     {
@@ -1437,41 +1147,1393 @@ class XUIController extends Controller
         return $response_data;
     }
 
-
-    function getJson($server_id)
+    function changeInboundState($server_id, $uuid)
     {
-        $server = Server::findOrFail($server_id); // Assuming Server model exists with appropriate relationships
+        global $connection;
 
-        $response = Http::asForm()->post("{$server->config->panel_url}/login", [
-            'username' => $server->config->username,
-            'password' => $server->config->password,
+        // Retrieve server configuration
+        $stmt = $connection->prepare("SELECT * FROM server_config WHERE id=?");
+        $stmt->bind_param("i", $server_id);
+        $stmt->execute();
+        $server_info = $stmt->get_result()->fetch_assoc();
+        $stmt->close();
+
+        $panel_url = $server_info['panel_url'];
+        $serverType = $server_info['type'];
+
+        // Get JSON response
+        $response = getJson($server_id);
+        if (!$response) return null;
+        $response = $response->obj;
+
+        // Find the inbound based on uuid
+        foreach ($response as $row) {
+            $settings = json_decode($row->settings, true);
+            $clients = $settings['clients'];
+            if ($clients[0]['id'] == $uuid || $clients[0]['password'] == $uuid) {
+                $inbound_id = $row->id;
+                $enable = $row->enable;
+                break;
+            }
+        }
+
+        // Add missing fields if necessary
+        if (!isset($settings['clients'][0]['subId']) && ($serverType == "sanaei" || $serverType == "alireza")) {
+            $settings['clients'][0]['subId'] = RandomString(16);
+        }
+        if (!isset($settings['clients'][0]['enable']) && ($serverType == "sanaei" || $serverType == "alireza")) {
+            $settings['clients'][0]['enable'] = true;
+        }
+
+        // Toggle enable state
+        $newEnable = !$enable;
+
+        // Prepare data array for updating inbound
+        $dataArr = [
+            'up' => $row->up,
+            'down' => $row->down,
+            'total' => $row->total,
+            'remark' => $row->remark,
+            'enable' => $newEnable,
+            'expiryTime' => $row->expiryTime,
+            'listen' => '',
+            'port' => $row->port,
+            'protocol' => $row->protocol,
+            'settings' => json_encode($settings, 488),
+            'streamSettings' => $row->streamSettings,
+            'sniffing' => $row->sniffing
+        ];
+
+        // Login to panel
+        $serverName = $server_info['username'];
+        $serverPass = $server_info['password'];
+        $loginUrl = $panel_url . '/login';
+        $postFields = ['username' => $serverName, 'password' => $serverPass];
+
+        $curl = curl_init();
+        curl_setopt_array($curl, [
+            CURLOPT_URL => $loginUrl,
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_POST => true,
+            CURLOPT_POSTFIELDS => http_build_query($postFields),
+            CURLOPT_HEADER => true,
+            CURLOPT_CONNECTTIMEOUT => 3,
+            CURLOPT_TIMEOUT => 3,
         ]);
 
-        $session = $response->cookie('session');
+        $response = curl_exec($curl);
+        $header_size = curl_getinfo($curl, CURLINFO_HEADER_SIZE);
+        $header = substr($response, 0, $header_size);
+        $body = substr($response, $header_size);
+        preg_match('/^Set-Cookie:\s*([^;]*)/mi', $header, $match);
+        $session = $match[1];
 
-        $loginResponse = $response->json();
-
+        $loginResponse = json_decode($body, true);
         if (!$loginResponse['success']) {
+            curl_close($curl);
             return $loginResponse;
         }
 
-        if ($server->config->type == "sanaei") {
-            $url = "{$server->config->panel_url}/panel/inbound/list";
-        } else {
-            $url = "{$server->config->panel_url}/xui/inbound/list";
-        }
+        // Update inbound
+        $url = ($serverType == "sanaei") ? "$panel_url/panel/inbound/update/$inbound_id" : "$panel_url/xui/inbound/update/$inbound_id";
+        curl_setopt_array($curl, [
+            CURLOPT_URL => $url,
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_POST => true,
+            CURLOPT_POSTFIELDS => $dataArr,
+            CURLOPT_HTTPHEADER => [
+                'User-Agent: Mozilla/5.0',
+                'Accept: application/json, text/plain, */*',
+                'Accept-Language: en-US,en;q=0.5',
+                'Cookie: ' . $session
+            ],
+        ]);
 
-        $response = Http::withHeaders([
-            'User-Agent' => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:108.0) Gecko/20100101 Firefox/108.0',
-            'Accept' => 'application/json, text/plain, */*',
-            'Accept-Language' => 'en-US,en;q=0.5',
-            'Accept-Encoding' => 'gzip, deflate',
-            'X-Requested-With' => 'XMLHttpRequest',
-            'Cookie' => $session,
-        ])->post($url);
+        $response = curl_exec($curl);
+        curl_close($curl);
 
-        return $response->json();
+        return json_decode($response);
     }
 
+    function renewInboundUuid($server_id, $uuid)
+    {
+        global $connection;
 
+        // Retrieve server configuration
+        $stmt = $connection->prepare("SELECT * FROM server_config WHERE id=?");
+        $stmt->bind_param("i", $server_id);
+        $stmt->execute();
+        $server_info = $stmt->get_result()->fetch_assoc();
+        $stmt->close();
+
+        $panel_url = $server_info['panel_url'];
+        $serverType = $server_info['type'];
+
+        // Get JSON response
+        $response = getJson($server_id);
+        if (!$response) return null;
+        $response = $response->obj;
+
+        // Find the inbound based on uuid
+        foreach ($response as $row) {
+            $settings = json_decode($row->settings, true);
+            $clients = $settings['clients'];
+            if ($clients[0]['id'] == $uuid || $clients[0]['password'] == $uuid) {
+                $inbound_id = $row->id;
+                $total = $row->total;
+                $up = $row->up;
+                $down = $row->down;
+                $expiryTime = $row->expiryTime;
+                $port = $row->port;
+                $protocol = $row->protocol;
+                $netType = json_decode($row->streamSettings)->network;
+                break;
+            }
+        }
+
+        // Generate new UUID
+        $newUuid = generateRandomString(42, $protocol);
+        if ($protocol == "trojan") {
+            $settings['clients'][0]['password'] = $newUuid;
+        } else {
+            $settings['clients'][0]['id'] = $newUuid;
+        }
+
+        // Add missing fields if necessary
+        if (!isset($settings['clients'][0]['subId']) && ($serverType == "sanaei" || $serverType == "alireza")) {
+            $settings['clients'][0]['subId'] = RandomString(16);
+        }
+        if (!isset($settings['clients'][0]['enable']) && ($serverType == "sanaei" || $serverType == "alireza")) {
+            $settings['clients'][0]['enable'] = true;
+        }
+
+        // Update settings JSON
+        $settings = json_encode($settings, 488);
+
+        // Prepare data array for updating inbound
+        $dataArr = [
+            'up' => $row->up,
+            'down' => $row->down,
+            'total' => $row->total,
+            'remark' => $row->remark,
+            'enable' => 'true',
+            'expiryTime' => $row->expiryTime,
+            'listen' => '',
+            'port' => $row->port,
+            'protocol' => $row->protocol,
+            'settings' => $settings,
+            'streamSettings' => $row->streamSettings,
+            'sniffing' => $row->sniffing
+        ];
+
+        // Login to panel
+        $serverName = $server_info['username'];
+        $serverPass = $server_info['password'];
+        $loginUrl = $panel_url . '/login';
+        $postFields = ['username' => $serverName, 'password' => $serverPass];
+
+        $curl = curl_init();
+        curl_setopt_array($curl, [
+            CURLOPT_URL => $loginUrl,
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_POST => true,
+            CURLOPT_POSTFIELDS => http_build_query($postFields),
+            CURLOPT_HEADER => true,
+            CURLOPT_CONNECTTIMEOUT => 3,
+            CURLOPT_TIMEOUT => 3,
+        ]);
+
+        $response = curl_exec($curl);
+        $header_size = curl_getinfo($curl, CURLINFO_HEADER_SIZE);
+        $header = substr($response, 0, $header_size);
+        $body = substr($response, $header_size);
+        preg_match('/^Set-Cookie:\s*([^;]*)/mi', $header, $match);
+        $session = $match[1];
+
+        $loginResponse = json_decode($body, true);
+        if (!$loginResponse['success']) {
+            curl_close($curl);
+            return $loginResponse;
+        }
+
+        // Update inbound
+        $url = ($serverType == "sanaei") ? "$panel_url/panel/inbound/update/$inbound_id" : "$panel_url/xui/inbound/update/$inbound_id";
+        curl_setopt_array($curl, [
+            CURLOPT_URL => $url,
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_POST => true,
+            CURLOPT_POSTFIELDS => $dataArr,
+            CURLOPT_HTTPHEADER => [
+                'User-Agent: Mozilla/5.0',
+                'Accept: application/json, text/plain, */*',
+                'Accept-Language: en-US,en;q=0.5',
+                'Cookie: ' . $session
+            ],
+        ]);
+
+        $response = curl_exec($curl);
+        curl_close($curl);
+
+        $response = json_decode($response);
+        $response->newUuid = $newUuid;
+        return $response;
+    }
+
+    function editClientRemark($server_id, $inbound_id, $uuid, $newRemark)
+    {
+        global $connection;
+
+        // Fetch server configuration
+        $stmt = $connection->prepare("SELECT * FROM server_config WHERE id = ?");
+        $stmt->bind_param("i", $server_id);
+        $stmt->execute();
+        $server_info = $stmt->get_result()->fetch_assoc();
+        $stmt->close();
+
+        $panel_url = $server_info['panel_url'];
+        $cookie = 'Cookie: session=' . $server_info['cookie'];
+        $serverType = $server_info['type'];
+
+        // Fetch JSON response
+        $response = getJson($server_id);
+        if (!$response) return null;
+        $response = $response->obj;
+
+        // Locate the client and inbound details
+        $client_key = 0;
+        foreach ($response as $row) {
+            if ($row->id == $inbound_id) {
+                $settings = json_decode($row->settings, true);
+                $clients = $settings['clients'];
+                $clientsStates = $row->clientStats;
+
+                foreach ($clients as $key => $client) {
+                    if ($client['id'] == $uuid || $client['password'] == $uuid) {
+                        $client_key = $key;
+                        $email = $client['email'];
+                        $emails = array_column($clientsStates, 'email');
+                        $emailKey = array_search($email, $emails);
+
+                        $total = $clientsStates[$emailKey]->total;
+                        $up = $clientsStates[$emailKey]->up;
+                        $enable = $clientsStates[$emailKey]->enable;
+                        $down = $clientsStates[$emailKey]->down;
+                        break;
+                    }
+                }
+            }
+        }
+
+        // Update the client's remark
+        $settings['clients'][$client_key]['email'] = $newRemark;
+        if (!isset($settings['clients'][$client_key]['subId']) && ($serverType == "sanaei" || $serverType == "alireza")) {
+            $settings['clients'][$client_key]['subId'] = RandomString(16);
+        }
+        if (!isset($settings['clients'][$client_key]['enable']) && ($serverType == "sanaei" || $serverType == "alireza")) {
+            $settings['clients'][$client_key]['enable'] = true;
+        }
+
+        // Prepare data for updating
+        $editedClient = $settings['clients'][$client_key];
+        $settings['clients'] = array_values($settings['clients']);
+        $settings = json_encode($settings);
+        $dataArr = [
+            'up' => $row->up,
+            'down' => $row->down,
+            'total' => $row->total,
+            'remark' => $row->remark,
+            'enable' => 'true',
+            'expiryTime' => $row->expiryTime,
+            'listen' => '',
+            'port' => $row->port,
+            'protocol' => $row->protocol,
+            'settings' => $settings,
+            'streamSettings' => $row->streamSettings,
+            'sniffing' => $row->sniffing
+        ];
+
+        // Login to the panel
+        $serverName = $server_info['username'];
+        $serverPass = $server_info['password'];
+        $loginUrl = $panel_url . '/login';
+        $postFields = [
+            "username" => $serverName,
+            "password" => $serverPass
+        ];
+
+        $curl = curl_init();
+        curl_setopt($curl, CURLOPT_URL, $loginUrl);
+        curl_setopt($curl, CURLOPT_FOLLOWLOCATION, 1);
+        curl_setopt($curl, CURLOPT_RETURNTRANSFER, 1);
+        curl_setopt($curl, CURLOPT_POST, 1);
+        curl_setopt($curl, CURLOPT_CONNECTTIMEOUT, 3);
+        curl_setopt($curl, CURLOPT_TIMEOUT, 3);
+        curl_setopt($curl, CURLOPT_POSTFIELDS, http_build_query($postFields));
+        curl_setopt($curl, CURLOPT_HEADER, 1);
+        $response = curl_exec($curl);
+
+        $header_size = curl_getinfo($curl, CURLINFO_HEADER_SIZE);
+        $header = substr($response, 0, $header_size);
+        $body = substr($response, $header_size);
+        preg_match('/^Set-Cookie:\s*([^;]*)/mi', $header, $match);
+        $session = $match[1];
+
+        $loginResponse = json_decode($body, true);
+        if (!$loginResponse['success']) {
+            curl_close($curl);
+            return $loginResponse;
+        }
+
+        // Update client details
+        if ($serverType == "sanaei" || $serverType == "alireza") {
+            $newSetting = ['clients' => [$editedClient]];
+            $dataArr = [
+                "id" => $inbound_id,
+                "settings" => json_encode($newSetting)
+            ];
+            $url = ($serverType == "sanaei") ? "$panel_url/panel/inbound/updateClient/" . rawurlencode($uuid) : "$panel_url/xui/inbound/updateClient/" . rawurlencode($uuid);
+
+            curl_setopt_array($curl, [
+                CURLOPT_URL => $url,
+                CURLOPT_RETURNTRANSFER => true,
+                CURLOPT_ENCODING => '',
+                CURLOPT_MAXREDIRS => 10,
+                CURLOPT_CONNECTTIMEOUT => 15,
+                CURLOPT_TIMEOUT => 15,
+                CURLOPT_FOLLOWLOCATION => true,
+                CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
+                CURLOPT_CUSTOMREQUEST => 'POST',
+                CURLOPT_POSTFIELDS => $dataArr,
+                CURLOPT_SSL_VERIFYHOST => false,
+                CURLOPT_SSL_VERIFYPEER => false,
+                CURLOPT_HEADER => false,
+                CURLOPT_HTTPHEADER => [
+                    'User-Agent:  Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:108.0) Gecko/20100101 Firefox/108.0',
+                    'Accept:  application/json, text/plain, */*',
+                    'Accept-Language:  en-US,en;q=0.5',
+                    'Accept-Encoding:  gzip, deflate',
+                    'X-Requested-With:  XMLHttpRequest',
+                    'Cookie: ' . $session
+                ]
+            ]);
+        } else {
+            curl_setopt_array($curl, [
+                CURLOPT_URL => "$panel_url/xui/inbound/update/$inbound_id",
+                CURLOPT_RETURNTRANSFER => true,
+                CURLOPT_ENCODING => '',
+                CURLOPT_MAXREDIRS => 10,
+                CURLOPT_CONNECTTIMEOUT => 15,
+                CURLOPT_TIMEOUT => 15,
+                CURLOPT_FOLLOWLOCATION => true,
+                CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
+                CURLOPT_CUSTOMREQUEST => 'POST',
+                CURLOPT_POSTFIELDS => $dataArr,
+                CURLOPT_HEADER => false,
+                CURLOPT_HTTPHEADER => [
+                    'User-Agent:  Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:108.0) Gecko/20100101 Firefox/108.0',
+                    'Accept:  application/json, text/plain, */*',
+                    'Accept-Language:  en-US,en;q=0.5',
+                    'Accept-Encoding:  gzip, deflate',
+                    'X-Requested-With:  XMLHttpRequest',
+                    'Cookie: ' . $session
+                ]
+            ]);
+        }
+
+        $response = curl_exec($curl);
+        curl_close($curl);
+        return json_decode($response);
+    }
+
+    function editClientTraffic($server_id, $inbound_id, $uuid, $volume, $days, $editType = null)
+    {
+        global $connection;
+
+        // Fetch server configuration
+        $stmt = $connection->prepare("SELECT * FROM server_config WHERE id = ?");
+        $stmt->bind_param("i", $server_id);
+        $stmt->execute();
+        $server_info = $stmt->get_result()->fetch_assoc();
+        $stmt->close();
+
+        $panel_url = $server_info['panel_url'];
+        $cookie = 'Cookie: session=' . $server_info['cookie'];
+        $serverType = $server_info['type'];
+
+        // Fetch JSON response
+        $response = getJson($server_id);
+        if (!$response) return null;
+        $response = $response->obj;
+
+        // Locate the client and inbound details
+        $client_key = 0;
+        foreach ($response as $row) {
+            if ($row->id == $inbound_id) {
+                $settings = json_decode($row->settings, true);
+                $clients = $settings['clients'];
+                $clientsStates = $row->clientStats;
+
+                foreach ($clients as $key => $client) {
+                    if ($client['id'] == $uuid || $client['password'] == $uuid) {
+                        $client_key = $key;
+                        $email = $client['email'];
+                        $emails = array_column($clientsStates, 'email');
+                        $emailKey = array_search($email, $emails);
+
+                        $total = $clientsStates[$emailKey]->total;
+                        $up = $clientsStates[$emailKey]->up;
+                        $enable = $clientsStates[$emailKey]->enable;
+                        $down = $clientsStates[$emailKey]->down;
+                        break;
+                    }
+                }
+            }
+        }
+
+        // Update the client's volume and expiry date
+        if ($volume != 0) {
+            $client_total = $settings['clients'][$client_key]['totalGB'];
+            $extend_volume = floor($volume * 1073741824);
+            $volume = ($client_total > 0) ? $client_total + $extend_volume : $extend_volume;
+            $settings['clients'][$client_key]['totalGB'] = $volume;
+        }
+        if ($days != 0) {
+            $currentExpiry = $settings['clients'][$client_key]['expiryTime'] ?? 0;
+            $newExpiry = max($currentExpiry, time()) + $days * 24 * 3600;
+            $settings['clients'][$client_key]['expiryTime'] = $newExpiry;
+        }
+
+        if (!isset($settings['clients'][$client_key]['subId']) && ($serverType == "sanaei" || $serverType == "alireza")) {
+            $settings['clients'][$client_key]['subId'] = RandomString(16);
+        }
+        if (!isset($settings['clients'][$client_key]['enable']) && ($serverType == "sanaei" || $serverType == "alireza")) {
+            $settings['clients'][$client_key]['enable'] = true;
+        }
+
+        // Prepare data for updating
+        $editedClient = $settings['clients'][$client_key];
+        $settings['clients'] = array_values($settings['clients']);
+        $settings = json_encode($settings);
+        $dataArr = [
+            'up' => $row->up,
+            'down' => $row->down,
+            'total' => $row->total,
+            'remark' => $row->remark,
+            'enable' => 'true',
+            'expiryTime' => $row->expiryTime,
+            'listen' => '',
+            'port' => $row->port,
+            'protocol' => $row->protocol,
+            'settings' => $settings,
+            'streamSettings' => $row->streamSettings,
+            'sniffing' => $row->sniffing
+        ];
+
+        // Login to the panel
+        $serverName = $server_info['username'];
+        $serverPass = $server_info['password'];
+        $loginUrl = $panel_url . '/login';
+        $postFields = [
+            "username" => $serverName,
+            "password" => $serverPass
+        ];
+
+        $curl = curl_init();
+        curl_setopt($curl, CURLOPT_URL, $loginUrl);
+        curl_setopt($curl, CURLOPT_FOLLOWLOCATION, 1);
+        curl_setopt($curl, CURLOPT_RETURNTRANSFER, 1);
+        curl_setopt($curl, CURLOPT_POST, 1);
+        curl_setopt($curl, CURLOPT_CONNECTTIMEOUT, 3);
+        curl_setopt($curl, CURLOPT_TIMEOUT, 3);
+        curl_setopt($curl, CURLOPT_POSTFIELDS, http_build_query($postFields));
+        curl_setopt($curl, CURLOPT_HEADER, 1);
+        $response = curl_exec($curl);
+
+        $header_size = curl_getinfo($curl, CURLINFO_HEADER_SIZE);
+        $header = substr($response, 0, $header_size);
+        $body = substr($response, $header_size);
+        preg_match('/^Set-Cookie:\s*([^;]*)/mi', $header, $match);
+        $session = $match[1];
+
+        $loginResponse = json_decode($body, true);
+        if (!$loginResponse['success']) {
+            curl_close($curl);
+            return $loginResponse;
+        }
+
+        // Update client details
+        if ($serverType == "sanaei" || $serverType == "alireza") {
+            $newSetting = ['clients' => [$editedClient]];
+            $dataArr = [
+                "id" => $inbound_id,
+                "settings" => json_encode($newSetting)
+            ];
+            $url = ($serverType == "sanaei") ? "$panel_url/panel/inbound/updateClient/" . rawurlencode($uuid) : "$panel_url/xui/inbound/updateClient/" . rawurlencode($uuid);
+
+            curl_setopt_array($curl, [
+                CURLOPT_URL => $url,
+                CURLOPT_RETURNTRANSFER => true,
+                CURLOPT_ENCODING => '',
+                CURLOPT_MAXREDIRS => 10,
+                CURLOPT_CONNECTTIMEOUT => 15,
+                CURLOPT_TIMEOUT => 15,
+                CURLOPT_FOLLOWLOCATION => true,
+                CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
+                CURLOPT_CUSTOMREQUEST => 'POST',
+                CURLOPT_POSTFIELDS => $dataArr,
+                CURLOPT_SSL_VERIFYHOST => false,
+                CURLOPT_SSL_VERIFYPEER => false,
+                CURLOPT_HEADER => false,
+                CURLOPT_HTTPHEADER => [
+                    'User-Agent:  Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:108.0) Gecko/20100101 Firefox/108.0',
+                    'Accept:  application/json, text/plain, */*',
+                    'Accept-Language:  en-US,en;q=0.5',
+                    'Accept-Encoding:  gzip, deflate',
+                    'X-Requested-With:  XMLHttpRequest',
+                    'Cookie: ' . $session
+                ]
+            ]);
+        } else {
+            curl_setopt_array($curl, [
+                CURLOPT_URL => "$panel_url/xui/inbound/update/$inbound_id",
+                CURLOPT_RETURNTRANSFER => true,
+                CURLOPT_ENCODING => '',
+                CURLOPT_MAXREDIRS => 10,
+                CURLOPT_CONNECTTIMEOUT => 15,
+                CURLOPT_TIMEOUT => 15,
+                CURLOPT_FOLLOWLOCATION => true,
+                CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
+                CURLOPT_CUSTOMREQUEST => 'POST',
+                CURLOPT_POSTFIELDS => $dataArr,
+                CURLOPT_HEADER => false,
+                CURLOPT_HTTPHEADER => [
+                    'User-Agent:  Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:108.0) Gecko/20100101 Firefox/108.0',
+                    'Accept:  application/json, text/plain, */*',
+                    'Accept-Language:  en-US,en;q=0.5',
+                    'Accept-Encoding:  gzip, deflate',
+                    'X-Requested-With:  XMLHttpRequest',
+                    'Cookie: ' . $session
+                ]
+            ]);
+        }
+
+        $response = curl_exec($curl);
+        curl_close($curl);
+        return json_decode($response);
+    }
+
+    function deleteClient($server_id, $inbound_id, $uuid, $delete = 0)
+    {
+        global $connection;
+
+        $server_info = getServerConfig($server_id);
+        if (!$server_info) {
+            return null;
+        }
+
+        $panel_url = $server_info['panel_url'];
+        $serverType = $server_info['type'];
+
+        $response = getJson($server_id);
+        if (!$response) {
+            return null;
+        }
+        $response = $response->obj;
+
+        $old_data = [];
+        $oldclientstat = [];
+        foreach ($response as $row) {
+            if ($row->id == $inbound_id) {
+                $settings = json_decode($row->settings);
+                $clients = $settings->clients;
+
+                $clientsStates = $row->clientStats;
+                foreach ($clients as $key => $client) {
+                    if ($client->id == $uuid || $client->password == $uuid) {
+                        $old_data = $client;
+                        unset($clients[$key]);
+                        $email = $client->email;
+                        $emails = array_column($clientsStates, 'email');
+                        $emailKey = array_search($email, $emails);
+
+                        $total = $clientsStates[$emailKey]->total;
+                        $up = $clientsStates[$emailKey]->up;
+                        $enable = $clientsStates[$emailKey]->enable;
+                        $down = $clientsStates[$emailKey]->down;
+                        break;
+                    }
+                }
+            }
+        }
+        $settings->clients = $clients;
+        $settings = json_encode($settings);
+
+        if ($delete == 1) {
+            $dataArr = array(
+                'up' => $row->up,
+                'down' => $row->down,
+                'total' => $row->total,
+                'remark' => $row->remark,
+                'enable' => 'true',
+                'expiryTime' => $row->expiryTime,
+                'listen' => '',
+                'port' => $row->port,
+                'protocol' => $row->protocol,
+                'settings' => $settings,
+                'streamSettings' => $row->streamSettings,
+                'sniffing' => $row->sniffing
+            );
+
+            $session = authenticateAndGetSession($server_info);
+            if (!$session) {
+                return null;
+            }
+
+            $curl = curl_init();
+
+            if ($serverType == "sanaei" || $serverType == "alireza") {
+                $url = ($serverType == "sanaei") ? "$panel_url/panel/inbound/$inbound_id/delClient/" . rawurlencode($uuid) : "$panel_url/xui/inbound/$inbound_id/delClient/" . rawurlencode($uuid);
+                curl_setopt_array($curl, array(
+                    CURLOPT_URL => $url,
+                    CURLOPT_RETURNTRANSFER => true,
+                    CURLOPT_ENCODING => '',
+                    CURLOPT_MAXREDIRS => 10,
+                    CURLOPT_CONNECTTIMEOUT => 15,
+                    CURLOPT_TIMEOUT => 15,
+                    CURLOPT_FOLLOWLOCATION => true,
+                    CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
+                    CURLOPT_CUSTOMREQUEST => 'POST',
+                    CURLOPT_POSTFIELDS => $dataArr,
+                    CURLOPT_SSL_VERIFYHOST => false,
+                    CURLOPT_SSL_VERIFYPEER => false,
+                    CURLOPT_HEADER => false,
+                    CURLOPT_HTTPHEADER => array(
+                        'User-Agent:  Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:108.0) Gecko/20100101 Firefox/108.0',
+                        'Accept:  application/json, text/plain, */*',
+                        'Accept-Language:  en-US,en;q=0.5',
+                        'Accept-Encoding:  gzip, deflate',
+                        'X-Requested-With:  XMLHttpRequest',
+                        'Cookie: ' . $session
+                    )
+                ));
+            } else {
+                $url = "$panel_url/xui/inbound/update/$inbound_id";
+                curl_setopt_array($curl, array(
+                    CURLOPT_URL => $url,
+                    CURLOPT_RETURNTRANSFER => true,
+                    CURLOPT_ENCODING => '',
+                    CURLOPT_MAXREDIRS => 10,
+                    CURLOPT_CONNECTTIMEOUT => 15,
+                    CURLOPT_TIMEOUT => 15,
+                    CURLOPT_FOLLOWLOCATION => true,
+                    CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
+                    CURLOPT_CUSTOMREQUEST => 'POST',
+                    CURLOPT_POSTFIELDS => $dataArr,
+                    CURLOPT_HEADER => false,
+                    CURLOPT_HTTPHEADER => array(
+                        'User-Agent:  Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:108.0) Gecko/20100101 Firefox/108.0',
+                        'Accept:  application/json, text/plain, */*',
+                        'Accept-Language:  en-US,en;q=0.5',
+                        'Accept-Encoding:  gzip, deflate',
+                        'X-Requested-With:  XMLHttpRequest',
+                        'Cookie: ' . $session
+                    )
+                ));
+            }
+
+            $response = curl_exec($curl);
+            curl_close($curl);
+        }
+
+        return [
+            'id' => $old_data->id,
+            'expiryTime' => $old_data->expiryTime,
+            'limitIp' => $old_data->limitIp,
+            'flow' => $old_data->flow,
+            'total' => $total,
+            'up' => $up,
+            'down' => $down
+        ];
+    }
+
+    function resetIpLog($server_id, $remark)
+    {
+        global $connection;
+
+        // Fetch server configuration
+        $stmt = $connection->prepare("SELECT * FROM server_config WHERE id = ?");
+        $stmt->bind_param("i", $server_id);
+        $stmt->execute();
+        $server_info = $stmt->get_result()->fetch_assoc();
+        $stmt->close();
+
+        $panel_url = $server_info['panel_url'];
+        $serverType = $server_info['type'];
+        $serverName = $server_info['username'];
+        $serverPass = $server_info['password'];
+
+        // Login to the panel
+        $loginUrl = $panel_url . '/login';
+        $postFields = [
+            "username" => $serverName,
+            "password" => $serverPass
+        ];
+
+        $curl = curl_init();
+        curl_setopt($curl, CURLOPT_URL, $loginUrl);
+        curl_setopt($curl, CURLOPT_FOLLOWLOCATION, 1);
+        curl_setopt($curl, CURLOPT_RETURNTRANSFER, 1);
+        curl_setopt($curl, CURLOPT_POST, 1);
+        curl_setopt($curl, CURLOPT_CONNECTTIMEOUT, 3);
+        curl_setopt($curl, CURLOPT_TIMEOUT, 3);
+        curl_setopt($curl, CURLOPT_POSTFIELDS, http_build_query($postFields));
+        curl_setopt($curl, CURLOPT_HEADER, 1);
+        $response = curl_exec($curl);
+
+        $header_size = curl_getinfo($curl, CURLINFO_HEADER_SIZE);
+        $header = substr($response, 0, $header_size);
+        $body = substr($response, $header_size);
+        preg_match('/^Set-Cookie:\s*([^;]*)/mi', $header, $match);
+        $session = $match[1];
+
+        $loginResponse = json_decode($body, true);
+        if (!$loginResponse['success']) {
+            curl_close($curl);
+            return $loginResponse;
+        }
+
+        // Set URL based on server type
+        $url = $serverType == "sanaei" ? $panel_url . "/panel/inbound/clearClientIps/" . urlencode($remark) : $panel_url . "/xui/inbound/clearClientIps/" . urlencode($remark);
+
+        // Make request to clear IP logs
+        curl_setopt_array($curl, [
+            CURLOPT_URL => $url,
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_ENCODING => '',
+            CURLOPT_MAXREDIRS => 10,
+            CURLOPT_CONNECTTIMEOUT => 15,
+            CURLOPT_TIMEOUT => 15,
+            CURLOPT_FOLLOWLOCATION => true,
+            CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
+            CURLOPT_CUSTOMREQUEST => 'POST',
+            CURLOPT_HEADER => false,
+            CURLOPT_HTTPHEADER => [
+                'User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:108.0) Gecko/20100101 Firefox/108.0',
+                'Accept: application/json, text/plain, */*',
+                'Accept-Language: en-US,en;q=0.5',
+                'Accept-Encoding: gzip, deflate',
+                'X-Requested-With: XMLHttpRequest',
+                'Cookie: ' . $session
+            ]
+        ]);
+
+        $response = curl_exec($curl);
+        curl_close($curl);
+        return json_decode($response);
+    }
+
+    function resetClientTraffic($server_id, $remark, $inboundId = null)
+    {
+        global $connection;
+
+        // Fetch server configuration
+        $stmt = $connection->prepare("SELECT * FROM server_config WHERE id = ?");
+        $stmt->bind_param("i", $server_id);
+        $stmt->execute();
+        $server_info = $stmt->get_result()->fetch_assoc();
+        $stmt->close();
+
+        $panel_url = $server_info['panel_url'];
+        $serverType = $server_info['type'];
+        $serverName = $server_info['username'];
+        $serverPass = $server_info['password'];
+
+        // Login to the panel
+        $loginUrl = $panel_url . '/login';
+        $postFields = [
+            "username" => $serverName,
+            "password" => $serverPass
+        ];
+
+        $curl = curl_init();
+        curl_setopt($curl, CURLOPT_URL, $loginUrl);
+        curl_setopt($curl, CURLOPT_FOLLOWLOCATION, 1);
+        curl_setopt($curl, CURLOPT_RETURNTRANSFER, 1);
+        curl_setopt($curl, CURLOPT_POST, 1);
+        curl_setopt($curl, CURLOPT_CONNECTTIMEOUT, 3);
+        curl_setopt($curl, CURLOPT_TIMEOUT, 3);
+        curl_setopt($curl, CURLOPT_POSTFIELDS, http_build_query($postFields));
+        curl_setopt($curl, CURLOPT_HEADER, 1);
+        $response = curl_exec($curl);
+
+        $header_size = curl_getinfo($curl, CURLINFO_HEADER_SIZE);
+        $header = substr($response, 0, $header_size);
+        $body = substr($response, $header_size);
+        preg_match('/^Set-Cookie:\s*([^;]*)/mi', $header, $match);
+        $session = $match[1];
+
+        $loginResponse = json_decode($body, true);
+        if (!$loginResponse['success']) {
+            curl_close($curl);
+            return $loginResponse;
+        }
+
+        // Set URL based on server type and inbound ID
+        if ($serverType == "sanaei") {
+            $url = "$panel_url/panel/inbound/$inboundId/resetClientTraffic/" . rawurlencode($remark);
+        } else {
+            $url = $inboundId === null ? "$panel_url/xui/inbound/resetClientTraffic/" . rawurlencode($remark) : "$panel_url/xui/inbound/$inboundId/resetClientTraffic/" . rawurlencode($remark);
+        }
+
+        // Make request to reset client traffic
+        curl_setopt_array($curl, [
+            CURLOPT_URL => $url,
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_ENCODING => '',
+            CURLOPT_MAXREDIRS => 10,
+            CURLOPT_CONNECTTIMEOUT => 15,
+            CURLOPT_TIMEOUT => 15,
+            CURLOPT_FOLLOWLOCATION => true,
+            CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
+            CURLOPT_CUSTOMREQUEST => 'POST',
+            CURLOPT_HEADER => false,
+            CURLOPT_HTTPHEADER => [
+                'User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:108.0) Gecko/20100101 Firefox/108.0',
+                'Accept: application/json, text/plain, */*',
+                'Accept-Language: en-US,en;q=0.5',
+                'Accept-Encoding: gzip, deflate',
+                'X-Requested-With: XMLHttpRequest',
+                'Cookie: ' . $session
+            ]
+        ]);
+
+        $response = curl_exec($curl);
+        curl_close($curl);
+        return json_decode($response);
+    }
+
+    function getNewHeaders($netType, $request_header, $response_header, $type)
+    {
+        $inputRequest = explode(':', $request_header);
+        $key = trim($inputRequest[0]);
+        $value = trim($inputRequest[1]);
+
+        $inputResponse = explode(':', $response_header);
+        $reskey = trim($inputResponse[0]);
+        $resvalue = trim($inputResponse[1]);
+
+        if ($netType == 'tcp') {
+            if ($type == 'none') {
+                $headers = '{"type": "none"}';
+            } else {
+                $headers = json_encode([
+                    'type' => 'http',
+                    'request' => [
+                        'method' => 'GET',
+                        'path' => ['/'],
+                        'headers' => [$key => [$value]]
+                    ],
+                    'response' => [
+                        'version' => '1.1',
+                        'status' => '200',
+                        'reason' => 'OK',
+                        'headers' => [$reskey => [$resvalue]]
+                    ]
+                ], JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT);
+            }
+        } elseif ($netType == 'ws') {
+            if ($type == 'none') {
+                $headers = '{}';
+            } else {
+                $headers = json_encode([$key => $value], JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT);
+            }
+        }
+
+        return $headers;
+    }
+
+    function getConnectionLink($server_id, $uniqid, $protocol, $remark, $port, $netType, $inbound_id = 0, $bypass =
+    false, $customPath = false, $customPort = 0, $customSni = null)
+    {
+
+        global $connection;
+        $stmt = $connection->prepare("SELECT * FROM server_config WHERE id=?");
+        $stmt->bind_param("i", $server_id);
+        $stmt->execute();
+        $server_info = $stmt->get_result()->fetch_assoc();
+        $stmt->close();
+
+        $panel_url = parse_url($server_info['panel_url'], PHP_URL_HOST);
+        $server_ip = empty($server_info['ip']) ? $panel_url : $server_info['ip'];
+        $sni = $server_info['sni'];
+        $header_type = $server_info['header_type'];
+        $request_header = $server_info['request_header'];
+        $response_header = $server_info['response_header'];
+        $serverType = $server_info['type'];
+
+        preg_match("/^Host:(.*)/i", $request_header, $hostMatch);
+        $response = getJson($server_id)->obj;
+
+        foreach ($response as $row) {
+            if ($inbound_id == 0) {
+                $clients = json_decode($row->settings)->clients;
+                if ($clients[0]->id == $uniqid || $clients[0]->password == $uniqid) {
+                    extractServerDetails($row, $serverType, $netType, $remark, $sni, $tlsStatus, $tlsSetting, $xtlsSetting, $settings, $fp, $spiderX, $pbk, $sid, $flow, $path, $host, $serviceName, $grpcSecurity, $alpn, $kcpType, $kcpSeed);
+                    break;
+                }
+            } else {
+                if ($row->id == $inbound_id) {
+                    extractServerDetails($row, $serverType, $netType, $remark, $sni, $tlsStatus, $tlsSetting, $xtlsSetting, $settings, $fp, $spiderX, $pbk, $sid, $flow, $path, $host, $serviceName, $grpcSecurity, $alpn, $kcpType, $kcpSeed);
+                    break;
+                }
+            }
+        }
+
+        $outputLink = generateConnectionLink($protocol, $uniqid, $remark, $port, $netType, $server_ip, $bypass, $customPath, $customPort, $customSni, $sni, $header_type, $host, $tlsStatus, $path, $flow, $fp, $spiderX, $pbk, $sid, $serviceName, $grpcSecurity, $alpn, $kcpType, $kcpSeed);
+
+        return $outputLink;
+
+    }
+
+    function extractServerDetails($row, $serverType, &$netType, &$remark, &$sni, &$tlsStatus, &$tlsSetting,
+    &$xtlsSetting, &$settings, &$fp, &$spiderX, &$pbk, &$sid, &$flow, &$path, &$host, &$serviceName, &$grpcSecurity,
+    &$alpn, &$kcpType, &$kcpSeed)
+    {
+        if ($serverType == "sanaei" || $serverType == "alireza") {
+            $settings = json_decode($row->settings, true);
+            $email = $settings['clients'][0]['email'];
+            $remark = $row->remark;
+        }
+        $tlsStatus = json_decode($row->streamSettings)->security;
+        $tlsSetting = json_decode($row->streamSettings)->tlsSettings;
+        $xtlsSetting = json_decode($row->streamSettings)->xtlsSettings;
+        $netType = json_decode($row->streamSettings)->network;
+
+        if ($netType == 'tcp') {
+            $header_type = json_decode($row->streamSettings)->tcpSettings->header->type;
+            $path = json_decode($row->streamSettings)->tcpSettings->header->request->path[0];
+            $host = json_decode($row->streamSettings)->tcpSettings->header->request->headers->Host[0];
+
+            if ($tlsStatus == "reality") {
+                $realitySettings = json_decode($row->streamSettings)->realitySettings;
+                $fp = $realitySettings->settings->fingerprint;
+                $spiderX = $realitySettings->settings->spiderX;
+                $pbk = $realitySettings->settings->publicKey;
+                $sni = $realitySettings->serverNames[0];
+                $flow = $settings['clients'][0]['flow'];
+                $sid = $realitySettings->shortIds[0];
+            }
+        }
+
+        if ($netType == 'ws') {
+            $header_type = json_decode($row->streamSettings)->wsSettings->header->type;
+            $path = json_decode($row->streamSettings)->wsSettings->path;
+            $host = json_decode($row->streamSettings)->wsSettings->headers->Host;
+        }
+
+        if ($header_type == 'http' && empty($host)) {
+            $request_header = explode(':', $request_header);
+            $host = trim($request_header[1]);
+        }
+
+        if ($netType == 'grpc') {
+            if ($tlsStatus == 'tls') {
+                $alpn = $tlsSetting->certificates->alpn;
+                $sni = $tlsSetting->serverName ?? $tlsSetting->settings->serverName;
+            } elseif ($tlsStatus == "reality") {
+                $realitySettings = json_decode($row->streamSettings)->realitySettings;
+                $fp = $realitySettings->settings->fingerprint;
+                $spiderX = $realitySettings->settings->spiderX;
+                $pbk = $realitySettings->settings->publicKey;
+                $sni = $realitySettings->serverNames[0];
+                $flow = $settings['clients'][0]['flow'];
+                $sid = $realitySettings->shortIds[0];
+            }
+            $serviceName = json_decode($row->streamSettings)->grpcSettings->serviceName;
+            $grpcSecurity = json_decode($row->streamSettings)->security;
+        }
+
+        if ($tlsStatus == 'tls') {
+            $serverName = $tlsSetting->serverName ?? $tlsSetting->settings->serverName;
+            $sni = $tlsSetting->serverName ?? $tlsSetting->settings->serverName;
+        }
+
+        if ($tlsStatus == "xtls") {
+            $serverName = $xtlsSetting->serverName ?? $xtlsSetting->settings->serverName;
+            $alpn = $xtlsSetting->alpn;
+            $sni = $xtlsSetting->serverName ?? $xtlsSetting->settings->serverName;
+        }
+
+        if ($netType == 'kcp') {
+            $kcpSettings = json_decode($row->streamSettings)->kcpSettings;
+            $kcpType = $kcpSettings->header->type;
+            $kcpSeed = $kcpSettings->seed;
+        }
+
+    }
+
+    function generateConnectionLink($protocol, $uniqid, $remark, $port, $netType, $server_ip, $bypass, $customPath,
+    $customPort, $customSni, $sni, $header_type, $host, $tlsStatus, $path, $flow, $fp, $spiderX, $pbk, $sid,
+    $serviceName, $grpcSecurity, $alpn, $kcpType, $kcpSeed)
+    {
+
+        $protocol = strtolower($protocol);
+        $serverIp = explode("\n", $server_ip);
+        $outputLinks = [];
+
+        foreach ($serverIp as $server_ip) {
+            $server_ip = trim(str_replace("\r", "", $server_ip));
+            if ($protocol == 'vless') {
+                $outputLinks[] = generateVlessLink($uniqid, $remark, $port, $netType, $server_ip, $bypass, $customPath, $customPort, $customSni, $sni, $header_type, $host, $tlsStatus, $path, $flow, $fp, $spiderX, $pbk, $sid, $serviceName, $grpcSecurity, $alpn, $kcpType, $kcpSeed);
+            } elseif ($protocol == 'trojan') {
+                $outputLinks[] = generateTrojanLink($uniqid, $remark, $port, $netType, $server_ip, $bypass, $customPath, $customPort, $customSni, $sni, $header_type, $host, $tlsStatus, $path, $flow, $fp, $spiderX, $pbk, $sid, $serviceName, $grpcSecurity, $alpn, $kcpType, $kcpSeed);
+            } elseif ($protocol == 'vmess') {
+                $outputLinks[] = generateVmessLink($uniqid, $remark, $port, $netType, $server_ip, $bypass, $customPath, $customPort, $customSni, $sni, $header_type, $host, $tlsStatus, $path, $flow, $fp, $spiderX, $pbk, $sid, $serviceName, $grpcSecurity, $alpn, $kcpType, $kcpSeed);
+            }
+        }
+
+        return implode("\n", $outputLinks);
+
+    }
+
+    function generateVlessLink($uniqid, $remark, $port, $netType, $server_ip, $bypass, $customPath, $customPort,
+    $customSni, $sni, $header_type, $host, $tlsStatus, $path, $flow, $fp, $spiderX, $pbk, $sid, $serviceName,
+    $grpcSecurity, $alpn, $kcpType, $kcpSeed)
+    {
+
+        return "vless://$uniqid@$server_ip:$port?remarks=$remark&path=$path&security=$tlsStatus&encryption=none&alpn=$alpn&fp=$fp&sni=$sni&pbk=$pbk&sid=$sid&spiderX=$spiderX&serviceName=$serviceName&grpcSecurity=$grpcSecurity&host=$host";
+
+    }
+
+    function generateTrojanLink($uniqid, $remark, $port, $netType, $server_ip, $bypass, $customPath, $customPort,
+    $customSni, $sni, $header_type, $host, $tlsStatus, $path, $flow, $fp, $spiderX, $pbk, $sid, $serviceName,
+    $grpcSecurity, $alpn, $kcpType, $kcpSeed)
+    {
+
+        return "trojan://$uniqid@$server_ip:$port?remarks=$remark&path=$path&security=$tlsStatus&alpn=$alpn&fp=$fp&sni=$sni&pbk=$pbk&sid=$sid&spiderX=$spiderX&serviceName=$serviceName&grpcSecurity=$grpcSecurity&host=$host";
+
+    }
+
+    function generateVmessLink($uniqid, $remark, $port, $netType, $server_ip, $bypass, $customPath, $customPort,
+    $customSni, $sni, $header_type, $host, $tlsStatus, $path, $flow, $fp, $spiderX, $pbk, $sid, $serviceName,
+    $grpcSecurity, $alpn, $kcpType, $kcpSeed)
+    {
+
+        $link = [
+            'v' => '2',
+            'ps' => $remark,
+            'add' => $server_ip,
+            'port' => $port,
+            'id' => $uniqid,
+            'aid' => '0',
+            'scy' => 'auto',
+            'net' => $netType,
+            'type' => $header_type,
+            'host' => $host,
+            'path' => $path,
+            'tls' => $tlsStatus,
+            'fp' => $fp,
+            'alpn' => $alpn,
+            'pbk' => $pbk,
+            'sid' => $sid,
+            'spiderX' => $spiderX,
+            'serviceName' => $serviceName,
+            'grpcSecurity' => $grpcSecurity,
+            'kcpType' => $kcpType,
+            'kcpSeed' => $kcpSeed
+        ];
+
+        return 'vmess://' . base64_encode(json_encode($link, JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT));
+
+    }
+
+    function updateConfig($server_id, $inboundId, $protocol, $netType = 'tcp', $security = 'none', $bypass = false)
+    {
+        global $connection;
+
+        // Fetch server configuration
+        $stmt = $connection->prepare("SELECT * FROM server_config WHERE id = ?");
+        $stmt->bind_param("i", $server_id);
+        $stmt->execute();
+        $server_info = $stmt->get_result()->fetch_assoc();
+        $stmt->close();
+
+        if (!$server_info) {
+            return null;
+        }
+
+        // Extract server info
+        $panel_url = $server_info['panel_url'];
+        $security = $server_info['security'];
+        $tlsSettings = $server_info['tlsSettings'];
+        $header_type = $server_info['header_type'];
+        $request_header = $server_info['request_header'];
+        $response_header = $server_info['response_header'];
+        $cookie = 'Cookie: session=' . $server_info['cookie'];
+        $serverType = $server_info['type'];
+        $sni = $server_info['sni'];
+        $xtlsTitle = ($serverType == "sanaei" || $serverType == "alireza") ? "XTLSSettings" : "xtlsSettings";
+
+        // Update TLS settings with SNI if applicable
+        if (!empty($sni) && ($serverType == "sanaei" || $serverType == "alireza")) {
+            $tlsSettings = json_decode($tlsSettings, true);
+            $tlsSettings['serverName'] = $sni;
+            $tlsSettings = json_encode($tlsSettings, JSON_UNESCAPED_UNICODE);
+        }
+
+        // Fetch server inbounds
+        $response = getJson($server_id);
+        if (!$response) {
+            return null;
+        }
+
+        $response = $response->obj;
+        foreach ($response as $row) {
+            if ($row->id == $inboundId) {
+                $iid = $row->id;
+                $remark = $row->remark;
+                $streamSettings = $row->streamSettings;
+                $settings = $row->settings;
+                break;
+            }
+        }
+
+        if (!intval($iid)) {
+            return;
+        }
+
+        $headers = getNewHeaders($netType, $request_header, $response_header, $header_type);
+        $headers = empty($headers) ? "{}" : $headers;
+
+        // Generate stream settings
+        $streamSettings = generateStreamSettings($protocol, $netType, $security, $tlsSettings, $headers, $panel_url, $sni, $serverType, $xtlsTitle, $bypass);
+
+        // Prepare data array for update
+        $dataArr = array(
+            'up' => $row->up,
+            'down' => $row->down,
+            'total' => $row->total,
+            'remark' => $remark,
+            'enable' => 'true',
+            'expiryTime' => $row->expiryTime,
+            'listen' => '',
+            'port' => $row->port,
+            'protocol' => $protocol,
+            'settings' => $settings,
+            'streamSettings' => $streamSettings,
+            'sniffing' => $row->sniffing
+        );
+
+        // Authenticate and update inbound
+        return authenticateAndUpdateInbound($panel_url, $server_info, $dataArr, $iid, $serverType);
+    }
+
+    function generateStreamSettings($protocol, $netType, $security, $tlsSettings, $headers, $panel_url, $sni, $serverType, $xtlsTitle, $bypass)
+    {
+        if ($protocol == 'trojan') {
+            if ($netType == 'grpc') {
+                return generateGrpcSettings($security, $tlsSettings, $sni, $serverType, $panel_url);
+            }
+
+            $tcpSettings = generateTcpWsSettings('tcp', $security, $tlsSettings, $headers, $xtlsTitle, $serverType);
+            $wsSettings = generateTcpWsSettings('ws', $security, $tlsSettings, $headers, $xtlsTitle, $serverType, $bypass);
+            return ($netType == 'tcp') ? $tcpSettings : $wsSettings;
+        }
+
+        // Additional protocol handling can be added here
+        return null;
+    }
+
+    function generateTcpWsSettings($network, $security, $tlsSettings, $headers, $xtlsTitle, $serverType, $bypass = false)
+    {
+        $path = $bypass ? "/wss" : "/";
+        return json_encode([
+            'network' => $network,
+            'security' => $security,
+            $xtlsTitle => ($security == 'xtls' && ($serverType != "sanaei" && $serverType != "alireza")) ? $tlsSettings : null,
+            'tlsSettings' => ($security == 'tls') ? $tlsSettings : null,
+            "{$network}Settings" => [
+                'path' => $path,
+                'header' => $headers
+            ]
+        ], JSON_UNESCAPED_UNICODE);
+    }
+
+    function generateGrpcSettings($security, $tlsSettings, $sni, $serverType, $panel_url)
+    {
+        $keyFileInfo = json_decode($tlsSettings, true);
+        $certificateFile = "/root/cert.crt";
+        $keyFile = '/root/private.key';
+
+        if (isset($keyFileInfo['certificates'])) {
+            $certificateFile = $keyFileInfo['certificates'][0]['certificateFile'];
+            $keyFile = $keyFileInfo['certificates'][0]['keyFile'];
+        }
+
+        if ($security == 'tls') {
+            return json_encode([
+                'network' => 'grpc',
+                'security' => 'tls',
+                'tlsSettings' => [
+                    'serverName' => !empty($sni) && ($serverType == "sanaei" || $serverType == "alireza") ? $sni : parse_url($panel_url, PHP_URL_HOST),
+                    'certificates' => [
+                        [
+                            'certificateFile' => $certificateFile,
+                            'keyFile' => $keyFile
+                        ]
+                    ],
+                    'alpn' => []
+                ],
+                'grpcSettings' => [
+                    'serviceName' => ''
+                ]
+            ], JSON_UNESCAPED_UNICODE);
+        }
+
+        return json_encode([
+            'network' => 'grpc',
+            'security' => 'none',
+            'grpcSettings' => [
+                'serviceName' => parse_url($panel_url, PHP_URL_HOST)
+            ]
+        ], JSON_UNESCAPED_UNICODE);
+    }
+
+    function authenticateAndUpdateInbound($panel_url, $server_info, $dataArr, $iid, $serverType)
+    {
+        $loginUrl = $panel_url . '/login';
+        $postFields = array(
+            "username" => $server_info['username'],
+            "password" => $server_info['password']
+        );
+
+        $curl = curl_init();
+        curl_setopt($curl, CURLOPT_URL, $loginUrl);
+        curl_setopt($curl, CURLOPT_FOLLOWLOCATION, 1);
+        curl_setopt($curl, CURLOPT_RETURNTRANSFER, 1);
+        curl_setopt($curl, CURLOPT_POST, 1);
+        curl_setopt($curl, CURLOPT_CONNECTTIMEOUT, 3);
+        curl_setopt($curl, CURLOPT_TIMEOUT, 3);
+        curl_setopt($curl, CURLOPT_POSTFIELDS, http_build_query($postFields));
+        curl_setopt($curl, CURLOPT_HEADER, 1);
+
+        $response = curl_exec($curl);
+        $header_size = curl_getinfo($curl, CURLINFO_HEADER_SIZE);
+        $header = substr($response, 0, $header_size);
+        $body = substr($response, $header_size);
+        preg_match('/^Set-Cookie:\s*([^;]*)/mi', $header, $match);
+        $session = $match[1];
+
+        $loginResponse = json_decode($body, true);
+        if (!$loginResponse['success']) {
+            curl_close($curl);
+            return $loginResponse;
+        }
+
+        $url = ($serverType == "sanaei") ? "$panel_url/panel/inbound/update/$iid" : "$panel_url/xui/inbound/update/$iid";
+        curl_setopt_array($curl, array(
+            CURLOPT_URL => $url,
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_ENCODING => '',
+            CURLOPT_MAXREDIRS => 10,
+            CURLOPT_CONNECTTIMEOUT => 15,
+            CURLOPT_TIMEOUT => 15,
+            CURLOPT_FOLLOWLOCATION => true,
+            CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
+            CURLOPT_CUSTOMREQUEST => 'POST',
+            CURLOPT_POSTFIELDS => $dataArr,
+            CURLOPT_SSL_VERIFYHOST => false,
+            CURLOPT_SSL_VERIFYPEER => false,
+            CURLOPT_HEADER => false,
+            CURLOPT_HTTPHEADER => array(
+                'User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:108.0) Gecko/20100101 Firefox/108.0',
+                'Accept: application/json, text/plain, */*',
+                'Accept-Language: en-US,en;q=0.5',
+                'Accept-Encoding: gzip, deflate',
+                'X-Requested-With: XMLHttpRequest',
+                'Cookie: ' . $session
+            )
+        ));
+
+        $response = curl_exec($curl);
+        curl_close($curl);
+        return json_decode($response);
+    }
+
+    function getNewCert($server_id)
+    {
+        global $connection;
+
+        $server_info = getServerConfig($server_id);
+        if (!$server_info) {
+            return null;
+        }
+
+        $panel_url = $server_info['panel_url'];
+        $cookie = 'Cookie: session=' . $server_info['cookie'];
+
+        $session = authenticateAndGetSession($server_info);
+        if (!$session) {
+            return null;
+        }
+
+        $url = "$panel_url/server/getNewX25519Cert";
+
+        return executeCurlRequest($url, $session);
+    }
+
+    function getServerConfig($server_id)
+    {
+        global $connection;
+
+        $stmt = $connection->prepare("SELECT * FROM server_config WHERE id=?");
+        $stmt->bind_param("i", $server_id);
+        $stmt->execute();
+        $server_info = $stmt->get_result()->fetch_assoc();
+        $stmt->close();
+
+        return $server_info;
+    }
+
+    function authenticateAndGetSession($server_info)
+    {
+        $panel_url = $server_info['panel_url'];
+        $loginUrl = $panel_url . '/login';
+
+        $postFields = array(
+            "username" => $server_info['username'],
+            "password" => $server_info['password']
+        );
+
+        $curl = curl_init();
+        curl_setopt($curl, CURLOPT_URL, $loginUrl);
+        curl_setopt($curl, CURLOPT_FOLLOWLOCATION, 1);
+        curl_setopt($curl, CURLOPT_RETURNTRANSFER, 1);
+        curl_setopt($curl, CURLOPT_POST, 1);
+        curl_setopt($curl, CURLOPT_CONNECTTIMEOUT, 3);
+        curl_setopt($curl, CURLOPT_TIMEOUT, 3);
+        curl_setopt($curl, CURLOPT_POSTFIELDS, http_build_query($postFields));
+        curl_setopt($curl, CURLOPT_HEADER, 1);
+
+        $response = curl_exec($curl);
+        if (curl_errno($curl)) {
+            curl_close($curl);
+            return null;
+        }
+
+        $header_size = curl_getinfo($curl, CURLINFO_HEADER_SIZE);
+        $header = substr($response, 0, $header_size);
+        $body = substr($response, $header_size);
+        preg_match('/^Set-Cookie:\s*([^;]*)/mi', $header, $match);
+        $session = $match[1];
+
+        $loginResponse = json_decode($body, true);
+        if (!$loginResponse['success']) {
+            curl_close($curl);
+            return null;
+        }
+
+        curl_close($curl);
+        return $session;
+    }
 }

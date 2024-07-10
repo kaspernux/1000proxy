@@ -2,171 +2,159 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Server;
 use App\Models\ServerInbound;
 use App\Services\XUIService;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 class ServerInboundController extends Controller
 {
+    protected $xuiService;
+
+    public function __construct(XUIService $xuiService)
+    {
+        $this->xuiService = $xuiService;
+    }
+
+    // Retrieve a server inbound
+    public function show(ServerInbound $serverInbound)
+    {
+        return response()->json($serverInbound);
+    }
+
+    // Update a server inbound
+    public function update(Request $request, ServerInbound $serverInbound)
+    {
+        // Validate incoming request data here if needed
+
+        // Update Server Inbound
+        $serverInbound->update($request->all());
+
+        return response()->json($serverInbound);
+    }
+
+    // Delete a server inbound
+    public function destroy(ServerInbound $serverInbound)
+    {
+        // Delete Server Inbound
+        $serverInbound->delete();
+
+        return response()->json(['message' => 'Server inbound deleted successfully']);
+    }
+
+    // Add a new server inbound
     public function store(Request $request)
     {
-        $request->validate([
-            'up' => 'nullable|integer',
-            'down' => 'nullable|integer',
-            'total' => 'nullable|integer',
-            'remark' => 'nullable|string',
-            'enable' => 'required|boolean',
-            'expiryTime' => 'nullable|integer',
-            'clientStats' => 'nullable|json',
-            'listen' => 'nullable|string',
-            'port' => 'nullable|integer',
-            'protocol' => 'nullable|string',
-            'settings' => 'nullable|json',
-            'streamSettings' => 'nullable|json',
-            'tag' => 'nullable|string',
-            'sniffing' => 'nullable|json',
-        ]);
+        // Validate incoming request data here if needed
 
-        DB::beginTransaction();
+        // Create Server Inbound
+        $serverInbound = ServerInbound::create($request->all());
 
+        return response()->json($serverInbound, 201);
+    }
+
+    // List all server inbounds
+    public function index()
+    {
+        $serverInbounds = ServerInbound::all();
+        return response()->json($serverInbounds);
+    }
+
+    // Example method to manage server inbounds
+    public function manageServerInbounds()
+    {
         try {
-            // Assuming $request->server_id is used to find the Server model
-            $server = Server::findOrFail($request->server_id);
-            $xuiService = new XUIService($server);
+            // Example: Fetch server inbounds from remote XUI
+            $remoteServerInbounds = $this->xuiService->fetchServerInbounds();
 
-            $xuiResponse = $xuiService->createInbound($request->all());
-
-            if (isset($xuiResponse['error'])) {
-                DB::rollBack();
-                return response()->json($xuiResponse, 400);
+            // Example: Process server inbounds
+            foreach ($remoteServerInbounds as $remoteServerInbound) {
+                // Process each remote server inbound as needed
+                Log::info('Processing server inbound: ' . $remoteServerInbound['uuid']);
+                // Example: Add server inbound to local database if needed
+                ServerInbound::create([
+                    'uuid' => $remoteServerInbound['uuid'],
+                    'server_id' => $remoteServerInbound['server_id'],
+                    // Add other fields as required
+                ]);
             }
 
-            $userId = $xuiResponse['userId'] ?? null;
-
-            // Creating ServerInbound without server_id
-            $inboundData = array_merge($request->all(), ['userId' => $userId]);
-            $inbound = ServerInbound::create($inboundData);
-
-            DB::commit();
-            return response()->json($inbound, 201);
+            return response()->json(['message' => 'Server inbounds processed successfully']);
         } catch (\Exception $e) {
-            DB::rollBack();
-            return response()->json(['error' => $e->getMessage()], 500);
+            Log::error('Error processing server inbounds: ' . $e->getMessage());
+            return response()->json(['error' => 'Failed to process server inbounds'], 500);
         }
     }
 
-    public function getInbound(Request $request, $inboundId)
+    // Add client to server inbound
+    public function addClient(Request $request, $server_inbound_id)
     {
         try {
-            // Assuming $request->server_id is used to find the Server model
-            $server = Server::findOrFail($request->server_id);
-            $xuiService = new XUIService($server);
+            // Call XUIService method to add client
+            $response = $this->xuiService->addClient($server_inbound_id, $request->all());
 
-            $inbound = $xuiService->getInbound($inboundId);
-            return response()->json($inbound);
-        } catch (\Exception $e) {
-            return response()->json(['error' => $e->getMessage()], 500);
-        }
-    }
-
-    public function update(Request $request, $inboundId)
-    {
-        $request->validate([
-            'up' => 'nullable|integer',
-            'down' => 'nullable|integer',
-            'total' => 'nullable|integer',
-            'remark' => 'nullable|string',
-            'enable' => 'nullable|boolean',
-            'expiryTime' => 'nullable|integer',
-            'clientStats' => 'nullable|json',
-            'listen' => 'nullable|string',
-            'port' => 'nullable|integer',
-            'protocol' => 'nullable|string',
-            'settings' => 'nullable|json',
-            'streamSettings' => 'nullable|json',
-            'tag' => 'nullable|string',
-            'sniffing' => 'nullable|json',
-        ]);
-
-        DB::beginTransaction();
-
-        try {
-            // Assuming $request->server_id is used to find the Server model
-            $server = Server::findOrFail($request->server_id);
-            $xuiService = new XUIService($server);
-
-            $xuiResponse = $xuiService->updateInbound($inboundId, $request->all());
-
-            if (isset($xuiResponse['error'])) {
-                DB::rollBack();
-                return response()->json($xuiResponse, 400);
-            }
-
-            $inbound = ServerInbound::findOrFail($inboundId);
-            $inbound->update($request->all());
-
-            DB::commit();
-            return response()->json($inbound, 200);
-        } catch (\Exception $e) {
-            DB::rollBack();
-            return response()->json(['error' => $e->getMessage()], 500);
-        }
-    }
-
-    public function delete(Request $request, $inboundId)
-    {
-        DB::beginTransaction();
-
-        try {
-            // Assuming $request->server_id is used to find the Server model
-            $server = Server::findOrFail($request->server_id);
-            $xuiService = new XUIService($server);
-
-            $xuiResponse = $xuiService->deleteInbound($inboundId);
-
-            if (isset($xuiResponse['error'])) {
-                DB::rollBack();
-                return response()->json($xuiResponse, 400);
-            }
-
-            $inbound = ServerInbound::findOrFail($inboundId);
-            $inbound->delete();
-
-            DB::commit();
-            return response()->json(null, 204);
-        } catch (\Exception $e) {
-            DB::rollBack();
-            return response()->json(['error' => $e->getMessage()], 500);
-        }
-    }
-
-    public function listInbounds(Request $request)
-    {
-        try {
-            // Assuming $request->server_id is used to find the Server model
-            $server = Server::findOrFail($request->server_id);
-            $xuiService = new XUIService($server);
-
-            $inbounds = $xuiService->listInbounds();
-            return response()->json($inbounds);
-        } catch (\Exception $e) {
-            return response()->json(['error' => $e->getMessage()], 500);
-        }
-    }
-
-    public function deleteDepletedClients(Request $request, $inboundId = null)
-    {
-        try {
-            // Assuming $request->server_id is used to find the Server model
-            $server = Server::findOrFail($request->server_id);
-            $xuiService = new XUIService($server);
-
-            $response = $xuiService->deleteDepletedClients($inboundId);
             return response()->json($response);
         } catch (\Exception $e) {
-            return response()->json(['error' => $e->getMessage()], 500);
+            Log::error('Error adding client to server inbound: ' . $e->getMessage());
+            return response()->json(['error' => 'Failed to add client to server inbound'], 500);
         }
     }
+
+    // Delete client from server inbound
+    public function deleteClient($server_inbound_id, $uuid)
+    {
+        try {
+            // Call XUIService method to delete client
+            $response = $this->xuiService->deleteClientFromInbound($server_inbound_id, $uuid);
+
+            return response()->json($response);
+        } catch (\Exception $e) {
+            Log::error('Error deleting client from server inbound: ' . $e->getMessage());
+            return response()->json(['error' => 'Failed to delete client from server inbound'], 500);
+        }
+    }
+
+    // Edit client in server inbound
+    public function editClient($server_inbound_id, $uuid, Request $request)
+    {
+        try {
+            // Call XUIService method to edit client
+            $response = $this->xuiService->editClientInInbound($server_inbound_id, $uuid, $request->all());
+
+            return response()->json($response);
+        } catch (\Exception $e) {
+            Log::error('Error editing client in server inbound: ' . $e->getMessage());
+            return response()->json(['error' => 'Failed to edit client in server inbound'], 500);
+        }
+    }
+
+    // Enable or disable client in server inbound
+    public function toggleClientStatus($server_inbound_id, $uuid, $status)
+    {
+        try {
+            // Call XUIService method to toggle client status
+            $response = $this->xuiService->toggleClientStatusInInbound($server_inbound_id, $uuid, $status);
+
+            return response()->json($response);
+        } catch (\Exception $e) {
+            Log::error('Error toggling client status in server inbound: ' . $e->getMessage());
+            return response()->json(['error' => 'Failed to toggle client status in server inbound'], 500);
+        }
+    }
+
+    // Fetch clients in server inbound
+    public function fetchClients($server_inbound_id)
+    {
+        try {
+            // Call XUIService method to fetch clients
+            $response = $this->xuiService->fetchClientsInInbound($server_inbound_id);
+
+            return response()->json($response);
+        } catch (\Exception $e) {
+            Log::error('Error fetching clients in server inbound: ' . $e->getMessage());
+            return response()->json(['error' => 'Failed to fetch clients in server inbound'], 500);
+        }
+    }
+
+    // Implement other methods similarly based on your application's requirements and XUIService capabilities
 }

@@ -3,10 +3,18 @@
 namespace App\Http\Controllers;
 
 use App\Models\ServerPlan;
+use App\Services\XUIService;
 use Illuminate\Http\Request;
 
 class ServerPlanController extends Controller
 {
+    protected $xuiService;
+
+    public function __construct(XUIService $xuiService)
+    {
+        $this->xuiService = $xuiService;
+    }
+
     // Retrieve a server plan
     public function show(ServerPlan $serverPlan)
     {
