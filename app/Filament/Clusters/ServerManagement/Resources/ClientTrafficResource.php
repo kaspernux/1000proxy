@@ -29,7 +29,11 @@ class ClientTrafficResource extends Resource
 
     protected static ?string $navigationIcon = 'heroicon-o-chart-pie';
 
-    protected static ?string $cluster = ServerManagement::class;
+    protected static ?string $navigationGroup = 'PROXY SETTINGS';
+
+
+    protected static ?int $navigationSort = 7;
+
 
     public static function getLabel(): string
     {

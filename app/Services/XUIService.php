@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Http\Controllers;
+namespace App\Services;
 
 use Exception;
 use App\Models\Server;
@@ -9,9 +9,10 @@ use App\Models\ServerInfo;
 use App\Models\ServerPlan;
 use App\Models\ServerConfig;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 use App\Http\Controllers\Controller;
 
-class XUIController extends Controller
+class XUIService
 {
     protected $baseUrl;
     protected $token;
@@ -19,27 +20,35 @@ class XUIController extends Controller
     protected $password;
     protected $httpClient;
 
-    public function __construct(Server $server)
+    public function __construct($server_id)
     {
-        $this->baseUrl = $server->config->panel_url;
-        $this->username = $server->config->username;
-        $this->password = $server->config->password;
+        $server = Server::findOrFail($server_id);
+
+        if (empty($server->panel_url) || empty($server->username) || empty($server->password)) {
+            Log::error("Server configuration missing for server ID: " . $server_id);
+            throw new Exception("Server configuration missing for server ID: " . $server_id);
+        }
+
+        $this->baseUrl = rtrim($server->panel_url, '/') . '/';
+        $this->username = $server->username;
+        $this->password = $server->password;
 
         $this->httpClient = new Client([
-        'base_uri' => $this->baseUrl,
-        'cookies' => true,
+            'base_uri' => $this->baseUrl,
+            'cookies' => true,
         ]);
 
         $this->token = $this->login();
     }
 
+
     protected function login()
     {
-        $response = $this->httpClient->post('/login', [
-        'form_params' => [
-        'username' => $this->username,
-        'password' => $this->password,
-        ],
+        $response = $this->httpClient->post('login', [
+            'form_params' => [
+                'username' => $this->username,
+                'password' => $this->password,
+            ],
         ]);
 
         return $response->getHeader('Set-Cookie');
@@ -48,10 +57,10 @@ class XUIController extends Controller
     protected function getJson($server_id)
     {
         $server = Server::findOrFail($server_id);
-        $response = $this->httpClient->get('/xui/inbounds', [
-        'headers' => [
-        'Cookie' => $this->token,
-        ],
+        $response = $this->httpClient->get('xui.inbounds.get', [
+            'headers' => [
+                'Cookie' => $this->token,
+            ],
         ]);
 
         return json_decode($response->getBody()->getContents());
@@ -60,10 +69,10 @@ class XUIController extends Controller
     protected function executeCurlRequest($url, $session, $dataArr)
     {
         $response = $this->httpClient->post($url, [
-        'form_params' => $dataArr,
-        'headers' => [
-        'Cookie' => $session,
-        ],
+            'form_params' => $dataArr,
+            'headers' => [
+                'Cookie' => $session,
+            ],
         ]);
 
         return $response->getBody()->getContents();
@@ -135,47 +144,115 @@ class XUIController extends Controller
         return ($protocol == 'trojan') ? substr(md5(time()), 5, 15) : $this->generateUID();
     }
 
-    public function addInboundAccount(Request $request, $server_id, $customer_id, $server_inbound_id, $expiryTime,$remark, $volume, $limitIp = 1, $newarr = '', $planId = null)
+    public function getInbounds()
     {
-            $server_info = Server::findOrFail($server_id)->config;
+        $response = $this->httpClient->get('panel/inbounds/list', [
+            'headers' => [
+                'Cookie' => $this->token,
+            ],
+        ]);
 
-            $response = $this->getJson($server_id);
-            if (!$response) return null;
-            $response = $response->obj;
+        return json_decode($response->getBody()->getContents(), true);
+    }
 
-            foreach ($response as $row) {
-            if ($row->id == $server_inbound_id) {
-            $iid = $row->id;
-            $protocol = $row->protocol;
-            break;
+    public function getInbound($id)
+    {
+        $response = $this->httpClient->get("panel/inbounds/get/$id", [
+            'headers' => [
+                'Cookie' => $this->token,
+            ],
+        ]);
+
+        return json_decode($response->getBody()->getContents(), true);
+    }
+
+    public function addInbound(Request $request)
+    {
+        $dataArr = [
+            "enable" => $request->input('enable', true),
+            "remark" => $request->input('remark', 'New inbound'),
+            "listen" => $request->input('listen', ''),
+            "port" => $request->input('port', 48965),
+            "protocol" => $request->input('protocol', 'vmess'),
+            "expiryTime" => $request->input('expiryTime', 0),
+            "settings" => $request->input('settings', json_encode([
+                "clients" => [],
+                "decryption" => "none",
+                "fallbacks" => []
+            ])),
+            "streamSettings" => $request->input('streamSettings', json_encode([
+                "network" => "ws",
+                "security" => "none",
+                "wsSettings" => [
+                    "acceptProxyProtocol" => false,
+                    "path" => "/",
+                    "headers" => new \stdClass()
+                ]
+            ])),
+            "sniffing" => $request->input('sniffing', json_encode([
+                "enabled" => true,
+                "destOverride" => ["http", "tls"]
+            ]))
+        ];
+
+        try {
+            $response = $this->httpClient->post('panel/api/inbounds/add', [
+                'form_params' => $dataArr,
+                'headers' => [
+                    'Accept' => 'application/json',
+                    'Cookie' => $this->token,
+                ],
+            ]);
+
+            $responseBody = $response->getBody()->getContents();
+            return json_decode($responseBody, true);
+        } catch (Exception $e) {
+            Log::error('Error adding inbound: ' . $e->getMessage());
+            throw new Exception('Failed to add inbound');
+        }
+    }
+
+    public function addInboundAccount(Request $request)
+    {
+        $server_info = Server::findOrFail($server_id);
+
+        $response = $this->getJson($server_id);
+        if (!$response) return null;
+        $response = $response->obj;
+
+        foreach ($response as $row) {
+            if ($row->id == $inbound_id) {
+                $iid = $row->id;
+                $protocol = $row->protocol;
+                break;
             }
-            }
+        }
 
-            if (!intval($iid)) return "Inbound not found";
+        if (!intval($iid)) return "Inbound not found";
 
-            $settings = json_decode($row->settings, true);
-            $id_label = $protocol == 'trojan' ? 'password' : 'id';
+        $settings = json_decode($row->settings, true);
+        $id_label = $protocol == 'trojan' ? 'password' : 'id';
 
-            if ($newarr == '') {
+        if ($newarr == '') {
             $newClient = [
-            "$id_label" => $customer_id,
-            "enable" => true,
-            "email" => $remark,
-            "limitIp" => $limitIp,
-            "totalGB" => $volume,
-            "expiryTime" => $expiryTime,
-            "subId" => $this->RandomString(16)
+                "$id_label" => $client_id,
+                "enable" => true,
+                "email" => $remark,
+                "limitIp" => $limitIp,
+                "totalGB" => $volume,
+                "expiryTime" => $expiryTime,
+                "subId" => $this->RandomString(16)
             ];
 
             $settings['clients'][] = $newClient;
-            } elseif (is_array($newarr)) {
+        } elseif (is_array($newarr)) {
             $settings['clients'][] = $newarr;
-            }
+        }
 
-            $settings['clients'] = array_values($settings['clients']);
-            $settings = json_encode($settings);
+        $settings['clients'] = array_values($settings['clients']);
+        $settings = json_encode($settings);
 
-            $dataArr = [
+        $dataArr = [
             'up' => $row->up,
             'down' => $row->down,
             'total' => $row->total,
@@ -188,13 +265,18 @@ class XUIController extends Controller
             'settings' => $settings,
             'streamSettings' => $row->streamSettings,
             'sniffing' => $row->sniffing,
-            ];
+        ];
 
             $url = $server_info->type == 'sanaei' ? '/panel/inbound/addClient/' : '/xui/inbound/addClient/';
 
-            $response = $this->executeCurlRequest($url, $this->token, $dataArr);
+            $response = $this->httpClient->post('panel/inbounds/addClient', [
+                'form_params' => $dataArr,
+                'headers' => [
+                    'Cookie' => $this->token,
+                ],
+            ]);
 
-            return $response;
+            return json_decode($response->getBody()->getContents(), true);
     }
 
     public function deleteInbound(Request $request, $server_id, $uuid, $delete = 0)

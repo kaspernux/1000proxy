@@ -20,9 +20,10 @@ class InboundClientIPResource extends Resource
 
     protected static ?string $navigationIcon = 'heroicon-o-rss';
 
-    protected static ?int $navigationSort = 12;
 
-    protected static ?string $cluster = ServerManagement::class;
+    protected static ?string $navigationGroup = 'PROXY SETTINGS';
+
+    protected static ?int $navigationSort = 6;
 
     public static function getLabel(): string
     {

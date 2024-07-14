@@ -7,10 +7,12 @@ use Filament\Tables;
 use App\Models\Server;
 use Filament\Forms\Form;
 use Filament\Tables\Table;
-use Illuminate\Support\Str;
 use Filament\Resources\Resource;
 use Filament\Forms\Components\Group;
 use Filament\Forms\Components\Section;
+use Filament\Forms\Components\Select;
+use Filament\Tables\Columns\TextColumn;
+use Illuminate\Database\Eloquent\Builder;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Tables\Columns\ImageColumn;
@@ -18,17 +20,22 @@ use Filament\Forms\Components\FileUpload;
 use Filament\Tables\Filters\SelectFilter;
 use App\Filament\Clusters\ServerManagement;
 use Filament\Forms\Components\MarkdownEditor;
+use Jantinnerezo\LivewireAlert\LivewireAlert;
+use App\Http\Controllers\XUIService;
+use Illuminate\Support\Facades\Redirect;
 use Livewire\Features\SupportFileUploads\TemporaryUploadedFile;
 use App\Filament\Clusters\ServerManagement\Resources\ServerResource\Pages;
 
 
 class ServerResource extends Resource
 {
+    use LivewireAlert;
+
     protected static ?string $model = Server::class;
 
     protected static ?string $navigationIcon = 'heroicon-o-server';
 
-    protected static ?string $cluster = ServerManagement::class;
+    protected static ?string $navigationGroup = 'PROXY SETTINGS';
 
     protected static ?int $navigationSort = 1;
 
@@ -44,44 +51,93 @@ class ServerResource extends Resource
         return $form
             ->schema([
                 Group::make()->schema([
-                    Section::make('Basic Information')->schema([
-                        Forms\Components\TextInput::make('name')
-                            ->required()
-                            ->maxLength(255),
-                        Forms\Components\TextInput::make('country')
-                            ->required()
-                            ->maxLength(255),
+                    Section::make('Server Info')->schema([
+                        TextInput::make('name')
+                            ->maxLength(255)
+                            ->columns(2),
+                        TextInput::make('country')
+                            ->maxLength(255)
+                            ->columns(2),
                         Forms\Components\Select::make('server_category_id')
                             ->relationship('category', 'name')
                             ->required()
                             ->searchable()
-                            ->preload(),
+                            ->preload()
+                            ->columns(2),
                         Forms\Components\Select::make('server_brand_id')
                             ->relationship('brand', 'name')
                             ->required()
                             ->searchable()
-                            ->preload(),
-
+                            ->preload()
+                            ->columns(2),
                     ])->columns(2),
 
+                    Forms\Components\Section::make('Settings and Security')
+                        ->schema([
+                            Forms\Components\Select::make('type')
+                                ->options([
+                                    'sanaei' => 'X-RAY',
+                                    'alireza' => 'Alireza',
+                                    'marzban' => 'Marzban',
+                                    'Other' => 'Others',])
+                                ->required()
+                                ->maxWidth(255),
+                            Forms\Components\TextInput::make('panel_url')
+                                ->required()
+                                ->maxLength(255),
+                            Forms\Components\TextInput::make('ip')
+                                ->label('IP')
+                                ->required()
+                                ->maxLength(255),
+                        Forms\Components\TextInput::make('port')
+                                ->maxLength(255),
+                            Forms\Components\TextInput::make('reality')
+                                ->maxLength(255),
+                            Forms\Components\TextInput::make('sni')
+                                ->label('SNI')
+                                ->maxLength(255),
+                            Forms\Components\TextInput::make('header_type')
+                                ->maxLength(255),
+                            Forms\Components\TextInput::make('security')
+                                ->maxLength(255),
+                            Forms\Components\TextInput::make('request_header')
+                                ->maxLength(255),
+                            Forms\Components\TextInput::make('response_header')
+                                ->maxLength(255),
+                            Forms\Components\TextInput::make('tlsSettings')
+                                ->maxLength(255)
+                                ->columnSpanFull(),
+                        ])->columns(2),
+
                     Section::make('Description')->schema([
-                        Forms\Components\MarkdownEditor::make('description')
-                            ->fileAttachmentsDirectory('servers'),
+                        MarkdownEditor::make('description')
+                            ->fileAttachmentsDirectory('servers')
+                            ->label(''),
                     ]),
                 ])->columnSpan(2),
                 Group::make()->schema([
-                    Section::make('Country Flag')->schema([
-                        Forms\Components\FileUpload::make('flag')
+                    Section::make('Brand and Status')->schema([
+                        FileUpload::make('flag')
                             ->image()
                             ->directory('servers'),
                         Forms\Components\Select::make('status')
-                            ->required()
                             ->options([
                                 'up' => 'Up',
                                 'down' => 'Down',
                                 'paused' => 'Paused',
                             ]),
-                    ])->columns(1),
+                    ]),
+                Forms\Components\Section::make('Authentication')
+                        ->schema([
+                            Forms\Components\TextInput::make('username')
+                                ->required()
+                                ->maxLength(255),
+                            Forms\Components\TextInput::make('password')
+                                ->password()
+                                ->dehydrated(fn ($state) => filled($state))
+                                ->required(fn ($livewire): bool => $livewire instanceof CreateRecord)
+                                ->maxLength(255),
+                        ]),
                 ])->columnSpan(1),
             ])->columns(3);
     }
@@ -89,13 +145,24 @@ class ServerResource extends Resource
     public static function table(Table $table): Table
     {
         return $table
-            ->columns([
-                Tables\Columns\ImageColumn::make('flag')
+             ->columns([
+                ImageColumn::make('flag')
                     ->label('Flag')
                     ->url(fn ($record) => $record->flag),
                 Tables\Columns\TextColumn::make('name')
                     ->label('Name')
                     ->sortable()
+                    ->searchable(),
+                Tables\Columns\TextColumn::make('username')
+                    ->searchable(),
+                Tables\Columns\TextColumn::make('panel_url')
+                    ->searchable(),
+                Tables\Columns\TextColumn::make('ip')
+                    ->searchable(),
+                Tables\Columns\TextColumn::make('port')
+                    ->searchable(),
+                Tables\Columns\TextColumn::make('status')
+                    ->label('Status')
                     ->searchable(),
                 Tables\Columns\TextColumn::make('category.name')
                     ->label('Category')
@@ -111,10 +178,15 @@ class ServerResource extends Resource
                     ->searchable(),
                 Tables\Columns\TextColumn::make('description')
                     ->label('Description')
-                    ->sortable(),
-                Tables\Columns\TextColumn::make('status')
-                    ->label('Status')
+                    ->sortable()
+                    ->toggleable(isToggledHiddenByDefault: true),
+                Tables\Columns\TextColumn::make('sni')
                     ->searchable(),
+                Tables\Columns\TextColumn::make('type')
+                    ->searchable(),
+                Tables\Columns\TextColumn::make('reality')
+                    ->searchable()
+                    ->toggleable(isToggledHiddenByDefault: true),
                 Tables\Columns\TextColumn::make('created_at')
                     ->dateTime()
                     ->sortable()
@@ -130,6 +202,8 @@ class ServerResource extends Resource
                     ->relationship('category', 'name'),
                 SelectFilter::make('country')
                     ->label('Countries'),
+                SelectFilter::make('panel_url')
+                    ->label('Panel URL'),
             ])
             ->actions([
                 Tables\Actions\ActionGroup::make([
@@ -160,12 +234,5 @@ class ServerResource extends Resource
             'view' => Pages\ViewServer::route('/{record}'),
             'edit' => Pages\EditServer::route('/{record}/edit'),
         ];
-    }
-
-    public static function getNavigationBadge(): ?string {
-        return static::getModel()::count();
-    }
-    public static function getNavigationBadgeColor(): string|array|null {
-        return static::getModel()::count() > 5 ? 'success':'danger';
     }
 }

@@ -16,12 +16,26 @@ class Server extends Model
 
     protected $fillable = [
         'name',
+        'username',
+        'password',
         'server_category_id',
         'server_brand_id',
         'country',
         'flag',
         'description',
         'status',
+        'panel_url',
+        'ip',
+        'port',
+        'sni',
+        'header_type',
+        'request_header',
+        'response_header',
+        'security',
+        'tlsSettings',
+        'type',
+        'port_type',
+        'reality',
     ];
 
     public function category(): BelongsTo
@@ -64,18 +78,12 @@ class Server extends Model
         return $this->hasMany(OrderItem::class);
     }
 
-    public function serverInfo(): HasOne
+    public function info(): HasOne
     {
-        return $this->hasOne(ServerInfo::class);
+        return $this->hasOne(ServerInfo::class, 'server_id');
     }
 
-    // Define the relationship with ServerConfig
-    public function serverConfig()
-    {
-        return $this->hasOne(ServerConfig::class);
-    }
-
-    // Example method to get XUI parameters
+    /* // Example method to get XUI parameters
     public function getXUIParameters()
     {
         if ($this->serverConfig) {
@@ -86,5 +94,5 @@ class Server extends Model
             ];
         }
         return [];
-    }
+    } */
 }

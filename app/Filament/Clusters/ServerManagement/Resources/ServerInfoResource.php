@@ -2,34 +2,40 @@
 
 namespace App\Filament\Clusters\ServerManagement\Resources;
 
-use App\Filament\Clusters\ServerManagement;
-use App\Filament\Clusters\ServerManagement\Resources\ServerInfoResource\Pages;
-use App\Models\ServerInfo;
 use Filament\Forms;
-use Filament\Forms\Form;
-use Filament\Resources\Resource;
 use Filament\Tables;
+use Filament\Forms\Form;
+use App\Models\ServerInfo;
 use Filament\Tables\Table;
-use Filament\Forms\Components\Section;
+use Filament\Resources\Resource;
 use Filament\Forms\Components\Group;
 use Filament\Forms\Components\Select;
-use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
+use Filament\Forms\Components\Section;
+use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\MarkdownEditor;
+use Illuminate\Support\Facades\Redirect;
+use Jantinnerezo\LivewireAlert\LivewireAlert;
+use App\Http\Controllers\XUIService;
+use App\Filament\Clusters\ServerManagement\Resources\ServerInfoResource\Pages;
 
 class ServerInfoResource extends Resource
 {
+    use LivewireAlert;
+
     protected static ?string $model = ServerInfo::class;
 
     protected static ?string $navigationIcon = 'heroicon-o-information-circle';
 
-    protected static ?string $cluster = ServerManagement::class;
+    protected static ?string $navigationGroup = 'PROXY SETTINGS';
 
-    protected static ?int $navigationSort = 9;
+    protected static ?int $navigationSort = 5;
+
+    protected static ?string $recordTitleAttribute = 'title';
 
     public static function getLabel(): string
     {
-        return 'Info';
+        return 'About';
     }
 
     public static function form(Form $form): Form
@@ -123,7 +129,7 @@ class ServerInfoResource extends Resource
     public static function getRelations(): array
     {
         return [
-            // Define your relations here
+            //
         ];
     }
 

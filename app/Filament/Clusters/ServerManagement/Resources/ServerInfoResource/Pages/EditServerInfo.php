@@ -2,9 +2,9 @@
 
 namespace App\Filament\Clusters\ServerManagement\Resources\ServerInfoResource\Pages;
 
-use App\Filament\Clusters\ServerManagement\Resources\ServerInfoResource;
-use Filament\Actions;
+use Actions\DeleteAction;
 use Filament\Resources\Pages\EditRecord;
+use App\Filament\Clusters\ServerManagement\Resources\ServerInfoResource;
 
 class EditServerInfo extends EditRecord
 {
@@ -14,7 +14,7 @@ class EditServerInfo extends EditRecord
     {
         return [
             Actions\ViewAction::make(),
-            Actions\DeleteAction::make(),
+            DeleteAction::make(),
         ];
     }
 }

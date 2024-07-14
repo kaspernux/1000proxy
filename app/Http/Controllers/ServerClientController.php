@@ -1,7 +1,5 @@
 <?php
 
-namespace App\Http\Controllers;
-
 use App\Models\ServerClient;
 use App\Services\XUIService;
 use Illuminate\Http\Request;
@@ -17,102 +15,62 @@ class ServerClientController extends Controller
     }
 
     // Retrieve a server client
-    public function show(ServerClient $serverClient)
+    public function show($id)
     {
-        return response()->json($serverClient);
+        try {
+            $client = $this->xuiService->getClientById($id);
+            return response()->json($client);
+        } catch (\Exception $e) {
+            Log::error('Error fetching server client: ' . $e->getMessage());
+            return response()->json(['error' => 'Failed to fetch server client'], 500);
+        }
     }
 
     // Update a server client
-    public function update(Request $request, ServerClient $serverClient)
+    public function update(Request $request, $id)
     {
-        // Validate incoming request data here if needed
-
-        // Update Server Client
-        $serverClient->update($request->all());
-
-        return response()->json($serverClient);
+        try {
+            $client = $this->xuiService->updateClient($id, $request->all());
+            return response()->json($client);
+        } catch (\Exception $e) {
+            Log::error('Error updating server client: ' . $e->getMessage());
+            return response()->json(['error' => 'Failed to update server client'], 500);
+        }
     }
 
     // Delete a server client
-    public function destroy(ServerClient $serverClient)
+    public function destroy($id)
     {
-        // Delete Server Client
-        $serverClient->delete();
-
-        return response()->json(['message' => 'Server client deleted successfully']);
+        try {
+            $this->xuiService->deleteClient($id);
+            return response()->json(['message' => 'Server client deleted successfully']);
+        } catch (\Exception $e) {
+            Log::error('Error deleting server client: ' . $e->getMessage());
+            return response()->json(['error' => 'Failed to delete server client'], 500);
+        }
     }
 
     // Add a new server client
     public function store(Request $request)
     {
-        // Validate incoming request data here if needed
-
-        // Create Server Client
-        $serverClient = ServerClient::create($request->all());
-
-        return response()->json($serverClient, 201);
+        try {
+            $client = $this->xuiService->addClient($request->all());
+            return response()->json($client, 201);
+        } catch (\Exception $e) {
+            Log::error('Error adding server client: ' . $e->getMessage());
+            return response()->json(['error' => 'Failed to add server client'], 500);
+        }
     }
 
     // List all server clients
     public function index()
     {
-        $serverClients = ServerClient::all();
-        return response()->json($serverClients);
-    }
-
-    // Example method to manage server clients
-    public function manageServerClients()
-    {
         try {
-            // Example: Fetch server clients from remote XUI
-            $remoteServerClients = $this->xuiService->fetchServerClients();
-
-            // Example: Process server clients
-            foreach ($remoteServerClients as $remoteServerClient) {
-                // Process each remote server client as needed
-                Log::info('Processing server client: ' . $remoteServerClient['uuid']);
-                // Example: Add server client to local database if needed
-                ServerClient::create([
-                    'uuid' => $remoteServerClient['uuid'],
-                    'server_id' => $remoteServerClient['server_id'],
-                    // Add other fields as required
-                ]);
-            }
-
-            return response()->json(['message' => 'Server clients processed successfully']);
+            $clients = $this->xuiService->getAllClients();
+            return response()->json($clients);
         } catch (\Exception $e) {
-            Log::error('Error processing server clients: ' . $e->getMessage());
-            return response()->json(['error' => 'Failed to process server clients'], 500);
+            Log::error('Error fetching server clients: ' . $e->getMessage());
+            return response()->json(['error' => 'Failed to fetch server clients'], 500);
         }
     }
-
-    // Enable or disable server client
-    public function toggleServerClientStatus($uuid, $status)
-    {
-        try {
-            // Call XUIService method to toggle server client status
-            $response = $this->xuiService->toggleServerClientStatus($uuid, $status);
-
-            return response()->json($response);
-        } catch (\Exception $e) {
-            Log::error('Error toggling server client status: ' . $e->getMessage());
-            return response()->json(['error' => 'Failed to toggle server client status'], 500);
-        }
-    }
-
-    // Fetch server client details
-    public function fetchServerClientDetails($uuid)
-    {
-        try {
-            // Call XUIService method to fetch server client details
-            $response = $this->xuiService->fetchServerClientDetails($uuid);
-
-            return response()->json($response);
-        } catch (\Exception $e) {
-            Log::error('Error fetching server client details: ' . $e->getMessage());
-            return response()->json(['error' => 'Failed to fetch server client details'], 500);
-        }
-    }
-
-    // Implement other methods similarly based on your application's requirements and XUIService capabilities
 }

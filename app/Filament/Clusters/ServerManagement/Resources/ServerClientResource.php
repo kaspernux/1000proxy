@@ -8,131 +8,102 @@ use Filament\Forms\Form;
 use Filament\Tables\Table;
 use App\Models\ServerClient;
 use Filament\Resources\Resource;
-use Illuminate\Support\HtmlString;
-use Filament\Tables\Filters\SelectFilter;
-use Filament\Forms\Components\Placeholder;
+use Illuminate\Database\Eloquent\Builder;
 use App\Filament\Clusters\ServerManagement;
-use Filament\Forms\Components\DateTimePicker;
-use Filament\Forms\Components\MarkdownEditor;
+use Jantinnerezo\LivewireAlert\LivewireAlert;
+use Illuminate\Database\Eloquent\SoftDeletingScope;
 use App\Filament\Clusters\ServerManagement\Resources\ServerClientResource\Pages;
-
+use App\Filament\Clusters\ServerManagement\Resources\ServerClientResource\RelationManagers;
 
 class ServerClientResource extends Resource
 {
+    use LivewireAlert;
+
     protected static ?string $model = ServerClient::class;
 
     protected static ?string $navigationIcon = 'heroicon-o-user-group';
 
-    protected static ?string $cluster = ServerManagement::class;
+    protected static ?string $navigationGroup = 'PROXY SETTINGS';
 
-    protected static ?int $navigationSort = 6;
+    protected static ?int $navigationSort = 3;
+
+    protected static ?string $recordTitleAttribute = 'server_id';
 
     public static function getLabel(): string
     {
         return 'Clients';
     }
 
+
     public static function form(Form $form): Form
     {
         return $form
             ->schema([
-                Forms\Components\Group::make()
-                    ->schema([
-                        Forms\Components\Section::make('Client Information')
-                            ->schema([
-                                Forms\Components\Select::make('server_inbound_id')
-                                    ->relationship('inbound', 'userId')
-                                    ->required()
-                                    ->searchable()
-                                    ->preload(),
-                                Forms\Components\TextInput::make('email')
-                                    ->label('Proxy Username')
-                                    ->required()
-                                    ->maxLength(255),
-                            ])->columns(2),
-
-                        Forms\Components\Section::make('Client Details')
-                            ->schema([
-                                Forms\Components\TextInput::make('flow')
-                                    ->label('Flow')
-                                    ->maxLength(36)
-                                    ->default('None'),
-                                Forms\Components\TextInput::make('password')
-                                    ->label('Password')
-                                    ->default(null),
-                                Forms\Components\TextInput::make('limitIp')
-                                    ->label('IP Limit')
-                                    ->numeric(),
-                                Forms\Components\TextInput::make('totalGb')
-                                    ->label('Total Capacity')
-                                    ->prefix('Go')
-                                    ->numeric(),
-                                Forms\Components\DateTimePicker::make('expiryTime')
-                                    ->label('Expiry Time'),
-                                Forms\Components\TextInput::make('tgId')
-                                    ->label('Telegram ID')
-                                    ->maxLength(255),
-                                Forms\Components\TextInput::make('subId')
-                                    ->label('Subscription ID')
-                                    ->maxLength(255)
-                                    ->columnSpanFull(),
-                            ])->columns(2),
-                    ])->columnSpan(2),
-
-                Forms\Components\Group::make()
-                    ->schema([
-                        Forms\Components\Section::make('QR-Codes')
-                            ->schema([
-                                Forms\Components\Placeholder::make('qr_code_client')
-                                    ->label('Client QR-code')
-                                    ->content(new HtmlString('<a href="https://filamentphp.com/docs">filamentphp.com</a>'))
-                                    ->columnSpanFull(),
-                                Forms\Components\Placeholder::make('qr_code_sub')
-                                    ->label('Sub')
-                                    ->content(new HtmlString('<a href="https://filamentphp.com/docs">filamentphp.com</a>'))
-                                    ->columnSpanFull(),
-                                Forms\Components\Placeholder::make('qr_code_sub_json')
-                                    ->label('Sub Json')
-                                    ->content(new HtmlString('<a href="https://filamentphp.com/docs">filamentphp.com</a>'))
-                                    ->columnSpanFull(),
-
-                            ])
-
-                    ])->columnSpan(1),
-            ])->columns(3);
+                Forms\Components\TextInput::make('server_inbound_id')
+                    ->required()
+                    ->numeric(),
+                Forms\Components\TextInput::make('email')
+                    ->email()
+                    ->required()
+                    ->maxLength(255),
+                Forms\Components\TextInput::make('password')
+                    ->password()
+                    ->maxLength(255),
+                Forms\Components\TextInput::make('flow')
+                    ->required()
+                    ->maxLength(255)
+                    ->default('None'),
+                Forms\Components\TextInput::make('limitIp')
+                    ->numeric(),
+                Forms\Components\TextInput::make('totalGB')
+                    ->numeric(),
+                Forms\Components\DateTimePicker::make('expiryTime'),
+                Forms\Components\TextInput::make('tgId')
+                    ->maxLength(255),
+                Forms\Components\TextInput::make('subId')
+                    ->maxLength(255),
+                Forms\Components\Toggle::make('enable')
+                    ->required(),
+                Forms\Components\TextInput::make('reset')
+                    ->numeric(),
+                Forms\Components\Textarea::make('qr_code_sub')
+                    ->columnSpanFull(),
+                Forms\Components\Textarea::make('qr_code_sub_json')
+                    ->columnSpanFull(),
+                Forms\Components\Textarea::make('qr_code_client')
+                    ->columnSpanFull(),
+            ]);
     }
 
     public static function table(Table $table): Table
     {
         return $table
             ->columns([
-                Tables\Columns\TextColumn::make('email')
-                    ->label('Email')
-                    ->searchable(),
-                Tables\Columns\TextColumn::make('serverInbound.id')
-                    ->label('Inbound ID')
-                    ->sortable(),
-                Tables\Columns\TextColumn::make('flow')
-                    ->searchable(),
-
-                Tables\Columns\TextColumn::make('limitIp')
-                    ->label('IP Limit')
+                Tables\Columns\TextColumn::make('server_inbound_id')
                     ->numeric()
                     ->sortable(),
-                Tables\Columns\TextColumn::make('totalGb')
-                    ->label('Total Capacity')
+                Tables\Columns\TextColumn::make('email')
+                    ->searchable(),
+                Tables\Columns\TextColumn::make('flow')
+                    ->searchable(),
+                Tables\Columns\TextColumn::make('limitIp')
+                    ->numeric()
+                    ->sortable(),
+                Tables\Columns\TextColumn::make('totalGB')
                     ->numeric()
                     ->sortable(),
                 Tables\Columns\TextColumn::make('expiryTime')
-                    ->label('Expiry Time')
-                    ->numeric()
+                    ->dateTime()
                     ->sortable(),
                 Tables\Columns\TextColumn::make('tgId')
-                    ->label('Telegram ID')
                     ->searchable(),
                 Tables\Columns\TextColumn::make('subId')
-                    ->label('Subscription ID')
                     ->searchable(),
+                Tables\Columns\IconColumn::make('enable')
+                    ->boolean(),
+                Tables\Columns\TextColumn::make('reset')
+                    ->numeric()
+                    ->sortable(),
                 Tables\Columns\TextColumn::make('created_at')
                     ->dateTime()
                     ->sortable()
@@ -143,12 +114,11 @@ class ServerClientResource extends Resource
                     ->toggleable(isToggledHiddenByDefault: true),
             ])
             ->filters([
-                SelectFilter::make('server_inboud_id')
-                    ->label('Inbounds')
-                    ->relationship('inbound', 'userId'),
+                SelectFilter::make('server_inbound_id')
+                    ->label('Inboun ID')
+                    ->relationship('inbound', 'id'),
                 SelectFilter::make('email')
-                    ->label('Proxy User'),
-
+                    ->label('User'),
             ])
             ->actions([
                 Tables\Actions\ActionGroup::make([
@@ -167,7 +137,7 @@ class ServerClientResource extends Resource
     public static function getRelations(): array
     {
         return [
-            // Define your relations here
+            //
         ];
     }
 

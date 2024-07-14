@@ -8,27 +8,31 @@ use Filament\Forms\Form;
 use Filament\Tables\Table;
 use App\Models\ServerInbound;
 use Filament\Resources\Resource;
+use App\Http\Controllers\XUIService;
 use Filament\Forms\Components\Group;
 use Filament\Forms\Components\Split;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Toggle;
 use Filament\Forms\Components\Section;
 use Filament\Forms\Components\TextInput;
+use Illuminate\Support\Facades\Redirect;
 use Filament\Forms\Components\DatePicker;
 use Filament\Tables\Filters\SelectFilter;
 use App\Filament\Clusters\ServerManagement;
+use Jantinnerezo\LivewireAlert\LivewireAlert;
 use App\Filament\Clusters\ServerManagement\Resources\ServerInboundResource\Pages;
-
 
 class ServerInboundResource extends Resource
 {
+    use LivewireAlert;
+
     protected static ?string $model = ServerInbound::class;
 
     protected static ?string $navigationIcon = 'heroicon-o-code-bracket';
 
-    protected static ?string $cluster = ServerManagement::class;
+    protected static ?string $navigationGroup = 'PROXY SETTINGS';
 
-    protected static ?int $navigationSort = 7;
+    protected static ?int $navigationSort = 2;
 
     protected static ?string $recordTitleAttribute = 'server_id';
 
@@ -51,12 +55,9 @@ class ServerInboundResource extends Resource
                                         ->required()
                                         ->searchable()
                                         ->preload()
-                                        ->columns(1),
-                                    TextInput::make('userId')
-                                        ->required()
-                                        ->numeric()
-                                        ->columns(1),
+                                        ->columnSpan(1),
                                     TextInput::make('remark')
+                                        ->required()
                                         ->maxLength(255)
                                         ->columnSpanFull(),
                                 ]),
@@ -65,34 +66,33 @@ class ServerInboundResource extends Resource
                                         ->required()
                                         ->default(true),
                                     Forms\Components\Textarea::make('sniffing')
-                                    ->label('Sniffing (JSON)')
-                                    ->json(),
+                                        ->label('Sniffing (JSON)')
+                                        ->json(),
                                 ])->grow(false),
                             ])->from('md'),
                         ]),
-
                     Section::make('Connection Details')
                         ->schema([
                             TextInput::make('listen')
                                 ->maxLength(255),
-
                             TextInput::make('port')
                                 ->required()
                                 ->numeric(),
                         ])->columns(2),
-
                     Section::make('Protocol and Settings')
                         ->schema([
-                            Forms\Components\Select::make('protocol')
+                            Select::make('protocol')
                                 ->options([
-                                    'vlss' => 'VLSS',
-                                    'vmss' => 'VMSS',
+                                    'vless' => 'VLESS',
+                                    'vmess' => 'VMESS',
                                     'trojan' => 'TROJAN',
                                     // Add more protocol types as needed
                                 ])
                                 ->required()
                                 ->maxWidth(255),
-
+                            TextInput::make('userId')
+                                        ->numeric()
+                                        ->columnSpan(1),
                             Forms\Components\Textarea::make('settings')
                                 ->label('Settings (JSON)')
                                 ->json(),
@@ -101,27 +101,19 @@ class ServerInboundResource extends Resource
                                 ->json(),
                         ])->columns(2),
                 ])->columnSpan(2),
-
                 Group::make([
                     Section::make('Additional Info')
                         ->schema([
                             TextInput::make('up')
-                                ->required()
                                 ->numeric()
                                 ->default(0),
-
                             TextInput::make('down')
-                                ->required()
                                 ->numeric()
                                 ->default(0),
-
                             TextInput::make('total')
-                                ->required()
                                 ->numeric()
                                 ->default(0),
-
-                            DatePicker::make('expiryTime')
-                                ->required(),
+                            DatePicker::make('expiryTime'),
                         ])->columns(2),
                 ])->columnSpan(1),
             ])->columns(3);
@@ -134,33 +126,25 @@ class ServerInboundResource extends Resource
                 Tables\Columns\TextColumn::make('server.name')
                     ->label('Server')
                     ->searchable(),
-
                 Tables\Columns\TextColumn::make('total')
                     ->label('Total Clients')
                     ->numeric()
                     ->sortable(),
-
                 Tables\Columns\TextColumn::make('protocol')
                     ->searchable()
                     ->sortable(),
-
                 Tables\Columns\TextColumn::make('port')
                     ->sortable(),
-
                 Tables\Columns\TextColumn::make('up')
                     ->sortable(),
-
                 Tables\Columns\TextColumn::make('down')
                     ->sortable(),
-
                 Tables\Columns\IconColumn::make('enable')
                     ->label('Enabled')
                     ->boolean(),
-
                 Tables\Columns\TextColumn::make('expiryTime')
                     ->dateTime()
                     ->sortable(),
-
                 Tables\Columns\TextColumn::make('created_at')
                     ->dateTime()
                     ->sortable()
@@ -194,7 +178,7 @@ class ServerInboundResource extends Resource
     public static function getRelations(): array
     {
         return [
-            // Define your relations here
+            //
         ];
     }
 

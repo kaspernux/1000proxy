@@ -5,6 +5,7 @@ namespace App\Filament\Clusters\ServerManagement\Resources\ServerInboundResource
 use App\Filament\Clusters\ServerManagement\Resources\ServerInboundResource;
 use Filament\Actions;
 use Filament\Resources\Pages\ListRecords;
+use App\Models\ServerInbound;
 
 class ListServerInbounds extends ListRecords
 {
@@ -15,5 +16,11 @@ class ListServerInbounds extends ListRecords
         return [
             Actions\CreateAction::make(),
         ];
+    }
+
+    protected function getTableQuery(): ?\Illuminate\Database\Eloquent\Builder
+    {
+        // Return a query builder instance for the ServerInbound model
+        return ServerInbound::query();
     }
 }
