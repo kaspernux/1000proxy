@@ -1,24 +1,30 @@
 <?php
 
+namespace App\Http\Controllers;
+
 use App\Models\ServerClient;
+use App\Models\ServerInbound;
 use App\Services\XUIService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
-
+use Illuminate\Http\JsonResponse;
 class ServerClientController extends Controller
 {
-    protected $xuiService;
-
-    public function __construct(XUIService $xuiService)
-    {
-        $this->xuiService = $xuiService;
-    }
-
-    // Retrieve a server client
-    public function show($id)
+    public function index(): JsonResponse
     {
         try {
-            $client = $this->xuiService->getClientById($id);
+            $clients = ServerClient::all();
+            return response()->json($clients);
+        } catch (\Exception $e) {
+            Log::error('Error fetching server clients: ' . $e->getMessage());
+            return response()->json(['error' => 'Failed to fetch server clients'], 500);
+        }
+    }
+
+    public function show($id): JsonResponse
+    {
+        try {
+            $client = ServerClient::findOrFail($id);
             return response()->json($client);
         } catch (\Exception $e) {
             Log::error('Error fetching server client: ' . $e->getMessage());
@@ -26,51 +32,83 @@ class ServerClientController extends Controller
         }
     }
 
-    // Update a server client
-    public function update(Request $request, $id)
+    public function store(Request $request): JsonResponse
     {
         try {
-            $client = $this->xuiService->updateClient($id, $request->all());
-            return response()->json($client);
-        } catch (\Exception $e) {
-            Log::error('Error updating server client: ' . $e->getMessage());
-            return response()->json(['error' => 'Failed to update server client'], 500);
-        }
-    }
-
-    // Delete a server client
-    public function destroy($id)
-    {
-        try {
-            $this->xuiService->deleteClient($id);
-            return response()->json(['message' => 'Server client deleted successfully']);
-        } catch (\Exception $e) {
-            Log::error('Error deleting server client: ' . $e->getMessage());
-            return response()->json(['error' => 'Failed to delete server client'], 500);
-        }
-    }
-
-    // Add a new server client
-    public function store(Request $request)
-    {
-        try {
-            $client = $this->xuiService->addClient($request->all());
-            return response()->json($client, 201);
+            // Extract server_id from request
+            $server_id = $request->input('server_id');
+            
+            // Get server inbound
+            $serverInbound = ServerInbound::findOrFail($request->input('server_inbound_id'));
+            
+            // Create client on remote server using XUIService
+            $xuiService = new XUIService($server_id);
+            $clientResponse = $xuiService->addClientInbound($request->all());
+            
+            // Save client data to the local database
+            $clientData = [
+                'server_inbound_id' => $serverInbound->id,
+                'email' => $clientResponse['email'],
+                'password' => $request->input('password'), // Ensure this is included in the form
+                'flow' => $clientResponse['flow'] ?? 'None',
+                'limitIp' => $clientResponse['limitIp'],
+                'totalGB' => $clientResponse['totalGB'],
+                'expiryTime' => $clientResponse['expiryTime'],
+                'tgId' => $clientResponse['tgId'] ?? null,
+                'subId' => $clientResponse['subId'],
+                'enable' => $clientResponse['enable'],
+                'reset' => $clientResponse['reset'] ?? null,
+                'qr_code_sub' => $clientResponse['qr_code_sub'] ?? null,
+                'qr_code_sub_json' => $clientResponse['qr_code_sub_json'] ?? null,
+                'qr_code_client' => $clientResponse['qr_code_client'] ?? null,
+            ];
+            
+            $serverClient = ServerClient::create($clientData);
+            
+            return response()->json($serverClient, 201);
         } catch (\Exception $e) {
             Log::error('Error adding server client: ' . $e->getMessage());
             return response()->json(['error' => 'Failed to add server client'], 500);
         }
     }
 
-    // List all server clients
-    public function index()
+    public function update(Request $request, $id): JsonResponse
     {
         try {
-            $clients = $this->xuiService->getAllClients();
-            return response()->json($clients);
+            $serverClient = ServerClient::findOrFail($id);
+            $server_id = $serverClient->inbound->server_id;
+
+            // Update client on remote server using XUIService
+            $xuiService = new XUIService($server_id);
+            $clientResponse = $xuiService->updateClient($request->all());
+
+            // Update client data in the local database
+            $serverClient->update($clientResponse['client']);
+
+            return response()->json($serverClient);
         } catch (\Exception $e) {
-            Log::error('Error fetching server clients: ' . $e->getMessage());
-            return response()->json(['error' => 'Failed to fetch server clients'], 500);
+            Log::error('Error updating server client: ' . $e->getMessage());
+            return response()->json(['error' => 'Failed to update server client'], 500);
+        }
+    }
+
+    public function destroy($id): JsonResponse
+    {
+        try {
+            $serverClient = ServerClient::findOrFail($id);
+            $server_id = $serverClient->inbound->server_id;
+
+            // Delete client on remote server using XUIService
+            $xuiService = new XUIService($server_id);
+            $xuiService->deleteClient($serverClient->id);
+
+            // Delete client data from the local database
+            $serverClient->delete();
+
+            return response()->json(['message' => 'Server client deleted successfully']);
+        } catch (\Exception $e) {
+            Log::error('Error deleting server client: ' . $e->getMessage());
+            return response()->json(['error' => 'Failed to delete server client'], 500);
         }
     }
 }

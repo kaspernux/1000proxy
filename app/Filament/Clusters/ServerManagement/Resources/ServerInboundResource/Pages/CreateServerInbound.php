@@ -4,14 +4,12 @@ namespace App\Filament\Clusters\ServerManagement\Resources\ServerInboundResource
 
 use Exception;
 use App\Models\Server;
-use App\Models\ServerInbound;
-use Illuminate\Http\Request;
-use Illuminate\Support\Facades\App;
-use Illuminate\Support\Facades\Log;
-use Illuminate\Database\Eloquent\Model;
-use Filament\Resources\Pages\CreateRecord;
-use App\Http\Controllers\ServerInboundController;
+use App\Models\ServerClient;
 use App\Services\XUIService;
+use Illuminate\Http\Request;
+use App\Models\ServerInbound;
+use Illuminate\Support\Facades\Log;
+use Filament\Resources\Pages\CreateRecord;
 use App\Filament\Clusters\ServerManagement\Resources\ServerInboundResource;
 
 class CreateServerInbound extends CreateRecord
@@ -20,7 +18,6 @@ class CreateServerInbound extends CreateRecord
 
     protected function handleRecordCreation(array $data): ServerInbound
     {
-        // Ensure server exists before creating server inbound
         $server = Server::findOrFail($data['server_id']);
 
         if (empty($server->panel_url) || empty($server->username) || empty($server->password)) {
@@ -34,17 +31,34 @@ class CreateServerInbound extends CreateRecord
             'password' => $server->password,
         ]);
 
-        // Create a Request instance from the data array
-        $request = new Request($data);
-
-        // Manually resolve the XUIService with the server_id
         $xuiService = new XUIService($data['server_id']);
+        $request = new Request($data);
+        $inboundResponse = $xuiService->addInbound($request);
 
-        // Use the ServerInboundController to handle the creation logic
-        $serverInboundController = new ServerInboundController($xuiService);
-        $response = $serverInboundController->store($request);
+        $data['remark'] = $inboundResponse['obj']['remark'];
+        $data['listen'] = $inboundResponse['obj']['listen'];
+        $data['port'] = $inboundResponse['obj']['port'];
+        $data['protocol'] = $inboundResponse['obj']['protocol'];
+        $data['settings'] = $inboundResponse['obj']['settings'];
+        $data['streamSettings'] = $inboundResponse['obj']['streamSettings'];
+        $data['sniffing'] = $inboundResponse['obj']['sniffing'];
+        $data['enable'] = $inboundResponse['obj']['enable'];
 
-        // Return the newly created model instance
-        return ServerInbound::findOrFail($response->id);
+        if (!empty($inboundResponse['obj']['expiryTime']) && strtotime($inboundResponse['obj']['expiryTime']) !== false) {
+            $data['expiryTime'] = date('Y-m-d H:i:s', strtotime($inboundResponse['obj']['expiryTime']));
+        } else {
+            $data['expiryTime'] = null;
+        }
+
+        $serverInbound = ServerInbound::create($data);
+
+        $clientData = isset($inboundResponse['client']) ? $inboundResponse['client'] : [];
+        $clientData['server_inbound_id'] = $serverInbound->id;
+
+        if (!empty($clientData)) {
+            ServerClient::create($clientData);
+        }
+
+        return $serverInbound;
     }
 }

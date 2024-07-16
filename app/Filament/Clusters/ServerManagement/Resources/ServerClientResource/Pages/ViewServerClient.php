@@ -5,6 +5,7 @@ namespace App\Filament\Clusters\ServerManagement\Resources\ServerClientResource\
 use App\Filament\Clusters\ServerManagement\Resources\ServerClientResource;
 use Filament\Actions;
 use Filament\Resources\Pages\ViewRecord;
+use App\Models\ServerClient;
 
 class ViewServerClient extends ViewRecord
 {

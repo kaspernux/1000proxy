@@ -15,58 +15,41 @@ class ServerInbound extends Model
 
     protected $fillable = [
         'server_id',
-        'userId',
-        'up',
-        'down',
-        'total',
-        'remark',
-        'enable',
-        'expiryTime',
-        'clientStats',
-        'listen',
-        'port',
         'protocol',
+        'port',
+        'enable',
+        'remark',
+        'expiryTime',
         'settings',
         'streamSettings',
-        'tag',
         'sniffing',
+        'up',
+        'down',
+        'total'
     ];
 
     protected $casts = [
+        'up' => 'integer',
+        'down' => 'integer',
+        'total' => 'integer',
+        'enable' => 'boolean',
+        'expiryTime' => 'datetime',
         'clientStats' => 'array',
         'settings' => 'array',
         'streamSettings' => 'array',
         'sniffing' => 'array',
     ];
 
-    public function server(): BelongsTo
-    {
-        return $this->belongsTo(Server::class, 'server_id');
-    }
+    
 
     public function clients(): HasMany
     {
         return $this->hasMany(ServerClient::class, 'server_inbound_id');
     }
 
-    public function traffics(): HasMany
+    public function server(): BelongsTo
     {
-        return $this->hasMany(ClientTraffic::class);
-    }
-
-    // Example method to manage inbounds
-    public function manageInbounds()
-    {
-        $xuiService = app(XUIService::class);
-        // Use $this->server_id to fetch server-specific details
-        $server = $this->server;
-
-        // Example: Fetch inbounds
-        $inbounds = $xuiService->fetchInbounds($server->getXUIParameters());
-
-        // Example: Process inbounds
-        foreach ($inbounds as $inbound) {
-            // Process each inbound as needed
-        }
+        return $this->belongsTo(Server::class, 'server_id');
     }
 }
+

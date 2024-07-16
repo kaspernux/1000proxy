@@ -39,39 +39,36 @@ class ServerClientResource extends Resource
     {
         return $form
             ->schema([
-                Forms\Components\TextInput::make('server_inbound_id')
-                    ->required()
-                    ->numeric(),
                 Forms\Components\TextInput::make('email')
-                    ->email()
-                    ->required()
-                    ->maxLength(255),
-                Forms\Components\TextInput::make('password')
-                    ->password()
-                    ->maxLength(255),
+                    ->required(),
+                Forms\Components\TextInput::make('password'),
                 Forms\Components\TextInput::make('flow')
-                    ->required()
-                    ->maxLength(255)
-                    ->default('None'),
+                    ->nullable(),
                 Forms\Components\TextInput::make('limitIp')
                     ->numeric(),
-                Forms\Components\TextInput::make('totalGB')
+                Forms\Components\TextInput::make('totalGb')
                     ->numeric(),
-                Forms\Components\DateTimePicker::make('expiryTime'),
+                Forms\Components\DatePicker::make('expiryTime'),
                 Forms\Components\TextInput::make('tgId')
-                    ->maxLength(255),
+                    ->nullable(),
                 Forms\Components\TextInput::make('subId')
-                    ->maxLength(255),
+                    ->nullable(),
                 Forms\Components\Toggle::make('enable')
-                    ->required(),
+                    ->required()
+                    ->default(true),
                 Forms\Components\TextInput::make('reset')
-                    ->numeric(),
-                Forms\Components\Textarea::make('qr_code_sub')
-                    ->columnSpanFull(),
-                Forms\Components\Textarea::make('qr_code_sub_json')
-                    ->columnSpanFull(),
-                Forms\Components\Textarea::make('qr_code_client')
-                    ->columnSpanFull(),
+                    ->nullable(),
+                Forms\Components\TextInput::make('qr_code_sub')
+                    ->nullable(),
+                Forms\Components\TextInput::make('qr_code_sub_json')
+                    ->nullable(),
+                Forms\Components\TextInput::make('qr_code_client')
+                    ->nullable(),
+                Forms\Components\Select::make('server_inbound_id')
+                    ->relationship('inbound', 'remark'),
+                Forms\Components\Select::make('plan_id')
+                    ->relationship('plan', 'name')
+                    ->nullable(),
             ]);
     }
 
@@ -79,46 +76,30 @@ class ServerClientResource extends Resource
     {
         return $table
             ->columns([
-                Tables\Columns\TextColumn::make('server_inbound_id')
-                    ->numeric()
-                    ->sortable(),
                 Tables\Columns\TextColumn::make('email')
+                    ->sortable()
                     ->searchable(),
                 Tables\Columns\TextColumn::make('flow')
+                    ->sortable()
                     ->searchable(),
                 Tables\Columns\TextColumn::make('limitIp')
-                    ->numeric()
                     ->sortable(),
-                Tables\Columns\TextColumn::make('totalGB')
-                    ->numeric()
+                Tables\Columns\TextColumn::make('totalGb')
                     ->sortable(),
                 Tables\Columns\TextColumn::make('expiryTime')
-                    ->dateTime()
                     ->sortable(),
-                Tables\Columns\TextColumn::make('tgId')
-                    ->searchable(),
-                Tables\Columns\TextColumn::make('subId')
-                    ->searchable(),
                 Tables\Columns\IconColumn::make('enable')
                     ->boolean(),
-                Tables\Columns\TextColumn::make('reset')
-                    ->numeric()
-                    ->sortable(),
-                Tables\Columns\TextColumn::make('created_at')
-                    ->dateTime()
-                    ->sortable()
-                    ->toggleable(isToggledHiddenByDefault: true),
-                Tables\Columns\TextColumn::make('updated_at')
-                    ->dateTime()
-                    ->sortable()
-                    ->toggleable(isToggledHiddenByDefault: true),
+                Tables\Columns\TextColumn::make('inbound.remark')
+                    ->label('Inbound'),
+                Tables\Columns\TextColumn::make('plan.name')
+                    ->label('Plan'),
             ])
             ->filters([
-                SelectFilter::make('server_inbound_id')
-                    ->label('Inboun ID')
-                    ->relationship('inbound', 'id'),
-                SelectFilter::make('email')
-                    ->label('User'),
+                Tables\Filters\SelectFilter::make('inbound')
+                    ->relationship('inbound', 'remark'),
+                Tables\Filters\SelectFilter::make('plan')
+                    ->relationship('plan', 'name'),
             ])
             ->actions([
                 Tables\Actions\ActionGroup::make([
