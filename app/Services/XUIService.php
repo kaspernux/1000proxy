@@ -9,6 +9,7 @@ use GuzzleHttp\Client;
 use App\Models\ServerInfo;
 use App\Models\ServerPlan;
 use App\Models\ServerConfig;
+use App\Models\ServerInbound;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use App\Http\Controllers\Controller;
@@ -54,16 +55,25 @@ class XUIService
         return $response->getHeader('Set-Cookie');
     }
 
-    protected function getJson($server_id)
+    protected function getInbounds($server_id)
     {
         $server = Server::findOrFail($server_id);
-        $response = $this->httpClient->get('xui.inbounds.get', [
+        $response = $this->httpClient->get('panel/api/inbounds/list', [
             'headers' => [
                 'Cookie' => $this->token,
             ],
         ]);
 
-        return json_decode($response->getBody()->getContents());
+        $responseBody = json_decode($response->getBody()->getContents(), true);
+        if (json_last_error() !== JSON_ERROR_NONE) {
+            throw new Exception("Failed to parse JSON response: " . json_last_error_msg());
+        }
+
+        if (!isset($responseBody['obj'])) {
+            throw new Exception("Invalid response structure: 'obj' property not found.");
+        }
+
+        return $responseBody['obj'];
     }
 
     protected function executeCurlRequest($url, $session, $dataArr)
@@ -76,6 +86,32 @@ class XUIService
         ]);
 
         return $response->getBody()->getContents();
+    }
+
+    public function generateUID()
+    {
+        $randomString = openssl_random_pseudo_bytes(16);
+        $time_low = bin2hex(substr($randomString, 0, 4));
+        $time_mid = bin2hex(substr($randomString, 4, 2));
+        $time_hi_and_version = bin2hex(substr($randomString, 6, 2));
+        $clock_seq_hi_and_reserved = bin2hex(substr($randomString, 8, 2));
+        $node = bin2hex(substr($randomString, 10, 6));
+        $time_hi_and_version = hexdec($time_hi_and_version);
+        $time_hi_and_version = $time_hi_and_version >> 4;
+        $time_hi_and_version = $time_hi_and_version | 0x4000;
+
+        $clock_seq_hi_and_reserved = hexdec($clock_seq_hi_and_reserved);
+        $clock_seq_hi_and_reserved = $clock_seq_hi_and_reserved >> 2;
+        $clock_seq_hi_and_reserved = $clock_seq_hi_and_reserved | 0x8000;
+
+        return sprintf(
+            '%08s-%04s-%04x-%04x-%012s',
+            $time_low,
+            $time_mid,
+            $time_hi_and_version,
+            $clock_seq_hi_and_reserved,
+            $node
+        );
     }
 
     function RandomString($count = 9, $type = "all")
@@ -126,130 +162,262 @@ class XUIService
         return ($protocol == 'trojan') ? substr(md5(time()), 5, 15) : $this->generateUID();
     }
 
-    public function addInbound(Request $request)
+    public function addInboundAccount($server_id, $client_id, $inbound_id, $expiryTime, $remark, $volume, $limitip = 1, $newarr = '', $planId = null)
     {
-        // Use default values from an existing inbound
-        $defaultInbound = [
-            "enable" => true,
-            "remark" => "New inbound",
-            "listen" => "",
-            "port" => 44330,
-            "protocol" => "vless",
-            "expiryTime" => 0,
-            "settings" => json_encode([
+        $server = Server::findOrFail($server_id);
+        $volume = ($volume == 0) ? 0 : floor($volume * 1073741824); // Convert GB to Bytes
+
+        $response = $this->getInbounds($server_id);
+        if (!$response) {
+            return null;
+        }
+
+        $inbound = null;
+        foreach ($response as $row) {
+            if ($row['id'] == $inbound_id) {
+                $inbound = $row;
+                break;
+            }
+        }
+
+        if (!$inbound) {
+            return "Inbound not found";
+        }
+
+        $settings = json_decode($inbound['settings'], true);
+        $protocol = $inbound['protocol'];
+        $id_label = $protocol == 'trojan' ? 'password' : 'id';
+
+        if ($newarr == '') {
+            $newClient = [
+                "$id_label" => $client_id,
+                "enable" => true,
+                "email" => $remark,
+                "limitIp" => $limitip,
+                "totalGB" => $volume,
+                "expiryTime" => $expiryTime,
+                "subId" => $this->generateUID(),
+            ];
+
+            if ($server->type == "sanaei" || $server->type == "alireza") {
+                if ($server->reality == "true") {
+                    $plan = ServerPlan::find($planId);
+                    $flow = isset($plan->flow) && $plan->flow != "None" ? $plan->flow : "";
+                    $newClient['flow'] = $flow;
+                }
+            }
+            $settings['clients'][] = $newClient;
+        } elseif (is_array($newarr)) {
+            $settings['clients'][] = $newarr;
+        }
+
+        $settings['clients'] = array_values($settings['clients']);
+        $settings = json_encode($settings);
+
+        $dataArr = [
+            'up' => $inbound['up'],
+            'down' => $inbound['down'],
+            'total' => $inbound['total'],
+            'remark' => $inbound['remark'],
+            'enable' => 'true',
+            'expiryTime' => $inbound['expiryTime'],
+            'listen' => '',
+            'port' => $inbound['port'],
+            'protocol' => $inbound['protocol'],
+            'settings' => $settings,
+            'streamSettings' => $inbound['streamSettings'],
+            'sniffing' => $inbound['sniffing']
+        ];
+
+        $url = $this->baseUrl . 'xui/inbound/update/' . $inbound_id;
+        $response = $this->executeCurlRequest($url, $this->token, $dataArr);
+
+        return json_decode($response, true);
+    }
+
+    public function editInbound($server_id, $uniqid, $uuid, $protocol, $netType = 'tcp', $security = 'none', $bypass = false)
+    {
+        $server = Server::findOrFail($server_id);
+
+        $response = $this->getInbounds($server_id);
+        if (!$response) {
+            return null;
+        }
+
+        $inbound = null;
+        foreach ($response as $row) {
+            $clients = json_decode($row['settings'])->clients;
+            if ($clients[0]->id == $uuid || $clients[0]->password == $uuid) {
+                $inbound = $row;
+                break;
+            }
+        }
+
+        if (!$inbound) {
+            return null;
+        }
+
+        $settings = json_decode($inbound['settings'], true);
+        $streamSettings = json_decode($inbound['streamSettings'], true);
+
+        $headers = $this->getNewHeaders($netType, $server->request_header, $server->response_header, $server->header_type);
+        $headers = empty($headers) ? "{}" : $headers;
+
+        if ($protocol == 'trojan') {
+            $tcpSettings = [
+                "network" => "tcp",
+                "security" => $security,
+                "tlsSettings" => json_decode($server->tlsSettings, true),
+                "tcpSettings" => [
+                    "header" => json_decode($headers, true)
+                ]
+            ];
+
+            $wsSettings = [
+                "network" => "ws",
+                "security" => $security,
+                "tlsSettings" => json_decode($server->tlsSettings, true),
+                "wsSettings" => [
+                    "path" => "/",
+                    "headers" => json_decode($headers, true)
+                ]
+            ];
+
+            $settings = [
                 "clients" => [
                     [
-                        "email" => "default@example.com",
+                        "id" => $uniqid,
                         "enable" => true,
-                        "expiryTime" => 0,
-                        "flow" => "",
-                        "id" => $this->generateUID(),
+                        "email" => $inbound['remark'],
                         "limitIp" => 0,
-                        "reset" => 0,
-                        "subId" => $this->generateUID(),
-                        "tgId" => "",
-                        "totalGB" => 0
+                        "totalGB" => 0,
+                        "expiryTime" => 0,
+                        "subId" => $this->generateUID()
                     ]
                 ],
                 "decryption" => "none",
                 "fallbacks" => []
-            ]),
-            "streamSettings" => json_encode([
-                "network" => "ws",
-                "security" => "none",
-                "wsSettings" => [
-                    "acceptProxyProtocol" => false,
-                    "path" => "/",
-                    "headers" => new \stdClass()
-                ]
-            ]),
-            "sniffing" => json_encode([
-                "enabled" => true,
-                "destOverride" => ["http", "tls"]
-            ])
-        ];
+            ];
 
-        $dataArr = [
-            "enable" => $request->input('enable', $defaultInbound['enable']),
-            "remark" => $request->input('remark', $defaultInbound['remark']),
-            "listen" => $request->input('listen', $defaultInbound['listen']),
-            "port" => $request->input('port', $defaultInbound['port']),
-            "protocol" => $request->input('protocol', $defaultInbound['protocol']),
-            "expiryTime" => $request->input('expiryTime', $defaultInbound['expiryTime']),
-            "settings" => json_encode($request->input('settings', json_decode($defaultInbound['settings'], true))),
-            "streamSettings" => json_encode($request->input('streamSettings', json_decode($defaultInbound['streamSettings'], true))),
-            "sniffing" => json_encode($request->input('sniffing', json_decode($defaultInbound['sniffing'], true)))
-        ];
+            $streamSettings = ($netType == 'tcp') ? $tcpSettings : $wsSettings;
 
-        Log::info('Data to be sent to XUI:', $dataArr);
+            if ($netType == 'grpc') {
+                $keyFileInfo = json_decode($server->tlsSettings, true);
+                $certificateFile = "/root/cert.crt";
+                $keyFile = '/root/private.key';
 
-        try {
-            $response = $this->httpClient->post('panel/api/inbounds/add', [
-                'form_params' => $dataArr,
-                'headers' => [
-                    'Accept' => 'application/json',
-                    'Cookie' => $this->token,
-                ],
-            ]);
+                if (isset($keyFileInfo['certificates'])) {
+                    $certificateFile = $keyFileInfo['certificates'][0]['certificateFile'];
+                    $keyFile = $keyFileInfo['certificates'][0]['keyFile'];
+                }
 
-            $responseBody = $response->getBody()->getContents();
-            $inboundResponse = json_decode($responseBody, true);
-
-            if (isset($inboundResponse['success']) && $inboundResponse['success']) {
-                $inboundId = $inboundResponse['obj']['id'];
-
-                $client_id = $request->input('client_id', $this->generateUID());
-                $volume = ($request->input('volume', 1) == 0) ? 0 : floor($request->input('volume', 1) * 1073741824);
-
-                $newClient = [
-                    "id" => $client_id,
-                    "enable" => true,
-                    "email" => $request->input('remark', 'New Client'),
-                    "limitIp" => $request->input('limitIp', 1),
-                    "totalGB" => $volume,
-                    "expiryTime" => strtotime($request->input('expiryTime', 0)),
-                    "subId" => $this->generateUID()
-                ];
-
-                $settings = json_decode($inboundResponse['obj']['settings'], true);
-                $settings['clients'][] = $newClient;
-
-                $clientData = [
-                    "id" => $inboundId,
-                    "settings" => json_encode($settings)
-                ];
-
-                $url = $this->baseUrl . 'panel/api/inbounds/addClient';
-
-                $clientResponse = $this->httpClient->post($url, [
-                    'form_params' => $clientData,
-                    'headers' => [
-                        'Accept' => 'application/json',
-                        'Cookie' => $this->token,
-                    ],
-                ]);
-
-                $clientResponseBody = $clientResponse->getBody()->getContents();
-                $clientAddResponse = json_decode($clientResponseBody, true);
-
-                if (isset($clientAddResponse['success']) && $clientAddResponse['success']) {
-                    return [
-                        'inbound' => $inboundResponse,
-                        'client' => $clientAddResponse['obj']['clients'][0]
+                if ($security == 'tls') {
+                    $streamSettings = [
+                        "network" => "grpc",
+                        "security" => "tls",
+                        "tlsSettings" => [
+                            "serverName" => $server->sni ?? parse_url($server->panel_url, PHP_URL_HOST),
+                            "certificates" => [
+                                [
+                                    "certificateFile" => $certificateFile,
+                                    "keyFile" => $keyFile
+                                ]
+                            ],
+                            "alpn" => []
+                        ],
+                        "grpcSettings" => [
+                            "serviceName" => ""
+                        ]
                     ];
                 } else {
-                    Log::error('Error adding client: ' . json_encode($clientAddResponse));
-                    throw new Exception('Failed to add client');
+                    $streamSettings = [
+                        "network" => "grpc",
+                        "security" => "none",
+                        "grpcSettings" => [
+                            "serviceName" => parse_url($server->panel_url, PHP_URL_HOST)
+                        ]
+                    ];
                 }
-            } else {
-                Log::error('Error adding inbound: ' . json_encode($inboundResponse));
-                throw new Exception('Failed to add inbound');
             }
-        } catch (Exception $e) {
-            Log::error('Error adding inbound: ' . $e->getMessage());
-            throw new Exception('Failed to add inbound');
+        } else {
+            // Handle non-trojan protocols...
         }
+
+        $dataArr = [
+            'up' => $inbound['up'],
+            'down' => $inbound['down'],
+            'total' => $inbound['total'],
+            'remark' => $inbound['remark'],
+            'enable' => 'true',
+            'expiryTime' => $inbound['expiryTime'],
+            'listen' => '',
+            'port' => $inbound['port'],
+            'protocol' => $protocol,
+            'settings' => json_encode($settings),
+            'streamSettings' => json_encode($streamSettings),
+            'sniffing' => $inbound['sniffing']
+        ];
+
+        $url = $this->baseUrl . 'xui/inbound/update/' . $inbound['id'];
+        $response = $this->executeCurlRequest($url, $this->token, $dataArr);
+
+        return json_decode($response, true);
     }
+
+    public function deleteInbound($server_id, $uuid, $delete = 0)
+    {
+        $server = Server::findOrFail($server_id);
+
+        $response = $this->getInbounds($server_id);
+        if (!$response) {
+            return null;
+        }
+
+        $inbound = null;
+        foreach ($response as $row) {
+            $clients = json_decode($row['settings'])->clients;
+            if ($clients[0]->id == $uuid || $clients[0]->password == $uuid) {
+                $inbound = $row;
+                break;
+            }
+        }
+
+        if (!$inbound) {
+            return null;
+        }
+
+        $oldData = [
+            'total' => $inbound['total'],
+            'up' => $inbound['up'],
+            'down' => $inbound['down'],
+            'volume' => ((int)$inbound['total'] - (int)$inbound['up'] - (int)$inbound['down']),
+            'port' => $inbound['port'],
+            'protocol' => $inbound['protocol'],
+            'expiryTime' => $inbound['expiryTime'],
+            'uniqid' => $uuid,
+            'netType' => json_decode($inbound['streamSettings'])->network,
+            'security' => json_decode($inbound['streamSettings'])->security,
+        ];
+
+        if ($delete == 1) {
+            $url = $this->baseUrl . 'xui/inbound/del/' . $inbound['id'];
+            $response = $this->executeCurlRequest($url, $this->token, []);
+
+            return json_decode($response, true);
+        }
+
+        return $oldData;
+    }
+
+    
+
+
+
+
+
+
+
+
 
     public function addClientInbound($data)
     {
@@ -299,83 +467,107 @@ class XUIService
         }
     }
 
-    function generateUID()
+    public function addInbound(Request $request)
     {
-        $randomString = openssl_random_pseudo_bytes(16);
-        $time_low = bin2hex(substr($randomString, 0, 4));
-        $time_mid = bin2hex(substr($randomString, 4, 2));
-        $time_hi_and_version = bin2hex(substr($randomString, 6, 2));
-        $clock_seq_hi_and_reserved = bin2hex(substr($randomString, 8, 2));
-        $node = bin2hex(substr($randomString, 10, 6));
-        $time_hi_and_version = hexdec($time_hi_and_version);
-        $time_hi_and_version = $time_hi_and_version >> 4;
-        $time_hi_and_version = $time_hi_and_version | 0x4000;
+        $dataArr = [
+            "enable" => $request->input('enable', true),
+            "remark" => $request->input('remark', 'New inbound'),
+            "listen" => $request->input('listen', ''),
+            "port" => $request->input('port', 48965),
+            "protocol" => $request->input('protocol', 'vmess'),
+            "expiryTime" => $request->input('expiryTime', 0),
+            "settings" => json_encode($request->input('settings', [
+                "clients" => [],
+                "decryption" => "none",
+                "fallbacks" => []
+            ])),
+            "streamSettings" => json_encode($request->input('streamSettings', [
+                "network" => "ws",
+                "security" => "none",
+                "wsSettings" => [
+                    "acceptProxyProtocol" => false,
+                    "path" => "/",
+                    "headers" => new \stdClass()
+                ]
+            ])),
+            "sniffing" => json_encode($request->input('sniffing', [
+                "enabled" => true,
+                "destOverride" => ["http", "tls"]
+            ]))
+        ];
 
-        $clock_seq_hi_and_reserved = hexdec($clock_seq_hi_and_reserved);
-        $clock_seq_hi_and_reserved = $clock_seq_hi_and_reserved >> 2;
-        $clock_seq_hi_and_reserved = $clock_seq_hi_and_reserved | 0x8000;
+        Log::info('Data to be sent to XUI:', $dataArr);
 
-        return sprintf(
-            '%08s-%04s-%04x-%04x-%012s',
-            $time_low,
-            $time_mid,
-            $time_hi_and_version,
-            $clock_seq_hi_and_reserved,
-            $node
-        );
+        try {
+            $response = $this->httpClient->post('panel/api/inbounds/add', [
+                'form_params' => $dataArr,
+                'headers' => [
+                    'Accept' => 'application/json',
+                    'Cookie' => $this->token,
+                ],
+            ]);
+
+            $responseBody = $response->getBody()->getContents();
+            $inboundResponse = json_decode($responseBody, true);
+
+            if (isset($inboundResponse['success']) && $inboundResponse['success']) {
+                $inboundId = $inboundResponse['obj']['id'];
+
+                $client_id = $request->input('client_id', $this->generateUID());
+                $volume = ($request->input('volume', 1) == 0) ? 0 : floor($request->input('volume', 1) * 1073741824);
+
+                $newClient = [
+                    "id" => $client_id,
+                    "enable" => true,
+                    "email" => $request->input('remark', 'New Client'),
+                    "limitIp" => $request->input('limitIp', 1),
+                    "totalGB" => $volume,
+                    "expiryTime" => strtotime($request->input('expiryTime', 0)),
+                    "subId" => $this->generateUID()
+                ];
+
+                $server = Server::findOrFail($request->server_id);
+                $serverType = $server->type;
+                $settings = json_decode($inboundResponse['obj']['settings'], true);
+                $settings['clients'][] = $newClient;
+
+                $clientData = [
+                    "id" => $inboundId,
+                    "settings" => json_encode($settings)
+                ];
+
+                $url = ($serverType == "sanaei") ? "$this->baseUrl/panel/inbound/addClient/" : "$this->baseUrl/xui/inbound/addClient/";
+
+                $clientResponse = $this->httpClient->post($url, [
+                    'form_params' => $clientData,
+                    'headers' => [
+                        'Accept' => 'application/json',
+                        'Cookie' => $this->token,
+                    ],
+                ]);
+
+                $clientResponseBody = $clientResponse->getBody()->getContents();
+                $clientAddResponse = json_decode($clientResponseBody, true);
+
+                if (isset($clientAddResponse['success']) && $clientAddResponse['success']) {
+                    return [
+                        'obj' => $inboundResponse['obj'],
+                        'client' => $clientAddResponse['obj']['clients'][0]
+                    ];
+                } else {
+                    Log::error('Error adding client: ' . json_encode($clientAddResponse));
+                    throw new Exception('Failed to add client');
+                }
+            } else {
+                Log::error('Error adding inbound: ' . json_encode($inboundResponse));
+                throw new Exception('Failed to add inbound');
+            }
+        } catch (Exception $e) {
+            Log::error('Error adding inbound: ' . $e->getMessage());
+            throw new Exception('Failed to add inbound');
+        }
     }
 
-    /* public function updateClient(array $data)
-    {
-        // Implementation for updating a client on the remote XUI server.
-        // This will depend on the XUI API documentation for updating clients.
-    }
-
-    public function deleteClient($clientId)
-    {
-        // Implementation for deleting a client from the remote XUI server.
-        // This will depend on the XUI API documentation for deleting clients.
-    }
-
-    public function getInboundById($serverId, $inboundId)
-    {
-        // Implementation for fetching an inbound by ID from the remote XUI server.
-        // This will depend on the XUI API documentation for fetching inbounds.
-    }
-
-    public function updateInbound($serverId, $inboundId, array $data)
-    {
-        // Implementation for updating an inbound on the remote XUI server.
-        // This will depend on the XUI API documentation for updating inbounds.
-    }
-
-    public function deleteInbound($serverId, $inboundId)
-    {
-        // Implementation for deleting an inbound from the remote XUI server.
-        // This will depend on the XUI API documentation for deleting inbounds.
-    } */
-
-    public function getInbounds()
-    {
-        $response = $this->httpClient->get('panel/inbounds/list', [
-            'headers' => [
-                'Cookie' => $this->token,
-            ],
-        ]);
-
-        return json_decode($response->getBody()->getContents(), true);
-    }
-
-    public function getInbound($id)
-    {
-        $response = $this->httpClient->get("panel/inbounds/get/$id", [
-            'headers' => [
-                'Cookie' => $this->token,
-            ],
-        ]);
-
-        return json_decode($response->getBody()->getContents(), true);
-    }
     public function updateClient($data)
     {
         $clientData = [
@@ -427,7 +619,6 @@ class XUIService
             throw new Exception('Failed to delete client');
         }
     }
-
 
     function editInbound($server_id, $uniqid, $uuid, $protocol, $netType = 'tcp', $security = 'none', $bypass = false)
     {
@@ -630,7 +821,7 @@ class XUIService
         }
 
         // Define endpoint URL based on server type
-        $url = ($serverType == "sanaei") ? "$panel_url/panel/inbound/update/$iid" : "$panel_url/xui/inbound/update/$iid";
+        $url = ($serverType == "sanaei") ? "$panel_url/panel/api/inbound/update/$iid" : "$panel_url/xui/inbound/update/$iid";
 
         // Configure and execute CURL request to update inbound settings
         $response = $this->executeCurlRequest($url, $dataArr, $session);
@@ -718,7 +909,7 @@ class XUIService
         }
 
         // Define endpoint URL based on server type
-        $url = ($serverType == "sanaei") ? "$panel_url/panel/inbound/update/$iid" : "$panel_url/xui/inbound/update/$iid";
+        $url = ($serverType == "sanaei") ? "$panel_url/panel/api/inbound/update/$iid" : "$panel_url/xui/inbound/update/$iid";
 
         // Configure and execute CURL request to update inbound traffic settings
         $response = $this->executeCurlRequest($url, $dataArr, $session);
@@ -1422,7 +1613,7 @@ class XUIService
         }
 
         // Update inbound
-        $url = ($serverType == "sanaei") ? "$panel_url/panel/inbound/update/$inbound_id" : "$panel_url/xui/inbound/update/$inbound_id";
+        $url = ($serverType == "sanaei") ? "$panel_url/panel/api/inbound/update/$inbound_id" : "$panel_url/xui/inbound/update/$inbound_id";
         curl_setopt_array($curl, [
             CURLOPT_URL => $url,
             CURLOPT_RETURNTRANSFER => true,
@@ -1544,7 +1735,7 @@ class XUIService
         }
 
         // Update inbound
-        $url = ($serverType == "sanaei") ? "$panel_url/panel/inbound/update/$inbound_id" : "$panel_url/xui/inbound/update/$inbound_id";
+        $url = ($serverType == "sanaei") ? "$panel_url/panel/api/inbound/update/$inbound_id" : "$panel_url/xui/inbound/update/$inbound_id";
         curl_setopt_array($curl, [
             CURLOPT_URL => $url,
             CURLOPT_RETURNTRANSFER => true,
@@ -1678,7 +1869,7 @@ class XUIService
                 "id" => $inbound_id,
                 "settings" => json_encode($newSetting)
             ];
-            $url = ($serverType == "sanaei") ? "$panel_url/panel/inbound/updateClient/" . rawurlencode($uuid) : "$panel_url/xui/inbound/updateClient/" . rawurlencode($uuid);
+            $url = ($serverType == "sanaei") ? "$panel_url/panel/api/inbound/updateClient/" . rawurlencode($uuid) : "$panel_url/xui/inbound/updateClient/" . rawurlencode($uuid);
 
             curl_setopt_array($curl, [
                 CURLOPT_URL => $url,
@@ -1855,7 +2046,7 @@ class XUIService
                 "id" => $inbound_id,
                 "settings" => json_encode($newSetting)
             ];
-            $url = ($serverType == "sanaei") ? "$panel_url/panel/inbound/updateClient/" . rawurlencode($uuid) : "$panel_url/xui/inbound/updateClient/" . rawurlencode($uuid);
+            $url = ($serverType == "sanaei") ? "$panel_url/panel/api/inbound/updateClient/" . rawurlencode($uuid) : "$panel_url/xui/inbound/updateClient/" . rawurlencode($uuid);
 
             curl_setopt_array($curl, [
                 CURLOPT_URL => $url,
@@ -1956,7 +2147,7 @@ class XUIService
         }
 
         // Set URL based on server type
-        $url = $serverType == "sanaei" ? $panel_url . "/panel/inbound/clearClientIps/" . urlencode($remark) : $panel_url . "/xui/inbound/clearClientIps/" . urlencode($remark);
+        $url = $serverType == "sanaei" ? $panel_url . "/panel/api/inbound/clearClientIps/" . urlencode($remark) : $panel_url . "/xui/inbound/clearClientIps/" . urlencode($remark);
 
         // Make request to clear IP logs
         curl_setopt_array($curl, [
@@ -2033,7 +2224,7 @@ class XUIService
 
         // Set URL based on server type and inbound ID
         if ($serverType == "sanaei") {
-            $url = "$panel_url/panel/inbound/$inboundId/resetClientTraffic/" . rawurlencode($remark);
+            $url = "$panel_url/panel/api/inbound/$inboundId/resetClientTraffic/" . rawurlencode($remark);
         } else {
             $url = $inboundId === null ? "$panel_url/xui/inbound/resetClientTraffic/" . rawurlencode($remark) : "$panel_url/xui/inbound/$inboundId/resetClientTraffic/" . rawurlencode($remark);
         }
@@ -2483,7 +2674,7 @@ class XUIService
             return $loginResponse;
         }
 
-        $url = ($serverType == "sanaei") ? "$panel_url/panel/inbound/update/$iid" : "$panel_url/xui/inbound/update/$iid";
+        $url = ($serverType == "sanaei") ? "$panel_url/panel/api/inbound/update/$iid" : "$panel_url/xui/inbound/update/$iid";
         curl_setopt_array($curl, array(
             CURLOPT_URL => $url,
             CURLOPT_RETURNTRANSFER => true,

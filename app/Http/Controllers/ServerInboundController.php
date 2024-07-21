@@ -57,39 +57,31 @@ class ServerInboundController extends Controller
     public function store(Request $request)
     {
         try {
-            $xuiService = new XUIService($request->server_id);
+            DB::beginTransaction();
+
+            $xuiService = new XUIService($request->input('server_id'));
             $inboundResponse = $xuiService->addInbound($request);
 
-            // Extract relevant data from the response to store in the local database
-            $settings = json_decode($inboundResponse['obj']['settings'], true);
-
             $data = [
-                'server_id' => $request->server_id,
-                'userId' => $request->userId,
-                'up' => $inboundResponse['obj']['up'],
-                'down' => $inboundResponse['obj']['down'],
-                'total' => $inboundResponse['obj']['total'],
-                'remark' => $inboundResponse['obj']['remark'],
-                'enable' => $inboundResponse['obj']['enable'],
-                'expiryTime' => $inboundResponse['obj']['expiryTime'] ? date('Y-m-d H:i:s', $inboundResponse['obj']['expiryTime']) : null,
-                'clientStats' => $inboundResponse['obj']['clientStats'] ?? null,
-                'listen' => $inboundResponse['obj']['listen'],
-                'port' => $inboundResponse['obj']['port'],
-                'protocol' => $inboundResponse['obj']['protocol'],
-                'settings' => json_encode($settings),
-                'streamSettings' => $inboundResponse['obj']['streamSettings'],
-                'tag' => $inboundResponse['obj']['tag'],
-                'sniffing' => $inboundResponse['obj']['sniffing'],
+                'server_id' => $request->input('server_id'),
+                'remark' => $inboundResponse['inbound']['obj']['remark'],
+                'listen' => $inboundResponse['inbound']['obj']['listen'],
+                'port' => $inboundResponse['inbound']['obj']['port'],
+                'protocol' => $inboundResponse['inbound']['obj']['protocol'],
+                'settings' => $inboundResponse['inbound']['obj']['settings'],
+                'streamSettings' => $inboundResponse['inbound']['obj']['streamSettings'],
+                'sniffing' => $inboundResponse['inbound']['obj']['sniffing'],
+                'enable' => $inboundResponse['inbound']['obj']['enable'],
+                'expiryTime' => !empty($inboundResponse['inbound']['obj']['expiryTime']) ? date('Y-m-d H:i:s', $inboundResponse['inbound']['obj']['expiryTime']) : null,
             ];
 
-            $inbound = ServerInbound::create($data);
+            $serverInbound = ServerInbound::create($data);
 
-            // Store the default client associated with the new inbound
-            $defaultClient = $settings['clients'][0];
-            $defaultClientData = [
-                'server_inbound_id' => $inbound->id,
+            $defaultClient = $inboundResponse['client'];
+            $clientData = [
+                'server_inbound_id' => $serverInbound->id,
                 'email' => $defaultClient['email'],
-                'password' => $defaultClient['id'], // Assuming the id is used as a password
+                'password' => $defaultClient['id'],
                 'flow' => $defaultClient['flow'] ?? 'None',
                 'limitIp' => $defaultClient['limitIp'],
                 'totalGB' => $defaultClient['totalGB'],
@@ -103,11 +95,15 @@ class ServerInboundController extends Controller
                 'qr_code_client' => $defaultClient['qr_code_client'] ?? null,
             ];
 
-            ServerClient::create($defaultClientData);
+            ServerClient::create($clientData);
 
-            return response()->json($inbound, 201);
+            DB::commit();
+
+            return response()->json($serverInbound, 201);
         } catch (\Exception $e) {
-            Log::error('Error adding server inbound: ' . $e->getMessage());
+            DB::rollBack();
+
+            Log::error('Error adding server inbound: ' . $ e->getMessage());
             return response()->json(['error' => 'Failed to add server inbound'], 500);
         }
     }
@@ -120,6 +116,64 @@ class ServerInboundController extends Controller
         } catch (\Exception $e) {
             Log::error('Error fetching server inbounds: ' . $e->getMessage());
             return response()->json(['error' => 'Failed to fetch server inbounds'], 500);
+        }
+    }
+
+    public function addInbound(Request $request)
+    {
+        try {
+            $response = $this->xuiService->addInboundAccount(
+                $request->input('server_id'),
+                $request->input('client_id'),
+                $request->input('inbound_id'),
+                $request->input('expiryTime'),
+                $request->input('remark'),
+                $request->input('volume'),
+                $request->input('limitip', 1),
+                $request->input('newarr', ''),
+                $request->input('planId')
+            );
+
+            return response()->json($response);
+        } catch (Exception $e) {
+            Log::error('Error adding inbound: ' . $e->getMessage());
+            return response()->json(['error' => $e->getMessage()], 500);
+        }
+    }
+
+    public function editInbound(Request $request)
+    {
+        try {
+            $response = $this->xuiService->editInbound(
+                $request->input('server_id'),
+                $request->input('uniqid'),
+                $request->input('uuid'),
+                $request->input('protocol'),
+                $request->input('netType', 'tcp'),
+                $request->input('security', 'none'),
+                $request->input('bypass', false)
+            );
+
+            return response()->json($response);
+        } catch (Exception $e) {
+            Log::error('Error editing inbound: ' . $e->getMessage());
+            return response()->json(['error' => $e->getMessage()], 500);
+        }
+    }
+
+    public function deleteInbound(Request $request)
+    {
+        try {
+            $response = $this->xuiService->deleteInbound(
+                $request->input('server_id'),
+                $request->input('uuid'),
+                $request->input('delete', 0)
+            );
+
+            return response()->json($response);
+        } catch (Exception $e) {
+            Log::error('Error deleting inbound: ' . $e->getMessage());
+            return response()->json(['error' => $e->getMessage()], 500);
         }
     }
 }

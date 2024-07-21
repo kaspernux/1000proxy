@@ -35,14 +35,20 @@ class CreateServerInbound extends CreateRecord
         $request = new Request($data);
         $inboundResponse = $xuiService->addInbound($request);
 
-        $data['remark'] = $inboundResponse['obj']['remark'];
-        $data['listen'] = $inboundResponse['obj']['listen'];
-        $data['port'] = $inboundResponse['obj']['port'];
-        $data['protocol'] = $inboundResponse['obj']['protocol'];
-        $data['settings'] = $inboundResponse['obj']['settings'];
-        $data['streamSettings'] = $inboundResponse['obj']['streamSettings'];
-        $data['sniffing'] = $inboundResponse['obj']['sniffing'];
-        $data['enable'] = $inboundResponse['obj']['enable'];
+        Log::info("Inbound Response: ", [$inboundResponse]);
+
+        if (!is_array($inboundResponse) || !array_key_exists('obj', $inboundResponse)) {
+            throw new Exception("Invalid response structure from addInbound method.");
+        }
+
+        $data['remark'] = $inboundResponse['obj']['remark'] ?? '';
+        $data['listen'] = $inboundResponse['obj']['listen'] ?? '';
+        $data['port'] = $inboundResponse['obj']['port'] ?? '';
+        $data['protocol'] = $inboundResponse['obj']['protocol'] ?? '';
+        $data['settings'] = $inboundResponse['obj']['settings'] ?? '';
+        $data['streamSettings'] = $inboundResponse['obj']['streamSettings'] ?? '';
+        $data['sniffing'] = $inboundResponse['obj']['sniffing'] ?? '';
+        $data['enable'] = $inboundResponse['obj']['enable'] ?? '';
 
         if (!empty($inboundResponse['obj']['expiryTime']) && strtotime($inboundResponse['obj']['expiryTime']) !== false) {
             $data['expiryTime'] = date('Y-m-d H:i:s', strtotime($inboundResponse['obj']['expiryTime']));
@@ -52,7 +58,7 @@ class CreateServerInbound extends CreateRecord
 
         $serverInbound = ServerInbound::create($data);
 
-        $clientData = isset($inboundResponse['client']) ? $inboundResponse['client'] : [];
+        $clientData = $inboundResponse['client'] ?? [];
         $clientData['server_inbound_id'] = $serverInbound->id;
 
         if (!empty($clientData)) {
