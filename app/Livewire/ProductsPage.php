@@ -18,6 +18,7 @@ class ProductsPage extends Component
     use WithPagination;
     use LivewireAlert;
 
+    // Removed selected_categories from filtering logic since server plans are not linked to categories
     #[Url]
     public $selected_categories = [];
 
@@ -71,9 +72,10 @@ class ProductsPage extends Component
     {
         $serverQuery = ServerPlan::query()->where('is_active', 1);
 
-        if (!empty($this->selected_categories)) {
-            $serverQuery->whereIn('server_category_id', $this->selected_categories);
-        }
+        // Removed the selected_categories filter since it's not applicable
+        // if (!empty($this->selected_categories)) {
+        //     $serverQuery->whereIn('server_category_id', $this->selected_categories);
+        // }
 
         if (!empty($this->selected_brands)) {
             $serverQuery->whereIn('server_brand_id', $this->selected_brands);
@@ -105,9 +107,9 @@ class ProductsPage extends Component
 
         return view('livewire.products-page', [
             'serverPlans' => $serverQuery->paginate(9),
-            'brands' => ServerBrand::where('is_active', 1)->get(['id', 'name', 'slug']),
-            'categories' => ServerCategory::where('is_active', 1)->get(['id', 'name', 'slug', 'image']),
-            'servers' => Server::where('status', 'up')->get(['id', 'country']),
+            'brands'      => ServerBrand::where('is_active', 1)->get(['id', 'name', 'slug']),
+            'categories'  => ServerCategory::where('is_active', 1)->get(['id', 'name', 'slug', 'image']),
+            'servers'     => Server::where('status', 'up')->get(['id', 'country']),
         ]);
     }
 }
