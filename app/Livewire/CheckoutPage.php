@@ -22,6 +22,9 @@ use Illuminate\Support\Facades\Mail;
 use App\Http\Controllers\PaymentController;
 use Jantinnerezo\LivewireAlert\LivewireAlert;
 use App\Http\Controllers\PaymentMethodController;
+use App\Services\XUIService;
+use App\Models\ServerInbound;
+use App\Models\ServerClient;
 
 #[Title('Checkout - 1000 PROXIES')]
 class CheckoutPage extends Component
@@ -40,7 +43,6 @@ class CheckoutPage extends Component
 
     public function placeOrder()
     {
-        // Validate form inputs
         $validatedData = $this->validate([
             'name' => 'required|string|max:255',
             'email' => 'required|email|max:255',
@@ -55,86 +57,58 @@ class CheckoutPage extends Component
             $order_items = CartManagement::getCartItemsFromCookie();
             $line_items = [];
 
-            // Initialize payment method
             $paymentMethod = PaymentMethod::find($validatedData['selectedPaymentMethod']);
 
-            // Create new order instance
-            $order = new Order();
-            $order->customer_id = auth()->user()->id;
-            $order->grand_amount = CartManagement::calculateGrandTotal($order_items);
-            $order->currency = 'usd';
-            $order->payment_method = $validatedData['selectedPaymentMethod'];
-            $order->order_status = 'new';
-            $order->notes = 'Order placed by: ' . auth()->user()->name . ' (ID #: ' . auth()->user()->id . ') | Total amount: ' . $order->grand_amount . '$ | Placed at: ' . now();
-
-            // Save the order before proceeding
-            $order->save();
-
-            // Create new invoice instance
-            $invoice = Invoice::create([
-                'customer_id' => $order->customer_id,
-                'order_id' => $order->id,
-                'payment_method_id' => $paymentMethod->id,
-                'payment_id' => session('paymentId'),
-                'iid' => session('iid'),
-                'payment_status' => session('payment_status'),
-                'pay_address' => session('pay_address'),
-                'price_amount' => CartManagement::calculateGrandTotal($order_items),
-                'price_currency' => 'usd',
-                'pay_amount' => CartManagement::calculateGrandTotal($order_items),
-                'pay_currency' => 'xmr',
-                'order_description' => 'Order placed by: ' . auth()->user()->name . ' (ID #: ' . auth()->user()->id . ') | Total amount: ' . $order->grand_amount . '$ | Placed at: ' . now(),
-                'ipn_callback_url' => 'https://1000proxybot/webhook',
-                'invoice_url' => "https://nowpayments.io/payment?iid=" . session('iid') . "&paymentId=" . session('paymentId'),
-                'success_url' => route('success', ['order' => $order->id]),
-                'cancel_url' => route('cancel', ['order' => $order->id]),
-                'partially_paid_url' => route('cancel', ['order' => $order->id]),
-                'is_fixed_rate' => true,
-                'is_fee_paid_by_user' => true,
-                'created_at' => now(),
-                'updated_at' => now()
+            $order = Order::create([
+                'customer_id' => auth()->user()->id,
+                'grand_amount' => CartManagement::calculateGrandTotal($order_items),
+                'currency' => 'usd',
+                'payment_method' => $validatedData['selectedPaymentMethod'],
+                'order_status' => 'new',
+                'notes' => 'Order placed by: ' . auth()->user()->name . ' (ID #: ' . auth()->user()->id . ') | Total amount: ' . CartManagement::calculateGrandTotal($order_items) . '$ | Placed at: ' . now(),
             ]);
 
-            // Create order items and relate them to the order
             foreach ($order_items as $item) {
+                $serverPlan = ServerPlan::findOrFail($item['server_plan_id']);
+
+                $order->items()->create([
+                    'order_id' => $order->id,
+                    'server_plan_id' => $item['server_plan_id'],
+                    'quantity' => $item['quantity'],
+                    'unit_amount' => $serverPlan->price,
+                    'total_amount' => $serverPlan->price * $item['quantity'],
+                ]);
+
+                $xuiService = new XUIService($serverPlan->server_id);
+                $inbound_id = $xuiService->getDefaultInboundId();
+
+                $inboundResponse = $xuiService->addInboundAccount(
+                    $serverPlan->server_id,
+                    $xuiService->generateUID(),
+                    $inbound_id,
+                    now()->addDays($serverPlan->days)->timestamp * 1000,
+                    'Order#' . $order->id . ' - Client ID'. $order->customer_id,
+                    $serverPlan->volume
+                );
+
+                if (!$inboundResponse || isset($inboundResponse['error'])) {
+                    throw new \Exception("Inbound creation failed: " . json_encode($inboundResponse));
+                }
+
                 $line_items[] = [
                     'price_data' => [
                         'currency' => 'usd',
-                        'unit_amount' => intval($item['price'] * 100),
-                        'product_data' => [
-                            'name' => $item['name'],
-                        ],
+                        'unit_amount' => intval($serverPlan->price * 100),
+                        'product_data' => ['name' => $serverPlan->name],
                     ],
                     'quantity' => $item['quantity'],
                 ];
-
-                $data[] = [
-                    'server_plan_id' => $item['server_plan_id'],
-                    'quantity' => $item['quantity'],
-                    'unit_amount' => $item['price'],
-                    'total_amount' => $item['price'] * $item['quantity'],
-                    'order_id' => $order->id,
-                    'updated_at' => now(),
-                    'created_at' => now(),
-                ];
             }
 
-            // Save the order items
-            $order->items()->createMany($data);
-
-            // Log order and invoice creation
-            Log::info('Order Created:', $order->toArray());
-            Log::info('Order Items Created:', $order_items);
-            Log::info('Invoice Created:', $invoice->toArray());
-
-            // Create Stripe or NowPayments session based on selected payment method
             $redirect_url = '';
 
             if ($paymentMethod->slug == 'stripe') {
-                // Stripe payment logic
                 Stripe::setApiKey(env('STRIPE_SECRET'));
-
-                // Create Stripe session
                 $sessionCheckout = Session::create([
                     'payment_method_types' => ['card'],
                     'customer_email' => auth()->user()->email,
@@ -143,82 +117,69 @@ class CheckoutPage extends Component
                     'success_url' => route('success').'?session_id={CHECKOUT_SESSION_ID}',
                     'cancel_url' => route('cancel'),
                 ]);
-
                 $redirect_url = $sessionCheckout->url;
+
             } elseif ($paymentMethod->slug == 'nowpayments') {
-                // NowPayments payment logic
-                $paymentController = new PaymentController();
+                $paymentController = new PaymentMethodController();
+                $payResult = $paymentController->createInvoiceNowPayments($order);
 
-                // Create the payment
-                $payOrder = $paymentController->createInvoice($order);
-
-                // Check if the response is successful
-                if ($payOrder->status() === 200) {
-                    // Decode the JSON response body
-                    $invoiceResponse = json_decode($payOrder->getContent(), true);
-
-                    // Check if the necessary keys exist in the response
-                    if (isset($invoiceResponse['invoice_url'])) {
-                        $redirect_url = $invoiceResponse['invoice_url'];
-                        $this->dispatch('set-invoice-url', ['url' => $invoiceResponse['invoice_url']]);
-                    } else {
-                        $this->alert('warning', 'Failed to create invoice. Unknown error');
-                        return;
-                    }
+                if ($payResult['status'] === 'success' && isset($payResult['data']['invoice_url'])) {
+                    $redirect_url = $payResult['data']['invoice_url'];
+                    $this->dispatch('set-invoice-url', ['url' => $redirect_url]);
                 } else {
-                    $this->alert('warning', 'Failed to create invoice. Try another payment method.');
-                    return;
+                    \Log::error('NowPayments invoice creation failed:', ['response' => $payResult]);
+                    throw new \Exception('Failed to create invoice. Try another payment method.');
                 }
-            } elseif ($paymentMethod->slug == 'wallet') {
-                // Wallet payment logic
-                $customer = Auth::user();
-                Log::info('Customer wallet balance:', ['balance' => $customer->wallet]);
-                Log::info('Order grand amount:', ['amount' => $order->grand_amount]);
 
+                // Save invoice after successful NowPayments invoice creation
+                Invoice::create([
+                    'customer_id' => $order->customer_id,
+                    'order_id' => $order->id,
+                    'payment_method_id' => $paymentMethod->id,
+                    'price_amount' => $order->grand_amount,
+                    'price_currency' => 'usd',
+                    'pay_amount' => $order->grand_amount,
+                    'pay_currency' => 'xmr',
+                    'order_description' => $order->notes,
+                    'ipn_callback_url' => env('APP_URL') . '/webhook',
+                    'invoice_url' => $redirect_url,
+                    'success_url' => route('success', ['order' => $order->id]),
+                    'cancel_url' => route('cancel', ['order' => $order->id]),
+                    'partially_paid_url' => route('cancel', ['order' => $order->id]),
+                    'is_fixed_rate' => true,
+                    'is_fee_paid_by_user' => true,
+                ]);
+
+            } elseif ($paymentMethod->slug == 'wallet') {
+                $customer = Auth::user();
                 if ($customer->wallet >= $order->grand_amount) {
                     $customer->wallet -= $order->grand_amount;
                     $customer->save();
-                    // Log wallet deduction
-                    Log::info('Wallet deduction:', [
-                        'customer_id' => $customer->id,
-                        'amount_deducted' => $order->grand_amount,
-                        'remaining_balance' => $customer->wallet,
-                    ]);
-
-                    // Update order status and payment status
                     $order->order_status = 'completed';
                     $order->save();
-
-                    // No need for redirect URL as the payment is completed instantly
                     $redirect_url = route('success', ['order' => $order->id]);
                 } else {
-                    $this->alert('warning', 'Insufficient balance in wallet. Please add funds.');
-                    return;
+                    throw new \Exception('Insufficient balance in wallet. Please add funds.');
                 }
             }
 
-            // Commit the transaction before redirecting
             DB::commit();
 
-            // Clear the cart after order placement
             CartManagement::clearCartItems();
 
-            // Send Notifications/Email after Payment
-            Mail::to(request()->user())->send(new OrderPlaced($order));
+            try {
+                Mail::to(auth()->user()->email)->send(new OrderPlaced($order));
+            } catch (\Exception $mailException) {
+                Log::error('Mail sending failed:', ['error' => $mailException->getMessage()]);
+            }
 
             $this->alert('success', 'Order placed successfully!');
-
-            // Redirect to the appropriate URL based on payment method
             return redirect($redirect_url);
-        } catch (Exception $e) {
-            // Rollback the transaction in case of any error
+
+        } catch (\Exception $e) {
             DB::rollBack();
-
-            // Log the error for debugging
             Log::error('Order placement failed:', ['error' => $e->getMessage()]);
-
-            // Handle other exceptions
-            $this->alert('warning', 'An error occurred while processing your order. Please try again.');
+            $this->alert('warning', 'An error occurred: ' . $e->getMessage());
         }
     }
 

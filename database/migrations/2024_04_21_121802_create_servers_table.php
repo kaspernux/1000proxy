@@ -24,7 +24,7 @@ return new class extends Migration
             $table->enum('status', ['up', 'down', 'paused'])->default('up');
             $table->string('panel_url');
             $table->string('ip');
-            $table->integer('port');
+            $table->integer('port')->nullable();
             $table->string('sni')->nullable();
             $table->string('header_type')->nullable();
             $table->string('request_header')->nullable();

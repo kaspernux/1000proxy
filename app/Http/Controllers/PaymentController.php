@@ -54,7 +54,7 @@ class PaymentController extends Controller
                 'order_id' => (string) $order->id,
                 'order_description' => 'Order #' . $order->id,
                 'pay_currency' => 'xmr',
-                'ipn_callback_url' => 'https://1000proxybot/webhook',
+                'ipn_callback_url' => env('APP_URL') . '/webhook',
                 'success_url' => route('success', ['order' => $order->id]),
                 'cancel_url' => route('cancel', ['order' => $order->id]),
                 'partially_paid_url' => route('cancel', ['order' => $order->id]),
@@ -63,11 +63,18 @@ class PaymentController extends Controller
             ];
 
             $invoice = Nowpayments::createInvoice($data);
-            return response()->json($invoice);
+
+            // Ensure the structure has 'invoice_url' to confirm success
+            if (!isset($invoice['invoice_url'])) {
+                return response()->json(['error' => 'Invoice creation failed', 'details' => $invoice], 400);
+            }
+
+            return response()->json($invoice, 200);
         } catch (\Exception $e) {
             return response()->json(['error' => $e->getMessage()], 400);
         }
     }
+
 
     /**
      * Get the status of a payment by Order ID

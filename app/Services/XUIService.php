@@ -223,75 +223,59 @@ class XUIService
         return 'vmess://' . base64_encode(json_encode($link, JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT));
     }
 
+    public function getDefaultInboundId()
+    {
+        $response = $this->httpClient->get('panel/api/inbounds/list', [
+            'headers' => [
+                'Accept' => 'application/json',
+                'Cookie' => $this->token,
+            ],
+        ]);
+
+        $responseBody = json_decode($response->getBody()->getContents(), true);
+
+        if ($responseBody['success']) {
+            foreach ($responseBody['obj'] as $inbound) {
+                if ($inbound['remark'] == 'Default Inbound') {
+                    return $inbound['id'];
+                }
+            }
+        }
+
+        throw new \Exception("Default inbound not found.");
+    }
+
     // Add an inbound account by updating the inbound's clients settings
-    public function addInboundAccount($server_id, $client_id, $inbound_id, $expiryTime, $remark, $volume, $limitip = 1, $newarr = '', $planId = null)
+    public function addInboundAccount($server_id, $client_id, $inbound_id, $expiryTime, $remark, $volume, $limitip = 1, $planId = null)
     {
         $server = Server::findOrFail($server_id);
         $volume = ($volume == 0) ? 0 : floor($volume * 1073741824);
 
-        $response = $this->getInbounds($server_id);
-        if (!$response) {
-            return null;
-        }
-
-        $inbound = null;
-        foreach ($response as $row) {
-            if ($row->id == $inbound_id) {
-                $inbound = $row;
-                break;
-            }
-        }
-
-        if (!$inbound) {
-            return "Inbound not found";
-        }
-
-        $settings = json_decode($inbound->settings, true);
-        $protocol = $inbound->protocol;
-        $id_label = $protocol == 'trojan' ? 'password' : 'id';
-
-        if ($newarr == '') {
-            $newClient = [
-                $id_label   => $client_id,
-                "enable"    => true,
-                "email"     => $remark,
-                "limitIp"   => $limitip,
-                "totalGB"   => $volume,
-                "expiryTime"=> $expiryTime,
-                "subId"     => $this->generateUID(),
-            ];
-
-            if ($server->type == "sanaei" || $server->type == "alireza") {
-                if ($server->reality == "true") {
-                    $plan = ServerPlan::find($planId);
-                    $flow = isset($plan->flow) && $plan->flow != "None" ? $plan->flow : "";
-                    $newClient['flow'] = $flow;
-                }
-            }
-            $settings['clients'][] = $newClient;
-        } elseif (is_array($newarr)) {
-            $settings['clients'][] = $newarr;
-        }
-
-        $settings['clients'] = array_values($settings['clients']);
-        $settings = json_encode($settings);
-
-        $dataArr = [
-            'up'             => $inbound->up,
-            'down'           => $inbound->down,
-            'total'          => $inbound->total,
-            'remark'         => $inbound->remark,
-            'enable'         => 'true',
-            'expiryTime'     => $inbound->expiryTime,
-            'listen'         => '',
-            'port'           => $inbound->port,
-            'protocol'       => $inbound->protocol,
-            'settings'       => $settings,
-            'streamSettings' => $inbound->streamSettings,
-            'sniffing'       => $inbound->sniffing
+        $newClient = [
+            "id"         => $client_id,
+            "enable"     => true,
+            "email"      => $remark,
+            "limitIp"    => $limitip,
+            "totalGB"    => $volume,
+            "expiryTime" => $expiryTime,
+            "subId"      => $this->generateUID(),
         ];
 
-        $url = $this->baseUrl . 'xui/inbound/update/' . $inbound_id;
+        if (($server->type == "sanaei" || $server->type == "alireza") && $server->reality == "true") {
+            $plan = ServerPlan::find($planId);
+            $flow = isset($plan->flow) && $plan->flow != "None" ? $plan->flow : "";
+            $newClient['flow'] = $flow;
+        }
+
+        $settings = json_encode(["clients" => [$newClient]]);
+
+        $dataArr = [
+            'id' => $inbound_id,
+            'settings' => $settings
+        ];
+
+        $url = rtrim($this->baseUrl, '/') . '/panel/api/inbounds/addClient';
+
         $response = $this->executeCurlRequest($url, $this->token, $dataArr);
 
         return json_decode($response, true);
