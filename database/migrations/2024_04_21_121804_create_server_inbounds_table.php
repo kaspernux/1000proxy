@@ -14,11 +14,10 @@ return new class extends Migration
         Schema::create('server_inbounds', function (Blueprint $table) {
             $table->id();
             $table->foreignId('server_id')->constrained()->onDelete('cascade');
-            $table->integer('userId');
             $table->bigInteger('up')->nullable();
             $table->bigInteger('down')->nullable();
             $table->bigInteger('total')->nullable();
-            $table->string('remark')->nullable();
+            $table->string('remark');
             $table->boolean('enable')->default(false);
             $table->datetime('expiryTime')->nullable();
             $table->json('clientStats')->nullable();
@@ -29,6 +28,7 @@ return new class extends Migration
             $table->json('streamSettings')->nullable();
             $table->string('tag')->unique()->nullable();
             $table->json('sniffing')->nullable();
+            $table->json('allocate')->nullable();
             $table->timestamps();
         });
     }

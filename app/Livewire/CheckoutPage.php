@@ -56,7 +56,6 @@ class CheckoutPage extends Component
         try {
             $order_items = CartManagement::getCartItemsFromCookie();
             $line_items = [];
-
             $paymentMethod = PaymentMethod::find($validatedData['selectedPaymentMethod']);
 
             $order = Order::create([
@@ -72,7 +71,6 @@ class CheckoutPage extends Component
                 $serverPlan = ServerPlan::findOrFail($item['server_plan_id']);
 
                 $order->items()->create([
-                    'order_id' => $order->id,
                     'server_plan_id' => $item['server_plan_id'],
                     'quantity' => $item['quantity'],
                     'unit_amount' => $serverPlan->price,
@@ -87,12 +85,49 @@ class CheckoutPage extends Component
                     $xuiService->generateUID(),
                     $inbound_id,
                     now()->addDays($serverPlan->days)->timestamp * 1000,
-                    'Order#' . $order->id . ' - Client ID'. $order->customer_id,
+                    'Order#' . $order->id . ' - Client ID ' . $order->customer_id,
                     $serverPlan->volume
                 );
 
                 if (!$inboundResponse || isset($inboundResponse['error'])) {
                     throw new \Exception("Inbound creation failed: " . json_encode($inboundResponse));
+                }
+
+                // Sync all remote inbounds and clients from the XUI server
+                $remoteInbounds = $xuiService->getInbounds($serverPlan->server_id);
+                foreach ($remoteInbounds as $inbound) {
+                    $localInbound = \App\Models\ServerInbound::updateOrCreate([
+                        'server_id' => $serverPlan->server_id,
+                        'port' => $inbound->port,
+                    ], [
+                        'protocol' => $inbound->protocol,
+                        'remark' => $inbound->remark ?? '',
+                        'enable' => $inbound->enable ?? true,
+                        'expiryTime' => isset($inbound->expiryTime) ? now()->createFromTimestampMs($inbound->expiryTime) : null,
+                        'settings' => json_decode($inbound->settings, true),
+                        'streamSettings' => json_decode($inbound->streamSettings, true),
+                        'sniffing' => json_decode($inbound->sniffing, true),
+                        'up' => $inbound->up ?? 0,
+                        'down' => $inbound->down ?? 0,
+                        'total' => $inbound->total ?? 0,
+                    ]);
+                    foreach (json_decode($inbound->settings)->clients ?? [] as $client) {
+                        \App\Models\ServerClient::updateOrCreate([
+                            'subId' => $client->subId ?? null,
+                        ], [
+                            'server_inbound_id' => $localInbound->id,
+                            'email' => $client->email ?? '',
+                            'password' => $client->id ?? '',
+                            'flow' => $client->flow ?? '',
+                            'limitIp' => $client->limitIp ?? 0,
+                            'totalGb' => ($client->totalGB ?? 0) / 1073741824,
+                            'expiryTime' => isset($client->expiryTime) ? now()->createFromTimestampMs($client->expiryTime) : null,
+                            'enable' => $client->enable ?? true,
+                            'reset' => $client->reset ?? null,
+                            'tgId' => $client->tgId ?? null,
+                            'plan_id' => $serverPlan->id, // ✅ This is what was missing
+                        ]);
+                    }
                 }
 
                 $line_items[] = [
@@ -107,19 +142,19 @@ class CheckoutPage extends Component
 
             $redirect_url = '';
 
-            if ($paymentMethod->slug == 'stripe') {
+            if ($paymentMethod->slug === 'stripe') {
                 Stripe::setApiKey(env('STRIPE_SECRET'));
                 $sessionCheckout = Session::create([
                     'payment_method_types' => ['card'],
                     'customer_email' => auth()->user()->email,
                     'line_items' => $line_items,
                     'mode' => 'payment',
-                    'success_url' => route('success').'?session_id={CHECKOUT_SESSION_ID}',
+                    'success_url' => route('success') . '?session_id={CHECKOUT_SESSION_ID}',
                     'cancel_url' => route('cancel'),
                 ]);
                 $redirect_url = $sessionCheckout->url;
 
-            } elseif ($paymentMethod->slug == 'nowpayments') {
+            } elseif ($paymentMethod->slug === 'nowpayments') {
                 $paymentController = new PaymentMethodController();
                 $payResult = $paymentController->createInvoiceNowPayments($order);
 
@@ -131,7 +166,6 @@ class CheckoutPage extends Component
                     throw new \Exception('Failed to create invoice. Try another payment method.');
                 }
 
-                // Save invoice after successful NowPayments invoice creation
                 Invoice::create([
                     'customer_id' => $order->customer_id,
                     'order_id' => $order->id,
@@ -150,7 +184,7 @@ class CheckoutPage extends Component
                     'is_fee_paid_by_user' => true,
                 ]);
 
-            } elseif ($paymentMethod->slug == 'wallet') {
+            } elseif ($paymentMethod->slug === 'wallet') {
                 $customer = Auth::user();
                 if ($customer->wallet >= $order->grand_amount) {
                     $customer->wallet -= $order->grand_amount;
@@ -164,7 +198,6 @@ class CheckoutPage extends Component
             }
 
             DB::commit();
-
             CartManagement::clearCartItems();
 
             try {
@@ -182,6 +215,7 @@ class CheckoutPage extends Component
             $this->alert('warning', 'An error occurred: ' . $e->getMessage());
         }
     }
+
 
     public function fetchPaymentMethods()
     {

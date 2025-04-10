@@ -54,7 +54,7 @@ class XUIService
     }
 
     // Get list of inbounds from remote panel
-    protected function getInbounds($server_id)
+    public function getInbounds()
     {
         $response = $this->httpClient->get('panel/api/inbounds/list', [
             'headers' => [

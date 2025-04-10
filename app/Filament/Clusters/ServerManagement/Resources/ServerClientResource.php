@@ -7,6 +7,9 @@ use Filament\Tables;
 use Filament\Forms\Form;
 use Filament\Tables\Table;
 use App\Models\ServerClient;
+use App\Models\ServerPlan;
+use App\Models\Server;
+use App\Models\ServerInbound;
 use Filament\Resources\Resource;
 use Illuminate\Database\Eloquent\Builder;
 use App\Filament\Clusters\ServerManagement;
@@ -14,6 +17,8 @@ use Jantinnerezo\LivewireAlert\LivewireAlert;
 use Illuminate\Database\Eloquent\SoftDeletingScope;
 use App\Filament\Clusters\ServerManagement\Resources\ServerClientResource\Pages;
 use App\Filament\Clusters\ServerManagement\Resources\ServerClientResource\RelationManagers;
+use App\Services\XUIService;
+use Filament\Tables\Actions\Action;
 
 class ServerClientResource extends Resource
 {
@@ -76,7 +81,20 @@ class ServerClientResource extends Resource
     {
         return $table
             ->columns([
+                Tables\Columns\TextColumn::make('inbound.remark')
+                    ->label('Inbound'),
                 Tables\Columns\TextColumn::make('email')
+                    ->sortable()
+                    ->searchable(),
+                Tables\Columns\TextColumn::make('plan.name')
+                    ->label('Plan')
+                    ->getStateUsing(function ($record) {
+                        return ($record->plan_id && $record->plan)
+                            ? $record->plan->name
+                            : 'Generated From XUI Panel';
+                    })
+                    ->badge()
+                    ->color(fn ($record) => ($record->plan_id && $record->plan) ? 'success' : 'gray')
                     ->sortable()
                     ->searchable(),
                 Tables\Columns\TextColumn::make('flow')
@@ -90,16 +108,18 @@ class ServerClientResource extends Resource
                     ->sortable(),
                 Tables\Columns\IconColumn::make('enable')
                     ->boolean(),
-                Tables\Columns\TextColumn::make('inbound.remark')
-                    ->label('Inbound'),
-                Tables\Columns\TextColumn::make('plan.name')
-                    ->label('Plan'),
+                Tables\Columns\TextColumn::make('qr_code_client')
+                    ->label('QR Link')
+                    ->url(fn ($record) => $record->qr_code_client)
+                    ->openUrlInNewTab()
+                    ->limit(30),
             ])
             ->filters([
                 Tables\Filters\SelectFilter::make('inbound')
                     ->relationship('inbound', 'remark'),
                 Tables\Filters\SelectFilter::make('plan')
                     ->relationship('plan', 'name'),
+                Tables\Filters\TrashedFilter::make(), // 👈 filter trashed/active/all
             ])
             ->actions([
                 Tables\Actions\ActionGroup::make([
@@ -112,6 +132,58 @@ class ServerClientResource extends Resource
                 Tables\Actions\BulkActionGroup::make([
                     Tables\Actions\DeleteBulkAction::make(),
                 ]),
+            ])
+            ->headerActions([
+                Action::make('Sync Clients from XUI')
+                    ->icon('heroicon-o-arrow-path')
+                    ->label('Sync Clients')
+                    ->color('primary')
+                    ->requiresConfirmation()
+                    ->action(function () {
+                        $servers = Server::all();
+
+                        foreach ($servers as $server) {
+                            try {
+                                $xui = new XUIService($server->id);
+                                $remoteInbounds = $xui->getInbounds();
+
+                                foreach ($remoteInbounds as $inbound) {
+                                    $localInbound = ServerInbound::firstOrCreate([
+                                        'server_id' => $server->id,
+                                        'port' => $inbound->port,
+                                    ]);
+
+                                    $clients = json_decode($inbound->settings)->clients ?? [];
+
+                                    foreach ($clients as $client) {
+                                        ServerClient::updateOrCreate([
+                                            'subId' => $client->subId ?? null,
+                                        ], [
+                                            'server_inbound_id' => $localInbound->id,
+                                            'email' => $client->email ?? '',
+                                            'password' => $client->id ?? '',
+                                            'flow' => $client->flow ?? '',
+                                            'limitIp' => $client->limitIp ?? 0,
+                                            'totalGb' => isset($client->totalGB) ? floor($client->totalGB / 1073741824) : 0,
+                                            'expiryTime' => isset($client->expiryTime) ? now()->createFromTimestampMs($client->expiryTime) : null,
+                                            'enable' => $client->enable ?? true,
+                                            'reset' => $client->reset ?? null,
+                                            'tgId' => $client->tgId ?? null,
+                                            'plan_id' => $source === 'order' ? $serverPlan->id : null,
+                                        ]);
+                                    }
+                                }
+                            } catch (\Exception $e) {
+                                \Log::error("Client sync failed for server ID {$server->id}: " . $e->getMessage());
+                            }
+                        }
+
+                        \Filament\Notifications\Notification::make()
+                            ->title('Success')
+                            ->body('Clients synced successfully.')
+                            ->success()
+                            ->send();
+                    }),
             ]);
     }
 

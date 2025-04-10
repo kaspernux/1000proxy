@@ -8,7 +8,7 @@ use Filament\Forms\Form;
 use Filament\Tables\Table;
 use App\Models\ServerInbound;
 use Filament\Resources\Resource;
-use App\Http\Controllers\XUIService;
+use App\Services\XUIService;
 use Filament\Forms\Components\Group;
 use Filament\Forms\Components\Split;
 use Filament\Forms\Components\Select;
@@ -21,6 +21,9 @@ use Filament\Tables\Filters\SelectFilter;
 use App\Filament\Clusters\ServerManagement;
 use Jantinnerezo\LivewireAlert\LivewireAlert;
 use App\Filament\Clusters\ServerManagement\Resources\ServerInboundResource\Pages;
+use Filament\Tables\Actions\Action;
+use App\Models\Server;
+use Filament\Tables\Filters\Filter;
 
 class ServerInboundResource extends Resource
 {
@@ -123,25 +126,33 @@ class ServerInboundResource extends Resource
     {
         return $table
             ->columns([
+                Tables\Columns\IconColumn::make('enable')
+                    ->label('Enabled')
+                    ->boolean(),
                 Tables\Columns\TextColumn::make('server.name')
                     ->label('Server')
                     ->searchable(),
+                Tables\Columns\TextColumn::make('remark')
+                    ->label('Remark')
+                    ->searchable()
+                    ->sortable(),
+                Tables\Columns\BadgeColumn::make('protocol')
+                    ->colors([
+                        'primary' => 'vmess',
+                        'info' => 'vless',
+                        'warning' => 'trojan',
+                    ])
+                    ->label('Protocol'),
+                Tables\Columns\TextColumn::make('port')
+                    ->sortable(),
                 Tables\Columns\TextColumn::make('total')
                     ->label('Total Clients')
                     ->numeric()
                     ->sortable(),
-                Tables\Columns\TextColumn::make('protocol')
-                    ->searchable()
-                    ->sortable(),
-                Tables\Columns\TextColumn::make('port')
-                    ->sortable(),
                 Tables\Columns\TextColumn::make('up')
                     ->sortable(),
                 Tables\Columns\TextColumn::make('down')
-                    ->sortable(),
-                Tables\Columns\IconColumn::make('enable')
-                    ->label('Enabled')
-                    ->boolean(),
+                    ->sortable(),            
                 Tables\Columns\TextColumn::make('expiryTime')
                     ->dateTime()
                     ->sortable(),
@@ -160,6 +171,10 @@ class ServerInboundResource extends Resource
                     ->relationship('server', 'name'),
                 SelectFilter::make('userId')
                     ->label('Proxy User'),
+                SelectFilter::make('remark')
+                    ->label('Remark'),
+                SelectFilter::make('port')
+                    ->label('Port'),
             ])
             ->actions([
                 Tables\Actions\ActionGroup::make([
@@ -172,8 +187,37 @@ class ServerInboundResource extends Resource
                 Tables\Actions\BulkActionGroup::make([
                     Tables\Actions\DeleteBulkAction::make(),
                 ]),
+            ])
+            ->headerActions([
+                Action::make('Sync Inbounds from XUI')
+                    ->icon('heroicon-o-arrow-path')
+                    ->requiresConfirmation()
+                    ->label('Sync Inbounds')
+                    ->color('primary')
+                    ->action(function () {
+                        $servers = \App\Models\Server::all();
+
+                        foreach ($servers as $server) {
+                            try {
+                                $xui = new \App\Services\XUIService($server->id);
+                                $remoteInbounds = $xui->getInbounds(); // make sure this is public
+
+                                foreach ($remoteInbounds as $inbound) {
+                                    \App\Models\ServerInbound::fromRemoteInbound($inbound, $server->id);
+                                }
+                            } catch (\Exception $e) {
+                                \Log::error("Inbound sync failed for server ID {$server->id}: " . $e->getMessage());
+                            }
+                        }
+
+                        \Filament\Notifications\Notification::make()
+                            ->title('Success')
+                            ->body('Inbounds synced successfully.')
+                            ->success()
+                            ->send();
+                    }),
             ]);
-    }
+        }
 
     public static function getRelations(): array
     {

@@ -13,20 +13,28 @@ return new class extends Migration
     {
         Schema::create('server_clients', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('server_inbound_id')->constrained()->onDelete('cascade');
-            $table->string('email');
-            $table->string('password');
-            $table->string('flow')->default('None');
+
+            $table->foreignId('server_inbound_id')
+                ->constrained()
+                ->onDelete('cascade');
+
+            $table->string('email')->nullable()->unique();
+            $table->string('password')->nullable(); // id from remote XUI
+            $table->string('flow')->nullable()->default('None');
             $table->integer('limitIp')->nullable();
-            $table->bigInteger('totalGB')->nullable();
+            $table->bigInteger('totalGb')->nullable(); // casted to GB from totalGB (bytes)
             $table->dateTime('expiryTime')->nullable();
+
             $table->string('tgId')->nullable();
-            $table->string('subId')->nullable();
+            $table->string('subId')->nullable()->unique(); // typically unique
             $table->boolean('enable')->default(true);
             $table->integer('reset')->nullable();
+
             $table->text('qr_code_sub')->nullable();
             $table->text('qr_code_sub_json')->nullable();
             $table->text('qr_code_client')->nullable();
+            $table->foreignId('plan_id')->nullable()->constrained('server_plans')->nullOnDelete();
+            $table->softDeletes();
             $table->timestamps();
         });
     }

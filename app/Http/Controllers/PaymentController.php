@@ -75,7 +75,6 @@ class PaymentController extends Controller
         }
     }
 
-
     /**
      * Get the status of a payment by Order ID
      * @param string $orderId
