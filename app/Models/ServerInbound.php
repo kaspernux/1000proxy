@@ -78,7 +78,7 @@ class ServerInbound extends Model
                     ? Carbon::createFromTimestampMs($inbound->expiryTime)
                     : null,
                 'settings' => $settings,
-                'streamSettings' => json_decode($inbound->streamSettings ?? '{}', true),
+                'streamSettings' => is_string($inbound->streamSettings) ? json_decode($inbound->streamSettings, true) : (array) $inbound->streamSettings,
                 'sniffing' => json_decode($inbound->sniffing ?? '{}', true),
                 'allocate' => json_decode($inbound->allocate ?? '{}', true),
                 'up' => $inbound->up ?? 0,

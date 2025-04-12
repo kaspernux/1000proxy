@@ -39,31 +39,28 @@ class ServerClientController extends Controller
     public function store(Request $request): JsonResponse
     {
         try {
-            // Extract server_id from request
             $server_id = $request->input('server_id');
+            $serverInbound = ServerInbound::with('server')->findOrFail($request->input('server_inbound_id'));
+            $server = $serverInbound->server;
 
-            // Get server inbound
-            $serverInbound = ServerInbound::findOrFail($request->input('server_inbound_id'));
-
-            // Create client on remote server using XUIService
             $xuiService = new XUIService($server_id);
             $clientResponse = $xuiService->addClientInbound($request->all());
 
-            // Generate QR codes if links are returned
             $uuid = $clientResponse['id'] ?? $request->input('password');
-            $subId = $clientResponse['subId'] ?? Str::uuid();
+            $subId = $clientResponse['subId'] ?? \Illuminate\Support\Str::uuid()->toString();
             $remark = rawurlencode($clientResponse['email'] ?? 'Client');
-            $server = $serverInbound->server;
+
             $host = parse_url($server->panel_url, PHP_URL_HOST);
             $port = $serverInbound->port;
             $panelPort = parse_url($server->panel_url, PHP_URL_PORT) ?? 443;
 
-            // Build vless link
+            // vless link
             $stream = json_decode($serverInbound->streamSettings, true);
             $params = [
                 'type' => $stream['network'] ?? 'tcp',
                 'security' => $server->security ?? 'tls',
             ];
+
             if (!empty($stream['realitySettings'])) {
                 $params += [
                     'pbk' => $stream['realitySettings']['publicKey'] ?? '',
@@ -73,43 +70,39 @@ class ServerClientController extends Controller
                     'spx' => $stream['realitySettings']['spiderX'] ?? '',
                 ];
             }
-            $query = http_build_query($params);
-            $vless = "vless://{$uuid}@{$host}:{$port}?{$query}#{$remark}";
 
-            // Build sub links
+            $vlessLink = "vless://{$uuid}@{$host}:{$port}?" . http_build_query($params) . "#{$remark}";
             $subLink = "http://{$host}:{$panelPort}/sub_proxy/{$subId}";
             $jsonLink = "http://{$host}:{$panelPort}/json_proxy/{$subId}";
 
-            // QR paths
+            // File paths
             $qrDir = "qr_codes/";
             $qrSubPath = "{$qrDir}sub_{$subId}.png";
             $qrJsonPath = "{$qrDir}json_{$subId}.png";
             $qrClientPath = "{$qrDir}client_{$subId}.png";
 
-            // Generate and store QR codes
-            QrCode::format('png')->size(400)->generate($subLink, storage_path("app/public/{$qrSubPath}"));
-            QrCode::format('png')->size(400)->generate($jsonLink, storage_path("app/public/{$qrJsonPath}"));
-            QrCode::format('png')->size(400)->generate($vless, storage_path("app/public/{$qrClientPath}"));
+            // Generate QR code images
+            \SimpleSoftwareIO\QrCode\Facades\QrCode::format('png')->size(400)->generate($subLink, storage_path("app/public/{$qrSubPath}"));
+            \SimpleSoftwareIO\QrCode\Facades\QrCode::format('png')->size(400)->generate($jsonLink, storage_path("app/public/{$qrJsonPath}"));
+            \SimpleSoftwareIO\QrCode\Facades\QrCode::format('png')->size(400)->generate($vlessLink, storage_path("app/public/{$qrClientPath}"));
 
-            // Save client data to the local database
-            $clientData = [
+            // Save to DB
+            $serverClient = ServerClient::create([
                 'server_inbound_id' => $serverInbound->id,
                 'email' => $clientResponse['email'],
-                'password' => $request->input('password'),
+                'password' => $uuid,
                 'flow' => $clientResponse['flow'] ?? 'None',
-                'limitIp' => $clientResponse['limitIp'],
-                'totalGB' => $clientResponse['totalGB'],
-                'expiryTime' => $clientResponse['expiryTime'],
+                'limitIp' => $clientResponse['limitIp'] ?? 1,
+                'totalGb' => isset($clientResponse['totalGB']) ? floor($clientResponse['totalGB'] / 1073741824) : 0,
+                'expiryTime' => isset($clientResponse['expiryTime']) ? now()->createFromTimestampMs($clientResponse['expiryTime']) : null,
                 'tgId' => $clientResponse['tgId'] ?? null,
-                'subId' => $clientResponse['subId'],
-                'enable' => $clientResponse['enable'],
+                'subId' => $subId,
+                'enable' => $clientResponse['enable'] ?? true,
                 'reset' => $clientResponse['reset'] ?? null,
                 'qr_code_sub' => $qrSubPath,
                 'qr_code_sub_json' => $qrJsonPath,
                 'qr_code_client' => $qrClientPath,
-            ];
-
-            $serverClient = ServerClient::create($clientData);
+            ]);
 
             return response()->json($serverClient, 201);
         } catch (\Exception $e) {

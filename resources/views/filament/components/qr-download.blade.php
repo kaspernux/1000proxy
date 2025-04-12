@@ -1,17 +1,26 @@
 @php
-    $qrPath = $getState();
-    $publicPath = $qrPath ? Storage::disk('public')->url($qrPath) : null;
-    $filename = basename($qrPath ?? 'qr-code.png');
+    $path = $getState();
 @endphp
 
-@if ($publicPath)
+@if ($path && file_exists(public_path('storage/' . $path)))
     <div class="text-center">
-        <img src="{{ $publicPath }}" style="height:60px; width:60px; margin: 0 auto; border-radius: 6px;">
-        <br>
-        <a href="{{ $publicPath }}" download="{{ $filename }}" class="text-sm text-primary hover:underline">
-            Download
-        </a>
+        <img src="{{ asset('storage/' . $path) }}"
+             alt="QR Code"
+             width="50"
+             height="50"
+             title="Click to download"
+             style="cursor: pointer;"
+             onclick="window.open('{{ asset('storage/' . $path) }}', '_blank')"
+             onmouseover="this.style.boxShadow='0 0 10px rgba(0,0,0,0.5)'"
+             onmouseout="this.style.boxShadow='none'" />
+        <div style="margin-top: 5px;">
+            <a href="{{ asset('storage/' . $path) }}"
+               download
+               class="text-xs text-blue-600 underline hover:text-blue-800">
+                Download
+            </a>
+        </div>
     </div>
 @else
-    <span class="text-gray-400 italic">No QR</span>
+    <span class="text-gray-400 text-xs italic">Not generated</span>
 @endif

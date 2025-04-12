@@ -83,6 +83,39 @@ class Server extends Model
         return $this->hasOne(ServerInfo::class, 'server_id');
     }
 
+    public function getPanelHost(): ?string
+    {
+        return parse_url($this->panel_url, PHP_URL_HOST);
+    }
+
+    public function getPanelPort(): ?int
+    {
+        return parse_url($this->panel_url, PHP_URL_PORT) ?? 443;
+    }
+
+    public function getPanelWebPath(): string
+    {
+        $path = parse_url($this->panel_url, PHP_URL_PATH) ?? '';
+        return rtrim($path, '/'); // strip trailing slash
+    }
+
+    public function getPanelBase(): string
+    {
+        $scheme = parse_url($this->panel_url, PHP_URL_SCHEME) ?? 'http';
+        $host = $this->getPanelHost();
+        $port = $this->getPanelPort();
+        $web = $this->getPanelWebPath();
+
+        return "{$scheme}://{$host}:{$port}{$web}";
+    }
+
+    public function getSubscriptionPort(): int
+    {
+        return ($this->getPanelPort() ?? 443) - 1;
+    }
+
+
+
     /* // Example method to get XUI parameters
     public function getXUIParameters()
     {

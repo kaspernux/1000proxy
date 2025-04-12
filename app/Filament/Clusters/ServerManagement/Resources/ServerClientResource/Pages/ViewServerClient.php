@@ -2,10 +2,12 @@
 
 namespace App\Filament\Clusters\ServerManagement\Resources\ServerClientResource\Pages;
 
-use App\Filament\Clusters\ServerManagement\Resources\ServerClientResource;
 use Filament\Actions;
 use Filament\Resources\Pages\ViewRecord;
-use App\Models\ServerClient;
+use App\Filament\Clusters\ServerManagement\Resources\ServerClientResource;
+use Filament\Infolists\Components\TextEntry;
+use Filament\Infolists\Components\ImageEntry;
+use Filament\Infolists\Components\Grid;
 
 class ViewServerClient extends ViewRecord
 {

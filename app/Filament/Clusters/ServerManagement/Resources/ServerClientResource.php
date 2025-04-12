@@ -18,6 +18,21 @@ use App\Filament\Clusters\ServerManagement\Resources\ServerClientResource\Pages;
 use App\Filament\Clusters\ServerManagement\Resources\ServerClientResource\RelationManagers;
 use App\Services\XUIService;
 use Filament\Tables\Actions\Action;
+use Filament\Tables\Columns\ImageColumn;
+use Filament\Tables\Columns\TextColumn;
+use Illuminate\Support\Facades\Storage;
+use Filament\Forms\Components\View as ViewComponent;
+use Filament\Forms\Components\Placeholder;
+use Filament\Forms\Components\Image;
+use Filament\Forms\Components\Select;
+use Filament\Forms\Components\Toggle;
+use Filament\Infolists\Infolist;
+use Filament\Infolists\Components\Tabs;
+use Filament\Infolists\Components\Section;
+use Filament\Infolists\Components\Grid;
+use Filament\Infolists\Components\TextEntry;
+use Filament\Infolists\Components\IconEntry;
+use Filament\Infolists\Components\ImageEntry;
 
 class ServerClientResource extends Resource
 {
@@ -34,33 +49,32 @@ class ServerClientResource extends Resource
         return 'Clients';
     }
 
-    public static function form(Form $form): Form
+
+    /* public static function form(Form $form): Form
     {
         return $form->schema([
-            Forms\Components\TextInput::make('email')->required(),
-            Forms\Components\TextInput::make('password'),
-            Forms\Components\TextInput::make('flow')->nullable(),
-            Forms\Components\TextInput::make('limitIp')->numeric(),
-            Forms\Components\TextInput::make('totalGb')->numeric(),
+            TextInput::make('email')->required(),
+            TextInput::make('password'),
+            TextInput::make('flow')->nullable(),
+            TextInput::make('limitIp')->numeric(),
+            TextInput::make('totalGb')->numeric(),
             Forms\Components\DatePicker::make('expiryTime'),
-            Forms\Components\TextInput::make('tgId')->nullable(),
-            Forms\Components\TextInput::make('subId')->nullable(),
-            Forms\Components\Toggle::make('enable')->required()->default(true),
-            Forms\Components\TextInput::make('reset')->nullable(),
-            Forms\Components\TextInput::make('qr_code_sub')->nullable(),
-            Forms\Components\TextInput::make('qr_code_sub_json')->nullable(),
-            Forms\Components\TextInput::make('qr_code_client')->nullable(),
-            Forms\Components\Select::make('server_inbound_id')->relationship('inbound', 'remark'),
-            Forms\Components\Select::make('plan_id')->relationship('plan', 'name')->nullable(),
+            TextInput::make('tgId')->nullable(),
+            TextInput::make('subId')->nullable(),
+            Toggle::make('enable')->required()->default(true),
+            TextInput::make('reset')->nullable(),
+
+            Select::make('server_inbound_id')->relationship('inbound', 'remark'),
+            Select::make('plan_id')->relationship('plan', 'name')->nullable(),
         ]);
-    }
+    } */
 
     public static function table(Table $table): Table
     {
         return $table->columns([
             Tables\Columns\TextColumn::make('inbound.remark')->label('Inbound'),
             Tables\Columns\TextColumn::make('email')->sortable()->searchable(),
-            Tables\Columns\TextColumn::make('plan.name')
+            TextColumn::make('plan.name')
                 ->label('Plan')
                 ->getStateUsing(fn ($record) => $record->plan_id && $record->plan ? $record->plan->name : 'Generated From XUI Panel')
                 ->badge()
@@ -74,18 +88,29 @@ class ServerClientResource extends Resource
             Tables\Columns\IconColumn::make('enable')->boolean(),
 
             // ✅ QR Codes with image rendering
-            Tables\Columns\ViewColumn::make('qr_code_client')
+            ImageColumn::make('qr_code_client')
                 ->label('Client QR')
-                ->view('filament.components.qr-download')
-                ->extraAttributes(['style' => 'text-align:center']),
-            Tables\Columns\ViewColumn::make('qr_code_sub')
+                ->disk('public')
+                ->tooltip('Click to download Client QR')
+                ->url(fn ($record) => Storage::disk('public')->url($record->qr_code_client))
+                ->openUrlInNewTab()
+                ->height(60),
+
+            ImageColumn::make('qr_code_sub')
                 ->label('Sub QR')
-                ->view('filament.components.qr-download'),
+                ->disk('public')
+                ->tooltip('Click to download Sub QR')
+                ->url(fn ($record) => Storage::disk('public')->url($record->qr_code_sub))
+                ->openUrlInNewTab()
+                ->height(60),
 
-            Tables\Columns\ViewColumn::make('qr_code_sub_json')
+            ImageColumn::make('qr_code_sub_json')
                 ->label('JSON QR')
-                ->view('filament.components.qr-download'),
-
+                ->disk('public')
+                ->tooltip('Click to download JSON QR')
+                ->url(fn ($record) => Storage::disk('public')->url($record->qr_code_sub_json))
+                ->openUrlInNewTab()
+                ->height(60),
         ])
         ->filters([
             Tables\Filters\SelectFilter::make('inbound')->relationship('inbound', 'remark'),
@@ -158,4 +183,87 @@ class ServerClientResource extends Resource
             'edit' => Pages\EditServerClient::route('/{record}/edit'),
         ];
     }
+
+    // ✅ Infolist for view page
+    public static function infolist(Infolist $infolist): Infolist
+{
+    return $infolist->schema([
+        Tabs::make('Client Details')
+            ->persistTab()
+            ->tabs([
+                Tabs\Tab::make('Profile')
+                    ->icon('heroicon-m-user')
+                    ->schema([
+                        Section::make('🔐 Client Information')
+                            ->description('Details about this proxy client’s identity and usage limits.')
+                            ->columns([
+                                'sm' => 1,
+                                'md' => 2,
+                                'xl' => 3,
+                            ])
+                            ->schema([
+                                TextEntry::make('email')->label('Client Email')->color('primary'),
+                                TextEntry::make('password')->label('UUID / Password')->color('primary'),
+                                TextEntry::make('subId')->label('Subscription ID')->color('primary'),
+                                TextEntry::make('flow')->label('Flow')->color('primary'),
+                                TextEntry::make('limitIp')->label('IP Limit')->color('primary'),
+                                TextEntry::make('totalGb')->label('Total GB')->color('primary'),
+                                TextEntry::make('expiryTime')->label('Expires At')->dateTime()->color('primary'),
+                                TextEntry::make('tgId')->label('Telegram ID')->default('—')->color('primary'),
+                                IconEntry::make('enable')->label('Enabled')->boolean(),
+                                TextEntry::make('reset')->label('Reset Count')->default(0)->color('primary'),
+                            ]),
+                    ]),
+
+                Tabs\Tab::make('Server')
+                    ->icon('heroicon-m-server')
+                    ->schema([
+                        Section::make('📡 Server Configuration')
+                            ->description('Details about the proxy server and plan used.')
+                            ->columns(2)
+                            ->schema([
+                                TextEntry::make('inbound.remark')->label('Inbound Remark')->color('primary'),
+                                TextEntry::make('plan.name')->label('Plan Name')->default('N/A')->color('primary'),
+                            ]),
+                    ]),
+
+                Tabs\Tab::make('QR Codes')
+                    ->icon('heroicon-m-qr-code')
+                    ->schema([
+                        Section::make('📲 Client QR Codes')
+                            ->description('Scan or download QR codes to quickly configure supported proxy clients.')
+                            ->columns([
+                                'default' => 1,
+                                'sm' => 2,
+                                'lg' => 3,
+                            ])
+                            ->schema([
+                                ImageEntry::make('qr_code_client')
+                                    ->label('Client QR')
+                                    ->disk('public')
+                                    ->tooltip('Click to open full-size')
+                                    ->openUrlInNewTab()
+                                    ->visible(fn ($record) => filled($record->qr_code_client)),
+
+                                ImageEntry::make('qr_code_sub')
+                                    ->label('Subscription QR')
+                                    ->disk('public')
+                                    ->tooltip('Click to open full-size')
+                                    ->openUrlInNewTab()
+                                    ->visible(fn ($record) => filled($record->qr_code_sub)),
+
+                                ImageEntry::make('qr_code_sub_json')
+                                    ->label('JSON Subscription QR')
+                                    ->disk('public')
+                                    ->tooltip('Click to open full-size')
+                                    ->openUrlInNewTab()
+                                    ->visible(fn ($record) => filled($record->qr_code_sub_json)),
+                            ]),
+                    ]),
+            ])
+            ->contained(true)
+            ->columnSpanFull(),
+    ]);
+}
+
 }

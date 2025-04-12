@@ -25,6 +25,8 @@ use App\Http\Controllers\PaymentMethodController;
 use App\Services\XUIService;
 use App\Models\ServerInbound;
 use App\Models\ServerClient;
+use Illuminate\Support\Str;
+
 
 #[Title('Checkout - 1000 PROXIES')]
 class CheckoutPage extends Component
@@ -80,7 +82,7 @@ class CheckoutPage extends Component
                 $xuiService = new XUIService($serverPlan->server_id);
                 $inbound_id = $xuiService->getDefaultInboundId();
 
-                $inboundResponse = $xuiService->addInboundAccount(
+                $response = $xuiService->addInboundAccount(
                     $serverPlan->server_id,
                     $xuiService->generateUID(),
                     $inbound_id,
@@ -89,14 +91,14 @@ class CheckoutPage extends Component
                     $serverPlan->volume
                 );
 
-                if (!$inboundResponse || isset($inboundResponse['error'])) {
-                    throw new \Exception("Inbound creation failed: " . json_encode($inboundResponse));
+                if (!$response || isset($response['error'])) {
+                    throw new \Exception("Inbound creation failed: " . json_encode($response));
                 }
 
-                // Sync all remote inbounds and clients from the XUI server
+                // Sync all clients from the remote server
                 $remoteInbounds = $xuiService->getInbounds($serverPlan->server_id);
                 foreach ($remoteInbounds as $inbound) {
-                    $localInbound = \App\Models\ServerInbound::updateOrCreate([
+                    $localInbound = ServerInbound::updateOrCreate([
                         'server_id' => $serverPlan->server_id,
                         'port' => $inbound->port,
                     ], [
@@ -104,30 +106,30 @@ class CheckoutPage extends Component
                         'remark' => $inbound->remark ?? '',
                         'enable' => $inbound->enable ?? true,
                         'expiryTime' => isset($inbound->expiryTime) ? now()->createFromTimestampMs($inbound->expiryTime) : null,
-                        'settings' => json_decode($inbound->settings, true),
-                        'streamSettings' => json_decode($inbound->streamSettings, true),
-                        'sniffing' => json_decode($inbound->sniffing, true),
+                        'settings' => is_string($inbound->settings) ? json_decode($inbound->settings, true) : $inbound->settings,
+                        'streamSettings' => is_string($inbound->streamSettings) ? json_decode($inbound->streamSettings, true) : $inbound->streamSettings,
+                        'sniffing' => is_string($inbound->sniffing) ? json_decode($inbound->sniffing, true) : $inbound->sniffing,
                         'up' => $inbound->up ?? 0,
                         'down' => $inbound->down ?? 0,
                         'total' => $inbound->total ?? 0,
                     ]);
-                    foreach (json_decode($inbound->settings)->clients ?? [] as $client) {
-                        \App\Models\ServerClient::updateOrCreate([
-                            'subId' => $client->subId ?? null,
-                        ], [
-                            'server_inbound_id' => $localInbound->id,
-                            'email' => $client->email ?? '',
-                            'password' => $client->id ?? '',
-                            'flow' => $client->flow ?? '',
-                            'limitIp' => $client->limitIp ?? 0,
-                            'totalGb' => ($client->totalGB ?? 0) / 1073741824,
-                            'expiryTime' => isset($client->expiryTime) ? now()->createFromTimestampMs($client->expiryTime) : null,
-                            'enable' => $client->enable ?? true,
-                            'reset' => $client->reset ?? null,
-                            'tgId' => $client->tgId ?? null,
-                            'plan_id' => $serverPlan->id, // ✅ This is what was missing
-                        ]);
+
+                    $parsedSettings = is_string($inbound->settings)
+                        ? json_decode($inbound->settings, true)
+                        : (array) $inbound->settings;
+
+                    $clients = $parsedSettings['clients'] ?? [];
+
+                    foreach ($clients as $client) {
+                        $client = (array) $client;
+                        $expectedEmail = 'Order#' . $order->id . ' - Client ID ' . $order->customer_id;
+
+                        if (($client['email'] ?? null) === $expectedEmail) {
+                            $clientModel = ServerClient::fromRemoteClient($client, $localInbound->id, $client['subscription_link'] ?? null);
+                            $clientModel->update(['plan_id' => $serverPlan->id]);
+                        }
                     }
+
                 }
 
                 $line_items[] = [
@@ -162,7 +164,7 @@ class CheckoutPage extends Component
                     $redirect_url = $payResult['data']['invoice_url'];
                     $this->dispatch('set-invoice-url', ['url' => $redirect_url]);
                 } else {
-                    \Log::error('NowPayments invoice creation failed:', ['response' => $payResult]);
+                    Log::error('NowPayments invoice creation failed:', ['response' => $payResult]);
                     throw new \Exception('Failed to create invoice. Try another payment method.');
                 }
 
@@ -215,7 +217,6 @@ class CheckoutPage extends Component
             $this->alert('warning', 'An error occurred: ' . $e->getMessage());
         }
     }
-
 
     public function fetchPaymentMethods()
     {

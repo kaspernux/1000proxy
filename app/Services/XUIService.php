@@ -11,6 +11,7 @@ use GuzzleHttp\Client;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 
 class XUIService
 {
@@ -41,7 +42,6 @@ class XUIService
         $this->token = $this->login();
     }
 
-    // Login via HTTP client (Guzzle)
     protected function login()
     {
         $response = $this->httpClient->post('login', [
@@ -53,7 +53,6 @@ class XUIService
         return implode('; ', $response->getHeader('Set-Cookie'));
     }
 
-    // Get list of inbounds from remote panel
     public function getInbounds()
     {
         $response = $this->httpClient->get('panel/api/inbounds/list', [
@@ -71,15 +70,6 @@ class XUIService
         return $responseBody->obj;
     }
 
-    // Helper method mimicking original getJson()
-    protected function getJson($server_id)
-    {
-        return (object)[
-            'obj' => $this->getInbounds($server_id)
-        ];
-    }
-
-    // Execute an HTTP POST request using Guzzle (used to mimic cURL requests)
     protected function executeCurlRequest($url, $session, $dataArr = [])
     {
         $response = $this->httpClient->post($url, [
@@ -91,25 +81,9 @@ class XUIService
         return $response->getBody()->getContents();
     }
 
-    // Generate a UUID-like string
     public function generateUID()
     {
-        $randomString = openssl_random_pseudo_bytes(16);
-        $time_low = bin2hex(substr($randomString, 0, 4));
-        $time_mid = bin2hex(substr($randomString, 4, 2));
-        $time_hi_and_version = bin2hex(substr($randomString, 6, 2));
-        $clock_seq_hi_and_reserved = bin2hex(substr($randomString, 8, 2));
-        $node = bin2hex(substr($randomString, 10, 6));
-        $time_hi_and_version = hexdec($time_hi_and_version) >> 4 | 0x4000;
-        $clock_seq_hi_and_reserved = hexdec($clock_seq_hi_and_reserved) >> 2 | 0x8000;
-        return sprintf(
-            '%08s-%04s-%04x-%04x-%012s',
-            $time_low,
-            $time_mid,
-            $time_hi_and_version,
-            $clock_seq_hi_and_reserved,
-            $node
-        );
+        return (string) Str::uuid();
     }
 
     // Generate a random string based on type
@@ -223,6 +197,75 @@ class XUIService
         return 'vmess://' . base64_encode(json_encode($link, JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT));
     }
 
+    public function addInboundAccount($server_id, $client_id, $inbound_id, $expiryTime, $remark, $volume, $limitip = 1, $planId = null)
+    {
+        $server = Server::findOrFail($server_id);
+        $volume = ($volume == 0) ? 0 : floor($volume * 1073741824);
+        $subId = $this->generateUID();
+
+        $newClient = [
+            "id"         => $client_id,
+            "enable"     => true,
+            "email"      => $remark,
+            "limitIp"    => $limitip,
+            "totalGB"    => $volume,
+            "expiryTime" => $expiryTime,
+            "subId"      => $subId,
+        ];
+
+        if (($server->type == "sanaei" || $server->type == "alireza") && $server->reality == "true") {
+            $plan = ServerPlan::find($planId);
+            $flow = isset($plan->flow) && $plan->flow != "None" ? $plan->flow : "";
+            $newClient['flow'] = $flow;
+        }
+
+        $settings = json_encode(["clients" => [$newClient]]);
+
+        $dataArr = [
+            'id' => $inbound_id,
+            'settings' => $settings
+        ];
+
+        $url = rtrim($this->baseUrl, '/') . '/panel/api/inbounds/addClient';
+        $response = $this->executeCurlRequest($url, $this->token, $dataArr);
+        $parsed = json_decode($response, true);
+
+        if (!empty($parsed['success'])) {
+            $inbounds = $this->getInbounds($server_id);
+
+            foreach ($inbounds as $inbound) {
+                if ($inbound->id == $inbound_id) {
+                    $clients = json_decode($inbound->settings ?? '{}', true)['clients'] ?? [];
+                    foreach ($clients as $client) {
+                        if (($client['id'] ?? null) === $client_id || ($client['email'] ?? '') === $remark) {
+                            $localInbound = ServerInbound::where('server_id', $server_id)
+                                ->where('port', $inbound->port)
+                                ->first();
+
+                            if ($localInbound) {
+                                $clientArray = is_array($client) ? $client : (array) $client;
+
+                                $link = \App\Models\ServerClient::buildXuiClientLink($clientArray, $localInbound, $server);
+                                $subLink = $server->getPanelBase() . "/sub_proxy/{$subId}";
+                                $jsonLink = $server->getPanelBase() . "/json_proxy/{$subId}";
+
+                                return [
+                                    ...$clientArray,
+                                    'subId' => $subId,
+                                    'link' => $link,
+                                    'sub_link' => $subLink,
+                                    'json_link' => $jsonLink,
+                                ];
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        return $parsed;
+    }
+
     public function getDefaultInboundId()
     {
         $response = $this->httpClient->get('panel/api/inbounds/list', [
@@ -245,41 +288,7 @@ class XUIService
         throw new \Exception("Default inbound not found.");
     }
 
-    // Add an inbound account by updating the inbound's clients settings
-    public function addInboundAccount($server_id, $client_id, $inbound_id, $expiryTime, $remark, $volume, $limitip = 1, $planId = null)
-    {
-        $server = Server::findOrFail($server_id);
-        $volume = ($volume == 0) ? 0 : floor($volume * 1073741824);
 
-        $newClient = [
-            "id"         => $client_id,
-            "enable"     => true,
-            "email"      => $remark,
-            "limitIp"    => $limitip,
-            "totalGB"    => $volume,
-            "expiryTime" => $expiryTime,
-            "subId"      => $this->generateUID(),
-        ];
-
-        if (($server->type == "sanaei" || $server->type == "alireza") && $server->reality == "true") {
-            $plan = ServerPlan::find($planId);
-            $flow = isset($plan->flow) && $plan->flow != "None" ? $plan->flow : "";
-            $newClient['flow'] = $flow;
-        }
-
-        $settings = json_encode(["clients" => [$newClient]]);
-
-        $dataArr = [
-            'id' => $inbound_id,
-            'settings' => $settings
-        ];
-
-        $url = rtrim($this->baseUrl, '/') . '/panel/api/inbounds/addClient';
-
-        $response = $this->executeCurlRequest($url, $this->token, $dataArr);
-
-        return json_decode($response, true);
-    }
 
     // Edit an inbound by matching a client's UUID/password
     public function editInbound($server_id, $uniqid, $uuid, $protocol, $netType = 'tcp', $security = 'none', $bypass = false)
