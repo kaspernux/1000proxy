@@ -1,7 +1,6 @@
 <div align="center">
-  <img src="{{ asset('images/1000proxy.png') }}" width="400" alt="Laravel Logo">
+  <img src="/images/1000proxy.png" width="400" alt="1000Proxy Logo">
 </div>
-
 
 <h1 align="center">1000Proxy - XUI-Based Proxy Client Sales Platform</h1>
 
