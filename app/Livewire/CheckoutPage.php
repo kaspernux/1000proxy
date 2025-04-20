@@ -124,7 +124,10 @@ class CheckoutPage extends Component
                 ]);
 
                 $invoice->update(['invoice_url' => $redirect_url]);
-                $order->markAsPaid($redirect_url);   
+                $order->markAsPaid($redirect_url); 
+                
+                // ✅ Wallet payment succeeded, now create clients
+                $this->processXui($order);
             }
 
             elseif ($paymentMethod->slug === 'stripe') {
@@ -143,6 +146,9 @@ class CheckoutPage extends Component
                     'mode' => 'payment',
                     'success_url' => route('success', ['order' => $order->id]),
                     'cancel_url' => route('cancel', ['order' => $order->id]),
+                    'metadata' => [ 
+                        'order_id' => $order->id,
+                    ],
                 ]);
                 $redirect_url = $session->url;
 
@@ -175,8 +181,6 @@ class CheckoutPage extends Component
                     throw new \Exception('Failed to create NowPayments invoice.');
                 }
             }
-            // ✅ Now trigger XUI
-            $this->processXui($order);
 
             DB::commit();
             CartManagement::clearCartItems();
@@ -202,81 +206,75 @@ class CheckoutPage extends Component
             $xuiService = new XUIService($plan->server_id);
             $inbound_id = $xuiService->getDefaultInboundId();
 
-            // ✅ Step 1: Create client remotely
-            $client = $xuiService->addInboundAccount(
-                $plan->server_id,
-                $xuiService->generateUID(),
-                $inbound_id,
-                now()->addDays($plan->days)->timestamp * 1000,
-                (Str::uuid()) . ' - ' . $plan->name . ' #ID ' . $order->customer_id,
-                $plan->volume,
-                1,
-                $plan->id
-            );
+            for ($i = 0; $i < $item->quantity; $i++) { // 🔥 Loop by quantity
+                // ✅ Step 1: Create client remotely
+                $client = $xuiService->addInboundAccount(
+                    $plan->server_id,
+                    $xuiService->generateUID(),
+                    $inbound_id,
+                    now()->addDays($plan->days)->timestamp * 1000,
+                    (Str::uuid()) . ' - ' . $plan->name . ' #ID ' . $order->customer_id,
+                    $plan->volume,
+                    1,
+                    $plan->id
+                );
 
-            if (!$client || isset($client['error'])) {
-                throw new \Exception("XUI Inbound creation failed: " . json_encode($client));
-            }
-
-            // ✅ Step 2: Save local ServerClient directly from response
-            try {
-                $remoteInbound = collect($xuiService->getInbounds($plan->server_id))
-                    ->firstWhere('id', $inbound_id);
-
-                if (!$remoteInbound) {
-                    throw new \Exception("Remote inbound ID {$inbound_id} not found after client creation.");
+                if (!$client || isset($client['error'])) {
+                    throw new \Exception("XUI Inbound creation failed: " . json_encode($client));
                 }
 
-                $localInbound = ServerInbound::updateOrCreate([
-                    'server_id' => $plan->server_id,
-                    'port' => $remoteInbound->port,
-                ], [
-                    'protocol' => $remoteInbound->protocol,
-                    'remark' => $remoteInbound->remark ?? '',
-                    'enable' => $remoteInbound->enable ?? true,
-                    'expiryTime' => isset($remoteInbound->expiryTime)
-                        ? now()->createFromTimestampMs($remoteInbound->expiryTime)
-                        : null,
-                    'settings' => is_string($remoteInbound->settings)
-                        ? json_decode($remoteInbound->settings, true)
-                        : $remoteInbound->settings,
-                    'streamSettings' => is_string($remoteInbound->streamSettings)
-                        ? json_decode($remoteInbound->streamSettings, true)
-                        : $remoteInbound->streamSettings,
-                    'sniffing' => is_string($remoteInbound->sniffing)
-                        ? json_decode($remoteInbound->sniffing, true)
-                        : $remoteInbound->sniffing,
-                    'up' => $remoteInbound->up ?? 0,
-                    'down' => $remoteInbound->down ?? 0,
-                    'total' => $remoteInbound->total ?? 0,
-                ]);
+                try {
+                    $remoteInbound = collect($xuiService->getInbounds($plan->server_id))
+                        ->firstWhere('id', $inbound_id);
 
-                $localInbound->loadMissing('server');
+                    if (!$remoteInbound) {
+                        throw new \Exception("Remote inbound ID {$inbound_id} not found after client creation.");
+                    }
 
+                    $localInbound = ServerInbound::updateOrCreate([
+                        'server_id' => $plan->server_id,
+                        'port' => $remoteInbound->port,
+                    ], [
+                        'protocol' => $remoteInbound->protocol,
+                        'remark' => $remoteInbound->remark ?? '',
+                        'enable' => $remoteInbound->enable ?? true,
+                        'expiryTime' => isset($remoteInbound->expiryTime)
+                            ? now()->createFromTimestampMs($remoteInbound->expiryTime)
+                            : null,
+                        'settings' => is_string($remoteInbound->settings)
+                            ? json_decode($remoteInbound->settings, true)
+                            : $remoteInbound->settings,
+                        'streamSettings' => is_string($remoteInbound->streamSettings)
+                            ? json_decode($remoteInbound->streamSettings, true)
+                            : $remoteInbound->streamSettings,
+                        'sniffing' => is_string($remoteInbound->sniffing)
+                            ? json_decode($remoteInbound->sniffing, true)
+                            : $remoteInbound->sniffing,
+                        'up' => $remoteInbound->up ?? 0,
+                        'down' => $remoteInbound->down ?? 0,
+                        'total' => $remoteInbound->total ?? 0,
+                    ]);
 
-                if ($localInbound) {
                     $localInbound->loadMissing('server');
 
                     $clientModel = ServerClient::fromRemoteClient(
                         (array)$client,
                         $localInbound->id,
-                        $client['link'] ?? $client['sub_link'] ?? $client['json_link'] ?? null 
+                        $client['link'] ?? $client['sub_link'] ?? $client['json_link'] ?? null
                     );
 
                     $clientModel->update(['plan_id' => $plan->id]);
 
-                    Log::info("✅ Created ServerClient from direct XUI client for Order #{$order->id}");
-                } else {
-                    Log::warning("⚠️ No matching local inbound found immediately for Order #{$order->id}");
+                    Log::info("✅ Created ServerClient for Order #{$order->id}");
+                } catch (\Throwable $e) {
+                    Log::warning("⚠️ Failed direct ServerClient creation after XUI account creation", [
+                        'order_id' => $order->id,
+                        'error' => $e->getMessage(),
+                    ]);
                 }
-            } catch (\Throwable $e) {
-                Log::warning("⚠️ Failed direct ServerClient creation after addInboundAccount", [
-                    'order_id' => $order->id,
-                    'error' => $e->getMessage(),
-                ]);
             }
 
-            // ✅ Step 3: Fallback sync of all inbounds + clients
+            // ✅ Step 2: Fallback (sync all inbounds, retry missing clients)
             $remoteInbounds = $xuiService->getInbounds($plan->server_id);
             foreach ($remoteInbounds as $inbound) {
                 $localInbound = ServerInbound::updateOrCreate([
@@ -299,28 +297,27 @@ class CheckoutPage extends Component
 
                 $clients = (array) ($inbound->settings['clients'] ?? []);
                 foreach ($clients as $remoteClient) {
-                    if (($remoteClient['email'] ?? null) === $plan->name . ' - Client ID ' . $order->customer_id) {
-                        try {
-                            $clientModel = ServerClient::fromRemoteClient(
-                                (array)$remoteClient,
-                                $localInbound->id,
-                                $remoteClient['sub_link'] ?? null
-                            );
+                    try {
+                        $clientModel = ServerClient::fromRemoteClient(
+                            (array)$remoteClient,
+                            $localInbound->id,
+                            $remoteClient['sub_link'] ?? null
+                        );
 
-                            $clientModel->update(['plan_id' => $plan->id]);
-                            Log::info("✅ Fallback synced client {$clientModel->email} for Order #{$order->id}");
-                        } catch (\Throwable $e) {
-                            Log::warning("⚠️ Skipped client creation (fallback) for Order #{$order->id}", [
-                                'client_email' => $remoteClient['email'] ?? 'N/A',
-                                'error' => $e->getMessage(),
-                            ]);
-                        }
+                        $clientModel->update(['plan_id' => $plan->id]);
+
+                        Log::info("✅ Fallback synced ServerClient {$clientModel->email} for Order #{$order->id}");
+                    } catch (\Throwable $e) {
+                        Log::warning("⚠️ Skipped fallback client creation for Order #{$order->id}", [
+                            'client_email' => $remoteClient['email'] ?? 'N/A',
+                            'error' => $e->getMessage(),
+                        ]);
                     }
                 }
             }
         }
 
-        // ✅ Mark order as completed after all clients synced
+        // ✅ After processing all items
         $order->markAsCompleted();
     }
 

@@ -10,7 +10,7 @@ use Illuminate\Support\Facades\Log;
 
 class NowPaymentsWebhookController extends Controller
 {
-    public function handle(Request $request)
+    public function __invoke(Request $request)
     {
         Log::info('NowPayments Webhook Received', $request->all());
 
@@ -18,43 +18,25 @@ class NowPaymentsWebhookController extends Controller
         $orderId = $request->input('order_id');
 
         if (!$orderId || !$paymentStatus) {
-            return response()->json(['error' => 'Missing required fields'], 422);
-        }
-
-        $order = Order::find($orderId);
-
-        if (! $order) {
-            return response()->json(['error' => 'Order not found'], 404);
-        }
-
-        if ($paymentStatus === 'finished' || $paymentStatus === 'confirmed') {
-            $order->markAsPaid($order->payment_invoice_url);
-            dispatch(new ProcessXuiOrder($order->load('items.serverPlan')));        }
-
-        return response()->json(['message' => 'Webhook processed'], 200);
-    }
-
-    public function __invoke(Request $request)
-    {
-        Log::info('NowPayments Webhook Received', $request->all());
-
-        $paymentStatus = $request->input('payment_status');
-        $orderId = $request->input('order_id'); // make sure this is sent by you in metadata
-
-        if (!$orderId || !in_array($paymentStatus, ['finished', 'confirmed'])) {
-            return response()->json(['status' => 'ignored'], 400);
+            Log::error('NowPayments webhook missing required fields.');
+            return response('Missing fields', 422);
         }
 
         $order = Order::find($orderId);
 
         if (!$order) {
-            return response()->json(['status' => 'order not found'], 404);
+            Log::error('NowPayments webhook Order not found.', ['order_id' => $orderId]);
+            return response('Order not found', 404);
         }
 
-        if ($order->payment_status !== 'paid') {
-            $order->markAsPaid($order->payment_invoice_url);
-            dispatch(new ProcessXuiOrder($order->load('items.serverPlan')));        }
+        if (in_array($paymentStatus, ['finished', 'confirmed']) && $order) {
+            \App\Services\OrderService::payAndProcessClients($order);
 
-        return response()->json(['status' => 'ok']);
+            Log::info('✅ NowPayments: Order marked paid and client creation job dispatched.', ['order_id' => $order->id]);
+        } else {
+            Log::info('NowPayments webhook ignored.', ['order_id' => $orderId, 'payment_status' => $paymentStatus]);
+        }
+
+        return response('Webhook Handled', 200);
     }
 }

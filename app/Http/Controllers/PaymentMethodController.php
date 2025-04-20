@@ -111,24 +111,49 @@ class PaymentMethodController extends Controller
             if ($order) {
                 switch ($status) {
                     case 'finished':
-                        $order->update(['payment_status' => 'completed', 'order_status' => 'processed']);
+                        $order->update([
+                            'payment_status' => 'paid',   // ✅ Mark as paid
+                            'order_status' => 'completed', // ✅ Mark as completed
+                        ]);
+
+                        // ✅ Now trigger client creation after payment success
+                        try {
+                            $checkoutPage = new \App\Livewire\CheckoutPage();
+                            $checkoutPage->processXui($order);
+
+                            \Log::info('✅ Clients created successfully after payment for Order #' . $order->id);
+                        } catch (\Throwable $e) {
+                            \Log::error('❌ Failed to process XUI after payment success for Order #' . $order->id, [
+                                'error' => $e->getMessage(),
+                            ]);
+                        }
+
                         break;
+
                     case 'failed':
-                        $order->update(['payment_status' => 'failed', 'order_status' => 'canceled']);
+                        $order->update([
+                            'payment_status' => 'failed',
+                            'order_status' => 'canceled',
+                        ]);
                         break;
+
                     case 'partially_paid':
-                        $order->update(['payment_status' => 'partially_paid', 'order_status' => 'pending']);
+                        $order->update([
+                            'payment_status' => 'partially_paid',
+                            'order_status' => 'pending',
+                        ]);
                         break;
+
                     default:
-                        Log::info('Unhandled payment status: ' . $status);
+                        Log::info('Unhandled payment status from NowPayments: ' . $status);
                         break;
                 }
-                Log::info('Order updated:', $order->toArray());
+                Log::info('Order updated from NowPayments webhook:', $order->toArray());
             } else {
-                Log::error('Order not found: ' . $order_id);
+                Log::error('Order not found from NowPayments webhook: ' . $order_id);
             }
         } else {
-            Log::error('Invalid webhook data: ', $data);
+            Log::error('Invalid webhook data received from NowPayments:', $data);
         }
     }
 
