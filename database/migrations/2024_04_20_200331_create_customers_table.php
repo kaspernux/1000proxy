@@ -21,7 +21,6 @@ return new class extends Migration
             $table->string('password');
             $table->string('tgId')->nullable();
             $table->string('refcode', 50)->nullable();
-            $table->decimal('wallet', 10, 2)->default(0);
             $table->string('date', 50)->nullable();
             $table->string('phone', 15)->nullable();
             $table->unsignedBigInteger('refered_by')->nullable();
@@ -33,7 +32,7 @@ return new class extends Migration
             $table->string('discount_percent', 1000)->nullable();
             $table->dateTime('agent_date')->nullable();
             $table->string('spam_info', 500)->nullable();
-            $table->string('email_verified_at', 500)->nullable();
+            $table->timestamp('email_verified_at')->nullable();
             $table->rememberToken();
             $table->timestamps();
             });

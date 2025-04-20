@@ -12,13 +12,21 @@
                         <div class="flex items-start justify-start flex-shrink-0">
                             <div class="flex items-center justify-center w-full pb-6 space-x-4 md:justify-start">
                                 <div class="flex flex-col items-start justify-start space-y-2">
+                                    <p class="text-sm leading-4 text-gray-600 dark:text-gray-400">
+                                        Invoice #{{ $order->invoice?->id ?? 'N/A' }}
+                                    </p>
                                     <p class="text-lg font-semibold leading-4 text-left text-gray-800 dark:text-gray-400">
-                                        {{$order->customer->name}}</p>
-                                    <p class="text-sm leading-4 text-gray-600 dark:text-gray-400">Invoice #{{$order->invoice->id}}</p>
-                                    <p class="text-sm leading-4 cursor-pointer dark:text-gray-400">Email: {{$order->customer->email}}</p>
-                                    <p class="text-sm leading-4 cursor-pointer dark:text-gray-400">Telegram ID: {{$order->customer->telegram_id}}</p>
-                                    <p class="text-sm leading-4 text-gray-600 dark:text-gray-400">Is affiliated:
-                                                                            {{$order->customer->is_agent ? 'true' : 'false'}}</p>
+                                        {{ $order->customer?->name ?? 'Customer' }}
+                                    </p>
+                                    <p class="text-sm leading-4 cursor-pointer dark:text-gray-400">
+                                        Email: {{ $order->customer?->email ?? 'N/A' }}
+                                    </p>
+                                    <p class="text-sm leading-4 cursor-pointer dark:text-gray-400">
+                                        Telegram ID: {{ $order->customer?->telegram_id ?? 'N/A' }}
+                                    </p>
+                                    <p class="text-sm leading-4 text-gray-600 dark:text-gray-400">
+                                        Is affiliated: {{ $order->customer?->is_agent ? 'true' : 'false' }}
+                                    </p>                                                                            {{$order->customer->is_agent ? 'true' : 'false'}}</p>
                                 </div>
                             </div>
                         </div>
@@ -46,7 +54,7 @@
                             <p class="mb-2 text-sm leading-5 text-gray-600 dark:text-gray-400 ">
                                 Payment Method: </p>
                             <p class="text-base font-semibold leading-4 text-gray-800 dark:text-gray-400">
-                                {{$order->payment_method == '1' ? 'Wallet' : ($order->payment_method == '2' ? 'Card' : ($order->payment_method == '3' ? 'NowPayments' : 'Others'))}}
+                                {{ $order->paymentMethod?->name ?? 'N/A' }}
                             </p>
                         </div>
                     </div>

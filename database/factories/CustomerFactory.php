@@ -26,7 +26,6 @@ class CustomerFactory extends Factory
             'password' => Hash::make('password'),
             'tgId' => $this->faker->randomNumber(9),
             'refcode' => Str::random(10),
-            'wallet' => $this->faker->randomFloat(2, 0, 1000),
             'date' => $this->faker->date(),
             'phone' => $this->faker->numerify('##########'), // Generate a 10-digit number without formatting characters
             'refered_by' => null,
@@ -39,7 +38,8 @@ class CustomerFactory extends Factory
             'agent_date' => $this->faker->dateTime()->format('Y-m-d H:i:s'),
             'spam_info' => $this->faker->text(),
         ];
-    }
+
+        $customer->getDefaultWallet()?->deposit(rand(10000, 50000) / 100, 'seed_wallet_' . Str::random(8));    }
 
     /**
      * Indicate that the model's email address should be unverified.

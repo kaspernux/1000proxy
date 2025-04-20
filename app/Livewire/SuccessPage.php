@@ -8,6 +8,7 @@ use App\Models\Order;
 use Illuminate\Support\Facades\Http;
 use Stripe\Stripe;
 use Stripe\Checkout\Session;
+use App\Jobs\ProcessXuiOrder;
 
 #[Title('Success - 1000 PROXIES')]
 class SuccessPage extends Component
@@ -20,28 +21,34 @@ class SuccessPage extends Component
 
     public function render()
     {
-        $latest_order = Order::with('invoice')->where('customer_id', auth()->user()->id)->latest()->first();
+        $latest_order = Order::with(['invoice', 'paymentMethod', 'customer'])->where('customer_id', auth()->user()->id)->latest()->first();
+        if (!$latest_order || !$latest_order->paymentMethod) {
+            return redirect()->route('cancel');
+        }
 
-        if ($this->session_id) {
+        $slug = $latest_order->paymentMethod->slug;
+
+        if ($slug === 'stripe' && $this->session_id) {
             Stripe::setApiKey(env('STRIPE_SECRET'));
             $session_info = Session::retrieve($this->session_id);
 
-            if ($session_info->payment_status != 'paid') {
+            if ($session_info->payment_status !== 'paid') {
                 $latest_order->payment_status = 'failed';
                 $latest_order->save();
                 return redirect()->route('cancel');
-            } else if ($session_info->payment_status == 'paid') {
-                $latest_order->payment_status = 'paid';
-                $latest_order->save();
             }
-        } elseif ($latest_order->payment_method == 2) {
-            // Call the controller method to get payment status
+
+            $latest_order->payment_status = 'paid';
+            $latest_order->save();
+        }
+
+        elseif ($slug === 'nowpayments') {
             $response = Http::get(route('payment.status', ['orderId' => $latest_order->id]));
 
             if ($response->successful()) {
                 $payment_status = $response->json('payment_status');
 
-                if ($payment_status == 'finished') {
+                if ($payment_status === 'finished') {
                     $latest_order->payment_status = 'paid';
                     $latest_order->save();
                 } else {
@@ -54,9 +61,24 @@ class SuccessPage extends Component
                 $latest_order->save();
                 return redirect()->route('cancel');
             }
-        } elseif ($latest_order->payment_method == 1) {
+        }
+
+        elseif ($slug === 'wallet') {
+            $customer = auth()->user();
+
+            if ($customer->deductFromWallet($latest_order->total)) {
+                $latest_order->payment_status = 'paid';
+                $latest_order->save();
+            } else {
+                return redirect()->route('wallet.insufficient');
+            }
+        }
+
+        if ($latest_order->payment_status !== 'paid') {
             $latest_order->payment_status = 'paid';
             $latest_order->save();
+
+            ProcessXuiOrder::dispatchWithDependencies($order);
         }
 
         return view('livewire.success-page', [

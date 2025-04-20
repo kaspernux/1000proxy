@@ -27,7 +27,7 @@ class PaymentMethodSeeder extends Seeder
                 'slug' => Str::slug('NowPayments'),
                 'type' => 'nowpayments',
                 'notes' => 'Crypto payment gateway supporting multiple cryptocurrencies.',
-                'image' => 'payment_methods/bitcoin.svg',
+                'image' => 'payment_methods/nowpayments.svg',
                 'is_active' => true,
             ],
             [

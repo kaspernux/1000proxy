@@ -1,6 +1,10 @@
 <div
     class="w-full bg-gradient-to-r from-green-900 to-green-600 container max-w-auto py-10 px-4 sm:px-6 lg:px-8 mx-auto">
     <div class="container mx-auto px-4 max-w-7xl">
+
+        {{-- Livewire Alerts --}}
+        <x-livewire-alert::scripts />
+
         @if (session()->has('success'))
         <div class="bg-green-500 text-white p-3 rounded mb-4">
             {{ session('success') }}
@@ -59,7 +63,12 @@
                                     id="email" type="text" wire:model="email" disabled>
                                 </input>
                                 @error('email')
-                                <div class="text-red-600 text-sm">{{$message}}</div>
+                                    <div class="relative">
+                                    <input class="... pr-10 border-red-600" ... />
+                                    <span class="absolute right-2 top-2 text-red-500">
+                                        <x-heroicon-o-exclamation-circle class="w-5 h-5"/>
+                                    </span>
+                                    </div>
                                 @enderror
                             </div>
                             <div class="mt-4">
@@ -88,36 +97,66 @@
                             </div>
                         </div>
 
+                        {{-- Payment Method Selection --}}
+
                         <div class="text-lg font-semibold mb-4">
                             Select Payment Method
                         </div>
+
                         <ul class="grid w-full gap-6 md:grid-cols-2">
-                            @foreach($payment_methods->where('is_active', true) as $paymentMethod)
-                            <li>
-                                <input wire:model='selectedPaymentMethod' class="hidden peer" id="{{ $paymentMethod->id }}" type="radio"
-                                    value="{{ $paymentMethod->id }}" />
-                                <label
-                                    class="inline-flex items-center justify-between w-full p-5 text-gray-500 bg-white border border-gray-200 rounded-lg cursor-pointer dark:hover:text-gray-300 dark:border-gray-700 dark:peer-checked:text-blue-500 peer-checked:border-blue-600 peer-checked:text-blue-600 hover:text-gray-600 hover:bg-gray-100 dark:text-gray-400 dark:bg-gray-800 dark:hover:bg-gray-700"
-                                    for="{{ $paymentMethod->id }}">
-                                    <div class="block">
-                                        <div class="w-full text-lg font-semibold flex items-center">
-                                            <img src="{{ url('storage/' . $paymentMethod->image) }}" alt="{{ $paymentMethod->name }} logo"
-                                                class="w-8 h-8 mr-6 mx-3" />
-                                            {{ $paymentMethod->name }}
+                            @foreach($payment_methods as $paymentMethod)
+                                <li>
+                                    <input
+                                        type="radio"
+                                        id="{{ $paymentMethod->slug }}"
+                                        name="selectedPaymentMethod"
+                                        wire:model="selectedPaymentMethod"
+                                        value="{{ $paymentMethod->slug }}"
+                                        class="hidden peer"
+                                        @if(!$paymentMethod->is_active) disabled @endif
+                                    />
+
+                                    <label
+                                        for="{{ $paymentMethod->slug }}"
+                                        class="inline-flex items-center justify-between w-full p-5 text-gray-500 bg-white border border-gray-200 rounded-lg cursor-pointer
+                                            peer-checked:border-blue-600 peer-checked:text-blue-600 peer-checked:font-bold
+                                            hover:text-gray-600 hover:bg-gray-100
+                                            dark:text-gray-400 dark:bg-gray-800 dark:border-gray-700
+                                            dark:peer-checked:text-blue-400 dark:hover:bg-gray-700
+                                            transition duration-150 ease-in-out
+                                            @if(!$paymentMethod->is_active) opacity-50 cursor-not-allowed pointer-events-none @endif"
+                                    >
+                                        <div class="block">
+                                            <div class="w-full text-lg font-semibold flex items-center">
+                                                <img
+                                                    src="{{ url('storage/' . $paymentMethod->image) }}"
+                                                    alt="{{ $paymentMethod->name }} logo"
+                                                    class="w-8 h-8 mr-4"
+                                                />
+                                                {{ $paymentMethod->name }}
+                                            </div>
+                                            @if(!$paymentMethod->is_active)
+                                                <p class="text-sm text-red-500 mt-1">Currently unavailable</p>
+                                            @endif
                                         </div>
-                                    </div>
-                                    <svg aria-hidden="true" class="w-5 h-5 ms-3 rtl:rotate-180" fill="none" viewBox="0 0 14 10"
-                                        xmlns="http://www.w3.org/2000/svg">
-                                        <path d="M1 5h12m0 0L9 1m4 4L9 9" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"
-                                            stroke-width="2"></path>
-                                    </svg>
-                                </label>
-                            </li>
+
+                                        @if($paymentMethod->is_active)
+                                        <svg aria-hidden="true" class="w-5 h-5 ms-3 rtl:rotate-180" fill="none" viewBox="0 0 14 10"
+                                            xmlns="http://www.w3.org/2000/svg">
+                                            <path d="M1 5h12m0 0L9 1m4 4L9 9"
+                                                stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path>
+                                        </svg>
+                                        @endif
+                                    </label>
+                                </li>
                             @endforeach
                         </ul>
+
+
                         @error('selectedPaymentMethod')
-                        <div class="text-red-600 text-sm">{{$message}}</div>
+                            <div class="text-red-600 text-sm mt-2">{{ $message }}</div>
                         @enderror
+
                     </div>
                 </div>
                 <div class="md:col-span-12 lg:col-span-4 col-span-12">
@@ -133,22 +172,6 @@
                                 {{ Number::currency($grand_amount ?? 0) }}
                             </span>
                         </div>
-                        <div class="flex justify-between mb-2 font-bold">
-                            <span>
-                                Taxes
-                            </span>
-                            <span>
-                                {{ Number::currency(0) }}
-                            </span>
-                        </div>
-                        <div class="flex justify-between mb-2 font-bold">
-                            <span>
-                                Shipping Cost
-                            </span>
-                            <span>
-                                {{ Number::currency(0) }}
-                            </span>
-                        </div>
                         <hr class="bg-slate-400 my-4 h-1 rounded">
                         <div class="flex justify-between mb-2 font-bold">
                             <span>
@@ -161,7 +184,7 @@
                         </hr>
                     </div>
 
-                    <button
+                    <button wire:loading.attr="disabled"
                         class="bg-yellow-600 hover:bg-green-400 text-white mt-4 w-full p-3 text-lg font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline"
                         type="submit">
                         <span wire:loading.remove>Place Order</span>

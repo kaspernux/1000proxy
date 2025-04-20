@@ -36,13 +36,17 @@ class LatestOrders extends BaseWidget
                         'processing' => 'warning',
                         'completed' => 'success',
                         'failed' => 'danger',
+                        default => 'gray',
                     })
+
                     ->icon(fn (string $state): string => match ($state) {
                         'new' => 'heroicon-o-sparkles',
                         'processing' => 'heroicon-o-arrow-path',
                         'completed' => 'heroicon-o-check-badge',
                         'failed' => 'heroicon-o-eye',
+                        default => 'heroicon-o-question-mark-circle',
                     })
+
                     ->sortable(),
                 Tables\Columns\TextColumn::make('paymentMethod.name')
                     ->label('Payment Method')
@@ -53,11 +57,14 @@ class LatestOrders extends BaseWidget
                         'pending' => 'warning',
                         'paid' => 'success',
                         'failed' => 'danger',
+                        default => 'gray',
                     })
+
                     ->icon(fn (string $state): string => match ($state) {
                         'pending' => 'heroicon-o-exclamation-circle',
-                        'paid' => 'heroicon-o-check-circle',
+                        'paid' => 'heroicon-o-banknotes',
                         'failed' => 'heroicon-o-exclamation-triangle',
+                        default => 'heroicon-o-question-mark-circle',
                     })
                     ->sortable()
                     ->searchable(),

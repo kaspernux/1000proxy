@@ -220,50 +220,54 @@ class XUIService
         }
 
         $settings = json_encode(["clients" => [$newClient]]);
-
         $dataArr = [
             'id' => $inbound_id,
             'settings' => $settings
         ];
 
-        $url = rtrim($this->baseUrl, '/') . '/panel/api/inbounds/addClient';
+        $url = 'panel/api/inbounds/addClient';
         $response = $this->executeCurlRequest($url, $this->token, $dataArr);
         $parsed = json_decode($response, true);
 
-        if (!empty($parsed['success'])) {
-            $inbounds = $this->getInbounds($server_id);
-
-            foreach ($inbounds as $inbound) {
-                if ($inbound->id == $inbound_id) {
-                    $clients = json_decode($inbound->settings ?? '{}', true)['clients'] ?? [];
-                    foreach ($clients as $client) {
-                        if (($client['id'] ?? null) === $client_id || ($client['email'] ?? '') === $remark) {
-                            $localInbound = ServerInbound::where('server_id', $server_id)
-                                ->where('port', $inbound->port)
-                                ->first();
-
-                            if ($localInbound) {
-                                $clientArray = is_array($client) ? $client : (array) $client;
-
-                                $link = \App\Models\ServerClient::buildXuiClientLink($clientArray, $localInbound, $server);
-                                $subLink = $server->getPanelBase() . "/sub_proxy/{$subId}";
-                                $jsonLink = $server->getPanelBase() . "/json_proxy/{$subId}";
-
-                                return [
-                                    ...$clientArray,
-                                    'subId' => $subId,
-                                    'link' => $link,
-                                    'sub_link' => $subLink,
-                                    'json_link' => $jsonLink,
-                                ];
-                            }
-                        }
-                    }
-                }
-            }
+        if (empty($parsed['success'])) {
+            throw new Exception("XUI API error: " . json_encode($parsed));
         }
 
-        return $parsed;
+        sleep(1); // Allow remote server to process (optional but recommended)
+
+        $inbound = collect($this->getInbounds())->firstWhere('id', $inbound_id);
+        if (!$inbound) {
+            throw new Exception("Inbound ID {$inbound_id} not found after adding client.");
+        }
+
+        $clients = json_decode($inbound->settings, true)['clients'] ?? [];
+        $remoteClient = collect($clients)->firstWhere('id', $client_id);
+        if (!$remoteClient) {
+            throw new Exception("Client ID {$client_id} not found in remote inbound after creation.");
+        }
+
+        $localInbound = ServerInbound::updateOrCreate(
+            ['server_id' => $server_id, 'port' => $inbound->port],
+            [
+                'protocol' => $inbound->protocol,
+                'settings' => json_decode($inbound->settings, true),
+                'streamSettings' => json_decode($inbound->streamSettings, true),
+                'sniffing' => json_decode($inbound->sniffing, true),
+                'enable' => $inbound->enable,
+            ]
+        );
+
+        $link = \App\Models\ServerClient::buildXuiClientLink($remoteClient, $localInbound, $server);
+        $subLink = $server->getPanelBase() . "/sub_proxy/{$subId}";
+        $jsonLink = $server->getPanelBase() . "/json_proxy/{$subId}";
+
+        return [
+            ...$remoteClient,
+            'subId' => $subId,
+            'link' => $link,
+            'sub_link' => $subLink,
+            'json_link' => $jsonLink,
+        ];
     }
 
     public function getDefaultInboundId()

@@ -58,10 +58,7 @@ class CustomerResource extends Resource
                             Forms\Components\TextInput::make('refcode')
                                 ->required()
                                 ->maxLength(50),
-                            Forms\Components\TextInput::make('wallet')
-                                ->required()
-                                ->numeric()
-                                ->default(0),
+                            
                             Forms\Components\DateTimePicker::make('date')
                                 ->required()
                                 ->maxWidth(255),
@@ -140,10 +137,6 @@ class CustomerResource extends Resource
                 Tables\Columns\TextColumn::make('tgId')
                     ->searchable()
                     ->label('Telegram'),
-                Tables\Columns\TextColumn::make('wallet')
-                    ->label('Wallet')
-                    ->numeric()
-                    ->sortable(),
                 Tables\Columns\TextColumn::make('created_at')
                     ->dateTime()
                     ->sortable()

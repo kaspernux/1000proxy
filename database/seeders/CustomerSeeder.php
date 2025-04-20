@@ -4,6 +4,7 @@ namespace Database\Seeders;
 
 use App\Models\Customer;
 use Illuminate\Database\Seeder;
+use Illuminate\Support\Str;
 
 class CustomerSeeder extends Seeder
 {
@@ -14,15 +15,14 @@ class CustomerSeeder extends Seeder
     {
         Customer::factory()->count(20)->create();
 
-        Customer::factory()->create([
+        $customer = Customer::factory()->create([
             'is_active' => true,
             'image' => 'https://via.placeholder.com/640x480.png/00dd77?text=minima',
             'name' => 'Nook Codes',
             'email' => 'nook@1000proxy.bot',
-            'password' => bcrypt('Password'), // Use bcrypt to hash the password
+            'password' => bcrypt('Password'),
             'tgId' => '761184038',
             'refcode' => 'ucy6bU914w',
-            'wallet' => 5000.63,
             'date' => '1995-01-30',
             'phone' => '+15809581739',
             'refered_by' => null,
@@ -35,7 +35,11 @@ class CustomerSeeder extends Seeder
             'agent_date' => '2002-12-24 08:02:21',
             'spam_info' => 'Consectetur molestias praesentium ut quasi et cum ut.',
         ]);
+
+        // Deposit into wallet
+        $customer->getDefaultWallet()?->deposit(500.00, 'seed_wallet_' . Str::random(8));
     }
+
 
     // Use the CustomerFactory to create a specific customer
 
