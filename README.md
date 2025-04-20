@@ -1,6 +1,7 @@
 <div align="center">
-  <img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo">
+  <img src="{{ asset('images/1000proxy.png') }}" width="400" alt="Laravel Logo">
 </div>
+
 
 <h1 align="center">1000Proxy - XUI-Based Proxy Client Sales Platform</h1>
 
@@ -57,20 +58,6 @@
 - Scalable design supporting multiple XUI panels and thousands of clients
 
 ---
-
-# 🔧 Full Project Presentation
-
-1000Proxy is a complete Laravel-based crypto wallet and proxy client management system integrated with external XUI servers. It supports wallet top-ups via crypto (BTC, XMR, SOL), handles orders, creates clients on remote proxy servers, and provides an admin dashboard powered by Laravel Horizon for queue management.
-
-**Main Features:**
-- Crypto Wallets with automatic USD conversion
-- Stripe and NowPayments Payment Integration
-- Order Management linked with Proxy Client Generation
-- XUI Server (3X UI) Full API Automation
-- Queue Management with Laravel Horizon
-- Beautiful Admin Dashboard
-- Optimized for performance and production deployment
-- Full Vite, TailwindCSS integration
 
 ---
 
@@ -130,6 +117,10 @@ php artisan migrate
 # Set correct permissions
 sudo chown -R www-data:www-data storage bootstrap/cache
 sudo chmod -R 775 storage bootstrap/cache
+
+#Allow storage link
+cd /PATH/YOUR/PROJECT/
+php artisan storage:link
 ```
 
 ## 🚧 4. Configure Nginx
@@ -142,10 +133,9 @@ Paste the following configuration:
 
 ```nginx
 server {
-    listen 80;
-    server_name your_domain.com;
+    server_name YOUR_DOMAIN www.YOUR_DOMAIN;
 
-    root /var/www/1000proxy/public;
+    root /var/www/teranova/public;
     index index.php index.html index.htm;
 
     location / {
@@ -154,15 +144,31 @@ server {
 
     location ~ \.php$ {
         include snippets/fastcgi-php.conf;
-        fastcgi_pass unix:/run/php/php8.1-fpm.sock; # Adjust PHP version if needed
-        fastcgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name;
-        include fastcgi_params;
+        fastcgi_pass unix:/var/run/php/php8.2-fpm.sock;
     }
 
     location ~ /\.ht {
         deny all;
     }
+
+    listen 443 ssl; # managed by Certbot
+    ssl_certificate /etc/letsencrypt/live/YOUR_DOMAIN/fullchain.pem; # managed by Certbot
+    ssl_certificate_key /etc/letsencrypt/live/YOUR_DOMAIN/privkey.pem; # managed by Certbot
+    include /etc/letsencrypt/options-ssl-nginx.conf; # managed by Certbot
+    ssl_dhparam /etc/letsencrypt/ssl-dhparams.pem; # managed by Certbot
 }
+
+server {
+    if ($host = YOUR_DOMAIN) {
+        return 301 https://$host$request_uri;
+    } # managed by Certbot
+
+
+    listen 80;
+    server_name YOUR_DOMAIN www.YOUR_DOMAIN;
+    return 404; # managed by Certbot
+}
+
 ```
 
 ```bash
@@ -176,6 +182,7 @@ sudo systemctl reload nginx
 
 ```bash
 sudo certbot --nginx -d your_domain.com
+sudo certbot renew --dry-run
 ```
 
 ## 🛠️ 6. Configure Laravel Horizon
@@ -191,12 +198,12 @@ Paste:
 ```conf
 [program:horizon]
 process_name=%(program_name)s
-command=php /var/www/1000proxy/artisan horizon
+command=php /PATH/YOUR/PROJECT/artisan horizon
 autostart=true
 autorestart=true
 user=www-data
 redirect_stderr=true
-stdout_logfile=/var/www/1000proxy/storage/logs/horizon.log
+stdout_logfile=/PATH/YOUR/PROJECTstorage/logs/horizon.log
 stopwaitsecs=3600
 ```
 
@@ -284,6 +291,6 @@ sudo supervisorctl restart horizon
 
 ---
 
-<p align="center">🌍 Made with <span style="color:red;">&hearts;</span> for the 1000Proxy Project using Laravel Horizon
+<p align="center">🌍 Made with <span style="color:red;">&hearts;</span> for the 1000Proxy Project by Osimorph
 </p>
 
