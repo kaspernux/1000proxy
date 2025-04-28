@@ -14,10 +14,9 @@ class Topup extends Component
 
     public function mount($currency)
     {
-        // Validate currency immediately on mount
         $currency = strtolower($currency);
         if (!in_array($currency, ['btc', 'xmr', 'sol'])) {
-            abort(404, 'Unsupported currency');
+            abort(404, 'Unsupported currency.');
         }
 
         $this->currency = $currency;
@@ -26,7 +25,6 @@ class Topup extends Component
     protected function rules()
     {
         return [
-            'currency' => 'required|in:btc,xmr,sol',
             'amount' => 'required|numeric|min:0.00000001',
             'reference' => 'nullable|string|unique:wallet_transactions,reference',
         ];
@@ -36,21 +34,24 @@ class Topup extends Component
     {
         $this->validate();
 
-        if (empty($this->reference)) {
-            $this->reference = 'topup_' . strtoupper(Str::random(8));
-        }
+        $wallet = Auth::user()->wallet;
 
-        $wallet = Auth::user()->getWallet($this->currency);
+        $this->reference = $this->reference ?: 'topup_' . strtoupper(Str::random(10));
+
         $wallet->deposit($this->amount, $this->reference, [
-            'description' => "Top-Up via {$this->currency}",
+            'description' => 'Top-up using ' . strtoupper($this->currency),
         ]);
 
-        session()->flash('success', strtoupper($this->currency) . " wallet topped up successfully.");
-        $this->reset(['amount', 'reference']);
+        session()->flash('success', 'Deposit request submitted successfully.');
+        $this->reset('amount', 'reference');
+        $this->dispatch('submitEnded');
     }
 
     public function render()
     {
-        return view('livewire.topup');
+        return view('livewire.topup', [
+            'wallet' => Auth::guard('customer')->user()->wallet,
+        ]);
+
     }
 }

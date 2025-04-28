@@ -11,109 +11,227 @@ use Filament\Forms\Form;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
-use Filament\Forms\Components\Section;
+use Filament\Infolists\Components\Section;
+
 use Filament\Forms\Components\Group;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\SoftDeletingScope;
+use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Columns\IconColumn;
+use Filament\Forms\Components\Select;
+use Filament\Forms\Components\DatePicker;
+use Filament\Forms\Components\MarkdownEditor;
+use Filament\Forms\Components\Repeater;
+use Filament\Forms\Components\TextInput;
+use Filament\Forms\Components\Placeholder;
+use Filament\Forms\Components\Hidden;
+use Filament\Forms\Components\ToggleButtons;
+use Filament\Support\RawJs;
+use Illuminate\Support\Str;
+use Filament\Tables\Actions;
+use Filament\Tables\Actions\DeleteBulkAction;
+use Filament\Forms\Components\SelectColumn;
+use GuzzleHttp\Client;
+use Filament\Forms\Components\Toggle;
+use Filament\Forms\Components\FileUpload;
+use Filament\Forms\Components\Grid;
+use Filament\Forms\Components\Fieldset;
+use Filament\Forms\Components\Split;
+use Filament\Tables\Actions\Action;
+use Filament\Forms\Components\DateTimePicker;
+use Filament\Infolists\Infolist;
+use Filament\Infolists\Components\Tabs;
+use Filament\Infolists\Components\TextEntry;
+use Filament\Infolists\Components\LinkEntry;
+use Filament\Tables\Actions\CreateAction;
+use Filament\Tables\Actions\ViewAction;
+use Filament\Tables\Actions\EditAction;
+use Filament\Tables\Actions\DeleteAction;
+use Filament\Tables\Actions\ActionGroup;
+
+
 
 class DownloadableItemResource extends Resource
-    {
-    protected static ?string $model = DownloadableItem::class;
-
-    protected static ?string $navigationIcon = 'heroicon-o-arrow-down-tray';
-
-    protected static ?string $cluster = ProxyShop::class;
-
-    public static function getLabel(): string
-    {
-        return 'Downloadable Files';
-    }
+{
+    protected static ?string $model           = DownloadableItem::class;
+    protected static ?string $cluster         = ProxyShop::class;
+    protected static ?string $navigationLabel = 'Downloadable Files';
+    protected static ?string $navigationIcon  = 'heroicon-o-folder-arrow-down';
 
     public static function form(Form $form): Form
-        {
+    {
         return $form
+            // Make 1 column on small screens, 2 on large
+            ->columns([
+                'sm' => 1,
+                'lg' => 2,
+            ])
             ->schema([
-                Group::make([
-                    Section::make('Download Details')
-                        ->schema([
-                            Forms\Components\TextInput::make('server_id')
-                                ->required()
-                                ->numeric()
-                                ->columnSpan(1),
-                            Forms\Components\TextInput::make('file_url')
-                                ->required()
-                                ->maxLength(255)
-                                ->columnSpan(3),
-                        ])
-                        ->columns(4),
-                    Section::make('Limits and Expiration')
-                        ->schema([
-                            Forms\Components\TextInput::make('download_limit')
-                                ->numeric()
-                                ->columnSpan(2),
-                            Forms\Components\DateTimePicker::make('expiration_time')
-                                ->columnSpan(2),
-                        ])
-                        ->columns(4),
-                ])->columnSpanFull(),
-            ])->columns(4);
-        }
+                Grid::make(2)
+                    ->schema([
+                        // ── LEFT COLUMN ──
+                        Fieldset::make('General Information')
+                            ->label('Select which server this file belongs to, and give it a clear label.')
+                            ->schema([
+                                Select::make('server_id')
+                                    ->label('Server')
+                                    ->relationship('server', 'name')
+                                    ->searchable()
+                                    ->required()
+                                    ->helperText('Pick the server to which this file applies.')
+                                    ->hint('Must match an existing server record.')
+                                    ->hintIcon('heroicon-s-question-mark-circle'),
+
+                                TextInput::make('name')
+                                    ->label('File Label')
+                                    ->required()
+                                    ->maxLength(255)
+                                    ->helperText('A friendly name, e.g. “Configuration Pack #1”.')
+                                    ->placeholder('Enter a descriptive label…'),
+                            ])
+                            ->columns(1)
+                            ->columnSpan(1),
+
+                        // ── RIGHT COLUMN ──
+                        Fieldset::make('Upload & Availability')
+                            ->label('Upload your file and control how/when customers can download it.')
+                            ->schema([
+                                FileUpload::make('file_url')
+                                    ->label('File Upload')
+                                    ->disk('public')
+                                    ->directory('downloadables')
+                                    ->preserveFilenames()
+                                    ->required()
+                                    ->helperText('Max file size: 10MB. Allowed types: zip, pdf, txt.')
+                                    ->acceptedFileTypes(['application/zip', 'application/pdf', 'text/plain'])
+                                    ->maxSize(10240 /* KB */),
+
+                                Grid::make(['default' => 1, 'sm' => 2])
+                                    ->schema([
+                                        TextInput::make('download_limit')
+                                            ->label('Max Downloads')
+                                            ->numeric()
+                                            ->minValue(0)
+                                            ->helperText('0 = unlimited'),
+                                        DatePicker::make('expiration_time')
+                                            ->label('Expiration Date')
+                                            ->helperText('After this date, the file will no longer be downloadable.')
+                                            ->displayFormat('Y-m-d')
+                                            ->minDate(now()),
+                                    ]),
+
+                                ToggleButtons::make('is_active')
+                                    ->label('Active')
+                                    ->options([
+                                        1 => 'Enabled',
+                                        0 => 'Disabled',
+                                    ])
+                                    ->default(1)
+                                    ->helperText('Disable to hide this file from customers.'),
+                            ])
+                            ->columns(1)
+                            ->columnSpan(1),
+                    ]),
+            ]);
+    }
 
     public static function table(Table $table): Table
-        {
+    {
         return $table
             ->columns([
-                Tables\Columns\TextColumn::make('server_id')
-                    ->numeric()
+                TextColumn::make('id')
+                    ->label('ID')
                     ->sortable(),
-                Tables\Columns\TextColumn::make('file_url')
-                    ->searchable(),
-                Tables\Columns\TextColumn::make('download_limit')
-                    ->numeric()
+                TextColumn::make('file_url')
+                    ->label('File URL')
+                    ->url(fn (DownloadableItem $record) => $record->file_url)
+                    ->openUrlInNewTab()
+                    ->copyable(),
+                TextColumn::make('download_limit')
+                    ->label('Max Downloads')
                     ->sortable(),
-                Tables\Columns\TextColumn::make('expiration_time')
+                TextColumn::make('expiration_time')
+                    ->label('Expires At')
                     ->dateTime()
                     ->sortable(),
-                Tables\Columns\TextColumn::make('created_at')
-                    ->dateTime()
-                    ->sortable()
-                    ->toggleable(isToggledHiddenByDefault: true),
-                Tables\Columns\TextColumn::make('updated_at')
-                    ->dateTime()
-                    ->sortable()
-                    ->toggleable(isToggledHiddenByDefault: true),
-            ])
-            ->filters([
-                //
+                TextColumn::make('created_at')
+                    ->label('Added On')
+                    ->since()
+                    ->sortable(),
             ])
             ->actions([
-                Tables\Actions\ActionGroup::make([
-                    Tables\Actions\EditAction::make(),
-                    Tables\Actions\ViewAction::make(),
-                    Tables\Actions\DeleteAction::make(),
+                 ActionGroup::make([
+                    ViewAction::make(),
+                    EditAction::make(),
+                    DeleteAction::make(),
+                    Action::make('download')
+                        ->label('Download')
+                        ->icon('heroicon-o-cloud-arrow-down')
+                        ->url(fn (DownloadableItem $record) => $record->file_url)
+                        ->openUrlInNewTab(),
                 ]),
             ])
             ->bulkActions([
-                Tables\Actions\BulkActionGroup::make([
-                    Tables\Actions\DeleteBulkAction::make(),
-                ]),
-            ]);
-        }
+                DeleteBulkAction::make(),
+            ])
+            ->defaultSort('created_at', 'desc');
+    }
 
-    public static function getRelations(): array
-        {
-        return [
-            //
-        ];
-        }
+    public static function infolist(Infolist $infolist): Infolist
+    {
+        return $infolist
+            ->schema([
+                Tabs::make('File Details')->tabs([
+                    Tabs\Tab::make('Overview')
+                        ->icon('heroicon-o-document-text')
+                        ->schema([
+                            Section::make('File Information')
+                                ->columns(2)
+                                ->schema([
+                                    TextEntry::make('id')
+                                        ->label('ID'),
+                                    TextEntry::make('server.name')
+                                        ->label('Server'),
+                                    TextEntry::make('name')
+                                        ->label('Label'),
+                                    TextEntry::make('download_limit')
+                                        ->label('Max Downloads'),
+                                    TextEntry::make('expiration_time')
+                                        ->label('Expires At')
+                                        ->dateTime(),
+                                    TextEntry::make('created_at')
+                                        ->label('Added On')
+                                        ->since(),
+                                ]),
+                        ]),
+
+                    Tabs\Tab::make('Download')
+                        ->icon('heroicon-o-cloud-arrow-down')
+                        ->schema([
+                            Section::make()
+                                ->schema([
+                                    TextEntry::make('file_url')
+                                        ->label('Download File')
+                                        ->url(fn (DownloadableItem $record) => asset("storage/{$record->file_url}"))
+                                        ->openUrlInNewTab()
+                                        ->copyable()
+                                        // optionally add a hint with an icon:
+                                        ->hint('Click to download')
+                                        ->hintIcon('heroicon-o-cloud-arrow-down'),
+                                ]),
+                        ]),
+                ])->columnSpanFull(),
+            ]);
+    }
+
 
     public static function getPages(): array
-        {
+    {
         return [
-            'index' => Pages\ListDownloadableItems::route('/'),
+            'index'  => Pages\ListDownloadableItems::route('/'),
             'create' => Pages\CreateDownloadableItem::route('/create'),
-            'view' => Pages\ViewDownloadableItem::route('/{record}'),
-            'edit' => Pages\EditDownloadableItem::route('/{record}/edit'),
+            'view'   => Pages\ViewDownloadableItem::route('/{record}'),
+            'edit'   => Pages\EditDownloadableItem::route('/{record}/edit'),
         ];
-        }
     }
+}

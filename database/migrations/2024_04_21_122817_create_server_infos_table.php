@@ -17,7 +17,7 @@ class CreateServerInfosTable extends Migration
             $table->string('title');
             $table->integer('ucount')->default(0);
             $table->text('remark')->nullable();
-            $table->string('flag')->nullable();
+            $table->string('tag')->nullable();
             $table->boolean('active')->default(false);
             $table->enum('state', ['up', 'down', 'paused'])->default('up');
             $table->timestamps();

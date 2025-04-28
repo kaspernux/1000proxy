@@ -7,6 +7,9 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
+use Carbon\Carbon;
+use App\Models\DownloadableItem;
+use App\Models\ServerInfo;
 
 class Server extends Model
 {
@@ -114,7 +117,15 @@ class Server extends Model
         return ($this->getPanelPort() ?? 443) - 1;
     }
 
+    public function inbounds(): HasMany
+    {
+        return $this->hasMany(ServerInbound::class, 'server_id');
+    }
 
+    public function downloadableItems(): HasMany
+    {
+        return $this->hasMany(DownloadableItem::class, 'server_id');
+    }
 
     /* // Example method to get XUI parameters
     public function getXUIParameters()

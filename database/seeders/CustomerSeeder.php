@@ -4,17 +4,16 @@ namespace Database\Seeders;
 
 use App\Models\Customer;
 use Illuminate\Database\Seeder;
-use Illuminate\Support\Str;
+use Illuminate\Support\Facades\Hash;
 
 class CustomerSeeder extends Seeder
 {
-    /**
-     * Run the database seeds.
-     */
     public function run(): void
     {
+        // Create 20 random customers
         Customer::factory()->count(20)->create();
 
+        // Create the specific test customer
         $customer = Customer::factory()->create([
             'is_active' => true,
             'image' => 'https://via.placeholder.com/640x480.png/00dd77?text=minima',
@@ -36,11 +35,17 @@ class CustomerSeeder extends Seeder
             'spam_info' => 'Consectetur molestias praesentium ut quasi et cum ut.',
         ]);
 
-        // Deposit into wallet
-        $customer->getDefaultWallet()?->deposit(500.00, 'seed_wallet_' . Str::random(8));
+        // ✅ Retrieve the auto-created wallet
+        $wallet = $customer->wallet;
+
+        // ✅ Update balance manually if needed
+        $wallet->update([
+            'balance' => 1000.00,
+        ]);
+        
+        // ✅ Generate fresh deposit addresses and real QR codes
+        $wallet->generateDepositAddresses();
+
+        $this->command->info('✅ Test customer and wallet (with real QR codes) seeded successfully.');
     }
-
-
-    // Use the CustomerFactory to create a specific customer
-
 }

@@ -52,9 +52,12 @@ class Customer extends Authenticatable implements MustVerifyEmail
     protected static function booted()
     {
         static::created(function ($customer) {
-            Wallet::createCustomerWallet($customer->id, 'BTC', 'BTC', true);
-            Wallet::createCustomerWallet($customer->id, 'XMR', 'XMR');
-            Wallet::createCustomerWallet($customer->id, 'SOL', 'SOL');
+            $wallet = $customer->wallet()->create([
+                'balance' => 0,
+                'is_default' => true,
+            ]);
+
+            $wallet->generateDepositAddresses();
         });
     }
 
@@ -68,22 +71,57 @@ class Customer extends Authenticatable implements MustVerifyEmail
     public function clients() { return $this->hasMany(ServerClient::class); }
     public function traffics() { return $this->hasMany(ClientTraffic::class); }
 
-    public function wallets() { return $this->hasMany(Wallet::class); }
-
-    public function findOrCreateWallet($currency = 'BTC')
+    public function wallet()
     {
-        return $this->wallets()->firstOrCreate(['currency' => $currency]);
+        return $this->hasOne(Wallet::class);
     }
 
-    public function getWallet($currency)
+    public function getWallet(): Wallet
     {
-        return $this->wallets()->firstOrCreate(['currency' => $currency], ['balance' => 0]);
+        return $this->wallet ?? $this->wallet()->create(['balance' => 0]);
     }
 
-    public function getDefaultWallet()
+    public function hasSufficientWalletBalance($amount): bool
     {
-        return $this->wallets()->where('is_default', true)->first() ?? $this->findOrCreateWallet('BTC');
+        return $this->getWallet()->balance >= $amount;
     }
+
+    public function payFromWallet($amount, $description = 'Order Payment'): bool
+    {
+        $wallet = $this->getWallet();
+        if ($wallet->balance < $amount) {
+            return false;
+        }
+
+        $wallet->decrement('balance', $amount);
+        $wallet->transactions()->create([
+            'wallet_id' => $wallet->id,
+            'customer_id' => $this->id,
+            'amount' => -$amount,
+            'type' => 'debit',
+            'status' => 'completed',
+            'reference' => 'wallet_' . strtoupper(Str::random(8)),
+            'description' => $description,
+        ]);
+
+        return true;
+    }
+
+    public function addToWallet($amount, $description = 'Top-up'): void
+    {
+        $wallet = $this->getWallet();
+        $wallet->increment('balance', $amount);
+        $wallet->transactions()->create([
+            'wallet_id' => $wallet->id,
+            'customer_id' => $this->id,
+            'amount' => $amount,
+            'type' => 'credit',
+            'status' => 'completed',
+            'reference' => 'wallet_' . strtoupper(Str::random(8)),
+            'description' => $description,
+        ]);
+    }
+
 
     public function getWalletAddress($currency)
     {
@@ -115,51 +153,4 @@ class Customer extends Authenticatable implements MustVerifyEmail
         return $this->hasMany(WalletTransaction::class);
     }
 
-    public function hasSufficientWalletBalance($amount): bool
-    {
-        $wallet = $this->getDefaultWallet();
-        return $wallet && $wallet->balance >= $amount;
-    }
-
-    public function deductFromWallet($amount): bool
-    {
-        $wallet = $this->getDefaultWallet();
-
-        if (!$wallet || $wallet->balance < $amount) {
-            return false;
-        }
-
-        $wallet->balance -= $amount;
-        $wallet->save();
-
-        $wallet->transactions()->create([
-            'wallet_id' => $wallet->id,
-            'customer_id' => $this->id,
-            'amount' => -$amount,
-            'type' => 'debit',
-            'status' => 'completed',
-            'reference' => 'wallet_' . strtoupper(Str::random(8)),
-            'description' => 'Order payment',
-        ]);
-
-        return true;
-    }
-
-    public function addToWallet($amount, $description = 'Top-up'): void
-    {
-        $wallet = $this->getDefaultWallet();
-
-        $wallet->balance += $amount;
-        $wallet->save();
-
-        $wallet->transactions()->create([
-            'wallet_id' => $wallet->id,
-            'customer_id' => $this->id,
-            'amount' => $amount,
-            'type' => 'credit',
-            'status' => 'completed',
-            'reference' => 'wallet_' . strtoupper(Str::random(8)),
-            'description' => $description,
-        ]);
-    }
 }

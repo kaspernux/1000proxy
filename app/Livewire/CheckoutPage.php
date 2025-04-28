@@ -25,6 +25,9 @@ use App\Models\ServerClient;
 use Jantinnerezo\LivewireAlert\LivewireAlert;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Http;
+use Barryvdh\DomPDF\Facade\Pdf;
+use Illuminate\Support\Facades\Storage;
+
 
 #[\Livewire\Attributes\Title('Checkout - 1000 PROXIES')]
 class CheckoutPage extends Component
@@ -103,32 +106,55 @@ class CheckoutPage extends Component
             $redirect_url = '';
 
             if ($paymentMethod->slug === 'wallet') {
-                $customer = Auth::user();
+                $customer = Auth::guard('customer')->user();
+                $wallet = $customer->getWallet(); // ✅ Fetch the *single* wallet (default)
 
-                if (! $customer->hasSufficientWalletBalance($grandAmount)) {
-                    $this->alert('warning', "Insufficient balance in your USD wallet.");
-                    return redirect()->route('wallet.insufficient', ['currency' => 'usd']);
+                if (!$wallet || $wallet->balance < $grandAmount) {
+                    $this->alert('warning', "Insufficient balance in your Wallet.");
+                    return redirect()->route('wallet.topup', ['currency' => 'btc']); // Redirect user to top-up page
                 }
 
-                $redirect_url = '';
+                // Deduct from wallet balance
+                $wallet->balance -= $grandAmount;
+                $wallet->save();
 
-                $customer->deductFromWallet($grandAmount);
-                $order->items()->each(function ($item) use ($order) {
-                    $item->update(['order_id' => $order->id]);
-                });
-
-                Log::info('Wallet deduction:', [
+                // Record wallet transaction
+                $wallet->transactions()->create([
+                    'wallet_id' => $wallet->id,
                     'customer_id' => $customer->id,
-                    'amount_deducted' => $order->grand_amount,
-                    'remaining_balance' => $customer->wallet,
+                    'amount' => -$grandAmount,
+                    'type' => 'debit',
+                    'status' => 'completed',
+                    'reference' => 'wallet_' . strtoupper(\Illuminate\Support\Str::random(8)),
+                    'description' => 'Order payment (Order #' . $order->id . ')',
                 ]);
 
+                Log::info('✅ Wallet payment deducted', [
+                    'customer_id' => $customer->id,
+                    'order_id' => $order->id,
+                    'amount' => $grandAmount,
+                ]);
+
+                // ✅ generate local URL to download PDF invoice
+                $redirect_url = route('customer.order.invoice.download', $order);
+
                 $invoice->update(['invoice_url' => $redirect_url]);
-                $order->markAsPaid($redirect_url); 
-                
-                // ✅ Wallet payment succeeded, now create clients
+                $order->markAsPaid($redirect_url);
+
+                // ✅ Wallet payment succeeded, proceed to create clients
                 $this->processXui($order);
+
+                $pdf = Pdf::loadView('pdf.invoice', [
+                    'invoice' => $invoice,
+                    'order' => $order,
+                    'customer' => $order->customer,
+                ]);
+
+                $pdfPath = 'invoices/invoice-' . $invoice->id . '.pdf';
+                Storage::disk('public')->put($pdfPath, $pdf->output());
+                $invoice->update(['invoice_url' => Storage::url($pdfPath)]);
             }
+
 
             elseif ($paymentMethod->slug === 'stripe') {
                 Stripe::setApiKey(env('STRIPE_SECRET'));
@@ -152,6 +178,15 @@ class CheckoutPage extends Component
                 ]);
                 $redirect_url = $session->url;
 
+                $pdf = Pdf::loadView('pdf.invoice', [
+                    'invoice' => $invoice,
+                    'order' => $order,
+                    'customer' => $order->customer,
+                ]);
+
+                $pdfPath = 'invoices/invoice-' . $invoice->id . '.pdf';
+                Storage::disk('public')->put($pdfPath, $pdf->output());
+
                 $invoice->update(['invoice_url' => $redirect_url]);
                 $order->markAsProcessing($redirect_url);   
             }
@@ -172,6 +207,14 @@ class CheckoutPage extends Component
 
                     // ⚠️ Don't mark as paid yet — await NowPayments IPN/webhook
                     $order->markAsProcessing($redirect_url);
+                    $pdf = Pdf::loadView('pdf.invoice', [
+                    'invoice' => $invoice,
+                    'order' => $order,
+                    'customer' => $order->customer,
+                ]);
+
+                $pdfPath = 'invoices/invoice-' . $invoice->id . '.pdf';
+                Storage::disk('public')->put($pdfPath, $pdf->output());
 
                 } else {
                     Log::error('NowPayments invoice creation failed', [

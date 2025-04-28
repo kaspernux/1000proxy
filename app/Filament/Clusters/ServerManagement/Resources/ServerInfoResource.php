@@ -19,6 +19,7 @@ use Jantinnerezo\LivewireAlert\LivewireAlert;
 use App\Http\Controllers\XUIService;
 use App\Filament\Clusters\ServerManagement\Resources\ServerInfoResource\Pages;
 
+
 class ServerInfoResource extends Resource
 {
     use LivewireAlert;
@@ -53,7 +54,7 @@ class ServerInfoResource extends Resource
                         TextInput::make('title')
                             ->required()
                             ->maxLength(255),
-                        TextInput::make('flag')
+                        TextInput::make('tag')
                             ->maxLength(255),
                         TextInput::make('ucount')
                             ->required()
@@ -94,7 +95,7 @@ class ServerInfoResource extends Resource
                 Tables\Columns\TextColumn::make('ucount')
                     ->numeric()
                     ->sortable(),
-                Tables\Columns\TextColumn::make('flag')
+                Tables\Columns\TextColumn::make('tag')
                     ->searchable(),
                 Tables\Columns\IconColumn::make('active')
                     ->boolean(),

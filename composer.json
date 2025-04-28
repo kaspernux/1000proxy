@@ -7,6 +7,8 @@
     "require": {
         "php": "^8.2",
         "aymanalhattami/filament-page-with-sidebar": "^2.5",
+        "barryvdh/laravel-dompdf": "^3.1",
+        "bezhansalleh/filament-language-switch": "^3.1",
         "filament/actions": "^3.2",
         "filament/filament": "^3.2",
         "filament/spatie-laravel-media-library-plugin": "^3.2",

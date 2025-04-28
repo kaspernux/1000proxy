@@ -34,6 +34,7 @@ use App\Jobs\ProcessXuiOrder;
 use App\Http\Controllers\Webhook\NowPaymentsWebhookController;
 use App\Http\Controllers\Webhook\StripeWebhookController;
 use Laravel\Horizon\Horizon;
+use Barryvdh\DomPDF\Facade\Pdf;
 
 Route::get('/', HomePage::class);
 Route::get('/categories', CategoriesPage::class);
@@ -98,6 +99,21 @@ Route::middleware(['auth:web,customer'])->group(function () {
     Route::post('/webhook/stripe', [StripeWebhookController::class, 'handle'])->name('webhook.stripe');
     Route::post('/webhook/nowpayments', [NowPaymentsWebhookController::class, 'handle'])->name('webhook.nowpay');
 
+    Route::get('/account/orders/{order}/invoice', function (Order $order) {
+    $invoice = $order->invoice;
+
+    if (!$invoice) {
+        abort(404, 'Invoice not found.');
+    }
+
+    $pdf = Pdf::loadView('pdf.invoice', [
+        'invoice' => $invoice,
+        'order' => $order,
+        'customer' => $order->customer,
+    ]);
+
+    return $pdf->download('Invoice-' . $invoice->id . '.pdf');
+})->name('customer.order.invoice.download');
 
 });
 

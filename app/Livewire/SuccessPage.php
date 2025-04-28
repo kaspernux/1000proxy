@@ -3,7 +3,6 @@
 namespace App\Livewire;
 
 use Livewire\Component;
-use Livewire\Attributes\Url;
 use App\Models\Order;
 use Illuminate\Support\Facades\Http;
 use Stripe\Stripe;
@@ -22,6 +21,7 @@ class SuccessPage extends Component
     public function render()
     {
         $latest_order = Order::with(['invoice', 'paymentMethod', 'customer'])->where('customer_id', auth()->user()->id)->latest()->first();
+
         if (!$latest_order || !$latest_order->paymentMethod) {
             return redirect()->route('cancel');
         }
@@ -33,13 +33,11 @@ class SuccessPage extends Component
             $session_info = Session::retrieve($this->session_id);
 
             if ($session_info->payment_status !== 'paid') {
-                $latest_order->payment_status = 'failed';
-                $latest_order->save();
+                $latest_order->update(['payment_status' => 'failed']);
                 return redirect()->route('cancel');
             }
 
-            $latest_order->payment_status = 'paid';
-            $latest_order->save();
+            $latest_order->update(['payment_status' => 'paid']);
         }
 
         elseif ($slug === 'nowpayments') {
@@ -49,36 +47,27 @@ class SuccessPage extends Component
                 $payment_status = $response->json('payment_status');
 
                 if ($payment_status === 'finished') {
-                    $latest_order->payment_status = 'paid';
-                    $latest_order->save();
+                    $latest_order->update(['payment_status' => 'paid']);
                 } else {
-                    $latest_order->payment_status = 'processing';
-                    $latest_order->save();
+                    $latest_order->update(['payment_status' => 'processing']);
                     return redirect()->route('Pending');
                 }
             } else {
-                $latest_order->payment_status = 'failed';
-                $latest_order->save();
+                $latest_order->update(['payment_status' => 'failed']);
                 return redirect()->route('cancel');
             }
         }
 
         elseif ($slug === 'wallet') {
-            $customer = auth()->user();
-
-            if ($customer->deductFromWallet($latest_order->total)) {
-                $latest_order->payment_status = 'paid';
-                $latest_order->save();
-            } else {
-                return redirect()->route('wallet.insufficient');
+            // ✅ No need to deduct again
+            if ($latest_order->payment_status !== 'paid') {
+                $latest_order->update(['payment_status' => 'paid']);
             }
         }
 
-        if ($latest_order->payment_status !== 'paid') {
-            $latest_order->payment_status = 'paid';
-            $latest_order->save();
-
-            ProcessXuiOrder::dispatchWithDependencies($order);
+        // Process the XUI Order if not already processed
+        if ($latest_order->payment_status === 'paid' && !$latest_order->is_completed) {
+            ProcessXuiOrder::dispatchWithDependencies($latest_order);
         }
 
         return view('livewire.success-page', [

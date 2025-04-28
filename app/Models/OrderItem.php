@@ -31,4 +31,19 @@ class OrderItem extends Model
     {
         return $this->belongsTo(ServerPlan::class);
     }
+
+    public function getQrCodes(): array
+{
+    $client = \App\Models\ServerClient::query()
+        ->where('plan_id', $this->server_plan_id)
+        ->where('email', 'LIKE', '%#ID ' . auth('customer')->id())
+        ->first();
+
+    return [
+        'clientQr' => $client?->qr_code_client,
+        'subQr' => $client?->qr_code_sub,
+        'jsonQr' => $client?->qr_code_sub_json,
+    ];
+}
+
 }

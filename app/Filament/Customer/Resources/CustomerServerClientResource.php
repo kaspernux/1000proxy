@@ -23,8 +23,8 @@ class CustomerServerClientResource extends Resource
     protected static ?string $model = ServerClient::class;
 
     protected static ?string $navigationIcon = 'heroicon-o-user-group';
-    protected static ?string $navigationLabel = 'My Clients';
-    protected static ?string $navigationGroup = 'Account';
+    protected static ?string $navigationLabel = 'My Proxy Clients';
+    protected static ?string $navigationGroup = 'Configurations';
     protected static ?string $recordTitleAttribute = 'email';
 
     public static function getEloquentQuery(): Builder
@@ -38,8 +38,7 @@ class CustomerServerClientResource extends Resource
     public static function table(Table $table): Table
     {
         return $table->columns([
-            TextColumn::make('inbound.remark')->label('Inbound'),
-            TextColumn::make('email')->sortable()->searchable(),
+            Tables\Columns\IconColumn::make('enable')->boolean(),
             TextColumn::make('plan.name')
                 ->label('Plan')
                 ->badge()
@@ -47,12 +46,6 @@ class CustomerServerClientResource extends Resource
                 ->getStateUsing(fn ($record) => $record->plan_id && $record->plan ? $record->plan->name : 'Generated From XUI Panel')
                 ->sortable()
                 ->searchable(),
-            TextColumn::make('flow')->sortable()->searchable(),
-            TextColumn::make('limitIp')->sortable(),
-            TextColumn::make('totalGb')->sortable(),
-            TextColumn::make('expiryTime')->sortable(),
-            Tables\Columns\IconColumn::make('enable')->boolean(),
-
             ImageColumn::make('qr_code_client')
                 ->label('Client QR')
                 ->disk('public')
@@ -76,6 +69,9 @@ class CustomerServerClientResource extends Resource
                 ->url(fn ($record) => Storage::disk('public')->url($record->qr_code_sub_json))
                 ->openUrlInNewTab()
                 ->height(60),
+            TextColumn::make('totalGb')->sortable(),
+            TextColumn::make('limitIp')->sortable(),
+            TextColumn::make('expiryTime')->sortable(),            
         ])
         ->actions([
             Tables\Actions\ViewAction::make(), // ✅ View only

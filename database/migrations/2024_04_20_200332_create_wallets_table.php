@@ -9,14 +9,15 @@ return new class extends Migration {
         Schema::create('wallets', function (Blueprint $table) {
             $table->id();
             $table->foreignId('customer_id')->constrained('customers')->cascadeOnDelete();
-            $table->string('currency', 10);
             $table->decimal('balance', 18, 8)->default(0);
-            $table->string('address')->unique();
-            $table->string('deposit_tag')->nullable(); // for coins like Monero
-            $table->string('network')->nullable(); // BTC, XMR, SOL
-            $table->string('qr_code_path')->nullable();
+            $table->string('btc_address')->nullable();
+            $table->string('xmr_address')->nullable();
+            $table->string('sol_address')->nullable();
+            $table->string('btc_qr')->nullable();
+            $table->string('xmr_qr')->nullable();
+            $table->string('sol_qr')->nullable();
             $table->timestamp('last_synced_at')->nullable();
-            $table->boolean('is_default')->default(false);
+            $table->boolean('is_default')->default(true);
             $table->timestamps();
         });
     }

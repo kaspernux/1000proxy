@@ -4,7 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Support\Str; 
+use Illuminate\Support\Str;
 use SimpleSoftwareIO\QrCode\Facades\QrCode;
 
 class Wallet extends Model
@@ -13,12 +13,13 @@ class Wallet extends Model
 
     protected $fillable = [
         'customer_id',
-        'currency',
         'balance',
-        'address',
-        'deposit_tag',
-        'network',
-        'qr_code_path',
+        'btc_address',
+        'xmr_address',
+        'sol_address',
+        'btc_qr',
+        'xmr_qr',
+        'sol_qr',
         'last_synced_at',
         'is_default',
     ];
@@ -28,162 +29,79 @@ class Wallet extends Model
         'is_default' => 'boolean',
     ];
 
-    public function customer() {
+    public function customer()
+    {
         return $this->belongsTo(Customer::class);
     }
 
-    public function transactions() {
+    public function transactions()
+    {
         return $this->hasMany(WalletTransaction::class);
     }
 
-    public function deposit($amount, $reference, $metadata = []) {
-        $transaction = $this->transactions()->create([
-            'customer_id' => $this->customer_id, // ✅ add this line
-            'wallet_id' => $this->id, // (optional since it's implied, but safe)
+    // ✨ Deposit
+    public function deposit($amount, $reference, $metadata = [])
+    {
+        $this->increment('balance', $amount);
+
+        return $this->transactions()->create([
+            'wallet_id' => $this->id,
+            'customer_id' => $this->customer_id,
             'type' => 'deposit',
             'amount' => $amount,
             'status' => 'completed',
             'reference' => $reference,
             'metadata' => $metadata,
         ]);
-
-        $this->increment('balance', $amount);
-
-        return $transaction;
     }
 
-
-    public function withdraw($amount, $reference, $metadata = []) {
+    // ✨ Withdraw
+    public function withdraw($amount, $reference, $metadata = [])
+    {
         if ($this->balance < $amount) {
-            throw new \Exception('Insufficient funds');
+            throw new \Exception('Insufficient balance');
         }
 
-        $transaction = $this->transactions()->create([
-            'customer_id' => $this->customer_id, // ✅
+        $this->decrement('balance', $amount);
+
+        return $this->transactions()->create([
             'wallet_id' => $this->id,
+            'customer_id' => $this->customer_id,
             'type' => 'withdrawal',
             'amount' => -abs($amount),
             'status' => 'completed',
             'reference' => $reference,
             'metadata' => $metadata,
         ]);
-
-        $this->decrement('balance', $amount);
-
-        return $transaction;
     }
 
-    /**
-     * Generate a unique deposit address and optional tag/memo based on currency.
-     */
-    public static function generateDepositAddress($currency)
+    // ✨ Generate crypto deposit addresses and QRs dynamically
+    public function generateDepositAddresses()
     {
-        switch (strtoupper($currency)) {
-            case 'BTC':
-                return [
-                    'address' => 'btc_' . Str::random(32), // Integrate with actual BTC wallet API
-                    'deposit_tag' => null,
-                ];
-            case 'XMR':
-                return [
-                    'address' => 'xmr_' . Str::random(64), // Integrate with actual XMR wallet RPC
-                    'deposit_tag' => Str::random(16),      // Payment ID or Integrated address
-                ];
-            case 'SOL':
-                return [
-                    'address' => 'sol_' . Str::random(44), // Integrate with actual Solana wallet API
-                    'deposit_tag' => null,
-                ];
-            default:
-                throw new \Exception('Unsupported currency');
-        }
+        $this->btc_address = 'btc_' . Str::random(34);
+        $this->xmr_address = 'xmr_' . Str::random(64);
+        $this->sol_address = 'sol_' . Str::random(44);
+        $this->save();
+
+        $this->generateQrCodes();
     }
 
-    /**
-     * Convenience method to create wallet for customer with generated address.
-     */
-    public static function createCustomerWallet($customerId, $currency, $network = null, $isDefault = false)
+    // ✨ Generate QR Codes for the wallet addresses
+    public function generateQrCodes()
     {
-        $addressInfo = self::generateDepositAddress($currency);
-
-        $wallet = self::create([
-            'customer_id' => $customerId,
-            'currency' => strtoupper($currency),
-            'network' => $network ?? strtoupper($currency),
-            'address' => $addressInfo['address'],
-            'deposit_tag' => $addressInfo['deposit_tag'],
-            'is_default' => $isDefault,
-        ]);
-
-        $wallet->generateQrCode();
-
-        return $wallet;
+        $this->btc_qr = $this->generateQrFor($this->btc_address, 'btc');
+        $this->xmr_qr = $this->generateQrFor($this->xmr_address, 'xmr');
+        $this->sol_qr = $this->generateQrFor($this->sol_address, 'sol');
+        $this->save();
     }
 
-    /**
-     * Generate and store QR code for the wallet deposit address.
-     */
-    public function generateQrCode()
+    protected function generateQrFor($address, $type)
     {
-        $qrData = $this->address;
-        if ($this->deposit_tag) {
-            $qrData .= '?memo=' . $this->deposit_tag;
-        }
-
-        $filename = 'wallet_qr_' . $this->id . '.png';
+        $filename = 'wallet_qr_' . $this->id . '_' . $type . '.png';
         $path = storage_path('app/public/wallet_qr/' . $filename);
 
-        QrCode::format('png')->size(300)->generate($qrData, $path);
+        QrCode::format('png')->size(300)->generate($address, $path);
 
-        $this->update(['qr_code_path' => 'wallet_qr/' . $filename]);
-    }
-
-    /**
-     * Synchronize wallet balance with external blockchain services.
-     */
-    public function syncWithBlockchain()
-    {
-        // Example pseudo-code, replace with real API integration
-        $balance = match ($this->currency) {
-            'BTC' => $this->fetchBtcBalance(),
-            'XMR' => $this->fetchXmrBalance(),
-            'SOL' => $this->fetchSolBalance(),
-            default => throw new \Exception('Unsupported currency'),
-        };
-
-        $this->update([
-            'balance' => $balance,
-            'payment_status' => 'paid',
-            'order_status' => 'processing',
-            'last_synced_at' => now(),
-        ]);
-    }
-
-    public function markAsPaid(): void
-    {
-        $this->update([
-            'payment_status' => 'paid',
-            'order_status' => 'completed',
-        ]);
-    }
-
-
-    // Example implementations (pseudo-code)
-    protected function fetchBtcBalance()
-    {
-        // Integrate with Bitcoin API provider
-        return 0.0;
-    }
-
-    protected function fetchXmrBalance()
-    {
-        // Integrate with Monero RPC API
-        return 0.0;
-    }
-
-    protected function fetchSolBalance()
-    {
-        // Integrate with Solana JSON-RPC API
-        return 0.0;
+        return 'wallet_qr/' . $filename;
     }
 }

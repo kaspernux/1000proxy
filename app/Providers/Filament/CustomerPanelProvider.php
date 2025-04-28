@@ -2,24 +2,21 @@
 
 namespace App\Providers\Filament;
 
-use Filament\Http\Middleware\Authenticate;
-use Filament\Http\Middleware\DisableBladeIconComponents;
-use Filament\Http\Middleware\DispatchServingFilamentEvent;
-use Filament\Pages;
 use Filament\Panel;
 use Filament\PanelProvider;
-use Filament\Support\Colors\Color;
-use Filament\Widgets;
-use Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse;
 use Illuminate\Cookie\Middleware\EncryptCookies;
+use Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse;
+use Illuminate\Session\Middleware\StartSession;
+use Illuminate\Session\Middleware\AuthenticateSession;
+use Illuminate\View\Middleware\ShareErrorsFromSession;
 use Illuminate\Foundation\Http\Middleware\VerifyCsrfToken;
 use Illuminate\Routing\Middleware\SubstituteBindings;
-use Illuminate\Session\Middleware\AuthenticateSession;
-use Illuminate\Session\Middleware\StartSession;
-use Illuminate\View\Middleware\ShareErrorsFromSession;
-use App\Http\Middleware\AuthenticateCustomer; // <-- Different here
-use App\Filament\Clusters\ProxyShop\Resources\OrderResource\Widgets\OrderStats; // optional
-use App\Http\Middleware\RedirectIfCustomer; // reuse if you want
+use Filament\Http\Middleware\DisableBladeIconComponents;
+use Filament\Http\Middleware\DispatchServingFilamentEvent;
+use App\Http\Middleware\AuthenticateCustomer;
+use App\Filament\Customer\Widgets\CustomerStatsOverview;
+use App\Filament\Customer\Widgets\SupportOverviewWidget;
+use App\Filament\Customer\Widgets\DownloadOverviewWidget;
 
 class CustomerPanelProvider extends PanelProvider
 {
@@ -27,33 +24,37 @@ class CustomerPanelProvider extends PanelProvider
     {
         return $panel
             ->id('customer')
-            ->path('account') // your nice account path
+            ->path('account')
             ->login()
             ->passwordReset()
-//            ->emailVerification()
             ->revealablePasswords(false)
             ->profile(isSimple: false)
             ->colors([
                 'primary' => \Filament\Support\Colors\Color::Green,
             ])
+            // register customer-only widgets here:
+            ->widgets([
+                CustomerStatsOverview::class,
+                SupportOverviewWidget::class,
+                DownloadOverviewWidget::class,
+            ])
             ->discoverResources(in: app_path('Filament/Customer/Resources'), for: 'App\\Filament\\Customer\\Resources')
             ->discoverPages(in: app_path('Filament/Customer/Pages'), for: 'App\\Filament\\Customer\\Pages')
             ->discoverClusters(in: app_path('Filament/Customer/Clusters'), for: 'App\\Filament\\Customer\\Clusters')
-            ->authGuard('customer') // ✅ FORCE CUSTOMER GUARD
+            ->authGuard('customer')
             ->middleware([
-                \Illuminate\Cookie\Middleware\EncryptCookies::class,
-                \Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse::class,
-                \Illuminate\Session\Middleware\StartSession::class,
-                \Illuminate\Session\Middleware\AuthenticateSession::class,
-                \Illuminate\View\Middleware\ShareErrorsFromSession::class,
-                \Illuminate\Foundation\Http\Middleware\VerifyCsrfToken::class,
-                \Illuminate\Routing\Middleware\SubstituteBindings::class,
-                \Filament\Http\Middleware\DisableBladeIconComponents::class,
-                \Filament\Http\Middleware\DispatchServingFilamentEvent::class,
+                EncryptCookies::class,
+                AddQueuedCookiesToResponse::class,
+                StartSession::class,
+                AuthenticateSession::class,
+                ShareErrorsFromSession::class,
+                VerifyCsrfToken::class,
+                SubstituteBindings::class,
+                DisableBladeIconComponents::class,
+                DispatchServingFilamentEvent::class,
             ])
             ->authMiddleware([
-                \App\Http\Middleware\AuthenticateCustomer::class,
+                AuthenticateCustomer::class,
             ]);
     }
-
 }
