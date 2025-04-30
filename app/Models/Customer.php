@@ -153,4 +153,11 @@ class Customer extends Authenticatable implements MustVerifyEmail
         return $this->hasMany(WalletTransaction::class);
     }
 
+    public function hasclients()
+    {
+        // replicate exactly your filter logic:
+        return $this->hasMany(ServerClient::class, /* foreignKey */ 'email', /* localKey */ 'id')
+                    ->where('email', 'LIKE', '%#ID ' . $this->id);
+    }
+
 }
