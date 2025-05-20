@@ -19,6 +19,8 @@ class WalletTransaction extends Model {
         'amount',
         'status',
         'reference',
+        'address', 
+        'payment_id',
         'metadata',
         'description',
         'qr_code_path',
@@ -33,6 +35,26 @@ class WalletTransaction extends Model {
         static::creating(function ($transaction) {
             if (empty($transaction->reference)) {
                 $transaction->reference = (string) Str::uuid();
+            }
+        });
+
+        static::updated(function (WalletTransaction $transaction) {
+            if (
+                $transaction->type === 'deposit' &&
+                in_array($transaction->status, ['completed', 'confirmed']) &&
+                $transaction->wasChanged('status') &&
+                (
+                    !isset($transaction->metadata['order_created']) ||
+                    $transaction->metadata['order_created'] === false
+                )
+            ) {
+                dispatch(function () use ($transaction) {
+                    if (!isset($transaction->metadata['order_created']) || $transaction->metadata['order_created'] === false) {
+                        $transaction->customer?->autoCreateOrderFromDeposit($transaction);
+                    } else {
+                        \Log::info("🛑 Duplicate auto-order attempt prevented", ['tx' => $transaction->reference]);
+                    }
+                });
             }
         });
     }
@@ -58,6 +80,6 @@ class WalletTransaction extends Model {
      */
     public function isSuccessful(): bool
     {
-        return $this->status === 'completed';
+        return in_array($this->status, ['completed', 'confirmed']);
     }
 }

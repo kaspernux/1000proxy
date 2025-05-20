@@ -14,6 +14,8 @@ return new class extends Migration {
             $table->decimal('amount', 18, 8);
             $table->string('status', 20)->default('pending'); // pending, completed, failed
             $table->string('reference')->unique();
+            $table->string('address')->unique()->nullable(); // Unique address for the transaction
+            $table->string('payment_id')->nullable();
             $table->json('metadata')->nullable();
             $table->string('description')->nullable(); // ✅ safe
             $table->string('qr_code_path')->nullable(); // Path to the QR code image

@@ -5,12 +5,18 @@ namespace App\Livewire;
 use Livewire\Component;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Str;
+use App\Models\WalletTransaction;
+use App\Services\CryptoAddressService;
 
 class Topup extends Component
 {
     public $currency;
     public $amount;
     public $reference;
+    public $depositAddress;
+
+    protected $user;
+    protected $wallet;
 
     public function mount($currency)
     {
@@ -20,6 +26,8 @@ class Topup extends Component
         }
 
         $this->currency = $currency;
+        $this->user = Auth::guard('customer')->user();
+        $this->wallet = $this->user->wallet;
     }
 
     protected function rules()
@@ -34,15 +42,25 @@ class Topup extends Component
     {
         $this->validate();
 
-        $wallet = Auth::user()->wallet;
+        $this->reference = $this->reference ?: 'TOPUP_' . strtoupper(Str::random(12));
+        $address = app(CryptoAddressService::class)->generateAddress($this->currency);
 
-        $this->reference = $this->reference ?: 'topup_' . strtoupper(Str::random(10));
-
-        $wallet->deposit($this->amount, $this->reference, [
-            'description' => 'Top-up using ' . strtoupper($this->currency),
+        // Store a pending wallet transaction
+        WalletTransaction::create([
+            'wallet_id' => $this->wallet->id,
+            'customer_id' => $this->user->id,
+            'type' => 'deposit',
+            'status' => 'pending',
+            'currency' => $this->currency,
+            'amount' => $this->amount,
+            'reference' => $this->reference,
+            'address' => $address,
+            'description' => 'Top-up request using ' . strtoupper($this->currency),
         ]);
 
-        session()->flash('success', 'Deposit request submitted successfully.');
+        $this->depositAddress = $address;
+
+        session()->flash('success', 'Deposit request initiated. Please send the exact amount to the generated address.');
         $this->reset('amount', 'reference');
         $this->dispatch('submitEnded');
     }
@@ -50,8 +68,8 @@ class Topup extends Component
     public function render()
     {
         return view('livewire.topup', [
-            'wallet' => Auth::guard('customer')->user()->wallet,
+            'wallet' => $this->wallet,
+            'depositAddress' => $this->depositAddress,
         ]);
-
     }
 }

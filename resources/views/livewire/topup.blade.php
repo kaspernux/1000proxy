@@ -56,12 +56,20 @@
                                 </div>
                             </div>
 
-                            <p class="text-lg text-green-300 font-mono" x-text="'Deposit to your ' + currency + ' Wallet'"></p>
+                            <p class="text-lg text-green-300 font-mono" x-text="'Deposit ' + currency "></p>                           
                             <p class="text-xl font-bold text-yellow-400" x-text="'Balance: $' + balance"></p>
                         </div>
 
+                        <!-- Deposit Address -->
+                        <div class="flex text-xl font-bold items-center  mb-4 px-10">
+                            <input type="text" x-model="depositAddress" readonly
+                                class="w-full bg-green-800 border-2 border-double text-center border-yellow-600 text-white font-bold items-center justify-center py-3 px-4 rounded-md" />  
+                        </div>
+
+    
+
                         {{-- Top-Up Form --}}
-                        <form wire:submit.prevent="topUp" class="space-y-8 px-4">
+                        <form wire:submit.prevent="topUp" class="space-y-8 px-10">
                             <input type="hidden" wire:model="currency" x-bind:value="currency" />
 
                             <div class="space-y-2 mb-4">
@@ -115,8 +123,14 @@ function topupForm() {
             XMR: "{{ $wallet->xmr_qr ? asset('storage/' . $wallet->xmr_qr) : '' }}",
             SOL: "{{ $wallet->sol_qr ? asset('storage/' . $wallet->sol_qr) : '' }}",
         },
+        addresses: {
+            BTC: "{{ $wallet->btc_address }}",
+            XMR: "{{ $wallet->xmr_address }}",
+            SOL: "{{ $wallet->sol_address }}",
+        },
         balance: '{{ number_format($wallet->balance ?? 0, 2) }}',
         qrCode: '',
+        depositAddress: '',
 
         init() {
             this.updateQr();
@@ -144,6 +158,7 @@ function topupForm() {
         updateQr() {
             this.loading = true;
             this.qrCode = this.qrCodes[this.currency] || '';
+            this.depositAddress = this.addresses[this.currency] || '';
             this.loading = false;
         },
 
@@ -153,9 +168,16 @@ function topupForm() {
             link.href = this.qrCode;
             link.download = this.currency + '_wallet_qr.png';
             link.click();
+        },
+
+        copyAddress() {
+            navigator.clipboard.writeText(this.depositAddress).then(() => {
+                alert('Address copied to clipboard!');
+            });
         }
     }
 }
+
 </script>
 
 

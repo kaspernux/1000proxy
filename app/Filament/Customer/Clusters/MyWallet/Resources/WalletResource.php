@@ -55,10 +55,19 @@ class WalletResource extends Resource
                     ->color('gray'),
             ])
             ->actions([
-                Tables\Actions\ViewAction::make()
-                    ->label('View Wallet')
-                    ->color('primary')
-                    ->button(),
+                Tables\Actions\ActionGroup::make([
+                    Tables\Actions\ViewAction::make()
+                        ->label('View Wallet')
+                        ->color('primary')
+                        ->button(),
+                    Tables\Actions\Action::make('regenerateQr')
+                        ->label('Regenerate QRs')
+                        ->icon('heroicon-o-arrow-path')
+                        ->requiresConfirmation()
+                        ->action(fn (Wallet $record) => $record->generateQrCodes())
+                        ->visible(fn (Wallet $record) => $record->customer_id === auth('customer')->id())
+                        ->color('warning'),
+                ]),
             ])
             ->headerActions([
                 Action::make('topup')

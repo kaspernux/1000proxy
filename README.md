@@ -134,7 +134,7 @@ Paste the following configuration:
 server {
     server_name YOUR_DOMAIN www.YOUR_DOMAIN;
 
-    root /var/www/teranova/public;
+    root /var/www/1000proxy/public;
     index index.php index.html index.htm;
 
     location / {

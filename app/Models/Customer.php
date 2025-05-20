@@ -89,11 +89,14 @@ class Customer extends Authenticatable implements MustVerifyEmail
     public function payFromWallet($amount, $description = 'Order Payment'): bool
     {
         $wallet = $this->getWallet();
-        if ($wallet->balance < $amount) {
+
+        if (bccomp((string) $wallet->balance, (string) $amount, 8) < 0) {
+            \Log::warning("❌ Attempt to overdraw wallet for customer ID {$this->id}");
             return false;
         }
 
         $wallet->decrement('balance', $amount);
+
         $wallet->transactions()->create([
             'wallet_id' => $wallet->id,
             'customer_id' => $this->id,
@@ -106,6 +109,7 @@ class Customer extends Authenticatable implements MustVerifyEmail
 
         return true;
     }
+
 
     public function addToWallet($amount, $description = 'Top-up'): void
     {
@@ -158,6 +162,104 @@ class Customer extends Authenticatable implements MustVerifyEmail
         // replicate exactly your filter logic:
         return $this->hasMany(ServerClient::class, /* foreignKey */ 'email', /* localKey */ 'id')
                     ->where('email', 'LIKE', '%#ID ' . $this->id);
+    }
+
+    public function autoCreateOrderFromDeposit(WalletTransaction $transaction): void
+    {
+        // 🛡 Prevent duplicate execution
+        if (isset($transaction->metadata['order_created']) && $transaction->metadata['order_created']) {
+            \Log::warning("🚫 Order already created for this transaction: {$transaction->reference}");
+            return;
+        }
+
+        $cartItems = CartManagement::getCartItemsFromCookie();
+
+        if (empty($cartItems)) {
+            \Log::info("❌ No cart items found for auto-order (customer ID: {$this->id})");
+            return;
+        }
+
+        $total = CartManagement::calculateGrandTotal($cartItems);
+
+        if (bccomp((string) $transaction->amount, (string) $total, 8) < 0) {
+            \Log::info("❌ Deposit insufficient for auto-order (deposit: {$transaction->amount}, total: {$total})");
+            return;
+        }
+
+        // ✅ Get wallet and check balance
+        $wallet = $this->getWallet();
+        if (bccomp((string) $wallet->balance, (string) $total, 8) < 0) {
+            \Log::info("❌ Wallet balance insufficient for auto-order (balance: {$wallet->balance})");
+            return;
+        }
+
+        // ✅ Use default wallet payment method
+        $paymentMethod = \App\Models\PaymentMethod::where('slug', 'wallet')->first();
+
+        $order = \App\Models\Order::create([
+            'customer_id' => $this->id,
+            'grand_amount' => $total,
+            'currency' => 'usd',
+            'payment_method' => $paymentMethod->id ?? null,
+            'order_status' => 'new',
+            'payment_status' => 'paid',
+            'notes' => 'Auto-generated from deposit transaction ' . $transaction->reference,
+        ]);
+
+        $invoice = \App\Models\Invoice::create([
+            'customer_id' => $order->customer_id,
+            'order_id' => $order->id,
+            'payment_method_id' => $paymentMethod->id ?? null,
+            'price_amount' => $total,
+            'price_currency' => 'usd',
+            'pay_amount' => $total,
+            'pay_currency' => 'usd',
+            'order_description' => $order->notes,
+            'invoice_url' => '',
+            'success_url' => route('success', ['order' => $order->id]),
+            'cancel_url' => route('cancel', ['order' => $order->id]),
+            'is_fixed_rate' => true,
+            'is_fee_paid_by_user' => true,
+        ]);
+
+        foreach ($cartItems as $item) {
+            $plan = \App\Models\ServerPlan::findOrFail($item['server_plan_id']);
+            $order->items()->create([
+                'server_plan_id' => $item['server_plan_id'],
+                'quantity' => $item['quantity'],
+                'unit_amount' => $plan->price,
+                'total_amount' => $plan->price * $item['quantity'],
+            ]);
+        }
+
+        // 💳 Deduct balance safely
+        $wallet->decrement('balance', $total);
+        $wallet->transactions()->create([
+            'wallet_id' => $wallet->id,
+            'customer_id' => $this->id,
+            'amount' => -$total,
+            'type' => 'debit',
+            'status' => 'completed',
+            'reference' => 'wallet_' . strtoupper(Str::random(8)),
+            'description' => 'Auto-paid from confirmed deposit for Order #' . $order->id,
+        ]);
+
+        CartManagement::clearCartItems();
+
+        // ✅ Process XUI clients
+        try {
+            app(\App\Livewire\CheckoutPage::class)->processXui($order);
+            $order->markAsCompleted();
+
+            // ✅ Safely update metadata after order creation
+            $transaction->update([
+                'metadata' => array_merge($transaction->metadata ?? [], ['order_created' => true]),
+            ]);
+
+            \Log::info("✅ Auto-order created and XUI clients provisioned for {$this->email}");
+        } catch (\Exception $e) {
+            \Log::error("⚠️ XUI provisioning failed during auto-order: " . $e->getMessage());
+        }
     }
 
 }

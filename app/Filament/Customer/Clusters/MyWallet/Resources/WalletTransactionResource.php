@@ -68,6 +68,11 @@ class WalletTransactionResource extends Resource
                     ->state(fn ($record) => str($record->reference)->limit(10, '...'))
                     ->tooltip(fn ($record) => $record->reference)
                     ->sortable(),
+                
+                TextColumn::make('payment_id')
+                    ->label('Payment ID')
+                    ->copyable()
+                    ->state(fn ($record) => str($record->reference)->limit(10, '...')),
 
                 TextColumn::make('description')
                     ->label('Description')
@@ -141,6 +146,18 @@ class WalletTransactionResource extends Resource
                                     TextEntry::make('description')
                                         ->label('Description')
                                         ->placeholder('No description')
+                                        ->columnSpanFull(),
+
+                                    TextEntry::make('address')
+                                        ->label('Deposit Address')
+                                        ->copyable()
+                                        ->icon('heroicon-o-qr-code')
+                                        ->placeholder('Not applicable')
+                                        ->visible(fn ($record) => $record->type === 'deposit'),
+                                    
+                                    TextEntry::make('payment_id')
+                                        ->label('Payment ID')
+                                        ->placeholder('The Blockchain transaction ID')
                                         ->columnSpanFull(),
 
                                     TextEntry::make('created_at')

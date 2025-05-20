@@ -91,8 +91,10 @@ class CartManagement {
     }
 
     // Add cart items to cookie
-    public static function addCartItemsToCookie($order_items) {
-        Cookie::queue('order_items', json_encode($order_items), 60 * 24 * 30);
+    public static function addCartItemsToCookie($items)
+    {
+        Cookie::queue('order_items', json_encode($items), 60 * 24 * 30);
+        Cookie::queue('order_items_hash', self::getCartHash($items), 60 * 24 * 30);
     }
 
     // Clear cart items from cookie
@@ -146,4 +148,11 @@ class CartManagement {
     public static function calculateGrandTotal($items) {
         return array_sum(array_column($items, 'total_amount'));
     }
+
+    public static function getCartHash(array $items): string
+    {
+        $secret = config('app.key'); // Use app key for HMAC
+        return hash_hmac('sha256', json_encode($items), $secret);
+    }
+
 }
