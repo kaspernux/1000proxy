@@ -49,10 +49,10 @@ class CheckoutPage extends Component
     {
         try {
             $validatedData = $this->validate([
-                'name' => 'required|string|max:255',
-                'email' => 'required|email|max:255',
-                'phone' => 'nullable|string|max:20',
-                'telegram_id' => 'nullable|string|max:255',
+                'name'                  => 'required|string|max:255',
+                'email'                 => 'required|email|max:255',
+                'phone'                 => 'nullable|string|max:20',
+                'telegram_id'           => 'nullable|string|max:255',
                 'selectedPaymentMethod' => 'required|exists:payment_methods,slug',
             ]);
         } catch (\Illuminate\Validation\ValidationException $e) {
@@ -63,82 +63,138 @@ class CheckoutPage extends Component
         DB::beginTransaction();
 
         try {
-            $order_items = $this->order_items;
-            $paymentMethod = PaymentMethod::where('slug', $validatedData['selectedPaymentMethod'])->firstOrFail();            
-            $grandAmount = CartManagement::calculateGrandTotal($this->order_items);
-
-            $freshOrderItems = CartManagement::getCartItemsFromCookie();
-            $freshGrandTotal = CartManagement::calculateGrandTotal($freshOrderItems);
-            $expectedHash = CartManagement::getCartHash($freshOrderItems);
-            $receivedHash = request()->cookie('order_items_hash');
-
-            if (!hash_equals($expectedHash, $receivedHash)) {
-                Log::warning('🚨 Cart hash tampering detected', [
-                    'expected' => $expectedHash,
-                    'received' => $receivedHash,
-                    'user_id' => Auth::id(),
-                ]);
-                $this->alert('error', 'Your cart has been modified. Please refresh and try again.');
-                return;
-            }
-
-            if (bccomp((string) $freshGrandTotal, (string) $grandAmount, 8) !== 0) {
-                Log::warning("🛑 Cart total mismatch from Livewire data", [
-                    'expected' => $freshGrandTotal,
-                    'received' => $grandAmount,
-                    'user_id' => Auth::id(),
-                ]);
-                $this->alert('error', 'Cart total mismatch. Please refresh the page.');
-                return;
-            }
+            // 1) Create Order & Invoice
+            $paymentMethod = PaymentMethod::where('slug', $validatedData['selectedPaymentMethod'])->firstOrFail();
+            $grandAmount   = CartManagement::calculateGrandTotal($this->order_items);
 
             $order = Order::create([
-                'customer_id' => auth()->id(),
-                'grand_amount' => $grandAmount,
-                'currency' => 'usd',
+                'customer_id'    => auth()->id(),
+                'grand_amount'   => $grandAmount,
+                'currency'       => 'usd',
                 'payment_method' => $paymentMethod->id,
-                'order_status' => 'new',
+                'order_status'   => 'new',
                 'payment_status' => 'pending',
-                'notes' => 'Order placed by: ' . auth()->user()->name . ' at ' . now() . ". Cart hash: {$expectedHash}",
+                'notes'          => 'Order placed by ' . auth()->user()->name,
             ]);
 
             $invoice = Invoice::create([
-                'customer_id' => $order->customer_id,
-                'order_id' => $order->id,
-                'payment_method_id' => $paymentMethod->id,
-                'price_amount' => $grandAmount,
-                'price_currency' => 'usd',
-                'pay_amount' => $grandAmount,
-                'pay_currency' => $paymentMethod->default_currency ?? 'usd',
-                'order_description' => $order->notes,
-                'invoice_url' => '',
-                'success_url' => route('success', ['order' => $order->id]),
-                'cancel_url' => route('cancel', ['order' => $order->id]),
-                'is_fixed_rate' => true,
+                'customer_id'      => $order->customer_id,
+                'order_id'         => $order->id,
+                'payment_method_id'=> $paymentMethod->id,
+                'price_amount'     => $grandAmount,
+                'price_currency'   => 'usd',
+                'pay_amount'       => $grandAmount,
+                'pay_currency'     => $paymentMethod->default_currency ?? 'usd',
+                'order_description'=> $order->notes,
+                'invoice_url'      => '',
+                'success_url'      => route('success', ['order' => $order->id]),
+                'cancel_url'       => route('cancel',  ['order' => $order->id]),
+                'is_fixed_rate'    => true,
                 'is_fee_paid_by_user' => true,
             ]);
 
-            foreach ($order_items as $item) {
+            // 2) Attach line items
+            foreach ($this->order_items as $item) {
                 $plan = ServerPlan::findOrFail($item['server_plan_id']);
                 $order->items()->create([
-                    'server_plan_id' => $item['server_plan_id'],
-                    'quantity' => $item['quantity'],
-                    'unit_amount' => $plan->price,
-                    'total_amount' => $plan->price * $item['quantity'],
+                    'server_plan_id' => $plan->id,
+                    'quantity'       => $item['quantity'],
+                    'unit_amount'    => $plan->price,
+                    'total_amount'   => $plan->price * $item['quantity'],
                 ]);
             }
 
-            // ... (wallet / stripe / nowpayments handling)
+            // 3) Choose payment method
+            $redirect_url = '';
+
+            if ($paymentMethod->slug === 'wallet') {
+                $customer = Auth::user();
+
+                 // Attempt to debit via payFromWallet()
+                if (! $customer->payFromWallet($grandAmount, 'Order #' . $order->id)) {
+                    $this->alert('warning', "Insufficient balance in your USD wallet.");
+                    return redirect()->route('wallet.insufficient', ['currency' => 'usd']);
+                }
+
+                // Re-assign order_id on items if needed
+                $order->items()->each(fn($item) => $item->update(['order_id' => $order->id]));
+
+                Log::info('Wallet deduction:', [
+                    'customer_id'      => $customer->id,
+                    'amount_deducted'  => $order->grand_amount,
+                    'remaining_balance'=> $customer->getWallet()->balance,
+                ]);
+
+                $invoice->update(['invoice_url' => $redirect_url]);
+                $order->markAsPaid($redirect_url); 
+                
+                // ✅ Wallet payment succeeded, now create clients
+                $this->processXui($order);
+            }
+
+            elseif ($paymentMethod->slug === 'stripe') {
+                Stripe::setApiKey(env('STRIPE_SECRET'));
+                $session = Session::create([
+                    'payment_method_types' => ['card'],
+                    'customer_email' => Auth::user()->email,
+                    'line_items' => [[
+                        'price_data' => [
+                            'currency' => 'usd',
+                            'unit_amount' => intval($grandAmount * 100),
+                            'product_data' => ['name' => 'Order #' . $order->id],
+                        ],
+                        'quantity' => 1,
+                    ]],
+                    'mode' => 'payment',
+                    'cancel_url'  => route('cancel', ['order' => $order->id]),
+                    'success_url' => route('success', ['order' => $order->id, 'session_id' => '{CHECKOUT_SESSION_ID}']),                    'cancel_url' => route('cancel', ['order' => $order->id]),
+                    'metadata' => [ 
+                        'order_id' => $order->id,
+                    ],
+                ]);
+                $redirect_url = $session->url;
+
+                $invoice->update(['invoice_url' => $redirect_url]);
+                $order->markAsProcessing($redirect_url);   
+            }
+
+            elseif ($paymentMethod->slug === 'nowpayments') {
+                $paymentController = new PaymentMethodController();
+                $payResult = $paymentController->createInvoiceNowPayments($order);
+
+                if ($payResult['status'] === 'success' && isset($payResult['data']['invoice_url'])) {
+                    $redirect_url = $payResult['data']['invoice_url'];
+
+                    // Update both order and invoice with the invoice URL
+                    $order->update(['payment_invoice_url' => $redirect_url]);
+                    $invoice->update(['invoice_url' => $redirect_url]);
+
+                    // Optional: Dispatch Livewire event for frontend update
+                    $this->dispatch('set-invoice-url', ['url' => $redirect_url]);
+
+                    // ⚠️ Don't mark as paid yet — await NowPayments IPN/webhook
+                    $order->markAsProcessing($redirect_url);
+
+                } else {
+                    Log::error('NowPayments invoice creation failed', [
+                        'order_id' => $order->id,
+                        'response' => $payResult,
+                    ]);
+                    throw new \Exception('Failed to create NowPayments invoice.');
+                }
+            }
 
             DB::commit();
             CartManagement::clearCartItems();
 
+            Mail::to(Auth::user())->send(new OrderPlaced($order));
             $this->alert('success', 'Order placed successfully!');
 
-            $customer = Auth::guard('customer')->user();
-            Mail::to(request()->user())->send(new OrderPlaced($order));
-
-            return redirect($redirect_url ?: $invoice->invoice_url ?: route('success', ['order' => $order->id]));
+            // 4) Redirect
+            return redirect($redirect_url
+                ?: $invoice->invoice_url
+                ?: route('success', ['order' => $order->id])
+            );
 
         } catch (\Exception $e) {
             DB::rollBack();
@@ -146,7 +202,6 @@ class CheckoutPage extends Component
             $this->alert('error', 'Error placing order: ' . $e->getMessage());
         }
     }
-
 
     /**
      * Process XUI clients for the order.

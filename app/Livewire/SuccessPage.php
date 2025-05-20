@@ -49,8 +49,8 @@ class SuccessPage extends Component
                 if ($payment_status === 'finished') {
                     $latest_order->update(['payment_status' => 'paid']);
                 } else {
-                    $latest_order->update(['payment_status' => 'processing']);
-                    return redirect()->route('Pending');
+                    $latest_order->update(['payment_status' => 'pending']);
+                    return redirect()->route('my.orders');
                 }
             } else {
                 $latest_order->update(['payment_status' => 'failed']);

@@ -31,4 +31,14 @@ return [
         ],
     ],
 
+    'stripe' => [
+        'secret' => env('STRIPE_SECRET'),
+        'webhook_secret' => env('STRIPE_WEBHOOK_SECRET'),
+    ],
+
+    'nowpayments' => [
+        'key' => env('NOWPAYMENTS_API_KEY'),
+        'api_url' => env('NOWPAYMENTS_API_URL', 'https://api.nowpayments.io/v1'),
+    ],
+
 ];

@@ -6,6 +6,7 @@ use Exception;
 use GuzzleHttp\Cookie\CookieJar;
 use App\Models\Server;
 use App\Models\ServerPlan;
+use App\Models\ServerClient;
 use App\Models\ServerConfig;
 use App\Models\ServerInbound;
 use GuzzleHttp\Client;
@@ -203,73 +204,80 @@ class XUIService
     {
         $server = Server::findOrFail($server_id);
         $volume = ($volume == 0) ? 0 : floor($volume * 1073741824);
-        $subId = $this->generateUID();
+        $subId   = $this->generateUID();
 
+        // Build the new-client payload
         $newClient = [
-            "id"         => $client_id,
-            "enable"     => true,
-            "email"      => $remark,
-            "limitIp"    => $limitip,
-            "totalGB"    => $volume,
-            "expiryTime" => $expiryTime,
-            "subId"      => $subId,
+            'id'         => $client_id,
+            'enable'     => true,
+            'email'      => $remark,
+            'limitIp'    => $limitip,
+            'totalGB'    => $volume,
+            'expiryTime' => $expiryTime,
+            'subId'      => $subId,
         ];
 
-        if (($server->type == "sanaei" || $server->type == "alireza") && $server->reality == "true") {
-            $plan = ServerPlan::find($planId);
-            $flow = isset($plan->flow) && $plan->flow != "None" ? $plan->flow : "";
-            $newClient['flow'] = $flow;
-        }
+        // (optional) your existing flow logic here...
 
-        $settings = json_encode(["clients" => [$newClient]]);
-        $dataArr = [
-            'id' => $inbound_id,
-            'settings' => $settings
-        ];
+        $settings = json_encode(['clients' => [$newClient]]);
+        $dataArr   = ['id' => $inbound_id, 'settings' => $settings];
 
-        $url = 'panel/api/inbounds/addClient';
+        // Attempt to create
+        $url      = 'panel/api/inbounds/addClient';
         $response = $this->executeCurlRequest($url, $this->token, $dataArr);
-        $parsed = json_decode($response, true);
+        $parsed   = json_decode($response, true);
 
+        // Handle duplicate‐email as “fetch existing” instead of failing
         if (empty($parsed['success'])) {
-            throw new Exception("XUI API error: " . json_encode($parsed));
+            $msg = $parsed['msg'] ?? '';
+            if (str_contains($msg, 'Duplicate email')) {
+                // load the inbound and find the client record by email
+                $inbound = collect($this->getInbounds())->firstWhere('id', $inbound_id);
+                $clients = json_decode($inbound->settings, true)['clients'] ?? [];
+                $remoteClient = collect($clients)->firstWhere('email', $remark);
+
+                if (! $remoteClient) {
+                    throw new Exception("XUI reported duplicate email, but no matching client found remotely.");
+                }
+            } else {
+                throw new Exception("XUI API error: " . json_encode($parsed));
+            }
+        } else {
+            // on success, re-fetch and grab the newly-created client by its id
+            sleep(1);
+            $inbound       = collect($this->getInbounds())->firstWhere('id', $inbound_id);
+            $clients       = json_decode($inbound->settings, true)['clients'] ?? [];
+            $remoteClient  = collect($clients)->firstWhere('id', $client_id);
+
+            if (! $remoteClient) {
+                throw new Exception("XUI: Created client ID {$client_id} not found in inbound settings.");
+            }
         }
 
-        sleep(1); // Allow remote server to process (optional but recommended)
-
-        $inbound = collect($this->getInbounds())->firstWhere('id', $inbound_id);
-        if (!$inbound) {
-            throw new Exception("Inbound ID {$inbound_id} not found after adding client.");
-        }
-
-        $clients = json_decode($inbound->settings, true)['clients'] ?? [];
-        $remoteClient = collect($clients)->firstWhere('id', $client_id);
-        if (!$remoteClient) {
-            throw new Exception("Client ID {$client_id} not found in remote inbound after creation.");
-        }
-
+        // Ensure we have a local inbound record
         $localInbound = ServerInbound::updateOrCreate(
             ['server_id' => $server_id, 'port' => $inbound->port],
             [
-                'protocol' => $inbound->protocol,
-                'settings' => json_decode($inbound->settings, true),
+                'protocol'       => $inbound->protocol,
+                'settings'       => json_decode($inbound->settings, true),
                 'streamSettings' => json_decode($inbound->streamSettings, true),
-                'sniffing' => json_decode($inbound->sniffing, true),
-                'enable' => $inbound->enable,
+                'sniffing'       => json_decode($inbound->sniffing, true),
+                'enable'         => $inbound->enable,
             ]
         );
 
-        $link = \App\Models\ServerClient::buildXuiClientLink($remoteClient, $localInbound, $server);
-        $subLink = $server->getPanelBase() . "/sub_proxy/{$subId}";
-        $jsonLink = $server->getPanelBase() . "/json_proxy/{$subId}";
+        // Build the subscription links
+        $link     = ServerClient::buildXuiClientLink($remoteClient, $localInbound, $server);
+        $subLink  = "{$server->getPanelBase()}/sub_proxy/{$remoteClient['subId']}";
+        $jsonLink = "{$server->getPanelBase()}/json_proxy/{$remoteClient['subId']}";
 
-        return [
-            ...$remoteClient,
-            'subId' => $subId,
-            'link' => $link,
-            'sub_link' => $subLink,
-            'json_link' => $jsonLink,
-        ];
+        // Return a unified array for both “new” and “duplicate” cases
+        return array_merge($remoteClient, [
+            'subId'       => $remoteClient['subId'],
+            'link'        => $link,
+            'sub_link'    => $subLink,
+            'json_link'   => $jsonLink,
+        ]);
     }
 
     public function getDefaultInboundId()

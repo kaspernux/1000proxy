@@ -77,8 +77,11 @@ class ProductsPage extends Component
         //     $serverQuery->whereIn('server_category_id', $this->selected_categories);
         // }
 
-        if (!empty($this->selected_brands)) {
-            $serverQuery->whereIn('server_brand_id', $this->selected_brands);
+        // Brand filter: go through the `server` relation
+        if (! empty($this->selected_brands)) {
+            $serverQuery->whereHas('server', function ($query) {
+                $query->whereIn('server_brand_id', $this->selected_brands);
+            });
         }
 
         if (!empty($this->selected_countries)) {

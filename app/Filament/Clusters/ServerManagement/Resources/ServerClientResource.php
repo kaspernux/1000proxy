@@ -33,7 +33,8 @@ use Filament\Infolists\Components\Grid;
 use Filament\Infolists\Components\TextEntry;
 use Filament\Infolists\Components\IconEntry;
 use Filament\Infolists\Components\ImageEntry;
-
+use Filament\Notifications\Notification;
+            
 class ServerClientResource extends Resource
 {
     use LivewireAlert;
@@ -137,36 +138,52 @@ class ServerClientResource extends Resource
                 ->requiresConfirmation()
                 ->action(function () {
                     $servers = Server::all();
-
+            
                     foreach ($servers as $server) {
                         try {
-                            $xui = new XUIService($server->id);
-                            $remoteInbounds = $xui->getInbounds();
-
+                            $xui             = new XUIService($server->id);
+                            $remoteInbounds  = $xui->getInbounds();
+            
                             foreach ($remoteInbounds as $inbound) {
+                                // 1) Ensure we have a local inbound record
                                 $localInbound = ServerInbound::firstOrCreate([
                                     'server_id' => $server->id,
-                                    'port' => $inbound->port,
+                                    'port'      => $inbound->port,
                                 ]);
-
-                                $clients = json_decode($inbound->settings)->clients ?? [];
-
+            
+                                // 2) Decode the inbound settings and extract remote clients
+                                $settings    = is_string($inbound->settings)
+                                    ? json_decode($inbound->settings, true)
+                                    : (array) $inbound->settings;
+                                $clients     = $settings['clients'] ?? [];
+                                $remoteSubIds = [];
+            
+                                // 3) Upsert each remote client, and collect its subId
                                 foreach ($clients as $client) {
-                                    ServerClient::fromRemoteClient((array) $client, $localInbound->id);
+                                    $remoteSubIds[] = $client['subId'] ?? null;
+                                    ServerClient::fromRemoteClient(
+                                        (array) $client,
+                                        $localInbound->id
+                                    );
                                 }
+            
+                                // 4) Delete any local clients no longer present remotely
+                                ServerClient::where('server_inbound_id', $localInbound->id)
+                                    ->whereNotIn('subId', array_filter($remoteSubIds))
+                                    ->delete();
                             }
-                        } catch (\Exception $e) {
+                        } catch (\Throwable $e) {
                             \Log::error("Client sync failed for server ID {$server->id}: " . $e->getMessage());
                         }
                     }
-
-                    \Filament\Notifications\Notification::make()
+            
+                    Notification::make()
                         ->title('Success')
-                        ->body('Clients synced successfully.')
+                        ->body('Clients synced and stale records removed.')
                         ->success()
                         ->send();
-                }),
-        ]);
+                })
+            ]);
     }
 
     public static function getRelations(): array

@@ -29,10 +29,11 @@ class ProcessXuiOrder implements ShouldQueue
         Log::info("🚀 Starting XUI processing for Order #{$this->order->id}");
 
         foreach ($this->order->items as $item) {
-            $plan = $item->serverPlan;
+            $plan       = $item->serverPlan;
             $xuiService = new XUIService($plan->server_id);
             $inbound_id = $xuiService->getDefaultInboundId();
 
+            // 1) Create the remote client
             $clientData = $xuiService->addInboundAccount(
                 $plan->server_id,
                 $xuiService->generateUID(),
@@ -44,31 +45,50 @@ class ProcessXuiOrder implements ShouldQueue
                 $plan->id
             );
 
+            // 2) Re-fetch the inbound so we can grab its port & settings
+            $remoteInbound = collect($xuiService->getInbounds($plan->server_id))
+                ->firstWhere('id', $inbound_id);
+
+            if (! $remoteInbound) {
+                throw new \Exception("Remote inbound #{$inbound_id} not found after client creation.");
+            }
+
+            // 3) Upsert our local inbound record
             $localInbound = ServerInbound::updateOrCreate(
-                ['server_id' => $plan->server_id, 'port' => $clientData['port']],
                 [
-                    'protocol' => $clientData['protocol'] ?? 'vless',
-                    'remark' => $clientData['remark'] ?? '',
-                    'enable' => $clientData['enable'] ?? true,
-                    'settings' => $clientData['settings'] ?? [],
-                    'streamSettings' => $clientData['streamSettings'] ?? [],
-                    'sniffing' => $clientData['sniffing'] ?? [],
+                    'server_id' => $plan->server_id,
+                    'port'      => $remoteInbound->port,
+                ],
+                [
+                    'protocol'       => $remoteInbound->protocol       ?? 'vless',
+                    'remark'         => $remoteInbound->remark         ?? '',
+                    'enable'         => $remoteInbound->enable         ?? true,
+                    'settings'       => $remoteInbound->settings       ?? [],
+                    'streamSettings' => $remoteInbound->streamSettings ?? [],
+                    'sniffing'       => $remoteInbound->sniffing       ?? [],
+                    'up'             => $remoteInbound->up             ?? 0,
+                    'down'           => $remoteInbound->down           ?? 0,
+                    'total'          => $remoteInbound->total          ?? 0,
+                    'expiryTime'     => isset($remoteInbound->expiryTime)
+                                        ? now()->createFromTimestampMs($remoteInbound->expiryTime)
+                                        : null,
                 ]
             );
 
+            // 4) Create the ServerClient from the remote client data
             ServerClient::fromRemoteClient(
                 $clientData,
                 $localInbound->id,
-                $clientData['link']
+                $clientData['link'] ?? null
             )->update(['plan_id' => $plan->id]);
 
             Log::info("✅ ServerClient created for Order #{$this->order->id}");
         }
 
+        // 5) Finally mark the order complete
         $this->order->markAsCompleted();
         Log::info("✅ Order #{$this->order->id} completed.");
     }
-
 
     public function failed(\Throwable $exception): void
     {
