@@ -1,7 +1,3 @@
-@php
-    $wallet = auth('customer')->user()->getWallet();
-@endphp
-
 <header
     class="flex z-50 sticky font-mono top-0 flex-wrap md:justify-start md:flex-nowrap w-full bg-gradient-to-r from-green-900 to-green-600 text-sm py-3 md:py-0 dark:bg-green-800 shadow-md">
     <nav class="max-w-[85rem] w-full mx-auto px-4 md:px-6 lg:px-8" aria-label="Global">
@@ -110,6 +106,10 @@
                             </div>
                         </div>
                         @elseauth('customer')
+                        @php
+                            // now we're guaranteed there is a customer
+                            $wallet = auth('customer')->user()->getWallet();
+                        @endphp
                         <div
                             class="hs-dropdown [--strategy:static] md:[--strategy:fixed] [--adaptive:none] md:[--trigger:hover] md:py-4">
                             <button type="button"
