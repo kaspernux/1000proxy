@@ -1,3 +1,7 @@
+@php
+    $wallet = auth('customer')->user()->getWallet();
+@endphp
+
 <header
     class="flex z-50 sticky font-mono top-0 flex-wrap md:justify-start md:flex-nowrap w-full bg-gradient-to-r from-green-900 to-green-600 text-sm py-3 md:py-0 dark:bg-green-800 shadow-md">
     <nav class="max-w-[85rem] w-full mx-auto px-4 md:px-6 lg:px-8" aria-label="Global">
@@ -96,7 +100,7 @@
                                 </a>
 
                                 <a class="flex items-center gap-x-3.5 hover:text-green-900 py-2 px-3 rounded-lg text-sm text-white hover:bg-green-400 focus:ring-2 focus:ring-yellow-600 dark:text-green-400 dark:hover:bg-green-400 dark:hover:text-green-900 dark:focus:outline-none dark:focus:ring-1 dark:focus:ring-yellow-600"
-                                    href="#">
+                                    href="/account">
                                     My Account
                                 </a>
                                 <a class="flex items-center gap-x-3.5 hover:text-green-900 py-2 px-3 rounded-lg text-sm text-white hover:bg-green-400 focus:ring-2 focus:ring-yellow-600 dark:text-green-400 dark:hover:bg-green-400 dark:hover:text-green-900 dark:focus:outline-none dark:focus:ring-1 dark:focus:ring-yellow-600"
@@ -110,33 +114,42 @@
                             class="hs-dropdown [--strategy:static] md:[--strategy:fixed] [--adaptive:none] md:[--trigger:hover] md:py-4">
                             <button type="button"
                                 class="py-2.5 px-4 inline-flex items-center gap-x-2 text-sm font-bold rounded-lg border border-transparent bg-green-600 text-white hover:bg-yellow-600 disabled:opacity-50 disabled:pointer-events-none dark:focus:outline-none dark:focus:ring-1 dark:focus:ring-green-600">
-                                {{ auth('customer')->user()->name ?? '' }}
+                                {{ auth('customer')->user()->name }}
                                 <svg class="ms-2 w-4 h-4" xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                    viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                                    stroke-linecap="round" stroke-linejoin="round">
+                                    viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                                    stroke-linejoin="round">
                                     <path d="m6 9 6 6 6-6" />
                                 </svg>
                             </button>
 
                             <div
                                 class="hs-dropdown-menu bg-green-400 transition-[opacity,margin] duration-[0.1ms] md:duration-[150ms] hs-dropdown-open:opacity-100 opacity-0 md:w-48 hidden z-10 md:shadow-md rounded-lg p-2 dark:bg-green-400 md:dark:border dark:border-yellow-600 dark:divide-green-900 before:absolute top-full md:border before:-top-5 before:start-0 before:w-full before:h-5">
+
+                                <!-- Wallet balance -->
+
+                                <a href="{{ route('filament.customer.my-wallet.resources.wallets.view', ['record' => $wallet->id]) }}"
+                                    class="flex items-center gap-x-3.5 hover:text-green-900 py-2 px-3 rounded-lg text-sm text-white hover:bg-green-400 dark:text-green-400 dark:hover:bg-green-400"
+                                >
+                                    Balance: ${{ number_format($wallet->balance, 2) }}
+                                </a>
+
                                 <a class="flex items-center gap-x-3.5 hover:text-green-900 py-2 px-3 rounded-lg text-sm text-white hover:bg-green-400 focus:ring-2 focus:ring-yellow-600 dark:text-green-400 dark:hover:bg-green-400 dark:hover:text-green-900 dark:focus:outline-none dark:focus:ring-1 dark:focus:ring-yellow-600"
-                                    wire:navigate href="/my-orders">
+                                href="/account">
+                                    My Account
+                                </a>
+                                
+                                <a class="flex items-center gap-x-3.5 hover:text-green-900 py-2 px-3 rounded-lg text-sm text-white hover:bg-green-400 focus:ring-2 focus:ring-yellow-600 dark:text-green-400 dark:hover:bg-green-400 dark:hover:text-green-900 dark:focus:outline-none dark:focus:ring-1 dark:focus:ring-yellow-600"
+                                wire:navigate href="/my-orders">
                                     My Orders
                                 </a>
 
                                 <a class="flex items-center gap-x-3.5 hover:text-green-900 py-2 px-3 rounded-lg text-sm text-white hover:bg-green-400 focus:ring-2 focus:ring-yellow-600 dark:text-green-400 dark:hover:bg-green-400 dark:hover:text-green-900 dark:focus:outline-none dark:focus:ring-1 dark:focus:ring-yellow-600"
-                                    href="#">
-                                    My Account
-                                </a>
-                                <a class="flex items-center gap-x-3.5 hover:text-green-900 py-2 px-3 rounded-lg text-sm text-white hover:bg-green-400 focus:ring-2 focus:ring-yellow-600 dark:text-green-400 dark:hover:bg-green-400 dark:hover:text-green-900 dark:focus:outline-none dark:focus:ring-1 dark:focus:ring-yellow-600"
-                                    href="/logout">
+                                href="/logout">
                                     Logout
                                 </a>
                             </div>
                         </div>
                         @endauth
-
                     </div>
                 </div>
             </div>
