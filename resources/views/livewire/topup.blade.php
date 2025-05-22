@@ -1,15 +1,15 @@
 <x-layouts.app>
-<div class="w-full font-mono bg-gradient-to-r from-green-900 to-green-600 py-10 px-4 sm:px-6 lg:px-8 mx-auto">
-    <section class="bg-gradient-to-r from-green-900 to-green-600 font-mono rounded-lg py-8 px-6">
+<div class="w-full font-mono bg-gradient-to-r from-green-900 to-green-600 py-10 px-4 sm:px-6 lg:px-8">
+    <section class="bg-gradient-to-r from-green-900 to-green-600 font-mono rounded-lg py-8 px-4 sm:px-6">
         <div class="mx-auto max-w-3xl">
             <div class="flex justify-center">
-                <div class="w-full max-w-lg mx-8">
-                    <div class="border-2 border-double rounded-2xl border-yellow-600 bg-green-900 p-8 shadow-2xl" x-data="topupForm()" x-init="init()">
+                <div class="w-full max-w-lg">
+                    <div class="border-2 border-double rounded-2xl border-yellow-600 bg-green-900 p-6 sm:p-8 shadow-2xl" x-data="topupForm()" x-init="init()">
 
                         {{-- Header --}}
                         <div class="text-center space-y-3 mb-8">
-                            <h2 class="mt-4 text-4xl font-bold text-white tracking-wide">Top-Up Wallet</h2>
-                            <p class="text-lg text-green-300">Choose cryptocurrency and deposit easily.</p>
+                            <h2 class="text-3xl sm:text-4xl font-bold text-white tracking-wide">Top-Up Wallet</h2>
+                            <p class="text-base sm:text-lg text-green-300">Choose cryptocurrency and deposit easily.</p>
                         </div>
 
                         {{-- Alerts --}}
@@ -21,10 +21,10 @@
                         @endif
 
                         {{-- Currency Selector --}}
-                        <div class="flex justify-center mb-8 space-x-4">
+                        <div class="flex flex-wrap justify-center mb-8 gap-2">
                             @foreach (['BTC', 'XMR', 'SOL'] as $coin)
                                 <button type="button"
-                                    class="px-6 py-2 text-lg rounded-full font-bold uppercase transition-all duration-300 border-2 border-double border-yellow-600 focus:outline-none"
+                                    class="px-4 sm:px-6 py-2 text-sm sm:text-lg rounded-full font-bold uppercase transition-all duration-300 border-2 border-double border-yellow-600 focus:outline-none"
                                     :class="currency === '{{ $coin }}' ? 'bg-yellow-600 text-green-900' : 'bg-green-900 text-white hover:bg-yellow-600 hover:text-green-900'"
                                     @click="switchCurrency('{{ $coin }}')">
                                     {{ $coin }}
@@ -34,7 +34,7 @@
 
                         {{-- QR Code --}}
                         <div class="flex flex-col items-center space-y-4 mb-8">
-                            <div class="relative w-48 h-48 group cursor-pointer" @click="downloadQr">
+                            <div class="relative w-40 h-40 sm:w-48 sm:h-48 group cursor-pointer" @click="downloadQr">
                                 <template x-if="loading">
                                     <div class="flex justify-center items-center w-full h-full">
                                         <svg class="animate-spin h-10 w-10 text-yellow-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
@@ -44,7 +44,7 @@
                                     </div>
                                 </template>
 
-                                <div class="relative w-48 h-48 group" x-show="qrCode">
+                                <div class="relative w-full h-full" x-show="qrCode">
                                     <img 
                                         :src="qrCode" 
                                         alt="Deposit QR Code" 
@@ -56,31 +56,41 @@
                                 </div>
                             </div>
 
-                            <p class="text-lg text-green-300 font-mono" x-text="'Deposit ' + currency "></p>                           
-                            <p class="text-xl font-bold text-yellow-400" x-text="'Balance: $' + balance"></p>
+                            <p class="text-base sm:text-lg text-green-300 font-mono" x-text="'Deposit ' + currency "></p>                           
+                            <p class="text-lg sm:text-xl font-bold text-yellow-400" x-text="'Balance: $' + balance"></p>
                         </div>
 
                         <!-- Deposit Address -->
-                        <div class="flex text-xl font-bold items-center  mb-4 px-10">
-                            <input type="text" x-model="depositAddress" readonly
-                                class="w-full bg-green-800 border-2 border-double text-center border-yellow-600 text-white font-bold items-center justify-center py-3 px-4 rounded-md" />  
+                        <div class="flex items-center mb-4 px-2 sm:px-10">
+                            <div
+                                class="w-full overflow-x-auto rounded-md border-2 border-double border-yellow-600 bg-green-800 cursor-pointer"
+                                @click="copyAddress"
+                                title="Click to copy address"
+                            >
+                                <div
+                                    class="inline-block whitespace-nowrap text-white font-bold text-sm sm:text-base py-3 px-4 select-none"
+                                    x-text="depositAddress"
+                                ></div>
+                            </div>
                         </div>
 
-    
+
+                        {{-- Copy Address Button --}}
+
 
                         {{-- Top-Up Form --}}
-                        <form wire:submit.prevent="topUp" class="space-y-8 px-10">
+                        <form wire:submit.prevent="topUp" class="space-y-8 px-2 sm:px-10">
                             <input type="hidden" wire:model="currency" x-bind:value="currency" />
 
                             <div class="space-y-2 mb-4">
-                                <label for="amount" class="block text-white text-md text-center font-bold text-yellow-400">Amount</label>
+                                <label for="amount" class="block text-white text-sm sm:text-md text-center font-bold text-yellow-400">Amount</label>
                                 <input type="number" id="amount" wire:model.defer="amount" step="0.00000001" required
                                     class="w-full rounded-md bg-green-800 border-2 border-double border-yellow-600 text-white py-3 px-4" />
                                 @error('amount') <p class="text-red-500 text-xs mt-1">{{ $message }}</p> @enderror
                             </div>
 
                             <div class="space-y-2 mt-6">
-                                <label for="reference" class="block text-white text-md text-center font-bold text-yellow-400">Transaction Reference</label>
+                                <label for="reference" class="block text-white text-sm sm:text-md text-center font-bold text-yellow-400">Transaction Reference</label>
                                 <input type="text" id="reference" wire:model.defer="reference"
                                     class="w-full rounded-md bg-green-800 border-2 border-double border-yellow-600 text-white py-3 px-4" />
                                 @error('reference') <p class="text-red-500 text-xs mt-1">{{ $message }}</p> @enderror
@@ -88,7 +98,7 @@
 
                             <div>
                                 <button type="submit"
-                                    class="w-full mt-8 text-lg flex justify-center items-center gap-2 bg-yellow-600 hover:bg-yellow-500 text-green-900 font-bold py-3 px-6 rounded-xl">
+                                    class="w-full mt-8 text-base sm:text-lg flex justify-center items-center gap-2 bg-yellow-600 hover:bg-yellow-500 text-green-900 font-bold py-3 px-6 rounded-xl">
                                     <svg x-show="loading" class="animate-spin h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                                         <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                                         <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
@@ -111,7 +121,6 @@
     </section>
 </div>
 
-{{-- SCRIPT --}}
 <script>
 function topupForm() {
     return {
@@ -134,7 +143,6 @@ function topupForm() {
 
         init() {
             this.updateQr();
-
             setInterval(() => {
                 $wire.call('render');
             }, 10000);
@@ -177,9 +185,5 @@ function topupForm() {
         }
     }
 }
-
 </script>
-
-
-
 </x-layouts.app>

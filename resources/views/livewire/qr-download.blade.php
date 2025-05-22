@@ -5,10 +5,13 @@
 @endphp
 
 @if ($publicPath)
-    <div class="text-center">
-        <img src="{{ $publicPath }}" style="height:60px; width:60px; margin: 0 auto; border-radius: 6px;">
-        <br>
-        <a href="{{ $publicPath }}" download="{{ $filename }}" class="text-sm text-primary hover:underline">
+    <div class="flex flex-col items-center justify-center text-center space-y-2">
+        <img src="{{ $publicPath }}"
+             alt="QR Code"
+             class="w-16 h-16 sm:w-20 sm:h-20 object-contain rounded-md shadow-sm">
+        <a href="{{ $publicPath }}"
+           download="{{ $filename }}"
+           class="text-sm sm:text-base text-blue-600 hover:underline font-medium">
             Download
         </a>
     </div>

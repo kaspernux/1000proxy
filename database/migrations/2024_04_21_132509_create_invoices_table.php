@@ -11,6 +11,7 @@ class CreateInvoicesTable extends Migration
         Schema::create('invoices', function (Blueprint $table) {
             $table->id();
             $table->string('iid')->nullable();
+            $table->foreignId('wallet_transaction_id')->nullable()->constrained('wallet_transactions')->nullOnDelete();
             $table->foreignId('customer_id')->constrained()->onDelete('cascade');
             $table->foreignId('payment_method_id')->constrained()->onDelete('cascade');
             $table->string('payment_id')->nullable();

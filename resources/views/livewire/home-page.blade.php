@@ -6,15 +6,16 @@
             <!-- Grid -->
             <div class="grid md:grid-cols-2 gap-4 md:gap-8 xl:gap-20 md:items-center">
                 <div>
-                    <h1 class="block text-3xl font-bold font-mono text-white sm:text-4xl lg:text-6xl lg:leading-tight">
-                        Discover the Future of <span class="text-green-400">VPN & Proxy</span> Solutions
-                    </h1>
-                    <p class="mt-3 text-lg text-white font-mono">Optimize your internet experience with cutting-edge VPN and
-                        Proxy
-                        configurations designed for complete anonymity and security.</p>
+                <h1 class="text-2xl sm:text-4xl lg:text-6xl leading-snug font-bold text-white">
+                    Discover the Future of <span class="text-green-400">VPN & Proxy</span> Solutions
+                </h1>
+
+                <p class="mt-3 text-base sm:text-lg text-white">
+                    Optimize your internet experience with cutting-edge VPN and Proxy configurations designed for complete anonymity and security.
+                </p>
 
                     <!-- Buttons -->
-                    <div class="mt-7 grid gap-3 w-full sm:inline-flex">
+                    <div class="mt-7 w-full flex flex-col sm:flex-row sm:gap-3 gap-2">
                         <a wire:navigate class="py-3 px-4 font-mono inline-flex justify-center items-center gap-x-2 text-sm font-semibold rounded-lg border border-transparent bg-green-500 text-white hover:bg-yellow-600 disabled:opacity-50 disabled:pointer-events-none dark:focus:outline-none dark:focus:ring-1 dark:focus:ring-gray-600"
                             href="/register">
                             Get Started
@@ -191,8 +192,7 @@
         </div>
 
         <div class="max-w-7xl mx-auto px-10 py-6 lg:py-8 md:px-10">
-            <div class="grid sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-                @foreach($categories as $serverCategory)
+            <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">                @foreach($categories as $serverCategory)
                 <a class="group flex flex-col justify-center items-center border-transparent bg-dark-green hover:bg-green-400 hover:text-green-900 disabled:opacity-50 disabled:pointer-events-none dark:focus:ring-green-600 border shadow-sm rounded-xl hover:shadow-md transition dark:bg-dark-green dark:border-gray-800 dark:focus:outline-none dark:focus:ring-1"
                     href="/servers?selected_categories[0]={{ $serverCategory->id }}" wire:key="{{$serverCategory->id}}">
                     <div class="p-4 md:p-5">
@@ -201,7 +201,7 @@
                                 <img class="h-6 w-6 rounded-full"
                                     src="{{ url('storage/'.$serverCategory->image)}}" alt="{{ $serverCategory->name}}">
                                 <div class="ms-3">
-                                    <h3 class="group-hover:text-green-900 font-bold font-mono text-white">
+                                    <h3 class="group-hover:text-green-900 text-base sm:text-lg md:text-xl font-bold text-white">
                                         {{ $serverCategory->name}}
                                     </h3>
                                 </div>
@@ -249,11 +249,11 @@
                     wire:key="{{ $serverBrand->id }}">
                     <a href="/servers?selected_brands[0]={{ $serverBrand->id }}" class="block">
                         <img src="{{ url('storage/'.$serverBrand->image) }}" alt="{{ $serverBrand->name }}"
-                            class="object-cover w-full h-full max-w-full max-h-full my-3 px-3 rounded-t-lg">
+                            class="object-contain w-full h-40 mx-auto rounded-lg">
                     </a>
                     <div class="p-5 text-center">
                         <a href=""
-                            class="text-2xl font-bold tracking-tight text-white hover:text-green-900">{{ $serverBrand->name }}</a>
+                            class="text-xl sm:text-2xl font-bold tracking-tight text-white hover:text-green-900">{{ $serverBrand->name }}</a>
                     </div>
                 </div>
                 @endforeach
@@ -283,7 +283,7 @@
                 </div>
             </div>
 
-            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
                 <div class="bg-dark-green rounded-lg shadow-md dark:bg-gray-700 py-6">
                     <div
                         class="flex flex-wrap items-center justify-between pb-4 mb-6 space-x-2 border-b border-green-600 dark:border-gray-700">
@@ -293,9 +293,9 @@
                                     class="object-cover w-12 h-12 rounded-full">
                             </div>
                             <div>
-                                <h2 class="text-lg font-bold font-mono text-green-500 dark:text-green-400">
+                                <h2 class="text-base sm:text-lg font-bold text-green-500 dark:text-green-400">
                                     Emma Martinez</h2>
-                                <p class="text-xs text-white font-mono dark:text-green-400">Research Analyst</p>
+                                <p class="text-sm sm:text-base text-white leading-relaxed font-mono dark:text-green-400">Research Analyst</p>
                             </div>
                         </div>
                         {{-- <p class="px-6 text-base font-medium text-green-700 dark:text-green-400"> Joined 12, SEP , 2022
@@ -389,9 +389,9 @@
                                     class="object-cover w-12 h-12 rounded-full">
                             </div>
                             <div>
-                                <h2 class="text-lg font-bold font-mono text-green-500 dark:text-green-400">
-                                    David Lee</h2>
-                                <p class="text-xs text-white font-mono dark:text-green-400">Software Developer</p>
+                            <h2 class="text-base sm:text-lg font-bold text-green-500 dark:text-green-400">
+                                David Lee</h2>
+                                <p class="text-sm sm:text-base text-white leading-relaxed font-mono dark:text-green-400">Research Analyst</p>
                             </div>
                         </div>
                         {{-- <p class="px-6 text-base font-medium text-green-700 dark:text-green-400"> Joined 12, SEP , 2022
@@ -485,9 +485,9 @@
                                     class="object-cover w-12 h-12 rounded-full">
                             </div>
                             <div>
-                                <h2 class="text-lg font-bold font-mono text-green-500 dark:text-green-400">
-                                    Sarah Johnson</h2>
-                                <p class="text-xs text-white font-mono dark:text-green-400">Digital Marketer</p>
+                            <h2 class="text-base sm:text-lg font-bold text-green-500 dark:text-green-400">
+                                Sarah Johnson</h2>
+                                <p class="text-sm sm:text-base text-white leading-relaxed font-mono dark:text-green-400">Research Analyst</p>
                             </div>
                         </div>
                         {{-- <p class="px-6 text-base font-medium text-green-700 dark:text-green-400"> Joined 12, SEP , 2022

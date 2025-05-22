@@ -6,6 +6,13 @@ use App\Models\WalletTransaction;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use App\Services\CryptoAddressService;
+use App\Models\Wallet;
+use App\Models\Customer;
+use App\Http\Resources\WalletTransactionResource;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
+use App\Filament\Customer\Clusters\MyWallet\Resources\WalletResource;
+use Illuminate\Support\Facades\Redirect;
 
 class WalletTransactionController extends Controller
 {
@@ -26,6 +33,7 @@ class WalletTransactionController extends Controller
 
         return view('wallets.transaction-detail', compact('transaction'));
     }
+
 
     public function create()
     {

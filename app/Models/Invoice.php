@@ -5,6 +5,7 @@ namespace App\Models;
 use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\ServerPlan;
+use App\Models\WalletTransaction;
 
 namespace App\Models;
 
@@ -86,4 +87,10 @@ class Invoice extends Model
     {
         return $this->hasMany(OrderItem::class);
     }
+
+    public function walletTransaction(): BelongsTo
+    {
+        return $this->belongsTo(WalletTransaction::class);
+    }
+   
 }

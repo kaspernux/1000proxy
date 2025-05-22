@@ -156,8 +156,8 @@ class WalletTransactionResource extends Resource
                                         ->visible(fn ($record) => $record->type === 'deposit'),
                                     
                                     TextEntry::make('payment_id')
-                                        ->label('Payment ID')
-                                        ->placeholder('The Blockchain transaction ID')
+                                        ->label('Transaction ID')
+                                        ->placeholder('The Blockchain Txn ID or Hash')
                                         ->columnSpanFull(),
 
                                     TextEntry::make('created_at')

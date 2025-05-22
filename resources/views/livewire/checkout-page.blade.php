@@ -23,9 +23,10 @@
         </div>
         @endif
 
-        <h1 class="text-4xl my-10 font-bold text-white text-left">
+        <h1 class="text-3xl sm:text-4xl font-bold text-white my-6 sm:my-10 text-left">
             Checkout
         </h1>
+
         <form wire:submit.prevent='placeOrder'>
             @csrf
             <div class="grid grid-cols-12 gap-4">
@@ -47,8 +48,7 @@
                                     Username or Name
                                 </label>
                                 <input
-                                    class="w-full rounded-lg border py-2 px-3 dark:bg-gray-700 dark:text-white dark:border-none @error('name') border-red-600 @enderror"
-                                    id="name" type="text" wire:model="name" disabled>
+                                class="w-full text-sm sm:text-base rounded-lg border py-2 px-3 dark:bg-gray-700 dark:text-white dark:border-none @error('name') border-red-600 @enderror"                                    id="name" type="text" wire:model="name" disabled>
                                 </input>
                                 @error('name')
                                 <div class="text-red-600 text-sm">{{$message}}</div>
@@ -59,7 +59,7 @@
                                     Email
                                 </label>
                                 <input
-                                    class="w-full rounded-lg border py-2 px-3 dark:bg-gray-700 dark:text-white dark:border-none @error('email') border-red-600 @enderror"
+                                    class="w-full text-sm sm:text-base rounded-lg border py-2 px-3 dark:bg-gray-700 dark:text-white dark:border-none @error('email') border-red-600 @enderror"
                                     id="email" type="text" wire:model="email" disabled>
                                 </input>
                                 @error('email')
@@ -76,7 +76,7 @@
                                     Phone
                                 </label>
                                 <input
-                                    class="w-full rounded-lg border py-2 px-3 dark:bg-gray-700 dark:text-white dark:border-none @error('phone') border-red-600 @enderror"
+                                    class="w-full text-sm sm:text-base rounded-lg border py-2 px-3 dark:bg-gray-700 dark:text-white dark:border-none @error('phone') border-red-600 @enderror"
                                     id="phone" type="text" wire:model="phone">
                                 </input>
                                 @error('phone')
@@ -88,7 +88,7 @@
                                     Telegram ID
                                 </label>
                                 <input
-                                    class="w-full rounded-lg border py-2 px-3 dark:bg-gray-700 dark:text-white dark:border-none @error('telegram_id') border-red-600 @enderror"
+                                    class="w-full text-sm sm:text-base rounded-lg border py-2 px-3 dark:bg-gray-700 dark:text-white dark:border-none @error('telegram_id') border-red-600 @enderror"
                                     id="telegram_id" type="text" wire:model="telegram_id">
                                 </input>
                                 @error('telegram_id')

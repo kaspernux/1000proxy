@@ -150,7 +150,51 @@
                 </div>
             </div>
             <!-- End Card -->
-        </div>
+             <!-- Transaction Summary Card -->
+                <!-- Transaction Summary Card -->
+                @if($order->invoice && $order->invoice->walletTransaction)
+                <div class="flex flex-col bg-white border shadow-sm rounded-xl dark:bg-green-900 dark:border-green-800">
+                    <div class="p-4 md:p-5 flex gap-x-4">
+                        <div class="flex-shrink-0 flex justify-center items-center size-[46px] bg-yellow-600 rounded-lg dark:bg-green-800">
+                            <svg class="flex-shrink-0 size-5 text-green-600 dark:text-green-400" xmlns="http://www.w3.org/2000/svg" fill="none"
+                                viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                <path d="M3 3h18v4H3z" />
+                                <path d="M3 10h18v11H3z" />
+                            </svg>
+                        </div>
+                        <div class="grow">
+                            <div class="flex items-center gap-x-2">
+                                <p class="text-xs uppercase tracking-wide text-green-600">Transaction</p>
+                            </div>
+                            <div class="mt-1 text-green-800 dark:text-green-400">
+                                <div class="text-sm font-semibold">
+                                    Ref: {{ $order->invoice->walletTransaction->reference }}
+                                </div>
+                                <div class="text-xs text-green-600 dark:text-green-300 mt-1">
+                                    {{ ucfirst($order->invoice->walletTransaction->status) }} • {{ $order->invoice->walletTransaction->created_at->format('d M Y, H:i') }}
+                                </div>
+                                @php
+                                $filamentUrl = App\Filament\Customer\Clusters\MyWallet\Resources\WalletTransactionResource::getUrl(
+                                    name: 'view',
+                                    parameters: ['record' => $order->invoice->walletTransaction->getKey()],
+                                    panel: 'customer'
+                                );
+                                @endphp
+                                <a href="{{ $filamentUrl }}" class="text-sm font-bold text-yellow-500 hover:underline">
+                                    View Transaction →
+                                </a>
+
+                                <div class="text-sm font-semibold mt-1">
+                                    Amount: {{ Number::currency($order->invoice->walletTransaction->amount) }}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                @endif
+
+            </div>
+            <!-- End Card -->
         <!-- End Grid -->
 
         <div class="flex flex-col md:flex-row gap-4 mt-4">

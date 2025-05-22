@@ -17,7 +17,7 @@ class Transactions extends Component
         Auth::user()->wallets()->pluck('id')
     )->latest()->paginate(10);
 
-    return view('livewire.transactions', compact('transactions'));
+    return view('wallet.transactions.show', compact('transactions'));
 }
     public function download($transactionId)
     {

@@ -86,7 +86,9 @@ Route::middleware(['auth:web,customer'])->group(function () {
 
         // Transactions
         Route::get('/transactions', [WalletTransactionController::class, 'index'])->name('wallet.transactions.index');
-        Route::get('/transactions/{id}', [WalletTransactionController::class, 'show'])->name('wallet.transactions.show');
+    Route::get('/transactions/{transaction}', [WalletTransactionController::class, 'show'])->name('wallet.transactions.show');
+    Route::get('/transactions/{transaction}/download', [WalletTransactionController::class, 'download'])->name('wallet.transactions.download');
+
     });
 
     // Horizon Jobs

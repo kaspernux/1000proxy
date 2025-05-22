@@ -109,30 +109,43 @@ class CheckoutPage extends Component
 
             if ($paymentMethod->slug === 'wallet') {
                 $customer = Auth::user();
-
-                 // Attempt to debit via payFromWallet()
-                if (! $customer->payFromWallet($grandAmount, 'Order #' . $order->id)) {
+                $wallet = $customer->getWallet(); // 👈 assuming this method exists
+            
+                // 💸 Attempt to debit
+                if (! $wallet || !$customer->payFromWallet($grandAmount, 'Order #' . $order->id)) {
                     $this->alert('warning', "Insufficient balance in your USD wallet.");
                     return redirect()->route('wallet.insufficient', ['currency' => 'usd']);
                 }
-
-                // Re-assign order_id on items if needed
-                $order->items()->each(fn($item) => $item->update(['order_id' => $order->id]));
-
-                Log::info('Wallet deduction:', [
-                    'customer_id'      => $customer->id,
-                    'amount_deducted'  => $order->grand_amount,
-                    'remaining_balance'=> $customer->getWallet()->balance,
+            
+                // 🧾 Log the wallet transaction (so we can link it to invoice)
+                $transaction = $wallet->transactions()->create([
+                    'wallet_id'     => $wallet->id,
+                    'customer_id'   => $customer->id,
+                    'type'          => 'withdrawal',
+                    'amount'        => -abs($grandAmount),
+                    'status'        => 'completed',
+                    'reference'     => 'order_' . $order->id,
+                    'description'   => 'Payment for Order #' . $order->id,
+                    'metadata'      => ['order_id' => $order->id, 'method' => 'wallet'],
                 ]);
-
-                $invoice->update(['invoice_url' => $redirect_url]);
-                $order->markAsPaid($redirect_url); 
                 
-                // ✅ Wallet payment succeeded, now create clients
+            
+                // 🔗 Update the invoice to include this transaction
+                $invoice->update([
+                    'wallet_transaction_id' => $transaction->id,
+                    'invoice_url' => $redirect_url,
+                ]);
+            
+                $order->markAsPaid($redirect_url);
+            
+                // ✅ Create the proxy clients
                 $this->processXui($order);
             }
-
+            
             elseif ($paymentMethod->slug === 'stripe') {
+                $wallet = Auth::user()->wallet;
+                $customer = Auth::user();
+
                 Stripe::setApiKey(env('STRIPE_SECRET'));
                 $session = Session::create([
                     'payment_method_types' => ['card'],
@@ -154,11 +167,37 @@ class CheckoutPage extends Component
                 ]);
                 $redirect_url = $session->url;
 
+                // 🧾 Log the wallet transaction (so we can link it to invoice)
+                $transaction = $wallet->transactions()->create([
+                    'wallet_id'     => $wallet->id,
+                    'customer_id'   => $customer->id,
+                    'type'          => 'withdrawal',
+                    'amount'        => -abs($grandAmount),
+                    'status'        => 'pending', // still pending until Stripe confirms
+                    'reference'     => 'order_' . $order->id,
+                    'description'   => 'Stripe payment for Order #' . $order->id,
+                    'metadata'      => [
+                        'order_id' => $order->id,
+                        'method'   => 'stripe',
+                        'stripe_session_id' => $session->id,
+                    ],
+                ]);
+
+            
+                // 🔗 Update the invoice to include this transaction
+                $invoice->update([
+                    'wallet_transaction_id' => $transaction->id,
+                    'invoice_url' => $redirect_url,
+                ]);
+
                 $invoice->update(['invoice_url' => $redirect_url]);
                 $order->markAsProcessing($redirect_url);   
             }
 
             elseif ($paymentMethod->slug === 'nowpayments') {
+                $wallet = Auth::user()->wallet;
+                $customer = Auth::user();
+
                 $paymentController = new PaymentMethodController();
                 $payResult = $paymentController->createInvoiceNowPayments($order);
 
@@ -167,7 +206,30 @@ class CheckoutPage extends Component
 
                     // Update both order and invoice with the invoice URL
                     $order->update(['payment_invoice_url' => $redirect_url]);
-                    $invoice->update(['invoice_url' => $redirect_url]);
+
+                    // 🧾 Log the wallet transaction (so we can link it to invoice)
+                    $transaction = $wallet->transactions()->create([
+                        'wallet_id'     => $wallet->id,
+                        'customer_id'   => $customer->id,
+                        'type'          => 'withdrawal',
+                        'amount'        => -abs($grandAmount),
+                        'status'        => 'pending', // until webhook confirms
+                        'reference'     => 'order_' . $order->id,
+                        'description'   => 'NowPayments crypto payment for Order #' . $order->id,
+                        'payment_id'    => $payResult['data']['payment_id'] ?? null,
+                        'address'       => $payResult['data']['pay_address'] ?? null,
+                        'metadata'      => [
+                            'order_id' => $order->id,
+                            'method'   => 'nowpayments',
+                            'invoice_url' => $redirect_url,
+                        ],
+                    ]);
+                
+                    // 🔗 Update the invoice to include this transaction
+                    $invoice->update([
+                        'wallet_transaction_id' => $transaction->id,
+                        'invoice_url' => $redirect_url,
+                    ]);
 
                     // Optional: Dispatch Livewire event for frontend update
                     $this->dispatch('set-invoice-url', ['url' => $redirect_url]);

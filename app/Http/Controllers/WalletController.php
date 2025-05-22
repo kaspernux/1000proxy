@@ -10,18 +10,20 @@ use App\Models\WalletTransaction;
 use App\Http\Resources\WalletTransactionResource;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
+use App\Filament\Customer\Clusters\MyWallet\Resources\WalletResource;
+use Illuminate\Support\Facades\Redirect;
+
 class WalletController extends Controller
 {
     public function index()
     {
         $wallet = Auth::guard('customer')->user()->wallet()->with('transactions')->first();
-        return view('wallets.index', compact('wallet'));
+        return Redirect::to(WalletResource::getUrl(panel: 'customer'));
     }
 
     public function show()
     {
-        $wallet = Auth::guard('customer')->user()->wallet()->with('transactions')->first();
-        return view('wallets.show', compact('wallet'));
+        return Redirect::to(WalletResource::getUrl(name: 'view', parameters: ['record' => Auth::guard('customer')->user()->wallet->getKey()], panel: 'customer'));
     }
 
     public function topUp(Request $request, $currency)
@@ -87,7 +89,7 @@ class WalletController extends Controller
         $wallet = Auth::guard('customer')->user()->wallet;
         $transactions = $wallet->transactions()->latest()->paginate(20);
 
-        return view('livewire.transactions', compact('transactions'));
+        return view('wallet.transactions.show', compact('transactions'));
     }
 
     public function getWalletTransactionDownload(WalletTransaction $transaction)

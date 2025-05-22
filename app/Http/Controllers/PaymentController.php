@@ -52,7 +52,7 @@ class PaymentController extends Controller
                 'price_amount' => $order->grand_amount,
                 'price_currency' => 'usd',
                 'order_id' => (string) $order->id,
-                'order_description' => 'Order #' . $order->id,
+                'order_description' => 'Payment for Order #' . $order->id,
                 'pay_currency' => 'xmr',
                 'ipn_callback_url' => env('APP_URL') . '/webhook',
                 'success_url' => route('success', ['order' => $order->id]),

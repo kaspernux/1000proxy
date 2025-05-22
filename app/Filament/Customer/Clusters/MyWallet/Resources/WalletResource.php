@@ -25,6 +25,7 @@ class WalletResource extends Resource
     protected static ?string $navigationIcon = 'heroicon-o-banknotes';
     protected static ?string $navigationLabel = 'My Wallet';
     protected static ?string $cluster = MyWallet::class;
+    protected static ?string $panel = 'customer';
 
     public static function getEloquentQuery(): Builder
     {

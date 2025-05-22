@@ -1,90 +1,91 @@
-<div
-    class="w-full font-mono bg-gradient-to-r from-green-900 to-green-600 py-12 px-6 sm:px-8 lg:px-10 mx-auto max-w-[auto] flex justify-center">
-    <div class="max-w-7xl">
-        <h1 class="text-5xl font-bold text-white text-center">My Orders</h1>
-        <div class="flex flex-col bg-white p-6 rounded mt-6 shadow-xl">
-            <div class="-m-1.5 overflow-x-auto">
-                <div class="p-1.5 min-w-full inline-block align-middle">
+<div class="w-full font-mono bg-gradient-to-r from-green-900 to-green-600 py-12 px-4 sm:px-8 lg:px-10 flex justify-center">
+    <div class="max-w-7xl w-full">
+        <h1 class="text-3xl sm:text-4xl md:text-5xl font-bold text-white text-center mb-6">My Orders</h1>
+
+        <div class="flex flex-col bg-white p-4 sm:p-6 rounded shadow-xl">
+            <div class="overflow-x-auto -mx-4 sm:-mx-6 lg:-mx-8">
+                <div class="inline-block min-w-full align-middle">
                     <div class="overflow-hidden">
-                        <table class="min-w-full divide-y divide-green-400 dark:divide-green-700">
+                        <table class="min-w-full divide-y divide-green-400 dark:divide-green-700 text-sm sm:text-base">
                             <thead>
-                                <tr>
+                                <tr class="bg-green-100">
                                     <th scope="col"
-                                        class="px-6 py-4 text-start text-sm font-bold text-green-900 uppercase">Order
+                                        class="px-4 sm:px-6 py-3 text-left font-bold text-green-900 uppercase whitespace-nowrap">
+                                        Order
                                     </th>
                                     <th scope="col"
-                                        class="px-6 py-4 text-start text-sm font-bold text-green-900 uppercase">Date
+                                        class="px-4 sm:px-6 py-3 text-left font-bold text-green-900 uppercase whitespace-nowrap">
+                                        Date
                                     </th>
                                     <th scope="col"
-                                        class="px-6 py-4 text-start text-sm font-bold text-green-900 uppercase">Order
-                                        Status</th>
+                                        class="px-4 sm:px-6 py-3 text-left font-bold text-green-900 uppercase whitespace-nowrap">
+                                        Order Status
+                                    </th>
                                     <th scope="col"
-                                        class="px-6 py-4 text-start text-sm font-bold text-green-900 uppercase">Payment
-                                        Status</th>
+                                        class="px-4 sm:px-6 py-3 text-left font-bold text-green-900 uppercase whitespace-nowrap">
+                                        Payment Status
+                                    </th>
                                     <th scope="col"
-                                        class="px-6 py-4 text-start text-sm font-bold text-green-900 uppercase">Order
-                                        Amount</th>
+                                        class="px-4 sm:px-6 py-3 text-left font-bold text-green-900 uppercase whitespace-nowrap">
+                                        Order Amount
+                                    </th>
                                     <th scope="col"
-                                        class="px-6 py-4 text-start text-sm font-bold text-green-900 uppercase">
-                                        Action</th>
+                                        class="px-4 sm:px-6 py-3 text-right font-bold text-green-900 uppercase whitespace-nowrap">
+                                        Action
+                                    </th>
                                 </tr>
                             </thead>
-                            <tbody>
 
+                            <tbody class="divide-y divide-green-200">
                                 @foreach ($orders as $order)
                                     @php
-                                        $order_status = '';
-                                        $payment_status = '';
+                                        $status_classes = [
+                                            'new' => 'bg-blue-500',
+                                            'processing' => 'bg-orange-800',
+                                            'completed' => 'bg-green-700',
+                                            'dispute' => 'bg-red-700',
+                                            'pending' => 'bg-orange-800',
+                                            'paid' => 'bg-green-700',
+                                            'failed' => 'bg-red-700',
+                                        ];
 
-                                        if ($order->order_status == 'new') {
-                                        $order_status = '<span class="bg-blue-500 py-1 px-3 rounded text-white shadow">New</span>';
-                                        }
-                                        if ($order->order_status == 'processing') {
-                                        $order_status = '<span class="bg-orange-800 py-1 px-3 rounded text-white shadow">Processing</span>';
-                                        }
-                                        if ($order->order_status == 'completed') {
-                                        $order_status = '<span class="bg-green-700 py-1 px-3 rounded text-white shadow">Completed</span>';
-                                        }
-                                        if ($order->order_status == 'dispute') {
-                                        $order_status = '<span class="bg-red-700 py-1 px-3 rounded text-white shadow">Dispute</span>';
-                                        }
+                                        $order_status = '<span class="' . ($status_classes[$order->order_status] ?? 'bg-gray-500') . ' py-1 px-3 rounded text-white shadow text-xs sm:text-sm">' . ucfirst($order->order_status) . '</span>';
 
-                                        if ($order->payment_status == 'pending') {
-                                            $payment_status = '<span class="bg-orange-800 py-1 px-3 rounded text-white shadow">Pending</span>';
-                                        }
-                                        if ($order->payment_status == 'paid') {
-                                        $payment_status = '<span class="bg-green-700 py-1 px-3 rounded text-white shadow">Paid</span>';
-                                        }
-                                        if ($order->payment_status == 'failed') {
-                                        $payment_status = '<span class="bg-red-700 py-1 px-3 rounded text-white shadow">Failed</span>';
-                                        }
+                                        $payment_status = '<span class="' . ($status_classes[$order->payment_status] ?? 'bg-gray-500') . ' py-1 px-3 rounded text-white shadow text-xs sm:text-sm">' . ucfirst($order->payment_status) . '</span>';
                                     @endphp
 
-                                    <tr class="odd:bg-white even:bg-green-400 dark:odd:bg-white dark:even:bg-green-400 rounded-md even:rounded-md">
-                                        <td class="px-6 py-4 whitespace-nowrap text-base font-bold text-green-800 dark:text-green-400">
-                                            {{$order->id}}</td>
-                                        <td class="px-6 py-4 whitespace-nowrap text-base text-green-800 dark:text-green-400">
-                                            {{$order->created_at->format('d-m-Y')}}</td>
-                                        <td class="px-6 py-4 whitespace-nowrap text-base text-green-800 dark:text-green-400">
+                                    <tr class="odd:bg-white even:bg-green-100 text-green-800">
+                                        <td class="px-4 sm:px-6 py-3 font-bold whitespace-nowrap">
+                                            {{ $order->id }}
+                                        </td>
+                                        <td class="px-4 sm:px-6 py-3 whitespace-nowrap">
+                                            {{ $order->created_at->format('d-m-Y') }}
+                                        </td>
+                                        <td class="px-4 sm:px-6 py-3 whitespace-nowrap">
                                             {!! $order_status !!}
                                         </td>
-                                        <td class="px-6 py-4 whitespace-nowrap text-base text-green-800 dark:text-green-400">
+                                        <td class="px-4 sm:px-6 py-3 whitespace-nowrap">
                                             {!! $payment_status !!}
                                         </td>
-                                        <td class="px-6 py-4 whitespace-nowrap text-base text-green-800 dark:text-green-400">
-                                            {{Number::currency($order->grand_amount)}}</td>
-                                        <td class="px-6 py-4 whitespace-nowrap text-end font-bold">
-                                            <a href="/my-orders/{{$order->id}}" class="bg-accent-yellow text-white py-3 px-3 rounded-md hover:bg-green-700">View
-                                                Details</a>
+                                        <td class="px-4 sm:px-6 py-3 whitespace-nowrap">
+                                            {{ Number::currency($order->grand_amount) }}
+                                        </td>
+                                        <td class="px-4 sm:px-6 py-3 text-right whitespace-nowrap">
+                                            <a href="/my-orders/{{ $order->id }}"
+                                               class="bg-accent-yellow text-white text-xs sm:text-sm py-2 px-3 rounded hover:bg-green-700 transition duration-200">
+                                                View Details
+                                            </a>
                                         </td>
                                     </tr>
                                 @endforeach
-
                             </tbody>
                         </table>
                     </div>
                 </div>
-                {{$orders->links()}}
+
+                <div class="mt-4 px-4 sm:px-6">
+                    {{ $orders->links() }}
+                </div>
             </div>
         </div>
     </div>
