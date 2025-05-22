@@ -9,4 +9,5 @@ use Filament\Resources\Pages\ViewRecord;
 class ViewOrderItem extends ViewRecord
 {
     protected static string $resource = OrderItemResource::class;
+    
 }

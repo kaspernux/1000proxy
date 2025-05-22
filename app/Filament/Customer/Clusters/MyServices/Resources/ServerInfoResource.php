@@ -166,7 +166,8 @@ class ServerInfoResource extends Resource
                             ->schema([
                                 TextEntry::make('file_url')
                                     ->label('File')
-                                    ->url(fn ($item) => $item['file_url'])
+                                    ->formatStateUsing(fn (?string $state) => $state ?? 'No file URL')
+                                    ->url(fn (?string $state) => filled($state) ? $state : null)
                                     ->openUrlInNewTab()
                                     ->copyable(),
 
@@ -186,6 +187,7 @@ class ServerInfoResource extends Resource
                             ->visible(fn (ServerInfo $record) =>
                                 $record->downloadableItems()->exists()
                             ),
+
                     ])
                     ->visible(fn (ServerInfo $record) =>
                         (bool) $record->downloadableItems()->exists()
