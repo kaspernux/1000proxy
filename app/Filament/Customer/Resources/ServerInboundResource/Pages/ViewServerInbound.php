@@ -9,11 +9,4 @@ use Filament\Resources\Pages\ViewRecord;
 class ViewServerInbound extends ViewRecord
 {
     protected static string $resource = ServerInboundResource::class;
-
-    protected function getHeaderActions(): array
-    {
-        return [
-            Actions\EditAction::make(),
-        ];
-    }
 }

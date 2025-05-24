@@ -27,6 +27,8 @@ use Filament\Infolists\Components\Tabs;
 use Illuminate\Support\Facades\Storage;
 use Filament\Infolists\Components\ImageEntry;
 use Filament\Infolists\Components\RepeatableEntry;
+use Filament\Infolists\Components\Grid;
+use Filament\Infolists\Components\IconEntry;
 
 
 class OrderItemResource extends Resource
@@ -95,86 +97,54 @@ class OrderItemResource extends Resource
                             ]),
                     ]),
 
-                // QR Codes Tab
-                Tabs\Tab::make('QR Codes')
+                    Tabs\Tab::make('QR Codes')
                     ->icon('heroicon-m-qr-code')
                     ->schema([
                         Section::make('📲 Proxy Configuration QR Codes')
                             ->description('Scan or download your purchased proxy configuration QR codes.')
                             ->schema([
-                                RepeatableEntry::make('qr_codes')
-                                    ->label(false)
-                                    ->schema([
-                                        ImageEntry::make('clientQr')
-                                            ->label('Client QR')
-                                            ->disk('public')
-                                            ->openUrlInNewTab()
-                                            ->getStateUsing(function ($record) {
-                                                return optional(
-                                                    ServerClient::query()
-                                                        ->where('plan_id', $record->server_plan_id)
-                                                        ->where('email', 'LIKE', '%#ID ' . Auth::guard('customer')->id())
-                                                        ->first()
-                                                )->qr_code_client;
-                                            }),
-
-                                        ImageEntry::make('subQr')
-                                            ->label('Subscription QR')
-                                            ->disk('public')
-                                            ->openUrlInNewTab()
-                                            ->getStateUsing(function ($record) {
-                                                return optional(
-                                                    ServerClient::query()
-                                                        ->where('plan_id', $record->server_plan_id)
-                                                        ->where('email', 'LIKE', '%#ID ' . Auth::guard('customer')->id())
-                                                        ->first()
-                                                )->qr_code_sub;
-                                            }),
-
-                                        ImageEntry::make('jsonQr')
-                                            ->label('JSON Subscription QR')
-                                            ->disk('public')
-                                            ->openUrlInNewTab()
-                                            ->getStateUsing(function ($record) {
-                                                return optional(
-                                                    ServerClient::query()
-                                                        ->where('plan_id', $record->server_plan_id)
-                                                        ->where('email', 'LIKE', '%#ID ' . Auth::guard('customer')->id())
-                                                        ->first()
-                                                )->qr_code_sub_json;
-                                            }),
-                                    ])
-                                    ->default(function (OrderItem $record): array {
+                                Tabs::make('Order Items')
+                                    ->tabs(function (OrderItem $record) {
                                         $items = optional($record->order)->items ?? collect();
-
-                                        return $items
-                                            ->map(fn (OrderItem $item) => [
-                                                'clientQr' => optional(
-                                                    ServerClient::query()
-                                                        ->where('plan_id', $item->server_plan_id)
-                                                        ->where('email', 'LIKE', '%#ID ' . Auth::guard('customer')->id())
-                                                        ->first()
-                                                )->qr_code_client,
-                                                'subQr'    => optional(
-                                                    ServerClient::query()
-                                                        ->where('plan_id', $item->server_plan_id)
-                                                        ->where('email', 'LIKE', '%#ID ' . Auth::guard('customer')->id())
-                                                        ->first()
-                                                )->qr_code_sub,
-                                                'jsonQr'   => optional(
-                                                    ServerClient::query()
-                                                        ->where('plan_id', $item->server_plan_id)
-                                                        ->where('email', 'LIKE', '%#ID ' . Auth::guard('customer')->id())
-                                                        ->first()
-                                                )->qr_code_sub_json,
-                                            ])
-                                            ->toArray();
+                
+                                        return $items->map(function (OrderItem $item, $index) {
+                                            $client = ServerClient::query()
+                                                ->where('plan_id', $item->server_plan_id)
+                                                ->where('email', 'LIKE', '%#ID ' . auth('customer')->id())
+                                                ->first();
+                
+                                            return Tabs\Tab::make('Item ' . ($index + 1))
+                                                ->schema([
+                                                    Grid::make(['default' => 1, 'sm' => 2, 'lg' => 3])
+                                                        ->schema([
+                                                            ImageEntry::make('clientQr')
+                                                                ->label('Client QR')
+                                                                ->disk('public')
+                                                                ->tooltip('Click to view full size')
+                                                                ->openUrlInNewTab()
+                                                                ->getStateUsing(fn () => $client?->qr_code_client),
+                
+                                                            ImageEntry::make('subQr')
+                                                                ->label('Subscription QR')
+                                                                ->disk('public')
+                                                                ->tooltip('Click to view full size')
+                                                                ->openUrlInNewTab()
+                                                                ->getStateUsing(fn () => $client?->qr_code_sub),
+                
+                                                            ImageEntry::make('jsonQr')
+                                                                ->label('JSON Subscription QR')
+                                                                ->disk('public')
+                                                                ->tooltip('Click to view full size')
+                                                                ->openUrlInNewTab()
+                                                                ->getStateUsing(fn () => $client?->qr_code_sub_json),
+                                                        ]),
+                                                ]);
+                                        })->toArray();
                                     }),
                             ]),
-                    ]),
-
-
-                Tabs\Tab::make('Timestamps')
+                        ]),
+                
+                    Tabs\Tab::make('Timestamps')
                     ->icon('heroicon-m-clock')
                     ->schema([
                         Section::make('Timestamps')

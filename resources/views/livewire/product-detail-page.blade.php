@@ -48,7 +48,9 @@
                                     class="text-base font-mono text-white line-through dark:text-white">{{ Number::currency($roundedIncreasedPrice) }}</span>
                             </p>
                             <p class="max-w-md text-white dark:text-white">
-                                {!! Str::markdown($serverPlan->description) !!}
+                            @if (!empty($serverPlan->description))
+                                {!! Str::markdown($serverPlan->description ?? 'No description available.') !!}                            
+                            @endif                            
                             </p>
                         </div>
                         <div class="w-32 mb-8">

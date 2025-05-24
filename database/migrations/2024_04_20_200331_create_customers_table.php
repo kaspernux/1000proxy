@@ -32,7 +32,11 @@ return new class extends Migration
             $table->string('discount_percent', 1000)->nullable();
             $table->dateTime('agent_date')->nullable();
             $table->string('spam_info', 500)->nullable();
+            $table->string('locale')->nullable()->default('en');
+            $table->string('theme_mode')->default('system');
+            $table->boolean('email_notifications')->default(true);
             $table->timestamp('email_verified_at')->nullable();
+            $table->string('timezone')->nullable();
             $table->rememberToken();
             $table->timestamps();
             });

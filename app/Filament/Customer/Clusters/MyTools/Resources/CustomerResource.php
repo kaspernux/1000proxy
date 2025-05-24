@@ -23,6 +23,15 @@ use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\FileUpload;
+use Illuminate\Support\Facades\Hash;
+use Filament\Notifications\Notification;
+use Filament\Forms\Components\Hidden;
+use App\Http\Middleware\SyncCustomerPreferences;
+use Illuminate\Support\Facades\Lang;
+use Livewire\Features\SupportFileUploads\TemporaryUploadedFile;
+
+
+
 
 class CustomerResource extends Resource
 {
@@ -34,95 +43,164 @@ class CustomerResource extends Resource
 
     public static function form(Form $form): Form
     {
-        return $form
-            ->schema([
-                Tabs::make('Account Settings')->tabs([
-                    Tab::make('Profile')
-                        ->icon('heroicon-o-clipboard-document')
+        return $form->schema([
+            Tabs::make('Account Settings')->tabs([
+                Tab::make('Profile')->schema([
+                    Section::make('Personal Info')
+                        ->columns([
+                            'sm' => 1,
+                            'md' => 2,
+                            'xl' => 3,
+                        ])
                         ->schema([
-                            Section::make('Personal Info')
-                                ->schema([
-                                    Grid::make(2)->schema([
-                                        TextInput::make('name')
-                                            ->label('Full Name')
-                                            ->required()
-                                            ->placeholder('Jane Doe'),
-                                        TextInput::make('email')
-                                            ->label('Email Address')
-                                            ->email()
-                                            ->required(),
-                                        TextInput::make('phone')
-                                            ->label('Phone Number')
-                                            ->tel()
-                                            ->hint('+1 (555) 123-4567'),
-                                        Select::make('timezone')
-                                            ->label('Time Zone')
-                                            ->options(\DateTimeZone::listIdentifiers())
-                                            ->searchable(),
-                                    ]),
-                                ]),
-                            Section::make('Avatar')
-                                ->schema([
-                                    FileUpload::make('image')
-                                        ->label('Profile Photo')
-                                        ->image()
-                                        ->avatar()                    // circular preview
-                                        ->directory('customers/avatars')
-                                        ->maxSize(1024)
-                                        ->helperText('PNG or JPG, ≤1 MB'),
-                                ]),
+                            TextInput::make('name')->required()->maxLength(255),
+                            TextInput::make('email')->email()->required()->maxLength(255),
+                            TextInput::make('phone')->tel(),
+                            TextInput::make('tgId')->tel()->maxLength(255),
+                            TextInput::make('refcode')->nullable()->maxLength(50),
+                            TextInput::make('refered_by')->nullable()->maxLength(50),
+                            Select::make('timezone')
+                                ->options(collect(\DateTimeZone::listIdentifiers())->mapWithKeys(fn ($tz) => [$tz => $tz]))
+                                ->searchable(),
                         ]),
 
-                    Tab::make('Security')
-                        ->icon('heroicon-o-lock-closed')
+                    Section::make('Avatar')
+                        ->columns([
+                            'default' => 1,
+                            'sm' => 2,
+                        ])
                         ->schema([
-                            Section::make('Change Password')
-                                ->description('Leave blank to keep your current password.')
-                                ->schema([
-                                    TextInput::make('password')
-                                        ->label('New Password')
-                                        ->password()
-                                        ->dehydrated(fn ($state) => filled($state))
-                                        ->helperText('Type only if you’d like to change it.'),
-                                ]),
-                        ]),
-
-                    Tab::make('Preferences')
-                        ->icon('heroicon-o-cog')
-                        ->schema([
-                            Card::make()->schema([
-                                Toggle::make('email_notifications')
-                                    ->label('Email Notifications')
-                                    ->helperText('Receive order updates via email.'),
-                                Toggle::make('dark_mode')
-                                    ->label('Dark Mode')
-                                    ->helperText('Switch your dashboard theme.'),
-                            ]),
-                            Section::make('Language & Locale')
-                                ->schema([
-                                    Select::make('locale')
-                                        ->label('Language')
-                                        ->options([
-                                            'en' => 'English',
-                                            'ru' => 'Русский',
-                                            'es' => 'Español',
-                                        ])
-                                        ->searchable(),
-                                ]),
+                            FileUpload::make('image')
+                                ->label('Avatar')
+                                ->image()
+                                ->acceptedFileTypes(['image/jpeg', 'image/png', 'image/webp', 'image/gif'])
+                                ->maxSize(2048)
+                                ->directory('customer_images')
+                                ->visibility('public')
+                                ->imageEditor()
+                                ->avatar()
+                                ->dehydrated(true),
                         ]),
                 ]),
-            ]);
+
+                Tab::make('Security')->schema([
+                    Section::make('Change Password')
+                        ->columns(1)
+                        ->schema([
+                            TextInput::make('password')
+                                ->password()
+                                ->label('New Password')
+                                ->dehydrated(false)
+                                ->afterStateHydrated(fn ($component) => $component->state(''))
+                                ->helperText('Leave empty to keep your current password.'),
+
+                            TextInput::make('password_confirmation')
+                                ->password()
+                                ->label('Confirm Password')
+                                ->dehydrated(false)
+                                ->same('password')
+                                ->afterStateHydrated(fn ($component) => $component->state('')),
+                        ]),
+                ]),
+
+                Tab::make('Preferences')->schema([
+                    Section::make('Interface Settings')
+                        ->columns([
+                            'sm' => 1,
+                            'md' => 2,
+                        ])
+                        ->schema([
+                            Select::make('theme_mode')
+                                ->label(__('filament-panels::layout.actions.theme_switcher.system.label'))
+                                ->options([
+                                    'light' => __('filament-panels::layout.actions.theme_switcher.light.label'),
+                                    'dark' => __('filament-panels::layout.actions.theme_switcher.dark.label'),
+                                    'system' => __('filament-panels::layout.actions.theme_switcher.system.label'),
+                                ])
+                                ->default('system')
+                                ->native(false)
+                                ->live(false) // 🛠 Avoid conflicts with Alpine
+                                ->afterStateHydrated(function ($component, $state) {
+                                    // ✅ Sync theme using Alpine — this avoids Livewire reactivity issues
+                                    $component->extraAttributes([
+                                        'x-data' => '{}',
+                                        'x-init' => <<<JS
+                                            const theme = localStorage.getItem('theme') ?? '$state';
+                                            const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+                                            const root = document.documentElement;
+                        
+                                            if (theme === 'dark' || (theme === 'system' && prefersDark)) {
+                                                root.classList.add('dark');
+                                            } else {
+                                                root.classList.remove('dark');
+                                            }
+                                        JS,
+                                        'x-on:change' => <<<JS
+                                            const theme = event.target.value;
+                                            localStorage.setItem('theme', theme);
+                                            const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+                                            const root = document.documentElement;
+                        
+                                            if (theme === 'dark' || (theme === 'system' && prefersDark)) {
+                                                root.classList.add('dark');
+                                            } else {
+                                                root.classList.remove('dark');
+                                            }
+                                        JS,
+                                    ]);
+                                })
+                                ->dehydrated(true)
+                                ->helperText(__('filament-panels::layout.actions.theme_switcher.system.label')),
+
+                            Toggle::make('email_notifications')
+                                ->label('Email Notifications')
+                                ->live(false)
+                                ->dehydrated(true),
+
+                            Select::make('locale')
+                                ->label('Language')
+                                ->options([
+                                    'en' => 'English',
+                                    'fr' => 'Français',
+                                    'es' => 'Español',
+                                    'ru' => 'Русский',
+                                ])
+                                ->searchable()
+                                ->live(false)
+                                ->dehydrated(true),
+                        ]),
+                ]),
+            ])->contained(true)->columnSpanFull(),
+        ]);
     }
+
+    public static function mutateFormDataBeforeSave(array $data): array
+    {
+        if (blank($data['password'])) {
+            unset($data['password']);
+        } else {
+            $data['password'] = Hash::make($data['password']);
+            session()->flash('password_updated', true);
+        }
+
+        if (request()->hasFile('image')) {
+            logger('Uploaded image mime: ' . request()->file('image')->getMimeType());
+        }
+        
+
+        logger($data);
+        return $data;
+        
+    }
+
 
     public static function getPages(): array
     {
         return [
-            // “index” is now your ViewRecord page at `/account/customers`
             'index' => Pages\ViewCustomer::route('/'),
-            // “edit” is at `/account/customers/edit`
-            'edit'  => Pages\EditCustomer::route('/edit'),
+            'edit' => Pages\EditCustomer::route('/edit'),
         ];
     }
 
-}
 
+}

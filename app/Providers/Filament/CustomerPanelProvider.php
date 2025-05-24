@@ -24,6 +24,13 @@ use App\Filament\Customer\Clusters\MyWallet\Resources\WalletResource;
 use App\Filament\Customer\Clusters\MyOrders\Resources\OrderResource;
 use App\Filament\Customer\Clusters\MyTools\Resources\CustomerResource;
 use App\Filament\Customer\Resources\CustomerServerClientResource;
+use App\Http\Middleware\SyncCustomerPreferences;
+use App\Http\Middleware\SetLocaleFromSession;
+use App\Http\Middleware\Authenticate;
+use App\Http\Middleware\AuthenticateSession as AuthenticateSessionMiddleware;
+use App\Http\Middleware\ShareErrorsFromSession as ShareErrorsFromSessionMiddleware;
+use App\Http\Middleware\DispatchServingFilamentEvent as DispatchServingFilamentEventMiddleware;
+use Filament\Enums\ThemeMode;
 
 class CustomerPanelProvider extends PanelProvider
 {
@@ -44,6 +51,32 @@ class CustomerPanelProvider extends PanelProvider
                 SupportOverviewWidget::class,
                 DownloadOverviewWidget::class,
             ])
+            ->defaultThemeMode(match (session('theme_mode', 'system')) {
+                'dark' => ThemeMode::Dark,
+                'light' => ThemeMode::Light,
+                default => ThemeMode::System,
+            })
+            ->discoverResources(in: app_path('Filament/Customer/Resources'), for: 'App\\Filament\\Customer\\Resources')
+            ->discoverPages(   in: app_path('Filament/Customer/Pages'),       for: 'App\\Filament\\Customer\\Pages')
+            ->discoverClusters(in: app_path('Filament/Customer/Clusters'),    for: 'App\\Filament\\Customer\\Clusters')
+            ->authGuard('customer')
+            ->middleware([
+                EncryptCookies::class,
+                AddQueuedCookiesToResponse::class,
+                StartSession::class,
+                AuthenticateSession::class,
+                ShareErrorsFromSession::class,
+                VerifyCsrfToken::class,
+                SubstituteBindings::class,
+                DisableBladeIconComponents::class,
+                DispatchServingFilamentEvent::class,
+                SyncCustomerPreferences::class,
+                SetLocaleFromSession::class,
+            ])
+            ->authMiddleware([
+                AuthenticateCustomer::class,
+            ])
+
             // **Pass an array**, not a closure, to userMenuItems():
             ->userMenuItems([
                 // 1) Active clients — only when logged in as a customer:
@@ -95,27 +128,6 @@ class CustomerPanelProvider extends PanelProvider
                 'logout'  => MenuItem::make('logout')
                     ->label('Log out')
                     ->icon('heroicon-o-arrow-left-start-on-rectangle'),
-            ])
-
-
-
-            ->discoverResources(in: app_path('Filament/Customer/Resources'), for: 'App\\Filament\\Customer\\Resources')
-            ->discoverPages(   in: app_path('Filament/Customer/Pages'),       for: 'App\\Filament\\Customer\\Pages')
-            ->discoverClusters(in: app_path('Filament/Customer/Clusters'),    for: 'App\\Filament\\Customer\\Clusters')
-            ->authGuard('customer')
-            ->middleware([
-                EncryptCookies::class,
-                AddQueuedCookiesToResponse::class,
-                StartSession::class,
-                AuthenticateSession::class,
-                ShareErrorsFromSession::class,
-                VerifyCsrfToken::class,
-                SubstituteBindings::class,
-                DisableBladeIconComponents::class,
-                DispatchServingFilamentEvent::class,
-            ])
-            ->authMiddleware([
-                AuthenticateCustomer::class,
             ]);
     }
 }

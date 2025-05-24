@@ -3,38 +3,59 @@
     $orders = $this->getOrderCounts();
 @endphp
 
-<x-filament::dropdown width="48">
+<x-filament::dropdown
+    placement="bottom-end"
+    width="xs"
+>
     <x-slot name="trigger">
-        <img src="{{ $user->image 
-            ? asset("storage/{$user->image}") 
-            : asset('vendor/filament-placeholder-avatar.png') }}"
-             class="h-8 w-8 rounded-full cursor-pointer" alt="Avatar" />
+        <button type="button" class="focus:outline-none">
+            <img
+                class="h-8 w-8 rounded-full"
+                src="{{ $user->image ? asset('storage/' . $user->image) : asset('vendor/filament-placeholder-avatar.png') }}"
+                alt="User Avatar"
+            />
+        </button>
     </x-slot>
 
-    <x-filament::dropdown.group label="Account">
-        <x-filament::dropdown.item href="{{ CustomerResource::getUrl('edit', ['record' => auth()->id()]) }}">
+    <x-filament::dropdown.list>
+        <x-filament::dropdown.list.item
+            :href="App\Filament\Customer\Clusters\MyTools\Resources\CustomerResource::getUrl('edit', ['record' => $user->id])"
+            icon="heroicon-o-cog-6-tooth"
+            tag="a"
+        >
             Settings
-        </x-filament::dropdown.item>
-        <x-filament::dropdown.item href="{{ route('filament.customer.logout') }}">
-            Logout
-        </x-filament::dropdown.item>
-    </x-filament::dropdown.group>
+        </x-filament::dropdown.list.item>
 
-    <x-filament::dropdown.group label="Stats">
-        <x-filament::dropdown.item tag="div">
+        <x-filament::dropdown.list.item
+            href="{{ route('filament.customer.logout') }}"
+            icon="heroicon-o-arrow-left-start-on-rectangle"
+            tag="a"
+        >
+            Logout
+        </x-filament::dropdown.list.item>
+
+        <x-filament::dropdown.list.item tag="div" disabled>
+            <div class="text-xs uppercase text-gray-400 px-3 pt-2 pb-1">Stats</div>
+        </x-filament::dropdown.list.item>
+
+        <x-filament::dropdown.list.item tag="div">
             Clients: {{ $this->getActiveClientsCount() }}
-        </x-filament::dropdown.item>
-        <x-filament::dropdown.item tag="div">
+        </x-filament::dropdown.list.item>
+
+        <x-filament::dropdown.list.item tag="div">
             Wallet: ${{ number_format($this->getWalletBalance(), 2) }}
-        </x-filament::dropdown.item>
-        <x-filament::dropdown.item tag="div">
+        </x-filament::dropdown.list.item>
+
+        <x-filament::dropdown.list.item tag="div">
             Orders New: {{ $orders['new'] }}
-        </x-filament::dropdown.item>
-        <x-filament::dropdown.item tag="div">
+        </x-filament::dropdown.list.item>
+
+        <x-filament::dropdown.list.item tag="div">
             Processing: {{ $orders['processing'] }}
-        </x-filament::dropdown.item>
-        <x-filament::dropdown.item tag="div">
+        </x-filament::dropdown.list.item>
+
+        <x-filament::dropdown.list.item tag="div">
             Failed: {{ $orders['failed'] }}
-        </x-filament::dropdown.item>
-    </x-filament::dropdown.group>
+        </x-filament::dropdown.list.item>
+    </x-filament::dropdown.list>
 </x-filament::dropdown>

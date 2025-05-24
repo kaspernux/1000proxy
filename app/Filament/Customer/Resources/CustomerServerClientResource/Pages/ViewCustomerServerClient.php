@@ -9,11 +9,4 @@ use Filament\Resources\Pages\ViewRecord;
 class ViewCustomerServerClient extends ViewRecord
 {
     protected static string $resource = CustomerServerClientResource::class;
-
-    protected function getHeaderActions(): array
-    {
-        return [
-            Actions\EditAction::make(),
-        ];
-    }
 }

@@ -38,7 +38,11 @@ class Customer extends Authenticatable implements MustVerifyEmail
         'is_agent',
         'discount_percent',
         'agent_date',
-        'spam_info'
+        'spam_info',
+        'locale',
+        'theme_mode',
+        'email_notifications',
+        'timezone',
     ];
 
     protected function casts(): array

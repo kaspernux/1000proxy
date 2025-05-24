@@ -3,26 +3,42 @@
 namespace App\Filament\Customer\Clusters\MyTools\Resources\CustomerResource\Pages;
 
 use App\Filament\Customer\Clusters\MyTools\Resources\CustomerResource;
-use Filament\Actions;
 use Filament\Resources\Pages\EditRecord;
+use Filament\Notifications\Notification;
 
 class EditCustomer extends EditRecord
 {
     protected static string $resource = CustomerResource::class;
 
-    /**
-     * Must match parent signature exactly:
-     */
     public function mount(string|int|null $record = null): void
     {
-        // Force-load the current customer’s ID instead:
         parent::mount(auth('customer')->id());
     }
 
-    protected function getHeaderActions(): array
+    protected function afterSave(): void
     {
-        return [
-            Actions\DeleteAction::make(),
-        ];
+        $customer = $this->record;
+
+        session()->put('locale', $customer->locale);
+        app()->setLocale($customer->locale);
+
+        // Sync theme mode for Filament (used by defaultThemeMode)
+        session()->put('theme_mode', $customer->theme_mode);
+
+        // Filament uses this boolean session key for dark mode
+        session()->put('filament.dark_mode', match ($customer->theme_mode) {
+            'dark' => true,
+            'light' => false,
+            default => null, // 'system' mode
+        });
+
+        Notification::make()
+            ->title('Profile updated successfully')
+            ->success()
+            ->send();
+
+        // Optional: trigger a page reload for the new theme to apply
+        // $this->redirect(request()->fullUrl()); 
     }
+
 }

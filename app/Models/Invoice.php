@@ -23,6 +23,7 @@ class Invoice extends Model
 
     protected $fillable = [
         'iid',
+        'wallet_transaction_id',
         'customer_id',
         'payment_method_id',
         'payment_id',

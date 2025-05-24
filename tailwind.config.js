@@ -1,7 +1,8 @@
 import preset from './vendor/filament/support/tailwind.config.preset'
 
 export default {
-    presets: [preset],
+    presets: [ preset ],
+    darkMode: 'class',
     content: [
         './app/Filament/**/*.php',
         './resources/views/**/*.blade.php',
@@ -24,14 +25,18 @@ export default {
                 'light-green-200': '#9EF01A',
                 'light-green-100': '#CCFF33',
                 'light-dark': '#2D2D2D',
-                'yellow-600':'#FFD60A',
+                'yellow-600': '#FFD60A',
                 'accent-yellow': '#FFC300',
                 'blue-500': '#2196F3',
-                'orange-800': '#F9A825'
+                'orange-800': '#F9A825',
+                'bg-color-dark': '#002311',
+                'dark-text': '#FFFFFF',
+                'dark-hover': '#FFD60A',
+                'dark-gray': '#1A1A1A',
             }
         },
     },
     plugins: [
-      require('preline/plugin'),
-  ],
+        require( 'preline/plugin' ),
+    ],
 }
