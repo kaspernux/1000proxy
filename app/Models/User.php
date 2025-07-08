@@ -27,6 +27,13 @@ class User extends Authenticatable implements FilamentUser
         'username',
         'email',
         'password',
+        'role',
+        'is_active',
+        'last_login_at',
+        'telegram_chat_id',
+        'telegram_username',
+        'telegram_first_name',
+        'telegram_last_name',
     ];
 
     /**
@@ -49,16 +56,70 @@ class User extends Authenticatable implements FilamentUser
         return [
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
+            'last_login_at' => 'datetime',
+            'is_active' => 'boolean',
         ];
         }
 
     public function canAccessPanel(Panel $panel): bool
     {
-        // Example condition: Only users with emails ending in @admin.com can access the panel
+        // Secure admin access - only specific roles or admin emails
+        return $this->hasRole('admin') || 
+               str_ends_with($this->email, '@admin.com') || 
+               in_array($this->email, ['admin@1000proxy.com', 'support@1000proxy.com']);
+    }
 
-        /*         return str_ends_with($this->email, '@admin.com') && $this->hasVerifiedEmail();
-        */
+    /**
+     * Check if user has a specific role
+     */
+    public function hasRole(string $role): bool
+    {
+        return $this->role === $role;
+    }
 
-        return true;
+    /**
+     * Check if user has Telegram linked
+     */
+    public function hasTelegramLinked(): bool
+    {
+        return !empty($this->telegram_chat_id);
+    }
+
+    /**
+     * Get Telegram display name
+     */
+    public function getTelegramDisplayName(): string
+    {
+        if ($this->telegram_first_name && $this->telegram_last_name) {
+            return $this->telegram_first_name . ' ' . $this->telegram_last_name;
+        }
+        
+        return $this->telegram_first_name ?: $this->telegram_username ?: 'Unknown';
+    }
+
+    /**
+     * Link Telegram account
+     */
+    public function linkTelegram(int $chatId, ?string $username = null, ?string $firstName = null, ?string $lastName = null): void
+    {
+        $this->update([
+            'telegram_chat_id' => $chatId,
+            'telegram_username' => $username,
+            'telegram_first_name' => $firstName,
+            'telegram_last_name' => $lastName,
+        ]);
+    }
+
+    /**
+     * Unlink Telegram account
+     */
+    public function unlinkTelegram(): void
+    {
+        $this->update([
+            'telegram_chat_id' => null,
+            'telegram_username' => null,
+            'telegram_first_name' => null,
+            'telegram_last_name' => null,
+        ]);
     }
 }

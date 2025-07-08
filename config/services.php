@@ -1,7 +1,6 @@
 <?php
 
 return [
-
     /*
     |--------------------------------------------------------------------------
     | Third Party Services
@@ -41,4 +40,9 @@ return [
         'api_url' => env('NOWPAYMENTS_API_URL', 'https://api.nowpayments.io/v1'),
     ],
 
+    'telegram' => [
+        'bot_token' => env('TELEGRAM_BOT_TOKEN'),
+        'webhook_url' => env('TELEGRAM_WEBHOOK_URL'),
+        'secret_token' => env('TELEGRAM_SECRET_TOKEN'),
+    ],
 ];

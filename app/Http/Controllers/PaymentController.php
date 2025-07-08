@@ -3,28 +3,52 @@
 namespace App\Http\Controllers;
 
 use App\Models\Order;
-use Illuminate\Http\Request;
+use App\Models\Invoice;
 use App\Models\PaymentMethod;
-use Illuminate\Support\Facades\Redirect;
+use App\Http\Requests\CreatePaymentRequest;
+use App\Http\Requests\EstimatePriceRequest;
+use Illuminate\Http\Request;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\RateLimiter;
 use PrevailExcel\Nowpayments\Facades\Nowpayments;
 
 class PaymentController extends Controller
 {
+    public function __construct()
+    {
+        $this->middleware('auth');
+        $this->middleware('throttle:60,1')->only(['createCryptoPayment', 'createInvoice']);
+        $this->middleware('throttle:30,1')->only(['getEstimatePrice']);
+    }
+
     /**
      * Create a crypto payment
-     * @param Order $order
-     * @return \Illuminate\Http\RedirectResponse|\Illuminate\Http\JsonResponse
      */
-    public function createCryptoPayment(Order $order)
+    public function createCryptoPayment(CreatePaymentRequest $request): JsonResponse
     {
         try {
+            $order = Order::findOrFail($request->validated()['order_id']);
+            
+            // Ensure user owns the order
+            if ($order->user_id !== Auth::id()) {
+                abort(403, 'Unauthorized access to order.');
+            }
+
+            // Check if order already has a payment
+            if ($order->payment_status === 'paid') {
+                return response()->json(['error' => 'Order already paid'], 422);
+            }
+
             $data = [
                 'price_amount' => $order->grand_amount,
                 'price_currency' => 'usd',
                 'order_id' => (string) $order->id,
                 'order_description' => 'Order #' . $order->id,
-                'pay_currency' => 'xmr',
-                'ipn_callback_url' => 'https://1000proxybot/webhook',
+                'pay_currency' => strtolower($request->validated()['currency']),
+                'ipn_callback_url' => config('app.url') . '/api/webhooks/nowpayments',
                 'success_url' => route('success', ['order' => $order->id]),
                 'cancel_url' => route('cancel', ['order' => $order->id]),
                 'partially_paid_url' => route('cancel', ['order' => $order->id]),
@@ -34,27 +58,61 @@ class PaymentController extends Controller
 
             $paymentDetails = Nowpayments::createPayment($data);
 
-            return response()->json($paymentDetails, 200);
+            // Log payment creation
+            Log::info('Crypto payment created', [
+                'order_id' => $order->id,
+                'user_id' => Auth::id(),
+                'amount' => $order->grand_amount,
+                'payment_id' => $paymentDetails['payment_id'] ?? null,
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'data' => $paymentDetails
+            ]);
+
         } catch (\Exception $e) {
-            return response()->json(['error' => "Error creating payment: " . $e->getMessage()], 400);
+            Log::error('Crypto payment creation failed', [
+                'order_id' => $request->validated()['order_id'] ?? null,
+                'user_id' => Auth::id(),
+                'error' => $e->getMessage(),
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'error' => 'Payment creation failed. Please try again.'
+            ], 500);
         }
     }
 
     /**
      * Create an invoice
-     * @param Order $order
-     * @return \Illuminate\Http\JsonResponse
      */
-    public function createInvoice(Order $order)
+    public function createInvoice(CreatePaymentRequest $request): JsonResponse
     {
         try {
+            $order = Order::findOrFail($request->validated()['order_id']);
+            
+            // Ensure user owns the order
+            if ($order->user_id !== Auth::id()) {
+                abort(403, 'Unauthorized access to order.');
+            }
+
+            // Check if order already has an invoice
+            if ($order->invoice()->exists()) {
+                return response()->json([
+                    'success' => false,
+                    'error' => 'Invoice already exists for this order'
+                ], 422);
+            }
+
             $data = [
                 'price_amount' => $order->grand_amount,
                 'price_currency' => 'usd',
                 'order_id' => (string) $order->id,
                 'order_description' => 'Payment for Order #' . $order->id,
-                'pay_currency' => 'xmr',
-                'ipn_callback_url' => env('APP_URL') . '/webhook',
+                'pay_currency' => strtolower($request->validated()['currency']),
+                'ipn_callback_url' => config('app.url') . '/api/webhooks/nowpayments',
                 'success_url' => route('success', ['order' => $order->id]),
                 'cancel_url' => route('cancel', ['order' => $order->id]),
                 'partially_paid_url' => route('cancel', ['order' => $order->id]),
@@ -64,216 +122,409 @@ class PaymentController extends Controller
 
             $invoice = Nowpayments::createInvoice($data);
 
-            // Ensure the structure has 'invoice_url' to confirm success
+            // Validate invoice creation
             if (!isset($invoice['invoice_url'])) {
-                return response()->json(['error' => 'Invoice creation failed', 'details' => $invoice], 400);
+                Log::error('Invoice creation failed - no invoice URL', [
+                    'order_id' => $order->id,
+                    'response' => $invoice,
+                ]);
+                return response()->json([
+                    'success' => false,
+                    'error' => 'Invoice creation failed'
+                ], 500);
             }
 
-            return response()->json($invoice, 200);
+            // Store invoice details locally
+            Invoice::create([
+                'order_id' => $order->id,
+                'payment_id' => $invoice['payment_id'] ?? null,
+                'invoice_url' => $invoice['invoice_url'],
+                'status' => 'pending',
+                'amount' => $order->grand_amount,
+                'currency' => $request->validated()['currency'],
+            ]);
+
+            Log::info('Invoice created successfully', [
+                'order_id' => $order->id,
+                'user_id' => Auth::id(),
+                'invoice_url' => $invoice['invoice_url'],
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'data' => $invoice
+            ]);
+
         } catch (\Exception $e) {
-            return response()->json(['error' => $e->getMessage()], 400);
+            Log::error('Invoice creation failed', [
+                'order_id' => $request->validated()['order_id'] ?? null,
+                'user_id' => Auth::id(),
+                'error' => $e->getMessage(),
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'error' => 'Invoice creation failed. Please try again.'
+            ], 500);
         }
     }
 
     /**
      * Get the status of a payment by Order ID
-     * @param string $orderId
-     * @return \Illuminate\Http\JsonResponse
      */
-    public function getPaymentStatusByOrder($order_id)
+    public function getPaymentStatusByOrder(string $orderId): JsonResponse
     {
         try {
-            $order = Order::findOrFail($order_id);
-            $paymentId = $order->invoice->payment_id; // Assuming you store payment_id in orders table
+            $order = Order::findOrFail($orderId);
+            
+            // Ensure user owns the order or is admin
+            if ($order->user_id !== Auth::id() && !Auth::user()->hasRole('admin')) {
+                abort(403, 'Unauthorized access to order.');
+            }
 
-            $status = Nowpayments::getPaymentStatus($paymentId);
-            return response()->json($status);
+            if (!$order->invoice) {
+                return response()->json([
+                    'success' => false,
+                    'error' => 'No payment found for this order'
+                ], 404);
+            }
+
+            $paymentId = $order->invoice->payment_id;
+            if (!$paymentId) {
+                return response()->json([
+                    'success' => false,
+                    'error' => 'No payment ID found'
+                ], 404);
+            }
+
+            // Cache the payment status for 30 seconds to avoid excessive API calls
+            $cacheKey = "payment_status_{$paymentId}";
+            $status = Cache::remember($cacheKey, 30, function () use ($paymentId) {
+                return Nowpayments::getPaymentStatus($paymentId);
+            });
+
+            return response()->json([
+                'success' => true,
+                'data' => $status
+            ]);
+
         } catch (\Exception $e) {
-            return response()->json(['error' => $e->getMessage()], 400);
+            Log::error('Payment status check failed', [
+                'order_id' => $orderId,
+                'user_id' => Auth::id(),
+                'error' => $e->getMessage(),
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'error' => 'Unable to check payment status'
+            ], 500);
         }
     }
 
-
     /**
      * Get the status of a payment
-     * @param string $paymentId
-     * @return \Illuminate\Http\JsonResponse
      */
-    public function getPaymentStatus($payment_id)
+    public function getPaymentStatus(string $paymentId): JsonResponse
     {
         try {
-            $status = Nowpayments::getPaymentStatus($payment_id);
-            return response()->json($status);
+            // Verify user has permission to access this payment
+            $invoice = Invoice::where('payment_id', $paymentId)->first();
+            if (!$invoice) {
+                return response()->json([
+                    'success' => false,
+                    'error' => 'Payment not found'
+                ], 404);
+            }
+
+            $order = $invoice->order;
+            if ($order->user_id !== Auth::id() && !Auth::user()->hasRole('admin')) {
+                abort(403, 'Unauthorized access to payment.');
+            }
+
+            // Cache the payment status for 30 seconds
+            $cacheKey = "payment_status_{$paymentId}";
+            $status = Cache::remember($cacheKey, 30, function () use ($paymentId) {
+                return Nowpayments::getPaymentStatus($paymentId);
+            });
+
+            return response()->json([
+                'success' => true,
+                'data' => $status
+            ]);
+
         } catch (\Exception $e) {
-            return response()->json(['error' => $e->getMessage()], 400);
+            Log::error('Payment status check failed', [
+                'payment_id' => $paymentId,
+                'user_id' => Auth::id(),
+                'error' => $e->getMessage(),
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'error' => 'Unable to check payment status'
+            ], 500);
         }
     }
 
     /**
      * Get available currencies
-     * @return \Illuminate\Http\JsonResponse
      */
-    public function getCurrencies()
+    public function getCurrencies(): JsonResponse
     {
         try {
-            $currencies = Nowpayments::getCurrencies();
-            return response()->json($currencies);
+            // Cache currencies for 1 hour as they don't change frequently
+            $currencies = Cache::remember('nowpayments_currencies', 3600, function () {
+                return Nowpayments::getCurrencies();
+            });
+
+            return response()->json([
+                'success' => true,
+                'data' => $currencies
+            ]);
+
         } catch (\Exception $e) {
-            return response()->json(['error' => $e->getMessage()], 400);
+            Log::error('Failed to fetch currencies', [
+                'user_id' => Auth::id(),
+                'error' => $e->getMessage(),
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'error' => 'Unable to fetch currencies'
+            ], 500);
         }
     }
 
     /**
      * Get the minimum payment amount for a specific pair
-     * @param string $fromCurrency
-     * @param string $toCurrency
-     * @return \Illuminate\Http\JsonResponse
      */
-    public function getMinimumPaymentAmount($fromCurrency, $toCurrency)
+    public function getMinimumPaymentAmount(string $fromCurrency, string $toCurrency): JsonResponse
     {
         try {
-            $minimumAmount = Nowpayments::getMinimumPaymentAmount($fromCurrency, $toCurrency);
-            return response()->json($minimumAmount);
+            // Validate currencies
+            $allowedCurrencies = ['USD', 'EUR', 'GBP', 'BTC', 'ETH', 'XMR', 'LTC'];
+            $fromCurrency = strtoupper($fromCurrency);
+            $toCurrency = strtoupper($toCurrency);
+
+            if (!in_array($fromCurrency, $allowedCurrencies) || !in_array($toCurrency, $allowedCurrencies)) {
+                return response()->json([
+                    'success' => false,
+                    'error' => 'Invalid currency pair'
+                ], 400);
+            }
+
+            // Cache minimum amounts for 30 minutes
+            $cacheKey = "min_amount_{$fromCurrency}_{$toCurrency}";
+            $minimumAmount = Cache::remember($cacheKey, 1800, function () use ($fromCurrency, $toCurrency) {
+                return Nowpayments::getMinimumPaymentAmount($fromCurrency, $toCurrency);
+            });
+
+            return response()->json([
+                'success' => true,
+                'data' => $minimumAmount
+            ]);
+
         } catch (\Exception $e) {
-            return response()->json(['error' => $e->getMessage()], 400);
+            Log::error('Failed to fetch minimum payment amount', [
+                'from_currency' => $fromCurrency,
+                'to_currency' => $toCurrency,
+                'user_id' => Auth::id(),
+                'error' => $e->getMessage(),
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'error' => 'Unable to fetch minimum payment amount'
+            ], 500);
         }
     }
 
     /**
      * Get estimate price for an amount in different pairs
-     * @return \Illuminate\Http\JsonResponse
      */
-    public function getEstimatePrice()
+    public function getEstimatePrice(EstimatePriceRequest $request): JsonResponse
     {
         try {
+            $validated = $request->validated();
+            
             $data = [
-                'amount' => request()->amount ?? 100,
-                'currency_from' => request()->currency_from ?? 'usd',
-                'currency_to' => request()->currency_to ?? 'btc',
+                'amount' => $validated['amount'],
+                'currency_from' => strtolower($validated['currency_from']),
+                'currency_to' => strtolower($validated['currency_to']),
             ];
 
-            $estimate = Nowpayments::getEstimatePrice($data);
-            return response()->json($estimate);
-        } catch (\Exception $e) {
-            return response()->json(['error' => $e->getMessage()], 400);
-        }
-    }
+            // Cache estimates for 5 minutes to reduce API calls
+            $cacheKey = "estimate_" . md5(json_encode($data));
+            $estimate = Cache::remember($cacheKey, 300, function () use ($data) {
+                return Nowpayments::getEstimatePrice($data);
+            });
 
-    /**
-     * Get the list of all transactions
-     * @return \Illuminate\Http\JsonResponse
-     */
-    public function getListOfPayments()
-    {
-        try {
-            $payments = Nowpayments::getListOfPayments();
-            return response()->json($payments);
-        } catch (\Exception $e) {
-            return response()->json(['error' => $e->getMessage()], 400);
-        }
-    }
+            return response()->json([
+                'success' => true,
+                'data' => $estimate
+            ]);
 
-    /**
-     * Get payment plan details
-     * @return \Illuminate\Http\JsonResponse
-     */
-    public function getPlans()
-    {
-        try {
-            $plans = Nowpayments::getPlans();
-            return response()->json($plans);
         } catch (\Exception $e) {
-            return response()->json(['error' => $e->getMessage()], 400);
-        }
-    }
+            Log::error('Failed to get price estimate', [
+                'request_data' => $request->validated(),
+                'user_id' => Auth::id(),
+                'error' => $e->getMessage(),
+            ]);
 
-    /**
-     * Get subscription details
-     * @param string $subscriptionId
-     * @return \Illuminate\Http\JsonResponse
-     */
-    public function getSubscription($subscriptionId)
-    {
-        try {
-            $subscription = Nowpayments::getSubscription($subscriptionId);
-            return response()->json($subscription);
-        } catch (\Exception $e) {
-            return response()->json(['error' => $e->getMessage()], 400);
-        }
-    }
-
-    /**
-     * Email subscription details
-     * @param string $subscriptionId
-     * @param string $email
-     * @return \Illuminate\Http\JsonResponse
-     */
-    public function emailSubscription($subscriptionId, $email)
-    {
-        try {
-            $response = Nowpayments::emailSubscription($subscriptionId, $email);
-            return response()->json($response);
-        } catch (\Exception $e) {
-            return response()->json(['error' => $e->getMessage()], 400);
-        }
-    }
-
-    /**
-     * Delete subscription
-     * @param string $subscriptionId
-     * @return \Illuminate\Http\JsonResponse
-     */
-    public function deleteSubscription($subscriptionId)
-    {
-        try {
-            $response = Nowpayments::deleteSubscription($subscriptionId);
-            return response()->json($response);
-        } catch (\Exception $e) {
-            return response()->json(['error' => $e->getMessage()], 400);
+            return response()->json([
+                'success' => false,
+                'error' => 'Unable to get price estimate'
+            ], 500);
         }
     }
 
     /**
      * Handle Nowpayments webhook
-     * @param Request $request
-     * @return \Illuminate\Http\JsonResponse
      */
-    public function handleWebhookNowPayments(Request $request)
+    public function handleWebhookNowPayments(Request $request): JsonResponse
     {
         try {
-            // Handle Nowpayments webhook logic here
+            // Verify webhook signature for security
+            $payload = $request->getContent();
+            $signature = $request->header('X-Nowpayments-Sig');
+            $secret = config('services.nowpayments.webhook_secret');
+
+            if (!$this->verifyWebhookSignature($payload, $signature, $secret)) {
+                Log::warning('Invalid webhook signature', [
+                    'ip' => $request->ip(),
+                    'payload' => $payload,
+                ]);
+                return response()->json(['error' => 'Invalid signature'], 401);
+            }
+
+            $data = $request->json()->all();
+            
+            // Validate required fields
+            if (!isset($data['order_id']) || !isset($data['payment_status'])) {
+                Log::warning('Invalid webhook payload', ['data' => $data]);
+                return response()->json(['error' => 'Invalid payload'], 400);
+            }
+
+            $order = Order::find($data['order_id']);
+            if (!$order) {
+                Log::warning('Webhook for non-existent order', ['order_id' => $data['order_id']]);
+                return response()->json(['error' => 'Order not found'], 404);
+            }
+
+            // Update order status based on payment status
+            switch ($data['payment_status']) {
+                case 'finished':
+                case 'confirmed':
+                    $order->update(['payment_status' => 'paid']);
+                    $order->invoice?->update(['status' => 'paid']);
+                    
+                    // Trigger order processing job
+                    \App\Jobs\ProcessXuiOrder::dispatch($order);
+                    
+                    Log::info('Payment confirmed via webhook', [
+                        'order_id' => $order->id,
+                        'payment_id' => $data['payment_id'] ?? null,
+                    ]);
+                    break;
+
+                case 'failed':
+                case 'expired':
+                    $order->update(['payment_status' => 'failed']);
+                    $order->invoice?->update(['status' => 'failed']);
+                    
+                    Log::info('Payment failed via webhook', [
+                        'order_id' => $order->id,
+                        'payment_id' => $data['payment_id'] ?? null,
+                        'status' => $data['payment_status'],
+                    ]);
+                    break;
+
+                case 'waiting':
+                case 'confirming':
+                    $order->update(['payment_status' => 'pending']);
+                    $order->invoice?->update(['status' => 'pending']);
+                    break;
+            }
+
             return response()->json(['status' => 'success']);
+
         } catch (\Exception $e) {
-            return response()->json(['error' => $e->getMessage()], 400);
+            Log::error('Webhook processing failed', [
+                'error' => $e->getMessage(),
+                'payload' => $request->getContent(),
+            ]);
+
+            return response()->json(['error' => 'Internal server error'], 500);
         }
     }
 
     /**
-     * Display invoice details (NowPayments)
-     * @param string $order
-     * @return \Illuminate\Http\JsonResponse
+     * Verify webhook signature
      */
-    public function showInvoice($order)
+    private function verifyWebhookSignature(string $payload, ?string $signature, string $secret): bool
+    {
+        if (!$signature) {
+            return false;
+        }
+
+        $expectedSignature = hash_hmac('sha256', $payload, $secret);
+        return hash_equals($expectedSignature, $signature);
+    }
+
+    /**
+     * Display invoice details (NowPayments)
+     */
+    public function showInvoice(string $orderId): JsonResponse
     {
         try {
-            // Fetch invoice details from NowPayments or your application's database
-            $invoice = Nowpayments::getInvoice($order); // Adjust as per NowPayments API
-
-            // If using Eloquent ORM for local invoices, you might do:
-            // $invoice = Invoice::where('order_id', $order)->first();
-
-            if (!$invoice) {
-                return response()->json(['error' => 'Invoice not found'], 404);
+            $order = Order::findOrFail($orderId);
+            
+            // Ensure user owns the order or is admin
+            if ($order->user_id !== Auth::id() && !Auth::user()->hasRole('admin')) {
+                abort(403, 'Unauthorized access to invoice.');
             }
 
-            return response()->json($invoice);
+            $invoice = $order->invoice;
+            if (!$invoice) {
+                return response()->json([
+                    'success' => false,
+                    'error' => 'Invoice not found'
+                ], 404);
+            }
+
+            return response()->json([
+                'success' => true,
+                'data' => [
+                    'invoice_url' => $invoice->invoice_url,
+                    'amount' => $invoice->amount,
+                    'currency' => $invoice->currency,
+                    'status' => $invoice->status,
+                    'created_at' => $invoice->created_at,
+                ]
+            ]);
+
         } catch (\Exception $e) {
-            return response()->json(['error' => $e->getMessage()], 400);
+            Log::error('Failed to show invoice', [
+                'order_id' => $orderId,
+                'user_id' => Auth::id(),
+                'error' => $e->getMessage(),
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'error' => 'Unable to retrieve invoice'
+            ], 500);
         }
     }
 
+    /**
+     * Get payment methods
+     */
     public static function getPaymentMethods()
     {
-        return PaymentMethod::all();
+        return Cache::remember('payment_methods', 3600, function () {
+            return PaymentMethod::where('is_active', true)->get();
+        });
     }
 }

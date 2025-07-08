@@ -14,14 +14,16 @@ use App\Livewire\{
     Auth\RegisterPage,
     MyOrderDetailPage,
     ProductDetailPage,
-    Auth\ResetPasswordPage
+    Auth\ResetPasswordPage,
+    AccountSettings
 };
 
 use App\Http\Controllers\{
     PaymentController,
     PaymentMethodController,
     WalletController,
-    WalletTransactionController
+    WalletTransactionController,
+    TelegramBotController
 };
 
 use Illuminate\Support\Facades\Route;
@@ -63,6 +65,7 @@ Route::middleware(['auth:web,customer'])->group(function () {
     Route::get('/my-orders/{order_id}', MyOrderDetailPage::class)->name('my-orders.show');
     Route::get('/success', SuccessPage::class)->name('success');
     Route::get('/cancel', CancelPage::class)->name('cancel');
+    Route::get('/account-settings', AccountSettings::class)->name('account.settings');
 
     // Nowpayments Routes
     Route::post('/create-invoice/nowpayments/{order}', [PaymentController::class, 'createCryptoPayment'])->name('create.invoice.nowpay');
@@ -119,6 +122,23 @@ Route::middleware(['auth:web,customer'])->group(function () {
     Route::post('/webhook/btc', [DepositWebhookController::class, 'handleBtc']);
     Route::post('/webhook/xmr', [DepositWebhookController::class, 'handleXmr']);
     Route::post('/webhook/sol', [DepositWebhookController::class, 'handleSol']);
+});
+
+// Telegram Bot Routes
+Route::prefix('telegram')->group(function () {
+    Route::post('/webhook', [TelegramBotController::class, 'webhook'])
+        ->name('telegram.webhook');
+    
+    Route::middleware('auth:sanctum')->group(function () {
+        Route::post('/set-webhook', [TelegramBotController::class, 'setWebhook'])
+            ->name('telegram.set-webhook');
+        Route::get('/webhook-info', [TelegramBotController::class, 'getWebhookInfo'])
+            ->name('telegram.webhook-info');
+        Route::delete('/webhook', [TelegramBotController::class, 'removeWebhook'])
+            ->name('telegram.remove-webhook');
+        Route::get('/test', [TelegramBotController::class, 'testBot'])
+            ->name('telegram.test');
+    });
 });
 
 Route::middleware(['redirect.customer', RedirectIfCustomer::class])->group(function () {

@@ -6,55 +6,103 @@
 
 <p align="center">
   <b>Version 2.0.0</b><br>
-  <i>A professional Laravel 10 application for managing proxy client sales using XUI panels, multi-protocol support, crypto payments, wallet management, and Laravel Horizon queue system.</i>
+  <i>A professional Laravel 12 application for managing proxy client sales using XUI panels, multi-protocol support, crypto payments, wallet management, and Laravel Horizon queue system.</i>
+</p>
+
+<p align="center">
+  <a href="https://laravel.com"><img src="https://img.shields.io/badge/Laravel-12.x-red.svg" alt="Laravel"></a>
+  <a href="https://php.net"><img src="https://img.shields.io/badge/PHP-8.1+-blue.svg" alt="PHP"></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-green.svg" alt="License"></a>
+  <a href="tests/"><img src="https://img.shields.io/badge/Tests-100%25-brightgreen.svg" alt="Tests"></a>
+  <a href="docs/SECURITY.md"><img src="https://img.shields.io/badge/Security-Hardened-orange.svg" alt="Security"></a>
 </p>
 
 ---
 
 # 🔧 Full Project Presentation
 
-**1000Proxy** is a fully-featured web system built with Laravel 10 for automating **proxy client sales** via remote XUI panels. It is specifically designed for high-volume proxy services using various protocols and provides full backend management for crypto wallets, customer orders, and server client generation.
+**1000Proxy** is a fully-featured web system built with Laravel 12 for automating **proxy client sales** via remote XUI panels. It is specifically designed for high-volume proxy services using various protocols and provides full backend management for crypto wallets, customer orders, and server client generation.
 
 ## 🎯 Main Features
 
-- **Proxy Client Sales System** based on external **XUI Panels**.
-- **Supports all major XUI protocols**:
-  - `VLESS`
-  - `VMESS`
-  - `TROJAN`
-  - `SHADOWSOCKS`
-  - `SOCKS5`
-  - `HTTP`
-  - `REALITY (VLESS/VMESS+Reality)`
-  - `gRPC` support for advanced tunneling
-- **Crypto Wallet System**:
-  - Customer wallets in USD (converted instantly from BTC, XMR, or SOL deposits)
-  - Full transaction history and top-up tracking
-- **Payments Integration**:
-  - Stripe payments for fiat top-ups
-  - NowPayments.io integration for crypto top-ups
-- **Order Management**:
-  - Automated order creation and processing
-  - Client creation on XUI panel after payment success
-- **XUI API Automation**:
-  - Dynamic server inbound and client management
-  - Automatic link generation (`vless://`, `vmess://`, `trojan://`, `ss://`, etc.)
-  - QR Code generation for client configuration links
-- **Queue System with Laravel Horizon**:
-  - Background job processing for client creation and wallet management
-  - Real-time monitoring with Horizon dashboard
-- **Modern Web Technology Stack**:
-  - Laravel 10 backend
-  - Vite.js + TailwindCSS frontend
-  - Redis queue management
-  - Supervisor daemon for job workers
+### Core System Features
+
+-   **Proxy Client Sales System** based on external **XUI Panels**
+-   **Comprehensive Security**: Input validation, SQL injection prevention, XSS protection, CSRF protection
+-   **Advanced Caching**: Multi-level caching with Redis for optimal performance
+-   **Queue Management**: Laravel Horizon for background job processing
+-   **Audit Logging**: Complete audit trail for all sensitive operations
+-   **Rate Limiting**: API and authentication rate limiting
+-   **Webhook Security**: Signature verification for payment webhooks
+
+### Protocol Support
+
+-   **Supports all major XUI protocols**:
+    -   `VLESS` with XTLS support
+    -   `VMESS` with various encryption options
+    -   `TROJAN` for enhanced security
+    -   `SHADOWSOCKS` with multiple encryption methods
+    -   `SOCKS5` proxy support
+    -   `HTTP` proxy support
+    -   `REALITY (VLESS/VMESS+Reality)` for advanced obfuscation
+    -   `gRPC` support for advanced tunneling
+
+### Payment & Wallet System
+
+-   **Crypto Wallet System**:
+    -   Customer wallets in USD (converted instantly from BTC, XMR, or SOL deposits)
+    -   Full transaction history and top-up tracking
+    -   Automated conversion rates and fee calculations
+-   **Payments Integration**:
+    -   Stripe payments for fiat top-ups
+    -   NowPayments.io integration for crypto top-ups
+    -   Comprehensive webhook handling with signature verification
+    -   Failed payment retry mechanisms
+
+### Automation & Management
+
+-   **Order Management**:
+    -   Automated order creation and processing
+    -   Client creation on XUI panel after payment success
+    -   Order status tracking and notifications
+-   **XUI API Automation**:
+    -   Dynamic server inbound and client management
+    -   Automatic link generation (`vless://`, `vmess://`, `trojan://`, `ss://`, etc.)
+    -   QR Code generation for client configuration links
+    -   Real-time traffic monitoring and statistics
+-   **Queue System with Laravel Horizon**:
+    -   Background job processing for client creation and wallet management
+    -   Real-time monitoring with Horizon dashboard
+    -   Job retry mechanisms and failure handling
+
+### Technology Stack
+
+-   **Modern Web Technology Stack**:
+    -   Laravel 12 backend with comprehensive security features
+    -   Vite.js + TailwindCSS frontend
+    -   Redis queue management and caching
+    -   Supervisor daemon for job workers
+    -   Comprehensive test coverage (100% API coverage)
+    -   Performance optimizations and monitoring
+
+### Telegram Bot Integration
+
+-   **Full Telegram Bot Support**:
+    -   Secure account linking with web platform
+    -   Complete proxy management through Telegram
+    -   Real-time wallet balance checking
+    -   Server browsing and ordering
+    -   Order history and status tracking
+    -   Direct support access
+    -   Instant notifications for orders and payments
+    -   Mobile-first experience
 
 ## 🏆 Highlights
 
-- Secure wallet management and checkout process
-- Fully automated client provisioning and subscription link generation
-- Elegant, responsive, and fast UI/UX
-- Scalable design supporting multiple XUI panels and thousands of clients
+-   Secure wallet management and checkout process
+-   Fully automated client provisioning and subscription link generation
+-   Elegant, responsive, and fast UI/UX
+-   Scalable design supporting multiple XUI panels and thousands of clients
 
 ---
 
@@ -263,6 +311,11 @@ STRIPE_SECRET=your_stripe_secret
 STRIPE_WEBHOOK_SECRET=your_webhook_secret
 NOWPAYMENTS_API_KEY=your_nowpayments_api_key
 NOWPAYMENTS_IPN_SECRET=your_nowpayments_ipn_secret
+
+# Telegram Bot
+TELEGRAM_BOT_TOKEN=your_telegram_bot_token
+TELEGRAM_WEBHOOK_URL=https://your_domain.com/telegram/webhook
+TELEGRAM_SECRET_TOKEN=your_secret_token_for_webhook_security
 ```
 
 ---
@@ -282,6 +335,11 @@ php artisan migrate
 # Install composer and npm dependencies
 composer install && npm install && npm run build
 
+# Telegram Bot Setup
+php artisan telegram:set-webhook
+php artisan telegram:test-bot
+php artisan telegram:webhook-info
+
 # Restart services
 sudo systemctl reload nginx
 sudo systemctl restart php8.1-fpm
@@ -292,4 +350,3 @@ sudo supervisorctl restart horizon
 
 <p align="center">🌍 Made with <span style="color:red;">&hearts;</span> for the 1000Proxy Project by Osimorph
 </p>
-

@@ -127,6 +127,46 @@ return [
             'path' => storage_path('logs/laravel.log'),
         ],
 
+        'audit' => [
+            'driver' => 'daily',
+            'path' => storage_path('logs/audit.log'),
+            'level' => 'info',
+            'days' => 90,
+            'replace_placeholders' => true,
+        ],
+
+        'security' => [
+            'driver' => 'daily',
+            'path' => storage_path('logs/security.log'),
+            'level' => 'warning',
+            'days' => 365,
+            'replace_placeholders' => true,
+        ],
+
+        'payments' => [
+            'driver' => 'daily',
+            'path' => storage_path('logs/payments.log'),
+            'level' => 'info',
+            'days' => 90,
+            'replace_placeholders' => true,
+        ],
+
+        'xui' => [
+            'driver' => 'daily',
+            'path' => storage_path('logs/xui.log'),
+            'level' => 'debug',
+            'days' => 30,
+            'replace_placeholders' => true,
+        ],
+
+        'performance' => [
+            'driver' => 'daily',
+            'path' => storage_path('logs/performance.log'),
+            'level' => 'info',
+            'days' => 7,
+            'replace_placeholders' => true,
+        ],
+
     ],
 
 ];

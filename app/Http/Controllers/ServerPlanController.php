@@ -4,7 +4,11 @@ namespace App\Http\Controllers;
 
 use App\Models\ServerPlan;
 use App\Services\XUIService;
+use App\Http\Requests\StoreServerPlanRequest;
+use App\Http\Requests\UpdateServerPlanRequest;
 use Illuminate\Http\Request;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Support\Facades\Log;
 
 class ServerPlanController extends Controller
 {
@@ -15,39 +19,90 @@ class ServerPlanController extends Controller
         $this->xuiService = $xuiService;
     }
 
-    // Retrieve a server plan
-    public function show(ServerPlan $serverPlan)
+    /**
+     * Retrieve a server plan
+     */
+    public function show(ServerPlan $serverPlan): JsonResponse
     {
-        return response()->json($serverPlan);
+        try {
+            return response()->json([
+                'success' => true,
+                'data' => $serverPlan->load('server')
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Error retrieving server plan: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to retrieve server plan'
+            ], 500);
+        }
     }
 
-    // Update a server plan
-    public function update(Request $request, ServerPlan $serverPlan)
+    /**
+     * Update a server plan
+     */
+    public function update(UpdateServerPlanRequest $request, ServerPlan $serverPlan): JsonResponse
     {
-        // Validate incoming request data here if needed
+        try {
+            $serverPlan->update($request->validated());
 
-        // Update Server Plan
-        $serverPlan->update($request->all());
-
-        return response()->json($serverPlan);
+            return response()->json([
+                'success' => true,
+                'data' => $serverPlan->fresh(),
+                'message' => 'Server plan updated successfully'
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Error updating server plan: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to update server plan'
+            ], 500);
+        }
     }
 
-    // Delete a server plan
-    public function destroy(ServerPlan $serverPlan)
+    /**
+     * Delete a server plan
+     */
+    public function destroy(ServerPlan $serverPlan): JsonResponse
     {
-        // Delete Server Plan
-        $serverPlan->delete();
+        try {
+            $serverPlan->delete();
 
-        return response()->json(['message' => 'Server Plan deleted successfully']);
+            return response()->json([
+                'success' => true,
+                'message' => 'Server plan deleted successfully'
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Error deleting server plan: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to delete server plan'
+            ], 500);
+        }
     }
 
-    // Add a new server plan
-    public function store(Request $request)
+    /**
+     * Add a new server plan
+     */
+    public function store(StoreServerPlanRequest $request): JsonResponse
     {
-        // Validate incoming request data here if needed
+        try {
+            $serverPlan = ServerPlan::create($request->validated());
 
-        // Create Server Plan
-        $serverPlan = ServerPlan::create($request->all());
+            return response()->json([
+                'success' => true,
+                'data' => $serverPlan->load('server'),
+                'message' => 'Server plan created successfully'
+            ], 201);
+        } catch (\Exception $e) {
+            Log::error('Error creating server plan: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to create server plan'
+            ], 500);
+        }
+    }
+}
 
         return response()->json($serverPlan, 201);
     }
