@@ -29,8 +29,10 @@ class HorizonServiceProvider extends HorizonApplicationServiceProvider
     {
         Gate::define('viewHorizon', function ($user) {
             return in_array($user->email, [
-                //
-            ]);
+                'admin@1000proxy.com',
+                'support@1000proxy.com',
+                // Add more admin emails as needed
+            ]) || $user->role === 'admin';
         });
     }
 }

@@ -1,0 +1,6 @@
+{
+    "name": "test/test",
+    "require": {
+        "monolog/monolog": "^3.0"
+    }
+}

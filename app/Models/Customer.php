@@ -45,6 +45,22 @@ class Customer extends Authenticatable implements MustVerifyEmail
         'timezone',
     ];
 
+    protected $hidden = [
+        'password',
+        'remember_token',
+        'tgId',
+        'refcode',
+        'temp',
+        'spam_info',
+    ];
+
+    protected $guarded = [
+        'id',
+        'created_at',
+        'updated_at',
+        'email_verified_at',
+    ];
+
     protected function casts(): array
     {
         return [

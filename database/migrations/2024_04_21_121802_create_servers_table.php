@@ -22,7 +22,10 @@ return new class extends Migration
             $table->string('flag')->nullable();
             $table->text('description')->nullable();
             $table->enum('status', ['up', 'down', 'paused'])->default('up');
-            $table->string('panel_url');
+            $table->string('host'); // Separate HOST field for 3X-UI API
+            $table->integer('panel_port')->default(2053); // Separate PORT field for 3X-UI panel
+            $table->string('web_base_path')->nullable(); // WEBBASEPATH for 3X-UI panel
+            $table->string('panel_url')->nullable(); // Keep for backward compatibility
             $table->string('ip');
             $table->integer('port')->nullable();
             $table->string('sni')->nullable();

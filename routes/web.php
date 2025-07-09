@@ -5,7 +5,6 @@ use App\Livewire\{
     HomePage,
     CancelPage,
     SuccessPage,
-    CheckoutPage,
     MyOrdersPage,
     ProductsPage,
     Auth\LoginPage,
@@ -23,7 +22,9 @@ use App\Http\Controllers\{
     PaymentMethodController,
     WalletController,
     WalletTransactionController,
-    TelegramBotController
+    TelegramBotController,
+    Admin\BusinessGrowthController,
+    CheckoutController
 };
 
 use Illuminate\Support\Facades\Route;
@@ -60,7 +61,14 @@ Route::middleware(['auth:web,customer'])->group(function () {
         return redirect('/');
     })->name('logout');
 
-    Route::get('/checkout', CheckoutPage::class)->name('checkout');
+    Route::get('/checkout', [CheckoutController::class, 'index'])->name('checkout');
+    Route::post('/checkout', [CheckoutController::class, 'store'])->name('checkout.store');
+    Route::get('/checkout/success/{order}', [CheckoutController::class, 'success'])
+        ->name('checkout.success')
+        ->where('order', '[0-9]+');
+    Route::get('/checkout/cancel/{order}', [CheckoutController::class, 'cancel'])
+        ->name('checkout.cancel')
+        ->where('order', '[0-9]+');
     Route::get('/my-orders', MyOrdersPage::class)->name('my.orders');
     Route::get('/my-orders/{order_id}', MyOrderDetailPage::class)->name('my-orders.show');
     Route::get('/success', SuccessPage::class)->name('success');
@@ -150,5 +158,49 @@ Route::middleware(['redirect.customer', RedirectIfCustomer::class])->group(funct
         Route::get('/admin/{any}', function ($any) {
             // Admin route logic here
         })->where('any', '.*');
+        
+        // Business Growth Routes
+        Route::prefix('business-growth')->group(function () {
+            Route::get('/dashboard', [BusinessGrowthController::class, 'dashboard'])
+                ->name('admin.business-growth.dashboard');
+            
+            // Payment Gateway Management
+            Route::get('/payment-gateways', [BusinessGrowthController::class, 'paymentGateways'])
+                ->name('admin.business-growth.payment-gateways');
+            Route::post('/payment-gateways/{gateway}/configure', [BusinessGrowthController::class, 'configurePaymentGateway'])
+                ->name('admin.business-growth.payment-gateways.configure');
+            
+            // Geographic Expansion Management
+            Route::get('/geographic-expansion', [BusinessGrowthController::class, 'geographicExpansion'])
+                ->name('admin.business-growth.geographic-expansion');
+            Route::post('/geographic-expansion/pricing', [BusinessGrowthController::class, 'updateRegionalPricing'])
+                ->name('admin.business-growth.geographic-expansion.pricing');
+            Route::post('/geographic-expansion/restrictions', [BusinessGrowthController::class, 'updateGeographicRestrictions'])
+                ->name('admin.business-growth.geographic-expansion.restrictions');
+            
+            // Partnership Management
+            Route::get('/partnerships', [BusinessGrowthController::class, 'partnerships'])
+                ->name('admin.business-growth.partnerships');
+            Route::post('/partnerships/{service}/integrate', [BusinessGrowthController::class, 'integratePartnership'])
+                ->name('admin.business-growth.partnerships.integrate');
+            Route::get('/partnerships/affiliate', [BusinessGrowthController::class, 'affiliateProgram'])
+                ->name('admin.business-growth.partnerships.affiliate');
+            Route::get('/partnerships/reseller', [BusinessGrowthController::class, 'resellerProgram'])
+                ->name('admin.business-growth.partnerships.reseller');
+            
+            // Customer Success Management
+            Route::get('/customer-success', [BusinessGrowthController::class, 'customerSuccess'])
+                ->name('admin.business-growth.customer-success');
+            Route::post('/customer-success/run-automation', [BusinessGrowthController::class, 'runAutomation'])
+                ->name('admin.business-growth.customer-success.run-automation');
+            Route::post('/customer-success/update-health-scores', [BusinessGrowthController::class, 'updateHealthScores'])
+                ->name('admin.business-growth.customer-success.update-health-scores');
+            
+            // Analytics and Reporting
+            Route::get('/analytics', [BusinessGrowthController::class, 'analytics'])
+                ->name('admin.business-growth.analytics');
+            Route::post('/export-report', [BusinessGrowthController::class, 'exportReport'])
+                ->name('admin.business-growth.export-report');
+        });
     });
 });

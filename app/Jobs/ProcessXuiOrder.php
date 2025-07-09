@@ -3,9 +3,7 @@
 namespace App\Jobs;
 
 use App\Models\Order;
-use App\Services\XUIService;
-use App\Models\ServerInbound;
-use App\Models\ServerClient;
+use App\Services\ClientProvisioningService;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Foundation\Queue\Queueable;
@@ -18,85 +16,81 @@ class ProcessXuiOrder implements ShouldQueue
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
     public Order $order;
+    public int $tries = 3;
+    public int $backoff = 30;
 
     public function __construct(Order $order)
     {
         $this->order = $order;
     }
 
-    public function handle(): void
+    public function handle(ClientProvisioningService $provisioningService): void
     {
-        Log::info("🚀 Starting XUI processing for Order #{$this->order->id}");
+        Log::info("🚀 Starting enhanced XUI processing for Order #{$this->order->id}");
 
-        foreach ($this->order->items as $item) {
-            $plan       = $item->serverPlan;
-            $xuiService = new XUIService($plan->server_id);
-            $inbound_id = $xuiService->getDefaultInboundId();
+        try {
+            // Use the enhanced provisioning service
+            $results = $provisioningService->provisionOrder($this->order);
 
-            // 1) Create the remote client
-            $clientData = $xuiService->addInboundAccount(
-                $plan->server_id,
-                $xuiService->generateUID(),
-                $inbound_id,
-                now()->addDays($plan->days)->timestamp * 1000,
-                "{$plan->name} - Client ID {$this->order->customer_id}",
-                $plan->volume,
-                1,
-                $plan->id
-            );
+            Log::info("✅ Enhanced XUI processing completed for Order #{$this->order->id}", [
+                'results_summary' => $this->summarizeResults($results),
+            ]);
 
-            // 2) Re-fetch the inbound so we can grab its port & settings
-            $remoteInbound = collect($xuiService->getInbounds($plan->server_id))
-                ->firstWhere('id', $inbound_id);
+        } catch (\Exception $e) {
+            Log::error("❌ Enhanced XUI processing failed for Order #{$this->order->id}", [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+            ]);
 
-            if (! $remoteInbound) {
-                throw new \Exception("Remote inbound #{$inbound_id} not found after client creation.");
+            // Mark order as disputed if all retries fail
+            if ($this->attempts() >= $this->tries) {
+                $this->order->updateStatus('dispute');
+                Log::error("🔥 Order #{$this->order->id} marked as disputed after {$this->tries} failed attempts");
             }
 
-            // 3) Upsert our local inbound record
-            $localInbound = ServerInbound::updateOrCreate(
-                [
-                    'server_id' => $plan->server_id,
-                    'port'      => $remoteInbound->port,
-                ],
-                [
-                    'protocol'       => $remoteInbound->protocol       ?? 'vless',
-                    'remark'         => $remoteInbound->remark         ?? '',
-                    'enable'         => $remoteInbound->enable         ?? true,
-                    'settings'       => $remoteInbound->settings       ?? [],
-                    'streamSettings' => $remoteInbound->streamSettings ?? [],
-                    'sniffing'       => $remoteInbound->sniffing       ?? [],
-                    'up'             => $remoteInbound->up             ?? 0,
-                    'down'           => $remoteInbound->down           ?? 0,
-                    'total'          => $remoteInbound->total          ?? 0,
-                    'expiryTime'     => isset($remoteInbound->expiryTime)
-                                        ? now()->createFromTimestampMs($remoteInbound->expiryTime)
-                                        : null,
-                ]
-            );
-
-            // 4) Create the ServerClient from the remote client data
-            ServerClient::fromRemoteClient(
-                $clientData,
-                $localInbound->id,
-                $clientData['link'] ?? null
-            )->update(['plan_id' => $plan->id]);
-
-            Log::info("✅ ServerClient created for Order #{$this->order->id}");
+            throw $e;
         }
-
-        // 5) Finally mark the order complete
-        $this->order->markAsCompleted();
-        Log::info("✅ Order #{$this->order->id} completed.");
     }
 
     public function failed(\Throwable $exception): void
     {
-        Log::error("\u{26D4} ProcessXuiOrder failed", [
+        Log::error("🔥 ProcessXuiOrder permanently failed", [
             'order_id' => $this->order->id,
             'exception' => $exception->getMessage(),
+            'attempts' => $this->attempts(),
         ]);
+
+        // Mark order as disputed
+        $this->order->updateStatus('dispute');
     }
+
+    /**
+     * Summarize provisioning results for logging
+     */
+    protected function summarizeResults(array $results): array
+    {
+        $summary = [
+            'total_items' => count($results),
+            'total_requested' => 0,
+            'total_provisioned' => 0,
+            'success_rate' => 0,
+        ];
+
+        foreach ($results as $result) {
+            $summary['total_requested'] += $result['quantity_requested'] ?? 0;
+            $summary['total_provisioned'] += $result['quantity_provisioned'] ?? 0;
+        }
+
+        if ($summary['total_requested'] > 0) {
+            $summary['success_rate'] = round(
+                ($summary['total_provisioned'] / $summary['total_requested']) * 100,
+                2
+            );
+        }
+
+        return $summary;
+    }
+}
 
     // At the bottom of the ProcessXuiOrder class (above the last closing bracket)
     public static function dispatchWithDependencies(Order $order): void

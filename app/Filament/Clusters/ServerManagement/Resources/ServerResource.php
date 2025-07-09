@@ -20,6 +20,7 @@ use Filament\Forms\Components\FileUpload;
 use Filament\Tables\Filters\SelectFilter;
 use App\Filament\Clusters\ServerManagement;
 use Filament\Forms\Components\MarkdownEditor;
+use Filament\Resources\Pages\CreateRecord;
 use Jantinnerezo\LivewireAlert\LivewireAlert;
 use App\Http\Controllers\XUIService;
 use Illuminate\Support\Facades\Redirect;
@@ -82,13 +83,26 @@ class ServerResource extends Resource
                                     'Other' => 'Others',])
                                 ->required()
                                 ->maxWidth(255),
-                            Forms\Components\TextInput::make('panel_url')
+                            Forms\Components\TextInput::make('host')
+                                ->label('Host (IP or Domain)')
                                 ->required()
-                                ->maxLength(255),
+                                ->maxLength(255)
+                                ->helperText('Example: 192.168.1.100 or example.com'),
+                            Forms\Components\TextInput::make('panel_port')
+                                ->label('Panel Port')
+                                ->required()
+                                ->numeric()
+                                ->default(2053)
+                                ->helperText('3X-UI panel port (default: 2053)'),
+                            Forms\Components\TextInput::make('web_base_path')
+                                ->label('Web Base Path')
+                                ->maxLength(255)
+                                ->helperText('Optional: Leave empty if panel is at root, e.g., /admin'),
                             Forms\Components\TextInput::make('ip')
-                                ->label('IP')
+                                ->label('Server IP')
                                 ->required()
-                                ->maxLength(255),
+                                ->maxLength(255)
+                                ->helperText('Actual server IP for proxy connections'),
                         Forms\Components\TextInput::make('port')
                                 ->maxLength(255),
                             Forms\Components\TextInput::make('reality')
@@ -155,8 +169,18 @@ class ServerResource extends Resource
                     ->searchable(),
                 Tables\Columns\TextColumn::make('username')
                     ->searchable(),
-                Tables\Columns\TextColumn::make('panel_url')
+                Tables\Columns\TextColumn::make('host')
+                    ->label('Host')
                     ->searchable(),
+                Tables\Columns\TextColumn::make('panel_port')
+                    ->label('Panel Port')
+                    ->sortable(),
+                Tables\Columns\TextColumn::make('full_panel_url')
+                    ->label('Panel URL')
+                    ->getStateUsing(fn($record) => $record->getFullPanelUrl())
+                    ->url(fn($record) => $record->getFullPanelUrl())
+                    ->openUrlInNewTab()
+                    ->copyable(),
                 Tables\Columns\TextColumn::make('ip')
                     ->searchable(),
                 Tables\Columns\TextColumn::make('port')

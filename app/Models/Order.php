@@ -92,4 +92,72 @@ class Order extends Model
     {
         return $this->belongsTo(PaymentMethod::class, 'payment_method');
     }
+
+    // Enhanced relationships for XUI integration
+
+    public function serverClients(): \Illuminate\Database\Eloquent\Relations\BelongsToMany
+    {
+        return $this->belongsToMany(ServerClient::class, 'order_server_clients')
+                    ->withPivot(['provision_status', 'provision_error', 'provision_attempts'])
+                    ->withTimestamps();
+    }
+
+    public function orderServerClients(): HasMany
+    {
+        return $this->hasMany(OrderServerClient::class);
+    }
+
+    // Enhanced order methods
+
+    /**
+     * Get provisioning status summary
+     */
+    public function getProvisioningStatus(): array
+    {
+        $provisions = $this->orderServerClients;
+
+        return [
+            'total' => $provisions->count(),
+            'pending' => $provisions->where('provision_status', 'pending')->count(),
+            'provisioning' => $provisions->where('provision_status', 'provisioning')->count(),
+            'completed' => $provisions->where('provision_status', 'completed')->count(),
+            'failed' => $provisions->where('provision_status', 'failed')->count(),
+            'cancelled' => $provisions->where('provision_status', 'cancelled')->count(),
+        ];
+    }
+
+    /**
+     * Check if order is fully provisioned
+     */
+    public function isFullyProvisioned(): bool
+    {
+        $status = $this->getProvisioningStatus();
+        return $status['total'] > 0 && $status['completed'] === $status['total'];
+    }
+
+    /**
+     * Check if order has failed provisions
+     */
+    public function hasFailedProvisions(): bool
+    {
+        return $this->orderServerClients()->where('provision_status', 'failed')->exists();
+    }
+
+    /**
+     * Get all clients created for this order
+     */
+    public function getAllClients(): \Illuminate\Database\Eloquent\Collection
+    {
+        return ServerClient::where('order_id', $this->id)->get();
+    }
+
+    /**
+     * Get downloadable configuration for all clients
+     */
+    public function getClientConfigurations(): array
+    {
+        return $this->getAllClients()->map(function ($client) {
+            return $client->getDownloadableConfig();
+        })->toArray();
+    }
 }
