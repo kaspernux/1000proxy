@@ -1,0 +1,537 @@
+/* Interactive Data Tables Styles */
+
+/* Base Table Styles */
+.data-table-container {
+    @apply bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700;
+}
+
+.data-table {
+    @apply min-w-full divide-y divide-gray-200 dark:divide-gray-700;
+}
+
+/* Table Header Styles */
+.data-table-header {
+    @apply bg-gray-50 dark:bg-gray-900;
+}
+
+.data-table-header th {
+    @apply px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider;
+
+    &.sortable {
+        @apply cursor-pointer select-none hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors;
+
+        &:hover .sort-icons {
+            @apply opacity-100;
+        }
+    }
+}
+
+.sort-icons {
+    @apply opacity-50 transition-opacity;
+
+    &.active {
+        @apply opacity-100;
+    }
+}
+
+.sort-icon {
+    @apply text-xs transition-colors;
+
+    &.active {
+        @apply text-primary-600 dark:text-primary-400;
+    }
+
+    &.inactive {
+        @apply text-gray-300 dark:text-gray-600;
+    }
+}
+
+/* Column Filter Styles */
+.column-filter {
+    @apply mt-1 block w-full px-2 py-1 text-xs border border-gray-300 dark:border-gray-600 rounded;
+    @apply bg-white dark:bg-gray-700 text-gray-900 dark:text-white;
+    @apply focus:ring-primary-500 focus:border-primary-500;
+    @apply placeholder-gray-400 dark:placeholder-gray-500;
+
+    &:focus {
+        @apply ring-2 ring-primary-200 dark:ring-primary-800 border-primary-500;
+    }
+}
+
+/* Table Body Styles */
+.data-table-body {
+    @apply bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700;
+}
+
+.data-table-row {
+    @apply hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors;
+
+    &.selected {
+        @apply bg-primary-50 dark:bg-primary-900;
+    }
+
+    &.editing {
+        @apply bg-yellow-50 dark:bg-yellow-900;
+    }
+}
+
+.data-table-cell {
+    @apply px-4 py-3 text-sm text-gray-900 dark:text-white;
+
+    &.text-right {
+        @apply text-right;
+    }
+
+    &.text-center {
+        @apply text-center;
+    }
+
+    &.editable {
+        @apply cursor-pointer hover:bg-yellow-100 dark:hover:bg-yellow-900 rounded transition-colors;
+
+        &:hover::after {
+            content: "✏️";
+            @apply absolute ml-1 text-xs opacity-50;
+        }
+    }
+}
+
+/* Cell Type Specific Styles */
+.cell-number {
+    @apply font-mono text-right;
+}
+
+.cell-boolean {
+    @apply text-center;
+
+    .true {
+        @apply text-green-600 dark:text-green-400;
+    }
+
+    .false {
+        @apply text-red-600 dark:text-red-400;
+    }
+}
+
+.cell-date {
+    @apply font-mono;
+}
+
+.cell-email a {
+    @apply text-blue-600 dark:text-blue-400 hover:underline;
+}
+
+.cell-url a {
+    @apply text-blue-600 dark:text-blue-400 hover:underline;
+
+    &::after {
+        content: "↗";
+        @apply ml-1 text-xs;
+    }
+}
+
+/* Inline Edit Styles */
+.edit-input {
+    @apply w-full px-2 py-1 text-sm border border-primary-300 dark:border-primary-600 rounded;
+    @apply bg-white dark:bg-gray-700 text-gray-900 dark:text-white;
+    @apply focus:ring-primary-500 focus:border-primary-500;
+
+    &.invalid {
+        @apply border-red-500 ring-red-200 dark:ring-red-800;
+    }
+}
+
+/* Filter Chips */
+.filter-chip {
+    @apply inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium;
+    @apply bg-primary-100 dark:bg-primary-900 text-primary-800 dark:text-primary-200;
+    @apply border border-primary-200 dark:border-primary-700;
+
+    .remove-button {
+        @apply ml-1.5 inline-flex items-center justify-center w-4 h-4 rounded-full;
+        @apply text-primary-600 dark:text-primary-400 hover:bg-primary-200 dark:hover:bg-primary-800;
+        @apply transition-colors;
+    }
+}
+
+/* Pagination Styles */
+.pagination-container {
+    @apply px-6 py-4 border-t border-gray-200 dark:border-gray-700;
+    @apply bg-gray-50 dark:bg-gray-900;
+}
+
+.pagination-info {
+    @apply text-sm text-gray-700 dark:text-gray-300;
+
+    .highlight {
+        @apply font-medium text-gray-900 dark:text-white;
+    }
+}
+
+.pagination-button {
+    @apply relative inline-flex items-center px-4 py-2 border text-sm font-medium;
+    @apply transition-colors;
+
+    &.active {
+        @apply bg-primary-600 text-white border-primary-600;
+    }
+
+    &.inactive {
+        @apply bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300;
+        @apply border-gray-300 dark:border-gray-600;
+        @apply hover:bg-gray-50 dark:hover:bg-gray-600;
+    }
+
+    &.disabled {
+        @apply opacity-50 cursor-not-allowed;
+    }
+
+    &.nav-button {
+        @apply px-2 py-2;
+
+        &.first {
+            @apply rounded-l-md;
+        }
+
+        &.last {
+            @apply rounded-r-md;
+        }
+    }
+}
+
+/* Selection Styles */
+.selection-checkbox {
+    @apply rounded border-gray-300 dark:border-gray-600 text-primary-600;
+    @apply focus:ring-primary-500 focus:ring-offset-0;
+}
+
+.selection-info {
+    @apply text-sm text-gray-600 dark:text-gray-400;
+
+    .count {
+        @apply font-medium text-gray-900 dark:text-white;
+    }
+}
+
+/* Export Menu Styles */
+.export-menu {
+    @apply absolute right-0 mt-2 w-48 bg-white dark:bg-gray-700 rounded-md shadow-lg;
+    @apply border border-gray-200 dark:border-gray-600 z-50;
+}
+
+.export-option {
+    @apply block w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-300;
+    @apply hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors;
+
+    .icon {
+        @apply mr-2 w-4 text-center;
+    }
+}
+
+/* Column Manager Styles */
+.column-manager {
+    @apply absolute right-0 mt-2 w-64 bg-white dark:bg-gray-700 rounded-md shadow-lg;
+    @apply border border-gray-200 dark:border-gray-600 z-50;
+}
+
+.column-list {
+    @apply p-4;
+
+    .title {
+        @apply text-sm font-medium text-gray-900 dark:text-white mb-3;
+    }
+
+    .columns {
+        @apply space-y-2 max-h-64 overflow-y-auto;
+    }
+
+    .column-item {
+        @apply flex items-center;
+
+        .checkbox {
+            @apply rounded border-gray-300 dark:border-gray-600 text-primary-600;
+            @apply focus:ring-primary-500 focus:ring-offset-0;
+        }
+
+        .label {
+            @apply ml-2 text-sm text-gray-700 dark:text-gray-300;
+        }
+    }
+}
+
+/* Connection Status Indicator */
+.connection-status {
+    @apply flex items-center text-xs;
+
+    .indicator {
+        @apply w-2 h-2 rounded-full mr-2;
+
+        &.connected {
+            @apply bg-green-500;
+        }
+
+        &.disconnected {
+            @apply bg-red-500;
+        }
+
+        &.connecting {
+            @apply bg-yellow-500 animate-pulse;
+        }
+    }
+
+    .text {
+        &.connected {
+            @apply text-green-600 dark:text-green-400;
+        }
+
+        &.disconnected {
+            @apply text-red-600 dark:text-red-400;
+        }
+
+        &.connecting {
+            @apply text-yellow-600 dark:text-yellow-400;
+        }
+    }
+}
+
+/* Loading States */
+.loading-overlay {
+    @apply absolute inset-0 bg-white dark:bg-gray-800 bg-opacity-75 flex items-center justify-center;
+}
+
+.loading-spinner {
+    @apply animate-spin text-primary-600;
+}
+
+.loading-row {
+    @apply px-4 py-8 text-center;
+
+    .content {
+        @apply flex items-center justify-center;
+    }
+
+    .spinner {
+        @apply text-2xl text-primary-600 mr-2;
+    }
+
+    .text {
+        @apply text-gray-600 dark:text-gray-400;
+    }
+}
+
+/* Empty State */
+.empty-state {
+    @apply px-4 py-8 text-center text-gray-500 dark:text-gray-400;
+
+    .icon {
+        @apply text-4xl mb-2 text-gray-300 dark:text-gray-600;
+    }
+
+    .title {
+        @apply text-lg font-medium mb-1;
+    }
+
+    .description {
+        @apply text-sm;
+    }
+}
+
+/* Error States */
+.error-banner {
+    @apply px-6 py-4 bg-red-50 dark:bg-red-900 border-l-4 border-red-400;
+
+    .content {
+        @apply flex items-center;
+    }
+
+    .icon {
+        @apply text-red-400 mr-2;
+    }
+
+    .message {
+        @apply text-red-800 dark:text-red-200;
+    }
+
+    .close-button {
+        @apply ml-auto text-red-600 dark:text-red-400;
+        @apply hover:text-red-800 dark:hover:text-red-200 transition-colors;
+    }
+}
+
+/* Action Buttons */
+.action-button {
+    @apply inline-flex items-center px-3 py-2 border rounded-md text-sm font-medium;
+    @apply transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2;
+
+    &.primary {
+        @apply bg-primary-600 text-white border-primary-600;
+        @apply hover:bg-primary-700 focus:ring-primary-500;
+    }
+
+    &.secondary {
+        @apply bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300;
+        @apply border-gray-300 dark:border-gray-600;
+        @apply hover:bg-gray-50 dark:hover:bg-gray-600 focus:ring-gray-500;
+    }
+
+    &.danger {
+        @apply bg-red-600 text-white border-red-600;
+        @apply hover:bg-red-700 focus:ring-red-500;
+    }
+
+    &.disabled {
+        @apply opacity-50 cursor-not-allowed;
+    }
+
+    .icon {
+        @apply mr-2;
+
+        &.loading {
+            @apply animate-spin;
+        }
+    }
+}
+
+/* Keyboard Shortcuts Help */
+.shortcuts-help {
+    @apply fixed bottom-4 right-4 z-40;
+
+    .toggle-button {
+        @apply bg-primary-600 text-white p-3 rounded-full shadow-lg;
+        @apply hover:bg-primary-700 transition-colors;
+    }
+
+    .modal-overlay {
+        @apply fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50;
+    }
+
+    .modal-content {
+        @apply bg-white dark:bg-gray-800 rounded-lg p-6 max-w-md w-full mx-4;
+        @apply border border-gray-200 dark:border-gray-700;
+    }
+
+    .modal-header {
+        @apply flex items-center justify-between mb-4;
+
+        .title {
+            @apply text-lg font-medium text-gray-900 dark:text-white;
+        }
+
+        .close-button {
+            @apply text-gray-400 hover:text-gray-600 dark:hover:text-gray-300;
+        }
+    }
+
+    .shortcuts-list {
+        @apply space-y-2 text-sm;
+
+        .shortcut-item {
+            @apply flex justify-between items-center;
+
+            .description {
+                @apply text-gray-600 dark:text-gray-400;
+            }
+
+            .key {
+                @apply px-2 py-1 bg-gray-100 dark:bg-gray-700 rounded text-xs font-mono;
+                @apply border border-gray-300 dark:border-gray-600;
+            }
+        }
+    }
+}
+
+/* Mobile Responsive Adjustments */
+@screen sm {
+    .data-table-container {
+        .mobile-controls {
+            @apply hidden;
+        }
+    }
+}
+
+@media (max-width: 639px) {
+    .data-table-container {
+        .desktop-controls {
+            @apply hidden;
+        }
+
+        .mobile-controls {
+            @apply block;
+        }
+    }
+
+    .data-table {
+        @apply text-xs;
+    }
+
+    .data-table-cell {
+        @apply px-2 py-2;
+    }
+
+    .pagination-container {
+        @apply px-4 py-3;
+
+        .pagination-info {
+            @apply text-xs;
+        }
+
+        .pagination-button {
+            @apply px-2 py-1 text-xs;
+        }
+    }
+}
+
+/* Print Styles */
+@media print {
+    .data-table-container {
+        @apply shadow-none border-0;
+
+        .table-header,
+        .table-footer,
+        .action-buttons,
+        .filter-controls {
+            @apply hidden;
+        }
+
+        .data-table {
+            @apply text-xs;
+        }
+
+        .data-table-cell {
+            @apply px-2 py-1;
+        }
+    }
+}
+
+/* High Contrast Mode */
+@media (prefers-contrast: high) {
+    .data-table-container {
+        @apply border-2 border-black;
+    }
+
+    .data-table-header th {
+        @apply border-b-2 border-black;
+    }
+
+    .data-table-row {
+        @apply border-b border-black;
+    }
+
+    .action-button.primary {
+        @apply bg-black text-white border-black;
+    }
+}
+
+/* Reduced Motion */
+@media (prefers-reduced-motion: reduce) {
+    .data-table-row,
+    .action-button,
+    .pagination-button,
+    .loading-spinner {
+        @apply transition-none;
+    }
+
+    .loading-spinner {
+        @apply animate-none;
+    }
+}

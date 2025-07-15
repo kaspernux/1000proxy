@@ -14,6 +14,28 @@
                     Optimize your internet experience with cutting-edge VPN and Proxy configurations designed for complete anonymity and security.
                 </p>
 
+                {{-- Dynamic Platform Stats Display --}}
+                @if($this->showStats && $this->platformStats)
+                <div class="mt-6 grid grid-cols-2 md:grid-cols-4 gap-4">
+                    <div class="text-center">
+                        <div class="text-2xl font-bold text-green-400">{{ number_format($this->platformStats['total_users']) }}+</div>
+                        <div class="text-sm text-white">Happy Customers</div>
+                    </div>
+                    <div class="text-center">
+                        <div class="text-2xl font-bold text-green-400">{{ number_format($this->platformStats['active_servers']) }}+</div>
+                        <div class="text-sm text-white">Active Servers</div>
+                    </div>
+                    <div class="text-center">
+                        <div class="text-2xl font-bold text-green-400">{{ $this->platformStats['countries_count'] }}+</div>
+                        <div class="text-sm text-white">Countries</div>
+                    </div>
+                    <div class="text-center">
+                        <div class="text-2xl font-bold text-green-400">{{ $this->platformStats['avg_rating'] }}</div>
+                        <div class="text-sm text-white">Average Rating</div>
+                    </div>
+                </div>
+                @endif
+
                     <!-- Buttons -->
                     <div class="mt-7 w-full flex flex-col sm:flex-row sm:gap-3 gap-2">
                         <a wire:navigate class="py-3 px-4 font-mono inline-flex justify-center items-center gap-x-2 text-sm font-semibold rounded-lg border border-transparent bg-green-500 text-white hover:bg-yellow-600 disabled:opacity-50 disabled:pointer-events-none dark:focus:outline-none dark:focus:ring-1 dark:focus:ring-gray-600"
@@ -172,6 +194,132 @@
     </div>
     {{-- Hero Section End  --}}
 
+    {{-- Enhanced Search & Filtering Section Start --}}
+    <div class="w-full bg-gradient-to-r from-green-800 to-green-700 py-8">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="bg-white/10 backdrop-blur-sm rounded-xl p-6">
+                <h2 class="text-2xl font-bold text-white text-center mb-6">Find Your Perfect Proxy Solution</h2>
+
+                {{-- Search Bar --}}
+                <div class="mb-6">
+                    <div class="relative">
+                        <input type="text"
+                               wire:model.live.debounce.300ms="searchTerm"
+                               placeholder="Search servers, locations, brands..."
+                               class="w-full px-4 py-3 pl-12 rounded-lg border border-gray-300 focus:ring-2 focus:ring-green-500 focus:border-transparent">
+                        <svg class="absolute left-4 top-3.5 h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+                        </svg>
+                        @if($searchTerm)
+                            <button wire:click="$set('searchTerm', '')" class="absolute right-3 top-3.5 text-gray-400 hover:text-gray-600">
+                                <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                                </svg>
+                            </button>
+                        @endif
+                    </div>
+                </div>
+
+                {{-- Quick Filters --}}
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {{-- Brand Filter --}}
+                    <div>
+                        <label class="block text-sm font-medium text-white mb-2">Select Brand</label>
+                        <select wire:model.live="selectedBrand" class="w-full px-3 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-green-500 focus:border-transparent">
+                            <option value="">All Brands</option>
+                            @foreach($this->brands as $brand)
+                                <option value="{{ $brand->id }}">{{ $brand->name }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+
+                    {{-- Category Filter --}}
+                    <div>
+                        <label class="block text-sm font-medium text-white mb-2">Select Category</label>
+                        <select wire:model.live="selectedCategory" class="w-full px-3 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-green-500 focus:border-transparent">
+                            <option value="">All Categories</option>
+                            @foreach($this->categories as $category)
+                                <option value="{{ $category->id }}">{{ $category->name }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+                </div>
+
+                {{-- Quick Action Buttons --}}
+                <div class="flex flex-wrap justify-center gap-3 mt-6">
+                    <a href="/servers" wire:navigate class="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition duration-200">
+                        Browse All Servers
+                    </a>
+                    <a href="/servers?featured=1" wire:navigate class="px-6 py-2 bg-yellow-600 text-white rounded-lg hover:bg-yellow-700 transition duration-200">
+                        Featured Plans
+                    </a>
+                    @auth
+                        <a href="/customer" wire:navigate class="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition duration-200">
+                            My Dashboard
+                        </a>
+                    @endauth
+                </div>
+            </div>
+        </div>
+    </div>
+    {{-- Enhanced Search & Filtering Section End --}}
+
+    {{-- Featured Plans Section Start --}}
+    @if($this->showFeaturedPlans && $this->featuredPlans->count() > 0)
+    <div class="w-full bg-gradient-to-r from-green-900 to-green-600 py-12">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="text-center mb-12">
+                <h2 class="text-4xl font-bold text-white mb-4">Featured Plans</h2>
+                <p class="text-lg text-white/80">Handpicked premium proxy solutions for every need</p>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                @foreach($this->featuredPlans as $plan)
+                <div class="bg-white/10 backdrop-blur-sm rounded-xl p-6 hover:bg-white/20 transition duration-300">
+                    <div class="flex items-center mb-4">
+                        @if($plan->serverBrand)
+                            <img src="{{ url('storage/'.$plan->serverBrand->image) }}"
+                                 alt="{{ $plan->serverBrand->name }}"
+                                 class="w-12 h-12 rounded-lg mr-3">
+                        @endif
+                        <div>
+                            <h3 class="text-xl font-bold text-white">{{ $plan->name }}</h3>
+                            @if($plan->serverCategory)
+                                <p class="text-green-300 text-sm">{{ $plan->serverCategory->name }}</p>
+                            @endif
+                        </div>
+                    </div>
+
+                    <div class="mb-4">
+                        <div class="text-3xl font-bold text-green-400">${{ number_format($plan->price, 2) }}</div>
+                        <div class="text-white/60 text-sm">per month</div>
+                    </div>
+
+                    @if($plan->server)
+                    <div class="text-white/80 text-sm mb-4">
+                        <div class="flex items-center mb-1">
+                            <span class="w-2 h-2 bg-green-400 rounded-full mr-2"></span>
+                            Location: {{ $plan->server->name }}
+                        </div>
+                        <div class="flex items-center">
+                            <span class="w-2 h-2 bg-green-400 rounded-full mr-2"></span>
+                            Country: {{ $plan->server->location }}
+                        </div>
+                    </div>
+                    @endif
+
+                    <a href="/servers/{{ $plan->slug }}" wire:navigate
+                       class="w-full bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition duration-200 text-center block">
+                        View Details
+                    </a>
+                </div>
+                @endforeach
+            </div>
+        </div>
+    </div>
+    @endif
+    {{-- Featured Plans Section End --}}
+
     {{-- Categories Section Start  --}}
     <div class="w-full h-auto py-auto font-mono bg-gradient-to-r from-green-900 to-green-600 py-6">
         <div class="max-w-7xl mx-auto px-10 py-6 lg:py-8 md:px-10">
@@ -192,9 +340,10 @@
         </div>
 
         <div class="max-w-7xl mx-auto px-10 py-6 lg:py-8 md:px-10">
-            <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">                @foreach($categories as $serverCategory)
+            <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                @foreach($this->categories as $serverCategory)
                 <a class="group flex flex-col justify-center items-center border-transparent bg-dark-green hover:bg-green-400 hover:text-green-900 disabled:opacity-50 disabled:pointer-events-none dark:focus:ring-green-600 border shadow-sm rounded-xl hover:shadow-md transition dark:bg-dark-green dark:border-gray-800 dark:focus:outline-none dark:focus:ring-1"
-                    href="/servers?selected_categories[0]={{ $serverCategory->id }}" wire:key="{{$serverCategory->id}}">
+                    href="/servers?selected_categories[0]={{ $serverCategory->id }}" wire:key="{{$serverCategory->id}}" wire:navigate>
                     <div class="p-4 md:p-5">
                         <div class="flex justify-between items-center">
                             <div class="flex items-center">
@@ -204,6 +353,9 @@
                                     <h3 class="group-hover:text-green-900 text-base sm:text-lg md:text-xl font-bold text-white">
                                         {{ $serverCategory->name}}
                                     </h3>
+                                    <p class="text-sm text-white/70 group-hover:text-green-800">
+                                        {{ $serverCategory->server_plans_count }} plans available
+                                    </p>
                                 </div>
                             </div>
                             <div class="ps-3">
@@ -244,16 +396,17 @@
         </div>
         <div class="max-w-7xl mx-auto px-10 py-6 lg:py-8 md:px-10">
             <div class="grid grid-cols-1 gap-6 lg:grid-cols-4 md:grid-cols-2">
-                @foreach ($brands as $serverBrand)
+                @foreach ($this->brands as $serverBrand)
                 <div class="py-6 px-4 justify-center items-center rounded-lg border border-transparent bg-dark-green hover:bg-green-400 hover:text-green-900 disabled:opacity-50 disabled:pointer-events-none dark:focus:outline-none dark:focus:ring-1 dark:focus:ring-green-600"
                     wire:key="{{ $serverBrand->id }}">
-                    <a href="/servers?selected_brands[0]={{ $serverBrand->id }}" class="block">
+                    <a href="/servers?selected_brands[0]={{ $serverBrand->id }}" wire:navigate class="block">
                         <img src="{{ url('storage/'.$serverBrand->image) }}" alt="{{ $serverBrand->name }}"
                             class="object-contain w-full h-40 mx-auto rounded-lg">
                     </a>
                     <div class="p-5 text-center">
-                        <a href=""
+                        <a href="/servers?selected_brands[0]={{ $serverBrand->id }}" wire:navigate
                             class="text-xl sm:text-2xl font-bold tracking-tight text-white hover:text-green-900">{{ $serverBrand->name }}</a>
+                        <p class="text-sm text-white/70 mt-1">{{ $serverBrand->server_plans_count }} plans available</p>
                     </div>
                 </div>
                 @endforeach

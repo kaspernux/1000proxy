@@ -7,15 +7,18 @@ use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\ServerController;
 use App\Http\Controllers\Api\OrderController;
 use App\Http\Controllers\Api\WalletController;
+use App\Http\Controllers\Api\ServerPlanFilterController;
+use App\Http\Controllers\QrCodeController;
+use App\Http\Controllers\Admin\AdvancedProxyController;
 
 // Mobile App API Routes
-Route::prefix('v1')->middleware(['throttle:api'])->group(function () {
+Route::middleware(['throttle:api'])->group(function () {
     // Authentication routes - stricter rate limiting
     Route::middleware(['throttle:auth'])->group(function () {
         Route::post('/register', [AuthController::class, 'register']);
         Route::post('/login', [AuthController::class, 'login']);
     });
-    
+
     // Protected routes
     Route::middleware(['auth:sanctum', 'throttle:60,1'])->group(function () {
         // User routes
@@ -24,7 +27,7 @@ Route::prefix('v1')->middleware(['throttle:api'])->group(function () {
         Route::post('/refresh', [AuthController::class, 'refresh']);
         Route::put('/profile', [AuthController::class, 'updateProfile']);
         Route::put('/password', [AuthController::class, 'changePassword']);
-        
+
         // Server routes
         Route::get('/servers', [ServerController::class, 'index']);
         Route::get('/servers/{id}', [ServerController::class, 'show']);
@@ -34,7 +37,32 @@ Route::prefix('v1')->middleware(['throttle:api'])->group(function () {
         Route::get('/servers/featured', [ServerController::class, 'featured']);
         Route::get('/categories', [ServerController::class, 'categories']);
         Route::get('/locations', [ServerController::class, 'locations']);
-        
+
+        // Advanced Server Plan Filtering - New Feature
+        Route::get('/server-plans', [ServerPlanFilterController::class, 'index']);
+        Route::get('/server-plans/filters', [ServerPlanFilterController::class, 'getFilters']);
+
+        // Advanced Proxy Management API Routes
+        Route::prefix('advanced-proxy')->group(function () {
+            Route::post('/initialize-setup', [AdvancedProxyController::class, 'initializeSetup']);
+            Route::get('/dashboard', [AdvancedProxyController::class, 'getDashboard']);
+            Route::post('/enable-auto-rotation', [AdvancedProxyController::class, 'enableAutoRotation']);
+            Route::post('/setup-load-balancer', [AdvancedProxyController::class, 'setupLoadBalancer']);
+            Route::post('/setup-health-monitoring', [AdvancedProxyController::class, 'setupHealthMonitoring']);
+            Route::get('/performance-analytics', [AdvancedProxyController::class, 'getPerformanceAnalytics']);
+            Route::get('/health-status', [AdvancedProxyController::class, 'getHealthStatus']);
+            Route::post('/execute-ip-rotation', [AdvancedProxyController::class, 'executeIPRotation']);
+            Route::put('/update-load-balancer', [AdvancedProxyController::class, 'updateLoadBalancer']);
+            Route::get('/load-balancer-metrics', [AdvancedProxyController::class, 'getLoadBalancerMetrics']);
+            Route::post('/optimize-setup', [AdvancedProxyController::class, 'optimizeSetup']);
+            Route::get('/health-report', [AdvancedProxyController::class, 'getHealthReport']);
+            Route::post('/automated-maintenance', [AdvancedProxyController::class, 'executeAutomatedMaintenance']);
+            Route::post('/configure-advanced-options', [AdvancedProxyController::class, 'configureAdvancedOptions']);
+            Route::get('/proxy-configurations', [AdvancedProxyController::class, 'getProxyConfigurations']);
+            Route::get('/users', [AdvancedProxyController::class, 'getUsers']);
+            Route::get('/system-overview', [AdvancedProxyController::class, 'getSystemOverview']);
+        });
+
         // Order routes - tighter rate limiting for orders
         Route::middleware(['throttle:orders'])->group(function () {
             Route::get('/orders', [OrderController::class, 'index']);
@@ -44,7 +72,7 @@ Route::prefix('v1')->middleware(['throttle:api'])->group(function () {
             Route::get('/orders/{id}/configuration', [OrderController::class, 'configuration']);
             Route::get('/orders/stats', [OrderController::class, 'stats']);
         });
-        
+
         // Wallet routes
         Route::get('/wallet', [WalletController::class, 'index']);
         Route::get('/wallet/transactions', [WalletController::class, 'transactions']);
@@ -53,7 +81,26 @@ Route::prefix('v1')->middleware(['throttle:api'])->group(function () {
         Route::post('/wallet/deposit', [WalletController::class, 'createDeposit']);
         Route::get('/wallet/deposit/{id}/status', [WalletController::class, 'depositStatus']);
         Route::get('/wallet/currencies', [WalletController::class, 'currencies']);
+
+        // QR Code routes - Branded 1000 Proxies QR generation
+        Route::prefix('qr')->group(function () {
+            Route::post('/generate', [QrCodeController::class, 'generate']);
+            Route::post('/client', [QrCodeController::class, 'generateClient']);
+            Route::post('/subscription', [QrCodeController::class, 'generateSubscription']);
+            Route::post('/download', [QrCodeController::class, 'generateDownload']);
+            Route::post('/client-set', [QrCodeController::class, 'generateClientSet']);
+            Route::post('/mobile-app', [QrCodeController::class, 'generateMobileApp']);
+            Route::post('/optimal-size', [QrCodeController::class, 'getOptimalSize']);
+            Route::post('/validate', [QrCodeController::class, 'validateData']);
+        });
     });
+});
+
+// Public QR Code routes (no authentication required)
+Route::prefix('public/qr')->middleware(['throttle:qr'])->group(function () {
+    Route::post('/generate', [QrCodeController::class, 'generate']);
+    Route::post('/validate', [QrCodeController::class, 'validateData']);
+    Route::post('/optimal-size', [QrCodeController::class, 'getOptimalSize']);
 });
 
 // Legacy XUI routes (for backward compatibility)

@@ -13,15 +13,26 @@ use Filament\Tables;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\SoftDeletingScope;
-
 use Illuminate\Support\Str;
-use Filament\Forms\Components\MarkdownEditor;
 use Filament\Forms\Components\Section;
-use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
+use Filament\Forms\Components\Select;
+use Filament\Forms\Components\Toggle;
+use Filament\Forms\Components\DateTimePicker;
 use Filament\Forms\Components\Group;
-use Livewire\Features\SupportFileUploads\TemporaryUploadedFile;
-use Filament\Forms\Components\FileUpload;
+use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Columns\BadgeColumn;
+use Filament\Tables\Columns\IconColumn;
+use Filament\Tables\Filters\SelectFilter;
+use Filament\Tables\Filters\TernaryFilter;
+use Filament\Tables\Actions\Action;
+use Filament\Tables\Actions\ActionGroup;
+use Filament\Tables\Actions\EditAction;
+use Filament\Tables\Actions\ViewAction;
+use Filament\Tables\Actions\DeleteAction;
+use Filament\Tables\Actions\BulkActionGroup;
+use Filament\Tables\Actions\DeleteBulkAction;
+use Carbon\Carbon;
 
 class ClientTrafficResource extends Resource
 {
@@ -29,63 +40,98 @@ class ClientTrafficResource extends Resource
 
     protected static ?string $navigationIcon = 'heroicon-o-chart-pie';
 
-    protected static ?string $navigationGroup = 'PROXY SETTINGS';
+    protected static ?string $cluster = ServerManagement::class;
 
+    protected static ?string $navigationGroup = 'TRAFFIC MONITORING';
 
-    protected static ?int $navigationSort = 7;
+    protected static ?int $navigationSort = 9;
 
+    protected static ?string $recordTitleAttribute = 'email';
 
     public static function getLabel(): string
     {
-        return 'User Traffic';
+        return 'Client Traffic';
     }
 
     public static function form(Form $form): Form
     {
         return $form
             ->schema([
-                Forms\Components\Group::make([
-                    Forms\Components\Section::make('Inbound Details')
-                        ->schema([
-                            Forms\Components\Select::make('server_inbound_id')
-                                    ->relationship('inbound', 'userId')
-                                    ->required()
-                                    ->searchable()
-                                    ->preload(),
-                            Forms\Components\Select::make('customer_id')
-                                ->relationship('customer', 'name')
-                                ->required()
-                                ->searchable()
-                                ->preload(),
-                            Forms\Components\TextInput::make('email')
-                                ->required()
-                                ->maxLength(255),
-                            Forms\Components\Toggle::make('enable')
-                                ->required(),
-                        ])
-                ])->columnSpan(1),
+                Group::make()->schema([
+                    Section::make('🔗 Client & Server Association')->schema([
+                        Select::make('server_inbound_id')
+                            ->label('Server Inbound')
+                            ->relationship('serverInbound', 'remark')
+                            ->required()
+                            ->searchable()
+                            ->preload()
+                            ->columnSpan(1)
+                            ->helperText('Select the server inbound for this traffic record'),
 
-                Forms\Components\Group::make([
-                    Forms\Components\Section::make('Traffic Info')
-                        ->schema([
-                            Forms\Components\DatePicker::make('expiryTime')
-                                ->required(),
+                        Select::make('customer_id')
+                            ->label('Customer')
+                            ->relationship('customer', 'name')
+                            ->required()
+                            ->searchable()
+                            ->preload()
+                            ->columnSpan(1)
+                            ->helperText('Associated customer'),
 
-                            Forms\Components\TextInput::make('up')
-                                ->required()
-                                ->numeric(),
-                            Forms\Components\TextInput::make('down')
-                                ->required()
-                                ->numeric(),
-                            Forms\Components\TextInput::make('total')
-                                ->required()
-                                ->numeric(),
-                            Forms\Components\TextInput::make('reset')
-                                ->required()
-                                ->numeric(),
+                        TextInput::make('email')
+                            ->label('Client Email')
+                            ->required()
+                            ->email()
+                            ->maxLength(255)
+                            ->columnSpan(1)
+                            ->helperText('Client email identifier'),
 
-                        ])->columns(2)
+                        Toggle::make('enable')
+                            ->label('Enabled')
+                            ->required()
+                            ->default(true)
+                            ->columnSpan(1)
+                            ->helperText('Enable/disable traffic tracking'),
+                    ])->columns(2),
                 ])->columnSpan(2),
+
+                Group::make()->schema([
+                    Section::make('📊 Traffic Statistics')->schema([
+                        TextInput::make('up')
+                            ->label('Upload (Bytes)')
+                            ->required()
+                            ->numeric()
+                            ->default(0)
+                            ->helperText('Total upload traffic in bytes'),
+
+                        TextInput::make('down')
+                            ->label('Download (Bytes)')
+                            ->required()
+                            ->numeric()
+                            ->default(0)
+                            ->helperText('Total download traffic in bytes'),
+
+                        TextInput::make('total')
+                            ->label('Total (Bytes)')
+                            ->required()
+                            ->numeric()
+                            ->default(0)
+                            ->helperText('Total combined traffic in bytes'),
+
+                        TextInput::make('reset')
+                            ->label('Reset Count')
+                            ->required()
+                            ->numeric()
+                            ->default(0)
+                            ->helperText('Number of times traffic was reset'),
+                    ]),
+
+                    Section::make('⏰ Expiry')->schema([
+                        DateTimePicker::make('expiry_time')
+                            ->label('Expiry Date & Time')
+                            ->required()
+                            ->helperText('When this traffic record expires'),
+                    ]),
+                ])->columnSpan(1),
             ])->columns(3);
     }
 
@@ -93,66 +139,223 @@ class ClientTrafficResource extends Resource
     {
         return $table
             ->columns([
-                Tables\Columns\TextColumn::make('customer.name')
+                TextColumn::make('email')
+                    ->label('Client Email')
+                    ->searchable()
+                    ->sortable()
+                    ->copyable()
+                    ->tooltip('Client identifier'),
+
+                BadgeColumn::make('customer.name')
                     ->label('Customer')
-                    ->numeric()
-                    ->sortable(),
-                Tables\Columns\TextColumn::make('email')
-                    ->label('Email')
-                    ->searchable(),
-                Tables\Columns\TextColumn::make('server_inbound_id')
-                    ->label('Inbound ID')
-                    ->numeric()
-                    ->sortable(),
-                Tables\Columns\IconColumn::make('enable')
-                    ->label('Active')
-                    ->boolean(),
-                Tables\Columns\TextColumn::make('up')
-                    ->label('UP')
-                    ->numeric()
-                    ->sortable(),
-                Tables\Columns\TextColumn::make('down')
-                    ->label('DOWN')
-                    ->numeric()
-                    ->sortable(),
-                Tables\Columns\TextColumn::make('expiryTime')
-                    ->label('Expiration')
-                    ->dateTime()
-                    ->sortable(),
-                Tables\Columns\TextColumn::make('total')
-                    ->label('TOTAL')
-                    ->numeric()
-                    ->sortable(),
-                Tables\Columns\TextColumn::make('created_at')
-                    ->dateTime()
+                    ->searchable()
+                    ->sortable()
+                    ->color('primary')
+                    ->tooltip('Associated customer'),
+
+                BadgeColumn::make('serverInbound.remark')
+                    ->label('Inbound')
+                    ->searchable()
+                    ->sortable()
+                    ->color('info')
+                    ->tooltip('Server inbound configuration'),
+
+                IconColumn::make('enable')
+                    ->label('Enabled')
+                    ->boolean()
+                    ->trueIcon('heroicon-o-check-circle')
+                    ->falseIcon('heroicon-o-x-circle')
+                    ->trueColor('success')
+                    ->falseColor('danger')
+                    ->tooltip('Traffic tracking status'),
+
+                TextColumn::make('traffic_usage')
+                    ->label('Traffic Used')
+                    ->getStateUsing(function ($record) {
+                        $totalGB = ($record->up + $record->down) / 1024 / 1024 / 1024;
+                        return number_format($totalGB, 2) . ' GB';
+                    })
+                    ->badge()
+                    ->color(function ($record) {
+                        $totalGB = ($record->up + $record->down) / 1024 / 1024 / 1024;
+                        if ($totalGB > 100) return 'danger';
+                        if ($totalGB > 50) return 'warning';
+                        if ($totalGB > 10) return 'info';
+                        return 'success';
+                    })
+                    ->tooltip(function ($record) {
+                        $upMB = number_format($record->up / 1024 / 1024, 2);
+                        $downMB = number_format($record->down / 1024 / 1024, 2);
+                        return "Upload: {$upMB} MB\nDownload: {$downMB} MB";
+                    }),
+
+                TextColumn::make('up')
+                    ->label('Upload')
+                    ->getStateUsing(fn ($record) => number_format($record->up / 1024 / 1024, 2) . ' MB')
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),
-                Tables\Columns\TextColumn::make('updated_at')
+
+                TextColumn::make('down')
+                    ->label('Download')
+                    ->getStateUsing(fn ($record) => number_format($record->down / 1024 / 1024, 2) . ' MB')
+                    ->sortable()
+                    ->toggleable(isToggledHiddenByDefault: true),
+
+                TextColumn::make('total')
+                    ->label('Total')
+                    ->getStateUsing(fn ($record) => number_format($record->total / 1024 / 1024, 2) . ' MB')
+                    ->sortable()
+                    ->toggleable(isToggledHiddenByDefault: true),
+
+                TextColumn::make('reset')
+                    ->label('Resets')
+                    ->numeric()
+                    ->sortable()
+                    ->badge()
+                    ->color('warning')
+                    ->tooltip('Number of times traffic was reset'),
+
+                TextColumn::make('expiry_time')
+                    ->label('Expires')
                     ->dateTime()
                     ->sortable()
+                    ->badge()
+                    ->color(function ($record) {
+                        if (!$record->expiry_time) return 'primary';
+
+                        $expiry = Carbon::parse($record->expiry_time);
+                        $now = Carbon::now();
+
+                        if ($expiry->isPast()) return 'danger';
+                        if ($expiry->diffInDays($now) <= 7) return 'warning';
+                        if ($expiry->diffInDays($now) <= 30) return 'info';
+                        return 'success';
+                    })
+                    ->tooltip(function ($record) {
+                        if (!$record->expiry_time) return 'No expiry set';
+                        return Carbon::parse($record->expiry_time)->diffForHumans();
+                    }),
+
+                TextColumn::make('created_at')
+                    ->label('Created')
+                    ->dateTime()
+                    ->sortable()
+                    ->since()
+                    ->toggleable(isToggledHiddenByDefault: true),
+
+                TextColumn::make('updated_at')
+                    ->label('Updated')
+                    ->dateTime()
+                    ->sortable()
+                    ->since()
                     ->toggleable(isToggledHiddenByDefault: true),
             ])
             ->filters([
-                //
+                SelectFilter::make('server_inbound_id')
+                    ->relationship('serverInbound', 'remark')
+                    ->label('Inbound')
+                    ->searchable()
+                    ->preload()
+                    ->multiple(),
+
+                SelectFilter::make('customer_id')
+                    ->relationship('customer', 'name')
+                    ->label('Customer')
+                    ->searchable()
+                    ->preload()
+                    ->multiple(),
+
+                TernaryFilter::make('enable')
+                    ->label('Enabled Status')
+                    ->placeholder('All records')
+                    ->trueLabel('Enabled only')
+                    ->falseLabel('Disabled only'),
+
+                Tables\Filters\Filter::make('expired')
+                    ->toggle()
+                    ->label('Expired')
+                    ->query(fn (Builder $query): Builder => $query->where('expiry_time', '<', now())),
+
+                Tables\Filters\Filter::make('high_usage')
+                    ->toggle()
+                    ->label('High Usage (>10GB)')
+                    ->query(fn (Builder $query): Builder => $query->whereRaw('(up + down) > ?', [10 * 1024 * 1024 * 1024])),
             ])
             ->actions([
-                Tables\Actions\ActionGroup::make([
-                    Tables\Actions\EditAction::make(),
-                    Tables\Actions\ViewAction::make(),
-                    Tables\Actions\DeleteAction::make(),
+                ActionGroup::make([
+                    ViewAction::make()
+                        ->tooltip('View traffic details'),
+
+                    EditAction::make()
+                        ->tooltip('Edit traffic record'),
+
+                    Action::make('reset_traffic')
+                        ->label('Reset Traffic')
+                        ->icon('heroicon-o-arrow-path')
+                        ->color('warning')
+                        ->requiresConfirmation()
+                        ->modalHeading('Reset Traffic Statistics')
+                        ->modalDescription('Are you sure you want to reset traffic statistics for this client?')
+                        ->action(function ($record) {
+                            $record->update([
+                                'up' => 0,
+                                'down' => 0,
+                                'total' => 0,
+                                'reset' => $record->reset + 1,
+                            ]);
+
+                            \Filament\Notifications\Notification::make()
+                                ->title('Traffic reset successfully')
+                                ->success()
+                                ->send();
+                        })
+                        ->tooltip('Reset traffic statistics'),
+
+                    DeleteAction::make()
+                        ->tooltip('Delete traffic record'),
                 ]),
             ])
             ->bulkActions([
-                Tables\Actions\BulkActionGroup::make([
-                    Tables\Actions\DeleteBulkAction::make(),
+                BulkActionGroup::make([
+                    DeleteBulkAction::make()
+                        ->tooltip('Delete selected records'),
+
+                    Tables\Actions\BulkAction::make('reset_selected_traffic')
+                        ->label('Reset Traffic for Selected')
+                        ->icon('heroicon-o-arrow-path')
+                        ->color('warning')
+                        ->requiresConfirmation()
+                        ->action(function ($records) {
+                            $count = 0;
+                            foreach ($records as $record) {
+                                $record->update([
+                                    'up' => 0,
+                                    'down' => 0,
+                                    'total' => 0,
+                                    'reset' => $record->reset + 1,
+                                ]);
+                                $count++;
+                            }
+
+                            \Filament\Notifications\Notification::make()
+                                ->title('Bulk traffic reset completed')
+                                ->body("Reset traffic for {$count} records.")
+                                ->success()
+                                ->send();
+                        })
+                        ->tooltip('Reset traffic for selected records'),
                 ]),
-            ]);
+            ])
+            ->defaultSort('created_at', 'desc')
+            ->striped()
+            ->paginated([10, 25, 50, 100])
+            ->poll('60s'); // Auto-refresh every minute for real-time traffic monitoring
     }
 
     public static function getRelations(): array
     {
         return [
-            //
+            // Add relation managers if needed
         ];
     }
 
@@ -164,6 +367,20 @@ class ClientTrafficResource extends Resource
             'view' => Pages\ViewClientTraffic::route('/{record}'),
             'edit' => Pages\EditClientTraffic::route('/{record}/edit'),
         ];
+    }
 
-   }
+    public static function getGloballySearchableAttributes(): array
+    {
+        return ['email', 'customer.name', 'serverInbound.remark'];
+    }
+
+    public static function getNavigationBadge(): ?string
+    {
+        return static::getModel()::count();
+    }
+
+    public static function getNavigationBadgeColor(): string|array|null
+    {
+        return static::getModel()::count() > 50 ? 'success' : 'warning';
+    }
 }

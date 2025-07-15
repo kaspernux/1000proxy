@@ -16,16 +16,17 @@ return new class extends Migration
             $table->string('name')->nullable();
             $table->string('username');
             $table->string('password');
+            $table->string('is_active');
             $table->foreignId('server_category_id')->constrained()->onDelete('cascade')->nullable();
             $table->foreignId('server_brand_id')->constrained()->onDelete('cascade')->nullable();
             $table->string('country')->nullable();
             $table->string('flag')->nullable();
             $table->text('description')->nullable();
             $table->enum('status', ['up', 'down', 'paused'])->default('up');
-            $table->string('host'); // Separate HOST field for 3X-UI API
-            $table->integer('panel_port')->default(2053); // Separate PORT field for 3X-UI panel
-            $table->string('web_base_path')->nullable(); // WEBBASEPATH for 3X-UI panel
-            $table->string('panel_url')->nullable(); // Keep for backward compatibility
+            $table->string('host')->nullable()->comment('3X-UI panel host');
+            $table->integer('panel_port')->default(2053)->comment('3X-UI panel port');
+            $table->string('web_base_path')->nullable()->comment('3X-UI web base path');
+            $table->string('panel_url')->nullable();
             $table->string('ip');
             $table->integer('port')->nullable();
             $table->string('sni')->nullable();
@@ -37,7 +38,36 @@ return new class extends Migration
             $table->string('type')->nullable();
             $table->string('port_type')->nullable();
             $table->string('reality')->nullable();
+            // 3X-UI session management
+            $table->text('session_cookie')->nullable()->comment('3X-UI session cookie');
+            $table->timestamp('session_expires_at')->nullable();
+            $table->timestamp('last_login_at')->nullable();
+            $table->integer('login_attempts')->default(0);
+            $table->timestamp('last_login_attempt_at')->nullable();
+            // 3X-UI API configuration
+            $table->string('api_version')->nullable();
+            $table->json('api_capabilities')->nullable();
+            $table->integer('api_timeout')->default(30);
+            $table->integer('api_retry_count')->default(3);
+            $table->json('api_rate_limits')->nullable();
+            // 3X-UI statistics
+            $table->json('global_traffic_stats')->nullable();
+            $table->integer('total_inbounds')->default(0);
+            $table->integer('active_inbounds')->default(0);
+            $table->integer('total_online_clients')->default(0);
+            $table->timestamp('last_global_sync_at')->nullable();
+            // 3X-UI operational settings
+            $table->boolean('auto_sync_enabled')->default(true);
+            $table->integer('sync_interval_minutes')->default(5);
+            $table->boolean('auto_cleanup_depleted')->default(false);
+            $table->boolean('backup_notifications_enabled')->default(false);
+            $table->json('monitoring_thresholds')->nullable();
             $table->timestamps();
+            // Indexes
+            $table->index('session_expires_at');
+            $table->index('last_login_at');
+            $table->index('auto_sync_enabled');
+            $table->index('last_global_sync_at');
         });
     }
 

@@ -69,7 +69,7 @@ class ServerInboundResource extends Resource
                     ->falseIcon('heroicon-o-x-circle')
                     ->alignCenter(),
 
-                TextColumn::make('expiryTime')
+                TextColumn::make('expiry_time')
                     ->label('Expires At')
                     ->dateTime('M d, Y H:i')
                     ->sortable()
@@ -89,7 +89,7 @@ class ServerInboundResource extends Resource
             ->actions([
                 Tables\Actions\ViewAction::make()->color('primary')->label('Details'),
             ])
-            ->defaultSort('expiryTime', 'desc')
+            ->defaultSort('expiry_time', 'desc')
             ->emptyStateHeading('No Server Inbounds Found')
             ->emptyStateDescription('Once you subscribe to a plan, your server inbounds will appear here.');
     }
@@ -106,7 +106,7 @@ class ServerInboundResource extends Resource
                             TextEntry::make('protocol')->label('Protocol')->badge(),
                             TextEntry::make('remark')->label('Remark')->markdown(),
                             IconEntry::make('enable')->boolean()->label('Enabled'),
-                            TextEntry::make('expiryTime')->label('Expires At')->dateTime('M d, Y H:i'),
+                            TextEntry::make('expiry_time')->label('Expires At')->dateTime('M d, Y H:i'),
                         ]),
                 ])
                 ->columns(1)

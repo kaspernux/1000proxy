@@ -1,0 +1,27 @@
+// ==========================================================================
+// PAGES/CHECKOUT - Checkout page styles for the 1000proxy platform
+// ==========================================================================
+
+.checkout-page {
+  &__container {
+    @extend .grid--responsive--2;
+    align-items: start;
+    gap: spacing('xl');
+  }
+
+  &__form {
+    background-color: white;
+    padding: spacing('xl');
+    border-radius: border-radius('lg');
+    box-shadow: shadow('sm');
+
+    [data-theme="dark"] & {
+      background-color: var(--color-bg-secondary);
+    }
+  }
+
+  &__summary {
+    position: sticky;
+    top: spacing('lg');
+  }
+}

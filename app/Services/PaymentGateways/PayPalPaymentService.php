@@ -8,44 +8,48 @@ use Illuminate\Support\Facades\Log;
 
 class PayPalPaymentService implements PaymentGatewayInterface
 {
-    private string $clientId;
-    private string $clientSecret;
+    private ?string $clientId;
+    private ?string $clientSecret;
     private string $apiUrl;
-    private string $accessToken;
-    
+    private ?string $accessToken;
+
     public function __construct()
     {
         $this->clientId = config('services.paypal.client_id');
         $this->clientSecret = config('services.paypal.client_secret');
-        $this->apiUrl = config('services.paypal.sandbox') ? 
-            'https://api.sandbox.paypal.com' : 
+        $this->apiUrl = config('services.paypal.sandbox') ?
+            'https://api.sandbox.paypal.com' :
             'https://api.paypal.com';
         $this->accessToken = $this->getAccessToken();
     }
-    
-    private function getAccessToken(): string
+
+    private function getAccessToken(): ?string
     {
+        if (!$this->clientId || !$this->clientSecret) {
+            return null;
+        }
+
         try {
             $response = Http::withBasicAuth($this->clientId, $this->clientSecret)
                 ->asForm()
                 ->post($this->apiUrl . '/v1/oauth2/token', [
                     'grant_type' => 'client_credentials'
                 ]);
-            
+
             if ($response->successful()) {
                 $data = $response->json();
                 return $data['access_token'];
             }
-            
+
             Log::error('PayPal access token error: ' . $response->body());
-            return '';
-            
+            return null;
+
         } catch (\Exception $e) {
             Log::error('PayPal access token exception: ' . $e->getMessage());
-            return '';
+            return null;
         }
     }
-    
+
     public function createPayment(array $paymentData): array
     {
         try {
@@ -72,12 +76,12 @@ class PayPalPaymentService implements PaymentGatewayInterface
                     'user_action' => 'PAY_NOW'
                 ]
             ]);
-            
+
             if ($response->successful()) {
                 $data = $response->json();
-                
+
                 $approvalUrl = collect($data['links'])->firstWhere('rel', 'approve')['href'] ?? null;
-                
+
                 return [
                     'success' => true,
                     'payment_id' => $data['id'],
@@ -87,18 +91,18 @@ class PayPalPaymentService implements PaymentGatewayInterface
                     'currency' => $paymentData['currency'] ?? 'USD'
                 ];
             }
-            
+
             Log::error('PayPal payment creation failed: ' . $response->body());
-            
+
             return [
                 'success' => false,
                 'error' => 'Payment creation failed',
                 'details' => $response->json()
             ];
-            
+
         } catch (\Exception $e) {
             Log::error('PayPal payment error: ' . $e->getMessage());
-            
+
             return [
                 'success' => false,
                 'error' => 'Payment processing error',
@@ -106,17 +110,17 @@ class PayPalPaymentService implements PaymentGatewayInterface
             ];
         }
     }
-    
+
     public function verifyPayment(string $paymentId): array
     {
         try {
             $response = Http::withHeaders([
                 'Authorization' => 'Bearer ' . $this->accessToken
             ])->get($this->apiUrl . '/v2/checkout/orders/' . $paymentId);
-            
+
             if ($response->successful()) {
                 $data = $response->json();
-                
+
                 return [
                     'success' => true,
                     'payment_id' => $data['id'],
@@ -126,15 +130,15 @@ class PayPalPaymentService implements PaymentGatewayInterface
                     'verified' => $data['status'] === 'COMPLETED'
                 ];
             }
-            
+
             return [
                 'success' => false,
                 'error' => 'Payment verification failed'
             ];
-            
+
         } catch (\Exception $e) {
             Log::error('PayPal verification error: ' . $e->getMessage());
-            
+
             return [
                 'success' => false,
                 'error' => 'Verification error',
@@ -142,7 +146,7 @@ class PayPalPaymentService implements PaymentGatewayInterface
             ];
         }
     }
-    
+
     public function capturePayment(string $paymentId): array
     {
         try {
@@ -150,10 +154,10 @@ class PayPalPaymentService implements PaymentGatewayInterface
                 'Authorization' => 'Bearer ' . $this->accessToken,
                 'Content-Type' => 'application/json'
             ])->post($this->apiUrl . '/v2/checkout/orders/' . $paymentId . '/capture');
-            
+
             if ($response->successful()) {
                 $data = $response->json();
-                
+
                 return [
                     'success' => true,
                     'payment_id' => $data['id'],
@@ -162,16 +166,16 @@ class PayPalPaymentService implements PaymentGatewayInterface
                     'amount' => $data['purchase_units'][0]['payments']['captures'][0]['amount']['value'] ?? 0
                 ];
             }
-            
+
             return [
                 'success' => false,
                 'error' => 'Payment capture failed',
                 'details' => $response->json()
             ];
-            
+
         } catch (\Exception $e) {
             Log::error('PayPal capture error: ' . $e->getMessage());
-            
+
             return [
                 'success' => false,
                 'error' => 'Capture processing error',
@@ -179,58 +183,58 @@ class PayPalPaymentService implements PaymentGatewayInterface
             ];
         }
     }
-    
+
     public function processWebhook(array $webhookData): array
     {
         try {
             $event = $webhookData['event_type'] ?? null;
             $resource = $webhookData['resource'] ?? [];
-            
+
             switch ($event) {
                 case 'CHECKOUT.ORDER.APPROVED':
                     return $this->handleOrderApproved($resource);
-                    
+
                 case 'PAYMENT.CAPTURE.COMPLETED':
                     return $this->handlePaymentCompleted($resource);
-                    
+
                 case 'PAYMENT.CAPTURE.DENIED':
                     return $this->handlePaymentDenied($resource);
-                    
+
                 case 'CUSTOMER.DISPUTE.CREATED':
                     return $this->handleDispute($resource);
-                    
+
                 default:
                     return [
                         'success' => true,
                         'message' => 'Event processed but no action taken'
                     ];
             }
-            
+
         } catch (\Exception $e) {
             Log::error('PayPal webhook error: ' . $e->getMessage());
-            
+
             return [
                 'success' => false,
                 'error' => 'Webhook processing error'
             ];
         }
     }
-    
+
     private function handleOrderApproved(array $resource): array
     {
         Log::info('PayPal order approved: ' . $resource['id']);
-        
+
         return [
             'success' => true,
             'action' => 'order_approved',
             'payment_id' => $resource['id']
         ];
     }
-    
+
     private function handlePaymentCompleted(array $resource): array
     {
         Log::info('PayPal payment completed: ' . $resource['id']);
-        
+
         return [
             'success' => true,
             'action' => 'payment_completed',
@@ -238,11 +242,11 @@ class PayPalPaymentService implements PaymentGatewayInterface
             'amount' => $resource['amount']['value'] ?? 0
         ];
     }
-    
+
     private function handlePaymentDenied(array $resource): array
     {
         Log::warning('PayPal payment denied: ' . $resource['id']);
-        
+
         return [
             'success' => true,
             'action' => 'payment_denied',
@@ -250,11 +254,11 @@ class PayPalPaymentService implements PaymentGatewayInterface
             'reason' => $resource['status_details']['reason'] ?? 'Payment denied'
         ];
     }
-    
+
     private function handleDispute(array $resource): array
     {
         Log::warning('PayPal dispute created: ' . $resource['dispute_id']);
-        
+
         return [
             'success' => true,
             'action' => 'dispute_created',
@@ -262,7 +266,7 @@ class PayPalPaymentService implements PaymentGatewayInterface
             'amount' => $resource['disputed_transactions'][0]['gross_amount']['value'] ?? 0
         ];
     }
-    
+
     public function getSupportedCurrencies(): array
     {
         return [
@@ -271,7 +275,7 @@ class PayPalPaymentService implements PaymentGatewayInterface
             'SGD', 'SEK', 'CHF', 'THB', 'USD'
         ];
     }
-    
+
     public function getPaymentMethods(): array
     {
         return [
@@ -325,7 +329,7 @@ class PayPalPaymentService implements PaymentGatewayInterface
             ]
         ];
     }
-    
+
     public function refundPayment(string $paymentId, float $amount = null): array
     {
         try {
@@ -333,41 +337,41 @@ class PayPalPaymentService implements PaymentGatewayInterface
             $orderResponse = Http::withHeaders([
                 'Authorization' => 'Bearer ' . $this->accessToken
             ])->get($this->apiUrl . '/v2/checkout/orders/' . $paymentId);
-            
+
             if (!$orderResponse->successful()) {
                 return [
                     'success' => false,
                     'error' => 'Could not retrieve order details'
                 ];
             }
-            
+
             $orderData = $orderResponse->json();
             $captureId = $orderData['purchase_units'][0]['payments']['captures'][0]['id'] ?? null;
-            
+
             if (!$captureId) {
                 return [
                     'success' => false,
                     'error' => 'No capture found for this payment'
                 ];
             }
-            
+
             $refundData = [];
-            
+
             if ($amount !== null) {
                 $refundData['amount'] = [
                     'value' => number_format($amount, 2, '.', ''),
                     'currency_code' => $orderData['purchase_units'][0]['amount']['currency_code'] ?? 'USD'
                 ];
             }
-            
+
             $response = Http::withHeaders([
                 'Authorization' => 'Bearer ' . $this->accessToken,
                 'Content-Type' => 'application/json'
             ])->post($this->apiUrl . '/v2/payments/captures/' . $captureId . '/refund', $refundData);
-            
+
             if ($response->successful()) {
                 $refundResponse = $response->json();
-                
+
                 return [
                     'success' => true,
                     'refund_id' => $refundResponse['id'],
@@ -375,16 +379,16 @@ class PayPalPaymentService implements PaymentGatewayInterface
                     'status' => $refundResponse['status']
                 ];
             }
-            
+
             return [
                 'success' => false,
                 'error' => 'Refund failed',
                 'details' => $response->json()
             ];
-            
+
         } catch (\Exception $e) {
             Log::error('PayPal refund error: ' . $e->getMessage());
-            
+
             return [
                 'success' => false,
                 'error' => 'Refund processing error',
@@ -392,7 +396,7 @@ class PayPalPaymentService implements PaymentGatewayInterface
             ];
         }
     }
-    
+
     public function getGatewayInfo(): array
     {
         return [
@@ -412,5 +416,50 @@ class PayPalPaymentService implements PaymentGatewayInterface
             'processing_time' => 'instant',
             'settlement_time' => '1-3 business days'
         ];
+    }
+
+    public function isEnabled(): bool
+    {
+        return !empty($this->clientId) && !empty($this->clientSecret);
+    }
+
+    public function supportsCurrency(string $currency): bool
+    {
+        $supportedCurrencies = $this->getSupportedCurrencies();
+        return in_array(strtolower($currency), array_map('strtolower', $supportedCurrencies));
+    }
+
+    public function getName(): string
+    {
+        return 'PayPal';
+    }
+
+    public function getIcon(): string
+    {
+        return 'paypal-icon.svg';
+    }
+
+    public function getDescription(): string
+    {
+        return 'Pay securely with your PayPal account';
+    }
+
+    public function getFees(): array
+    {
+        return [
+            'percentage' => 2.9,
+            'fixed' => 0.30,
+            'currency' => 'USD'
+        ];
+    }
+
+    public function getProcessingTime(): string
+    {
+        return 'Instant';
+    }
+
+    public function isInstant(): bool
+    {
+        return true;
     }
 }

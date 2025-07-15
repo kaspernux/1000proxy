@@ -72,7 +72,7 @@ class ServerInboundController extends Controller
                 'streamSettings' => $inboundResponse['inbound']['obj']['streamSettings'],
                 'sniffing' => $inboundResponse['inbound']['obj']['sniffing'],
                 'enable' => $inboundResponse['inbound']['obj']['enable'],
-                'expiryTime' => !empty($inboundResponse['inbound']['obj']['expiryTime']) ? date('Y-m-d H:i:s', $inboundResponse['inbound']['obj']['expiryTime']) : null,
+                'expiry_time' => !empty($inboundResponse['inbound']['obj']['expiry_time']) ? date('Y-m-d H:i:s', $inboundResponse['inbound']['obj']['expiry_time']) : null,
             ];
 
             $serverInbound = ServerInbound::create($data);
@@ -83,10 +83,10 @@ class ServerInboundController extends Controller
                 'email' => $defaultClient['email'],
                 'password' => $defaultClient['id'],
                 'flow' => $defaultClient['flow'] ?? 'None',
-                'limitIp' => $defaultClient['limitIp'],
+                'limit_ip' => $defaultClient['limit_ip'],
                 'totalGB' => $defaultClient['totalGB'],
-                'expiryTime' => $defaultClient['expiryTime'] ? date('Y-m-d H:i:s', $defaultClient['expiryTime']) : null,
-                'tgId' => $defaultClient['tgId'] ?? null,
+                'expiry_time' => $defaultClient['expiry_time'] ? date('Y-m-d H:i:s', $defaultClient['expiry_time']) : null,
+                'tg_id' => $defaultClient['tg_id'] ?? null,
                 'subId' => $defaultClient['subId'],
                 'enable' => $defaultClient['enable'],
                 'reset' => $defaultClient['reset'] ?? null,
@@ -126,10 +126,10 @@ class ServerInboundController extends Controller
                 $request->input('server_id'),
                 $request->input('client_id'),
                 $request->input('inbound_id'),
-                $request->input('expiryTime'),
+                $request->input('expiry_time'),
                 $request->input('remark'),
                 $request->input('volume'),
-                $request->input('limitip', 1),
+                $request->input('limit_ip', 1),
                 $request->input('newarr', ''),
                 $request->input('planId')
             );

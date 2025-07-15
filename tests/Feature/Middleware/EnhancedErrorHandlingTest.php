@@ -19,7 +19,7 @@ class EnhancedErrorHandlingTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
-        
+
         $this->user = User::factory()->create();
     }
 
@@ -30,9 +30,9 @@ class EnhancedErrorHandlingTest extends TestCase
             ->with('Slow request detected', \Mockery::type('array'));
 
         $middleware = new EnhancedErrorHandling();
-        
+
         $request = Request::create('/test', 'GET');
-        
+
         $response = $middleware->handle($request, function ($request) {
             // Simulate slow request
             usleep(3000000); // 3 seconds
@@ -45,7 +45,7 @@ class EnhancedErrorHandlingTest extends TestCase
     public function test_middleware_handles_validation_errors()
     {
         $response = $this->actingAs($this->user)
-            ->postJson('/api/v1/orders', [
+            ->postJson('/api/orders', [
                 // Missing required fields
             ]);
 
@@ -63,7 +63,7 @@ class EnhancedErrorHandlingTest extends TestCase
 
     public function test_middleware_handles_authentication_errors()
     {
-        $response = $this->postJson('/api/v1/orders', [
+        $response = $this->postJson('/api/orders', [
             'server_id' => 1,
             'plan_id' => 1,
             'quantity' => 1,
@@ -83,9 +83,9 @@ class EnhancedErrorHandlingTest extends TestCase
     public function test_middleware_handles_authorization_errors()
     {
         $otherUser = User::factory()->create();
-        
+
         $response = $this->actingAs($this->user)
-            ->getJson('/api/v1/orders/' . $otherUser->id);
+            ->getJson('/api/orders/' . $otherUser->id);
 
         $response->assertStatus(403)
             ->assertJsonStructure([
@@ -101,7 +101,7 @@ class EnhancedErrorHandlingTest extends TestCase
     public function test_middleware_handles_not_found_errors()
     {
         $response = $this->actingAs($this->user)
-            ->getJson('/api/v1/orders/999999');
+            ->getJson('/api/orders/999999');
 
         $response->assertStatus(404)
             ->assertJsonStructure([
@@ -119,7 +119,7 @@ class EnhancedErrorHandlingTest extends TestCase
         // Make multiple requests to trigger rate limiting
         for ($i = 0; $i < 62; $i++) {
             $response = $this->actingAs($this->user)
-                ->postJson('/api/v1/orders', [
+                ->postJson('/api/orders', [
                     'server_id' => 1,
                     'plan_id' => 1,
                     'quantity' => 1,
@@ -144,15 +144,15 @@ class EnhancedErrorHandlingTest extends TestCase
             ->with('Server error occurred', \Mockery::type('array'));
 
         $middleware = new EnhancedErrorHandling();
-        
+
         $request = Request::create('/test', 'GET');
-        
+
         $response = $middleware->handle($request, function ($request) {
             throw new \Exception('Test server error');
         });
 
         $this->assertEquals(500, $response->getStatusCode());
-        
+
         $responseData = json_decode($response->getContent(), true);
         $this->assertFalse($responseData['success']);
         $this->assertEquals('An error occurred while processing your request.', $responseData['message']);
@@ -161,11 +161,11 @@ class EnhancedErrorHandlingTest extends TestCase
     public function test_middleware_includes_debug_info_in_development()
     {
         config(['app.debug' => true]);
-        
+
         $middleware = new EnhancedErrorHandling();
-        
+
         $request = Request::create('/test', 'GET');
-        
+
         $response = $middleware->handle($request, function ($request) {
             throw new \Exception('Test error with debug info');
         });
@@ -179,11 +179,11 @@ class EnhancedErrorHandlingTest extends TestCase
     public function test_middleware_hides_debug_info_in_production()
     {
         config(['app.debug' => false]);
-        
+
         $middleware = new EnhancedErrorHandling();
-        
+
         $request = Request::create('/test', 'GET');
-        
+
         $response = $middleware->handle($request, function ($request) {
             throw new \Exception('Test error in production');
         });
@@ -195,9 +195,9 @@ class EnhancedErrorHandlingTest extends TestCase
     public function test_middleware_includes_request_id_in_response()
     {
         $middleware = new EnhancedErrorHandling();
-        
+
         $request = Request::create('/test', 'GET');
-        
+
         $response = $middleware->handle($request, function ($request) {
             return response()->json(['message' => 'success']);
         });
@@ -212,20 +212,20 @@ class EnhancedErrorHandlingTest extends TestCase
         Log::shouldReceive('error')
             ->once()
             ->with('Server error occurred', \Mockery::on(function ($context) {
-                return isset($context['request_id']) && 
-                       isset($context['user_id']) && 
-                       isset($context['url']) && 
-                       isset($context['method']) && 
+                return isset($context['request_id']) &&
+                       isset($context['user_id']) &&
+                       isset($context['url']) &&
+                       isset($context['method']) &&
                        isset($context['exception']);
             }));
 
         $middleware = new EnhancedErrorHandling();
-        
+
         $request = Request::create('/test', 'GET');
         $request->setUserResolver(function () {
             return $this->user;
         });
-        
+
         $response = $middleware->handle($request, function ($request) {
             throw new \Exception('Test error with context');
         });

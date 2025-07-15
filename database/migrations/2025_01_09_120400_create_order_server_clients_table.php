@@ -14,7 +14,8 @@ return new class extends Migration
         Schema::create('order_server_clients', function (Blueprint $table) {
             $table->id();
             $table->foreignId('order_id')->constrained()->onDelete('cascade');
-            $table->foreignId('server_client_id')->constrained()->onDelete('cascade');
+            $table->uuid('server_client_id');
+            $table->foreign('server_client_id')->references('id')->on('server_clients')->onDelete('cascade');
             $table->foreignId('order_item_id')->nullable()->constrained()->onDelete('cascade');
 
             // Provisioning status and tracking

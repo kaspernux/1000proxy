@@ -32,12 +32,12 @@ This document outlines the development of API marketplace integrations for the 1
 ### Partner API Endpoints
 
 ```
-POST /api/v1/partner/auth/token       # OAuth token generation
-GET  /api/v1/partner/servers          # Available servers
-POST /api/v1/partner/orders           # Create orders
-GET  /api/v1/partner/orders/{id}      # Order details
-GET  /api/v1/partner/configurations   # Proxy configurations
-POST /api/v1/partner/webhooks         # Webhook management
+POST /api/partner/auth/token       # OAuth token generation
+GET  /api/partner/servers          # Available servers
+POST /api/partner/orders           # Create orders
+GET  /api/partner/orders/{id}      # Order details
+GET  /api/partner/configurations   # Proxy configurations
+POST /api/partner/webhooks         # Webhook management
 ```
 
 ### Integration Types

@@ -8,7 +8,7 @@ use App\Services\XUIService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 
-class ServerInboundController extends Controller
+class ServerController extends Controller
 {
     protected $xuiService;
 
@@ -71,7 +71,7 @@ class ServerInboundController extends Controller
                 'total' => $inboundResponse['obj']['total'],
                 'remark' => $inboundResponse['obj']['remark'],
                 'enable' => $inboundResponse['obj']['enable'],
-                'expiryTime' => $inboundResponse['obj']['expiryTime'] ? date('Y-m-d H:i:s', $inboundResponse['obj']['expiryTime']) : null,
+                'expiry_time' => $inboundResponse['obj']['expiry_time'] ? date('Y-m-d H:i:s', $inboundResponse['obj']['expiry_time']) : null,
                 'clientStats' => $inboundResponse['obj']['clientStats'] ?? null,
                 'listen' => $inboundResponse['obj']['listen'],
                 'port' => $inboundResponse['obj']['port'],
@@ -91,10 +91,10 @@ class ServerInboundController extends Controller
                 'email' => $defaultClient['email'],
                 'password' => $defaultClient['id'], // Assuming the id is used as a password
                 'flow' => $defaultClient['flow'] ?? 'None',
-                'limitIp' => $defaultClient['limitIp'],
+                'limit_ip' => $defaultClient['limit_ip'],
                 'totalGB' => $defaultClient['totalGB'],
-                'expiryTime' => $defaultClient['expiryTime'] ? date('Y-m-d H:i:s', $defaultClient['expiryTime']) : null,
-                'tgId' => $defaultClient['tgId'] ?? null,
+                'expiry_time' => $defaultClient['expiry_time'] ? date('Y-m-d H:i:s', $defaultClient['expiry_time']) : null,
+                'tg_id' => $defaultClient['tg_id'] ?? null,
                 'subId' => $defaultClient['subId'],
                 'enable' => $defaultClient['enable'],
                 'reset' => $defaultClient['reset'] ?? null,

@@ -72,9 +72,9 @@ class XUIOrderProcessingTest extends TestCase
                         'clients' => [[
                             'id' => 'uuid-123',
                             'email' => $this->user->email,
-                            'limitIp' => 5,
+                            'limit_ip' => 5,
                             'totalGB' => 107374182400, // 100GB
-                            'expiryTime' => now()->addDays(30)->timestamp * 1000,
+                            'expiry_time' => now()->addDays(30)->timestamp * 1000,
                             'enable' => true,
                         ]]
                     ])

@@ -50,10 +50,10 @@ class CreateServerInbound extends CreateRecord
         $data['sniffing'] = $inboundResponse['obj']['sniffing'] ?? '';
         $data['enable'] = $inboundResponse['obj']['enable'] ?? '';
 
-        if (!empty($inboundResponse['obj']['expiryTime']) && strtotime($inboundResponse['obj']['expiryTime']) !== false) {
-            $data['expiryTime'] = date('Y-m-d H:i:s', strtotime($inboundResponse['obj']['expiryTime']));
+        if (!empty($inboundResponse['obj']['expiry_time']) && strtotime($inboundResponse['obj']['expiry_time']) !== false) {
+            $data['expiry_time'] = date('Y-m-d H:i:s', strtotime($inboundResponse['obj']['expiry_time']));
         } else {
-            $data['expiryTime'] = null;
+            $data['expiry_time'] = null;
         }
 
         $serverInbound = ServerInbound::create($data);

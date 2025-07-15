@@ -20,7 +20,7 @@ class CustomerFactory extends Factory
             'name' => $this->faker->name(),
             'email' => $this->faker->unique()->safeEmail(),
             'password' => Hash::make('password'),
-            'tgId' => $this->faker->randomNumber(9),
+            'telegram_chat_id' => $this->faker->randomNumber(9),
             'refcode' => Str::random(10),
             'date' => $this->faker->date(),
             'phone' => $this->faker->numerify('##########'),

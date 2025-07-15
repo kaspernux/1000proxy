@@ -17,31 +17,50 @@ use Jantinnerezo\LivewireAlert\LivewireAlert;
 use App\Filament\Clusters\ServerManagement\Resources\ServerClientResource\Pages;
 use App\Filament\Clusters\ServerManagement\Resources\ServerClientResource\RelationManagers;
 use App\Services\XUIService;
+use Illuminate\Support\Facades\Log;
 use Filament\Tables\Actions\Action;
 use Filament\Tables\Columns\ImageColumn;
 use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Columns\ToggleColumn;
+use Filament\Tables\Columns\BadgeColumn;
+use Filament\Tables\Filters\SelectFilter;
+use Filament\Tables\Filters\TernaryFilter;
+use Filament\Tables\Actions\BulkActionGroup;
+use Filament\Tables\Actions\DeleteBulkAction;
+use Filament\Tables\Actions\EditAction;
+use Filament\Tables\Actions\ViewAction;
 use Illuminate\Support\Facades\Storage;
 use Filament\Forms\Components\View as ViewComponent;
 use Filament\Forms\Components\Placeholder;
 use Filament\Forms\Components\Image;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Toggle;
+use Filament\Forms\Components\TextInput;
+use Filament\Forms\Components\Group;
+use Filament\Forms\Components\Section;
+use Filament\Forms\Components\DateTimePicker;
 use Filament\Infolists\Infolist;
+use Carbon\Carbon;
+use Illuminate\Database\Eloquent\SoftDeletingScope;
 use Filament\Infolists\Components\Tabs;
-use Filament\Infolists\Components\Section;
+use Filament\Infolists\Components\Section as InfolistSection;
 use Filament\Infolists\Components\Grid;
 use Filament\Infolists\Components\TextEntry;
 use Filament\Infolists\Components\IconEntry;
 use Filament\Infolists\Components\ImageEntry;
 use Filament\Notifications\Notification;
-            
+
 class ServerClientResource extends Resource
 {
     use LivewireAlert;
 
+    protected static ?string $cluster = ServerManagement::class;
+
     protected static ?string $model = ServerClient::class;
     protected static ?string $navigationIcon = 'heroicon-o-user-group';
-    protected static ?string $navigationGroup = 'PROXY SETTINGS';
+    protected static ?string $navigationLabel = 'Server Clients';
+    protected static ?string $pluralModelLabel = 'Server Clients';
+    protected static ?string $navigationGroup = 'XUI MANAGEMENT';
     protected static ?int $navigationSort = 3;
     protected static ?string $recordTitleAttribute = 'server_id';
 
@@ -50,114 +69,521 @@ class ServerClientResource extends Resource
         return 'Clients';
     }
 
-
-    /* public static function form(Form $form): Form
+    public static function form(Form $form): Form
     {
-        return $form->schema([
-            TextInput::make('email')->required(),
-            TextInput::make('password'),
-            TextInput::make('flow')->nullable(),
-            TextInput::make('limitIp')->numeric(),
-            TextInput::make('totalGb')->numeric(),
-            Forms\Components\DatePicker::make('expiryTime'),
-            TextInput::make('tgId')->nullable(),
-            TextInput::make('subId')->nullable(),
-            Toggle::make('enable')->required()->default(true),
-            TextInput::make('reset')->nullable(),
+        return $form
+            ->schema([
+                Group::make()->schema([
+                    Section::make('🏷️ Client Identity & Configuration')->schema([
+                        Select::make('server_inbound_id')
+                            ->relationship('inbound', 'remark')
+                            ->required()
+                            ->searchable()
+                            ->preload()
+                            ->columnSpan(2)
+                            ->helperText('Select the inbound this client belongs to'),
 
-            Select::make('server_inbound_id')->relationship('inbound', 'remark'),
-            Select::make('plan_id')->relationship('plan', 'name')->nullable(),
-        ]);
-    } */
+                        TextInput::make('email')
+                            ->label('Client Email/ID')
+                            ->required()
+                            ->email()
+                            ->maxLength(255)
+                            ->columnSpan(1)
+                            ->helperText('Unique email identifier for this client'),
+
+                        TextInput::make('id')
+                            ->label('Client UUID')
+                            ->placeholder('Auto-generated if empty')
+                            ->maxLength(36)
+                            ->columnSpan(1)
+                            ->helperText('3X-UI client UUID (leave empty for auto-generation)'),
+
+                        Toggle::make('enable')
+                            ->label('Enabled')
+                            ->required()
+                            ->default(true)
+                            ->columnSpan(1)
+                            ->helperText('Enable/disable this client'),
+
+                        Toggle::make('is_online')
+                            ->label('Online Status')
+                            ->disabled()
+                            ->columnSpan(1)
+                            ->helperText('Current online status (read-only)'),
+                    ])->columns(2),
+
+                    Section::make('🌐 Network & Security Configuration')->schema([
+                        Select::make('flow')
+                            ->label('Flow Control')
+                            ->options([
+                                'xtls-rprx-vision' => 'XTLS-RPRX-Vision',
+                                'xtls-rprx-direct' => 'XTLS-RPRX-Direct',
+                                '' => 'None',
+                            ])
+                            ->columnSpan(1)
+                            ->helperText('3X-UI flow control method'),
+
+                        TextInput::make('limit_ip')
+                            ->label('IP Connection Limit')
+                            ->numeric()
+                            ->minValue(0)
+                            ->maxValue(100)
+                            ->default(2)
+                            ->columnSpan(1)
+                            ->helperText('Maximum concurrent IP connections'),
+
+                        TextInput::make('tg_id')
+                            ->label('Telegram ID')
+                            ->maxLength(255)
+                            ->columnSpan(1)
+                            ->helperText('Optional Telegram user ID for notifications'),
+
+                        TextInput::make('sub_id')
+                            ->label('Subscription ID')
+                            ->maxLength(255)
+                            ->columnSpan(1)
+                            ->helperText('3X-UI subscription identifier'),
+                    ])->columns(2),
+                ])->columnSpan(2),
+
+                Group::make()->schema([
+                    Section::make('📊 Traffic & Limits')->schema([
+                        TextInput::make('total_gb_bytes')
+                            ->label('Traffic Limit (Bytes)')
+                            ->numeric()
+                            ->minValue(0)
+                            ->placeholder('Unlimited')
+                            ->helperText('Total traffic limit in bytes'),
+
+                        Forms\Components\Placeholder::make('traffic_display')
+                            ->label('Traffic Usage')
+                            ->content(function ($record) {
+                                if (!$record) return 'No data';
+
+                                $up = $record->remote_up ?? 0;
+                                $down = $record->remote_down ?? 0;
+                                $total = $up + $down;
+
+                                return "↑ " . number_format($up / 1024 / 1024, 2) . " MB\n" .
+                                       "↓ " . number_format($down / 1024 / 1024, 2) . " MB\n" .
+                                       "Total: " . number_format($total / 1024 / 1024, 2) . " MB";
+                            })
+                            ->hidden(fn ($context) => $context === 'create'),
+                    ]),
+
+                    Section::make('⏰ Timing & Expiry')->schema([
+                        Forms\Components\DateTimePicker::make('expiry_time_display')
+                            ->label('Expiry Date')
+                            ->live()
+                            ->afterStateUpdated(function ($state, $set) {
+                                if ($state) {
+                                    // Convert datetime to milliseconds timestamp for 3X-UI
+                                    $set('expiry_time', Carbon::parse($state)->timestamp * 1000);
+                                }
+                            })
+                            ->helperText('Client expiry date and time'),
+
+                        TextInput::make('expiry_time')
+                            ->label('Expiry Timestamp (ms)')
+                            ->numeric()
+                            ->disabled()
+                            ->helperText('3X-UI expiry timestamp in milliseconds'),
+                    ]),
+
+                    Section::make('🔄 Sync Status')->schema([
+                        Forms\Components\Placeholder::make('last_sync')
+                            ->label('Last API Sync')
+                            ->content(fn ($record) => $record?->last_api_sync_at?->diffForHumans() ?? 'Never'),
+
+                        Forms\Components\Placeholder::make('sync_status')
+                            ->label('Sync Status')
+                            ->content(fn ($record) => $record?->api_sync_status ?? 'Unknown'),
+                    ])->hidden(fn ($context) => $context === 'create'),
+                ])->columnSpan(1),
+
+                Group::make()->schema([
+                    Section::make('🏢 Business Information')->schema([
+                        Select::make('plan_id')
+                            ->relationship('plan', 'name')
+                            ->searchable()
+                            ->preload()
+                            ->columnSpan(1)
+                            ->helperText('Associated service plan'),
+
+                        Select::make('order_id')
+                            ->relationship('order', 'id')
+                            ->searchable()
+                            ->columnSpan(1)
+                            ->helperText('Associated order'),
+
+                        Select::make('customer_id')
+                            ->relationship('customer', 'name')
+                            ->searchable()
+                            ->columnSpan(1)
+                            ->helperText('Associated customer'),
+
+                        Select::make('status')
+                            ->options([
+                                'pending' => '⏳ Pending',
+                                'active' => '✅ Active',
+                                'suspended' => '⏸️ Suspended',
+                                'terminated' => '🔴 Terminated',
+                                'expired' => '⏰ Expired',
+                            ])
+                            ->default('pending')
+                            ->columnSpan(1)
+                            ->helperText('Current client status'),
+                    ])->columns(2),
+                ])->columnSpanFull()
+                ->visibleOn('edit'),
+            ])->columns(3);
+    }
 
     public static function table(Table $table): Table
     {
-        return $table->columns([
-            Tables\Columns\TextColumn::make('inbound.remark')->label('Inbound'),
-            Tables\Columns\TextColumn::make('email')->sortable()->searchable(),
+        return $table
+        ->columns([
+            // ✅ Essential identification columns
+            TextColumn::make('email')
+                ->label('Client Email/ID')
+                ->searchable()
+                ->sortable()
+                ->copyable()
+                ->tooltip('3X-UI client identifier'),
+
+            TextColumn::make('inbound.remark')
+                ->label('Inbound')
+                ->searchable()
+                ->sortable()
+                ->badge()
+                ->color('primary')
+                ->tooltip('Associated inbound configuration'),
+
+            // ✅ Status indicators with proper colors
+            ToggleColumn::make('enable')
+                ->label('Enabled')
+                ->tooltip('Toggle client enable/disable'),
+
+            BadgeColumn::make('status')
+                ->label('Status')
+                ->colors([
+                    'warning' => 'pending',
+                    'success' => 'active',
+                    'danger' => 'suspended',
+                    'gray' => 'terminated',
+                    'info' => 'expired',
+                ])
+                ->icons([
+                    'heroicon-o-clock' => 'pending',
+                    'heroicon-o-check-circle' => 'active',
+                    'heroicon-o-pause-circle' => 'suspended',
+                    'heroicon-o-x-circle' => 'terminated',
+                    'heroicon-o-exclamation-triangle' => 'expired',
+                ]),
+
+            BadgeColumn::make('is_online')
+                ->label('Online')
+                ->colors([
+                    'success' => true,
+                    'gray' => false,
+                ])
+                ->formatStateUsing(fn ($state) => $state ? 'Online' : 'Offline'),
+
+            // ✅ Traffic usage with visual indicators
+            TextColumn::make('traffic_usage')
+                ->label('Traffic Used')
+                ->getStateUsing(function ($record) {
+                    $up = $record->remote_up ?? 0;
+                    $down = $record->remote_down ?? 0;
+                    $total = $up + $down;
+                    return number_format($total / 1024 / 1024 / 1024, 2) . ' GB';
+                })
+                ->badge()
+                ->color(function ($record) {
+                    $up = $record->remote_up ?? 0;
+                    $down = $record->remote_down ?? 0;
+                    $total = $up + $down;
+                    $limit = $record->total_gb_bytes ?? 0;
+
+                    if ($limit == 0) return 'primary'; // Unlimited
+
+                    $percentage = ($total / $limit) * 100;
+
+                    if ($percentage > 90) return 'danger';
+                    if ($percentage > 75) return 'warning';
+                    if ($percentage > 50) return 'info';
+                    return 'success';
+                })
+                ->tooltip(function ($record) {
+                    $up = number_format(($record->remote_up ?? 0) / 1024 / 1024, 2);
+                    $down = number_format(($record->remote_down ?? 0) / 1024 / 1024, 2);
+                    return "Upload: {$up} MB\nDownload: {$down} MB";
+                }),
+
+            TextColumn::make('limit_ip')
+                ->label('IP Limit')
+                ->badge()
+                ->color('info')
+                ->tooltip('Maximum concurrent IP connections'),
+
+            // ✅ Expiry information
+            TextColumn::make('expiry_time_display')
+                ->label('Expires')
+                ->getStateUsing(function ($record) {
+                    if (!$record->expiry_time) return 'Never';
+                    return Carbon::createFromTimestamp($record->expiry_time / 1000)->format('M j, Y H:i');
+                })
+                ->badge()
+                ->color(function ($record) {
+                    if (!$record->expiry_time) return 'primary';
+
+                    $expiry = Carbon::createFromTimestamp($record->expiry_time / 1000);
+                    $now = Carbon::now();
+
+                    if ($expiry->isPast()) return 'danger';
+                    if ($expiry->diffInDays($now) <= 7) return 'warning';
+                    if ($expiry->diffInDays($now) <= 30) return 'info';
+                    return 'success';
+                })
+                ->tooltip(function ($record) {
+                    if (!$record->expiry_time) return 'No expiry set';
+
+                    $expiry = Carbon::createFromTimestamp($record->expiry_time / 1000);
+                    return $expiry->diffForHumans();
+                }),
+
+            // ✅ Business relationships
             TextColumn::make('plan.name')
                 ->label('Plan')
-                ->getStateUsing(fn ($record) => $record->plan_id && $record->plan ? $record->plan->name : 'Generated From XUI Panel')
                 ->badge()
-                ->color(fn ($record) => $record->plan_id && $record->plan ? 'success' : 'gray')
-                ->sortable()
-                ->searchable(),
-            Tables\Columns\TextColumn::make('flow')->sortable()->searchable(),
-            Tables\Columns\TextColumn::make('limitIp')->sortable(),
-            Tables\Columns\TextColumn::make('totalGb')->sortable(),
-            Tables\Columns\TextColumn::make('expiryTime')->sortable(),
-            Tables\Columns\IconColumn::make('enable')->boolean(),
+                ->color('secondary')
+                ->default('No Plan'),
+
+            TextColumn::make('customer.name')
+                ->label('Customer')
+                ->searchable()
+                ->toggleable()
+                ->default('No Customer'),
+
+            // ✅ Sync status
+            TextColumn::make('last_api_sync_at')
+                ->label('Last Sync')
+                ->dateTime()
+                ->since()
+                ->tooltip('Last 3X-UI API synchronization')
+                ->toggleable(),
 
             // ✅ QR Codes with image rendering
             ImageColumn::make('qr_code_client')
                 ->label('Client QR')
                 ->disk('public')
                 ->tooltip('Click to download Client QR')
-                ->url(fn ($record) => Storage::disk('public')->url($record->qr_code_client))
-                ->openUrlInNewTab()
                 ->height(60),
 
             ImageColumn::make('qr_code_sub')
                 ->label('Sub QR')
                 ->disk('public')
                 ->tooltip('Click to download Sub QR')
-                ->url(fn ($record) => Storage::disk('public')->url($record->qr_code_sub))
-                ->openUrlInNewTab()
                 ->height(60),
 
             ImageColumn::make('qr_code_sub_json')
                 ->label('JSON QR')
                 ->disk('public')
                 ->tooltip('Click to download JSON QR')
-                ->url(fn ($record) => Storage::disk('public')->url($record->qr_code_sub_json))
-                ->openUrlInNewTab()
                 ->height(60),
         ])
         ->filters([
-            Tables\Filters\SelectFilter::make('inbound')->relationship('inbound', 'remark'),
-            Tables\Filters\SelectFilter::make('plan')->relationship('plan', 'name'),
-            Tables\Filters\TrashedFilter::make(),
+            SelectFilter::make('server_inbound_id')
+                ->relationship('inbound', 'remark')
+                ->label('Inbound')
+                ->searchable()
+                ->preload(),
+
+            SelectFilter::make('status')
+                ->options([
+                    'pending' => 'Pending',
+                    'active' => 'Active',
+                    'suspended' => 'Suspended',
+                    'terminated' => 'Terminated',
+                    'expired' => 'Expired',
+                ]),
+
+            TernaryFilter::make('enable')
+                ->label('Enabled')
+                ->placeholder('All clients')
+                ->trueLabel('Enabled only')
+                ->falseLabel('Disabled only'),
+
+            TernaryFilter::make('is_online')
+                ->label('Online Status')
+                ->placeholder('All clients')
+                ->trueLabel('Online only')
+                ->falseLabel('Offline only'),
+
+            SelectFilter::make('plan_id')
+                ->relationship('plan', 'name')
+                ->label('Plan')
+                ->searchable()
+                ->preload(),
         ])
         ->actions([
-            Tables\Actions\ActionGroup::make([
-                Tables\Actions\EditAction::make(),
-                Tables\Actions\ViewAction::make(),
-                Tables\Actions\DeleteAction::make(),
-            ]),
+            ViewAction::make()
+                ->tooltip('View client details'),
+
+            EditAction::make()
+                ->tooltip('Edit client configuration'),
+
+            Action::make('sync_from_xui')
+                ->label('Sync from 3X-UI')
+                ->icon('heroicon-o-arrow-path')
+                ->color('info')
+                ->tooltip('Sync client data from 3X-UI server')
+                ->action(function ($record) {
+                    try {
+                        $xuiService = new XUIService($record->inbound->server);
+
+                        // Get client data from 3X-UI using available method
+                        $clientData = $xuiService->getClientByEmail($record->email);
+
+                        if ($clientData) {
+                            $record->update([
+                                'total_gb_bytes' => $clientData['totalGB'] ?? 0,
+                                'remote_up' => $clientData['up'] ?? 0,
+                                'remote_down' => $clientData['down'] ?? 0,
+                                'enable' => $clientData['enable'] ?? false,
+                                'expiry_time' => $clientData['expiryTime'] ?? null,
+                                'last_api_sync_at' => now(),
+                                'api_sync_status' => 'success',
+                            ]);
+
+                            \Filament\Notifications\Notification::make()
+                                ->title('Client synced successfully')
+                                ->success()
+                                ->send();
+                        } else {
+                            throw new \Exception('Client not found on 3X-UI server');
+                        }
+                    } catch (\Exception $e) {
+                        $record->update([
+                            'api_sync_status' => 'error: ' . $e->getMessage(),
+                        ]);
+
+                        \Filament\Notifications\Notification::make()
+                            ->title('Sync failed')
+                            ->body($e->getMessage())
+                            ->danger()
+                            ->send();
+                    }
+                }),
+
+            Action::make('reset_traffic')
+                ->label('Reset Traffic')
+                ->icon('heroicon-o-arrow-path-rounded-square')
+                ->color('warning')
+                ->tooltip('Reset client traffic statistics')
+                ->requiresConfirmation()
+                ->modalHeading('Reset Traffic Statistics')
+                ->modalDescription('Are you sure you want to reset traffic statistics for this client?')
+                ->action(function ($record) {
+                    try {
+                        $xuiService = new XUIService($record->inbound->server);
+
+                        // Reset traffic on 3X-UI server
+                        $xuiService->resetClientTraffic($record->inbound->id, $record->email);
+
+                        $record->update([
+                            'remote_up' => 0,
+                            'remote_down' => 0,
+                            'last_api_sync_at' => now(),
+                        ]);
+
+                        \Filament\Notifications\Notification::make()
+                            ->title('Traffic reset successfully')
+                            ->success()
+                            ->send();
+                    } catch (\Exception $e) {
+                        \Filament\Notifications\Notification::make()
+                            ->title('Traffic reset failed')
+                            ->body($e->getMessage())
+                            ->danger()
+                            ->send();
+                    }
+                }),
+
         ])
         ->bulkActions([
-            Tables\Actions\BulkActionGroup::make([
-                Tables\Actions\DeleteBulkAction::make(),
+            BulkActionGroup::make([
+                DeleteBulkAction::make()
+                    ->tooltip('Delete selected clients'),
+
+                Action::make('bulk_reset_traffic')
+                    ->label('Reset Traffic for Selected')
+                    ->icon('heroicon-o-arrow-path-rounded-square')
+                    ->color('warning')
+                    ->tooltip('Reset traffic for selected clients')
+                    ->requiresConfirmation()
+                    ->action(function ($records) {
+                        $successful = 0;
+                        $failed = 0;
+
+                        foreach ($records as $record) {
+                            try {
+                                $xuiService = new XUIService($record->inbound->server);
+
+                                $xuiService->resetClientTraffic($record->inbound->id, $record->email);
+
+                                $record->update([
+                                    'remote_up' => 0,
+                                    'remote_down' => 0,
+                                    'last_api_sync_at' => now(),
+                                ]);
+
+                                $successful++;
+                            } catch (\Exception $e) {
+                                $failed++;
+                            }
+                        }
+
+                        \Filament\Notifications\Notification::make()
+                            ->title('Bulk traffic reset completed')
+                            ->body("Successful: {$successful}, Failed: {$failed}")
+                            ->success()
+                            ->send();
+                    }),
             ]),
         ])
+        ->defaultSort('created_at', 'desc')
+        ->poll('30s') // Auto-refresh every 30 seconds for real-time updates
+        ->striped()
+        ->paginated([10, 25, 50, 100])
         ->headerActions([
             Action::make('Sync Clients from XUI')
                 ->icon('heroicon-o-arrow-path')
-                ->label('Sync Clients')
+                ->label('Sync All Clients')
                 ->color('primary')
                 ->requiresConfirmation()
                 ->action(function () {
-                    $servers = Server::all();
-            
+                    $servers = \App\Models\Server::all();
+
                     foreach ($servers as $server) {
                         try {
                             $xui             = new XUIService($server->id);
-                            $remoteInbounds  = $xui->getInbounds();
-            
+                            $remoteInbounds  = $xui->listInbounds();
+
                             foreach ($remoteInbounds as $inbound) {
                                 // 1) Ensure we have a local inbound record
                                 $localInbound = ServerInbound::firstOrCreate([
                                     'server_id' => $server->id,
                                     'port'      => $inbound->port,
                                 ]);
-            
+
                                 // 2) Decode the inbound settings and extract remote clients
                                 $settings    = is_string($inbound->settings)
                                     ? json_decode($inbound->settings, true)
                                     : (array) $inbound->settings;
                                 $clients     = $settings['clients'] ?? [];
                                 $remoteSubIds = [];
-            
+
                                 // 3) Upsert each remote client, and collect its subId
                                 foreach ($clients as $client) {
                                     $remoteSubIds[] = $client['subId'] ?? null;
@@ -166,18 +592,18 @@ class ServerClientResource extends Resource
                                         $localInbound->id
                                     );
                                 }
-            
+
                                 // 4) Delete any local clients no longer present remotely
                                 ServerClient::where('server_inbound_id', $localInbound->id)
                                     ->whereNotIn('subId', array_filter($remoteSubIds))
                                     ->delete();
                             }
                         } catch (\Throwable $e) {
-                            \Log::error("Client sync failed for server ID {$server->id}: " . $e->getMessage());
+                            Log::error("Client sync failed for server ID {$server->id}: " . $e->getMessage());
                         }
                     }
-            
-                    Notification::make()
+
+                    \Filament\Notifications\Notification::make()
                         ->title('Success')
                         ->body('Clients synced and stale records removed.')
                         ->success()
@@ -223,10 +649,10 @@ class ServerClientResource extends Resource
                                 TextEntry::make('password')->label('UUID / Password')->color('primary'),
                                 TextEntry::make('subId')->label('Subscription ID')->color('primary'),
                                 TextEntry::make('flow')->label('Flow')->color('primary'),
-                                TextEntry::make('limitIp')->label('IP Limit')->color('primary'),
-                                TextEntry::make('totalGb')->label('Total GB')->color('primary'),
-                                TextEntry::make('expiryTime')->label('Expires At')->dateTime()->color('primary'),
-                                TextEntry::make('tgId')->label('Telegram ID')->default('—')->color('primary'),
+                                TextEntry::make('limit_ip')->label('IP Limit')->color('primary'),
+                                TextEntry::make('total_gb_bytes')->label('Total GB')->color('primary')->formatStateUsing(fn ($state) => $state ? round($state / 1073741824, 2) . ' GB' : '0 GB'),
+                                TextEntry::make('expiry_time')->label('Expires At')->dateTime()->color('primary'),
+                                TextEntry::make('tg_id')->label('Telegram ID')->default('—')->color('primary'),
                                 IconEntry::make('enable')->label('Enabled')->boolean(),
                                 TextEntry::make('reset')->label('Reset Count')->default(0)->color('primary'),
                             ]),

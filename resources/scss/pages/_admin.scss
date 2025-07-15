@@ -1,0 +1,18 @@
+// ==========================================================================
+// PAGES/ADMIN - Admin page styles for the 1000proxy platform
+// ==========================================================================
+
+.admin-page {
+  &__sidebar {
+    @extend .sidebar;
+  }
+
+  &__content {
+    margin-left: 280px;
+    padding: spacing('lg');
+
+    @include respond-below('lg') {
+      margin-left: 0;
+    }
+  }
+}

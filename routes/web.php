@@ -24,10 +24,13 @@ use App\Http\Controllers\{
     WalletTransactionController,
     TelegramBotController,
     Admin\BusinessGrowthController,
+    Admin\ThirdPartyIntegrationController,
+    Admin\MarketingAutomationController,
     CheckoutController
 };
 
 use Illuminate\Support\Facades\Route;
+use Illuminate\Support\Facades\Auth;
 use App\Http\Middleware\RedirectIfCustomer;
 use Illuminate\Support\Facades\Log;
 use App\Models\Order;
@@ -57,7 +60,7 @@ Route::middleware('guest')->group(function () {
 Route::middleware(['auth:web,customer'])->group(function () {
 
     Route::get('/logout', function () {
-        auth()->logout();
+        Auth::logout();
         return redirect('/');
     })->name('logout');
 
@@ -135,8 +138,9 @@ Route::middleware(['auth:web,customer'])->group(function () {
 // Telegram Bot Routes
 Route::prefix('telegram')->group(function () {
     Route::post('/webhook', [TelegramBotController::class, 'webhook'])
+        ->middleware('telegram.rate')
         ->name('telegram.webhook');
-    
+
     Route::middleware('auth:sanctum')->group(function () {
         Route::post('/set-webhook', [TelegramBotController::class, 'setWebhook'])
             ->name('telegram.set-webhook');
@@ -146,6 +150,12 @@ Route::prefix('telegram')->group(function () {
             ->name('telegram.remove-webhook');
         Route::get('/test', [TelegramBotController::class, 'testBot'])
             ->name('telegram.test');
+        Route::post('/send-test-message', [TelegramBotController::class, 'sendTestMessage'])
+            ->name('telegram.send-test-message');
+        Route::get('/bot-stats', [TelegramBotController::class, 'getBotStats'])
+            ->name('telegram.bot-stats');
+        Route::post('/broadcast', [TelegramBotController::class, 'broadcastMessage'])
+            ->name('telegram.broadcast');
     });
 });
 
@@ -158,18 +168,18 @@ Route::middleware(['redirect.customer', RedirectIfCustomer::class])->group(funct
         Route::get('/admin/{any}', function ($any) {
             // Admin route logic here
         })->where('any', '.*');
-        
+
         // Business Growth Routes
         Route::prefix('business-growth')->group(function () {
             Route::get('/dashboard', [BusinessGrowthController::class, 'dashboard'])
                 ->name('admin.business-growth.dashboard');
-            
+
             // Payment Gateway Management
             Route::get('/payment-gateways', [BusinessGrowthController::class, 'paymentGateways'])
                 ->name('admin.business-growth.payment-gateways');
             Route::post('/payment-gateways/{gateway}/configure', [BusinessGrowthController::class, 'configurePaymentGateway'])
                 ->name('admin.business-growth.payment-gateways.configure');
-            
+
             // Geographic Expansion Management
             Route::get('/geographic-expansion', [BusinessGrowthController::class, 'geographicExpansion'])
                 ->name('admin.business-growth.geographic-expansion');
@@ -177,7 +187,7 @@ Route::middleware(['redirect.customer', RedirectIfCustomer::class])->group(funct
                 ->name('admin.business-growth.geographic-expansion.pricing');
             Route::post('/geographic-expansion/restrictions', [BusinessGrowthController::class, 'updateGeographicRestrictions'])
                 ->name('admin.business-growth.geographic-expansion.restrictions');
-            
+
             // Partnership Management
             Route::get('/partnerships', [BusinessGrowthController::class, 'partnerships'])
                 ->name('admin.business-growth.partnerships');
@@ -187,7 +197,7 @@ Route::middleware(['redirect.customer', RedirectIfCustomer::class])->group(funct
                 ->name('admin.business-growth.partnerships.affiliate');
             Route::get('/partnerships/reseller', [BusinessGrowthController::class, 'resellerProgram'])
                 ->name('admin.business-growth.partnerships.reseller');
-            
+
             // Customer Success Management
             Route::get('/customer-success', [BusinessGrowthController::class, 'customerSuccess'])
                 ->name('admin.business-growth.customer-success');
@@ -195,12 +205,120 @@ Route::middleware(['redirect.customer', RedirectIfCustomer::class])->group(funct
                 ->name('admin.business-growth.customer-success.run-automation');
             Route::post('/customer-success/update-health-scores', [BusinessGrowthController::class, 'updateHealthScores'])
                 ->name('admin.business-growth.customer-success.update-health-scores');
-            
+
             // Analytics and Reporting
             Route::get('/analytics', [BusinessGrowthController::class, 'analytics'])
                 ->name('admin.business-growth.analytics');
+            Route::get('/analytics/dashboard', function () {
+                return view('admin.analytics.dashboard');
+            })->name('admin.analytics.dashboard');
             Route::post('/export-report', [BusinessGrowthController::class, 'exportReport'])
                 ->name('admin.business-growth.export-report');
         });
+
+        // Advanced Proxy Management Routes
+        Route::prefix('proxy-management')->group(function () {
+            Route::get('/advanced', function () {
+                return view('admin.advanced-proxy-management');
+            })->name('admin.proxy-management.advanced');
+        });
+
+        // Third-Party Integrations Routes
+        Route::prefix('integrations')->group(function () {
+            Route::get('/management', function () {
+                return view('admin.third-party-integration-management');
+            })->name('admin.integrations.management');
+
+            Route::get('/dashboard', [ThirdPartyIntegrationController::class, 'dashboard'])
+                ->name('admin.integrations.dashboard');
+
+            Route::post('/initialize', [ThirdPartyIntegrationController::class, 'initializeIntegrations'])
+                ->name('admin.integrations.initialize');
+
+            Route::post('/billing/setup', [ThirdPartyIntegrationController::class, 'setupBillingIntegration'])
+                ->name('admin.integrations.billing.setup');
+
+            Route::post('/crm/setup', [ThirdPartyIntegrationController::class, 'setupCRMIntegration'])
+                ->name('admin.integrations.crm.setup');
+
+            Route::post('/analytics/setup', [ThirdPartyIntegrationController::class, 'setupAnalyticsIntegration'])
+                ->name('admin.integrations.analytics.setup');
+
+            Route::post('/support/setup', [ThirdPartyIntegrationController::class, 'setupSupportIntegration'])
+                ->name('admin.integrations.support.setup');
+
+            Route::post('/partner-api/setup', [ThirdPartyIntegrationController::class, 'setupPartnerAPI'])
+                ->name('admin.integrations.partner-api.setup');
+
+            Route::post('/webhook', [ThirdPartyIntegrationController::class, 'handleWebhook'])
+                ->name('admin.integrations.webhook');
+
+            Route::post('/test/{service}', [ThirdPartyIntegrationController::class, 'testIntegration'])
+                ->name('admin.integrations.test');
+
+            Route::post('/sync/{service}', [ThirdPartyIntegrationController::class, 'syncData'])
+                ->name('admin.integrations.sync');
+
+            Route::get('/export', [ThirdPartyIntegrationController::class, 'exportConfiguration'])
+                ->name('admin.integrations.export');
+
+            Route::post('/import', [ThirdPartyIntegrationController::class, 'importConfiguration'])
+                ->name('admin.integrations.import');
+        });
+
+        // Marketing Automation Routes
+        Route::prefix('marketing')->group(function () {
+            Route::get('/automation', function () {
+                return view('admin.marketing-automation-management');
+            })->name('admin.marketing.automation');
+
+            Route::get('/dashboard', [MarketingAutomationController::class, 'dashboard'])
+                ->name('admin.marketing.dashboard');
+
+            Route::post('/initialize', [MarketingAutomationController::class, 'initializeAutomation'])
+                ->name('admin.marketing.initialize');
+
+            Route::post('/campaigns/create', [MarketingAutomationController::class, 'createCampaign'])
+                ->name('admin.marketing.campaigns.create');
+
+            Route::post('/campaigns/execute', [MarketingAutomationController::class, 'executeCampaign'])
+                ->name('admin.marketing.campaigns.execute');
+
+            Route::post('/workflows/setup', [MarketingAutomationController::class, 'setupWorkflows'])
+                ->name('admin.marketing.workflows.setup');
+
+            Route::post('/lead-nurturing/process', [MarketingAutomationController::class, 'processLeadNurturing'])
+                ->name('admin.marketing.lead-nurturing.process');
+
+            Route::post('/abandoned-cart/process', [MarketingAutomationController::class, 'processAbandonedCart'])
+                ->name('admin.marketing.abandoned-cart.process');
+
+            Route::get('/segments', [MarketingAutomationController::class, 'getCustomerSegments'])
+                ->name('admin.marketing.segments');
+
+            Route::get('/performance', [MarketingAutomationController::class, 'getCampaignPerformance'])
+                ->name('admin.marketing.performance');
+
+            Route::get('/email-metrics', [MarketingAutomationController::class, 'getEmailMetrics'])
+                ->name('admin.marketing.email-metrics');
+
+            Route::post('/settings/update', [MarketingAutomationController::class, 'updateAutomationSettings'])
+                ->name('admin.marketing.settings.update');
+
+            Route::get('/analytics/generate', [MarketingAutomationController::class, 'generateAnalytics'])
+                ->name('admin.marketing.analytics.generate');
+
+            Route::post('/email/test', [MarketingAutomationController::class, 'testEmailDelivery'])
+                ->name('admin.marketing.email.test');
+
+            Route::get('/export', [MarketingAutomationController::class, 'exportCampaignData'])
+                ->name('admin.marketing.export');
+        });
     });
 });
+
+// PWA Routes
+require __DIR__.'/pwa.php';
+
+// Test Routes
+require __DIR__.'/test.php';

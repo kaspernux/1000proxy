@@ -1,0 +1,25 @@
+// ==========================================================================
+// VENDOR/LIVEWIRE - Livewire component overrides
+// ==========================================================================
+
+// Livewire loading states
+[wire\:loading] {
+  opacity: 0.6;
+  pointer-events: none;
+}
+
+// Livewire offline indicator
+[wire\:offline] {
+  opacity: 0.5;
+
+  &::after {
+    content: ' (Offline)';
+    color: var(--color-status-offline);
+    font-size: font-size('sm');
+  }
+}
+
+// Livewire dirty state
+[wire\:dirty] {
+  border-color: var(--color-status-limited) !important;
+}

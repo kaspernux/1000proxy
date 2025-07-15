@@ -94,7 +94,7 @@ class ClientProvisioningService
         $server = $plan->server;
 
         // Initialize XUI Service
-        $this->xuiService = new XUIService($server->id);
+        $this->xuiService = new XUIService($server);
 
         // Get best inbound for provisioning
         $inbound = $this->getBestInbound($plan);
@@ -220,12 +220,12 @@ class ClientProvisioningService
         return [
             'id' => $this->xuiService->generateUID(),
             'email' => "{$plan->name} - Client #{$clientNumber} - Order #{$order->id} - ID {$customer->id}",
-            'limitIp' => $plan->provision_settings['connection_limit'] ?? 2,
+            'limit_ip' => $plan->provision_settings['connection_limit'] ?? 2,
             'totalGB' => ($plan->data_limit_gb ?? $plan->volume) * 1073741824, // Convert GB to bytes
-            'expiryTime' => now()->addDays($plan->days + ($plan->trial_days ?? 0))->timestamp * 1000,
+            'expiry_time' => now()->addDays($plan->days + ($plan->trial_days ?? 0))->timestamp * 1000,
             'enable' => true,
             'flow' => 'xtls-rprx-vision',
-            'tgId' => $customer->telegram_id ?? '',
+            'tg_id' => $customer->telegram_id ?? '',
             'subId' => \Illuminate\Support\Str::random(16),
         ];
     }
@@ -235,19 +235,23 @@ class ClientProvisioningService
      */
     protected function createRemoteClient(ServerInbound $inbound, array $clientConfig): array
     {
-        $settings = [
+        $settings = json_encode([
             'clients' => [$clientConfig]
-        ];
+        ]);
 
-        $response = $this->xuiService->addClient($inbound->port, $settings);
+        $success = $this->xuiService->addClient($inbound->remote_id, $settings);
 
-        if (!$response || !isset($response['success']) || !$response['success']) {
-            throw new \Exception('Failed to create client on remote XUI panel: ' . ($response['msg'] ?? 'Unknown error'));
+        if (!$success) {
+            throw new \Exception('Failed to create client on remote XUI panel');
         }
 
         // Return the client data with generated links
         return array_merge($clientConfig, [
             'link' => ServerClient::buildXuiClientLink($clientConfig, $inbound, $inbound->server),
+            'sub_link' => "https://{$inbound->server->getPanelHost()}:{$inbound->server->getSubscriptionPort()}/sub/{$clientConfig['subId']}",
+            'json_link' => "https://{$inbound->server->getPanelHost()}:{$inbound->server->getSubscriptionPort()}/json/{$clientConfig['subId']}",
+        ]);
+    }
             'sub_link' => "https://{$inbound->server->getPanelHost()}:{$inbound->server->getSubscriptionPort()}/sub/{$clientConfig['subId']}",
             'json_link' => "https://{$inbound->server->getPanelHost()}:{$inbound->server->getSubscriptionPort()}/json/{$clientConfig['subId']}",
         ]);

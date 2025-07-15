@@ -69,9 +69,9 @@ class CustomerServerClientResource extends Resource
                 ->url(fn ($record) => Storage::disk('public')->url($record->qr_code_sub_json))
                 ->openUrlInNewTab()
                 ->height(60),
-            TextColumn::make('totalGb')->sortable(),
-            TextColumn::make('limitIp')->sortable(),
-            TextColumn::make('expiryTime')->sortable(),            
+            TextColumn::make('total_gb_bytes')->sortable()->formatStateUsing(fn ($state) => $state ? round($state / 1073741824, 2) . ' GB' : '0 GB'),
+            TextColumn::make('limit_ip')->sortable(),
+            TextColumn::make('expiry_time')->sortable(),
         ])
         ->actions([
             Tables\Actions\ViewAction::make(), // ✅ View only
@@ -112,10 +112,10 @@ class CustomerServerClientResource extends Resource
                                     TextEntry::make('password')->label('UUID / Password')->color('primary'),
                                     TextEntry::make('subId')->label('Subscription ID')->color('primary'),
                                     TextEntry::make('flow')->label('Flow')->color('primary'),
-                                    TextEntry::make('limitIp')->label('IP Limit')->color('primary'),
-                                    TextEntry::make('totalGb')->label('Total GB')->color('primary'),
-                                    TextEntry::make('expiryTime')->label('Expires At')->dateTime()->color('primary'),
-                                    TextEntry::make('tgId')->label('Telegram ID')->default('—')->color('primary'),
+                                    TextEntry::make('limit_ip')->label('IP Limit')->color('primary'),
+                                    TextEntry::make('total_gb_bytes')->label('Total GB')->color('primary')->formatStateUsing(fn ($state) => $state ? round($state / 1073741824, 2) . ' GB' : '0 GB'),
+                                    TextEntry::make('expiry_time')->label('Expires At')->dateTime()->color('primary'),
+                                    TextEntry::make('telegram_chat_id')->label('Telegram ID')->default('—')->color('primary'),
                                     IconEntry::make('enable')->label('Enabled')->boolean(),
                                     TextEntry::make('reset')->label('Reset Count')->default(0)->color('primary'),
                                 ]),

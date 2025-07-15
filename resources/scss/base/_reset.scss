@@ -1,0 +1,373 @@
+// ==========================================================================
+// RESET - Modern CSS reset for the 1000proxy platform
+// ==========================================================================
+
+// BOX SIZING RESET
+// ==========================================================================
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+// REMOVE DEFAULT MARGINS AND PADDINGS
+// ==========================================================================
+* {
+  margin: 0;
+  padding: 0;
+}
+
+// ROOT ELEMENT SETUP
+// ==========================================================================
+html {
+  // Improve text rendering
+  -webkit-text-size-adjust: 100%;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+
+  // Smooth scrolling
+  scroll-behavior: smooth;
+
+  // Prevent horizontal scroll
+  overflow-x: hidden;
+
+  // Set base font size for rem calculations
+  font-size: 16px;
+
+  // Improve tap targets on touch devices
+  -webkit-tap-highlight-color: transparent;
+}
+
+// BODY SETUP
+// ==========================================================================
+body {
+  font-family: $font-family-sans;
+  font-size: font-size('base');
+  font-weight: font-weight('normal');
+  line-height: line-height('normal');
+  color: #111827;
+  background-color: #ffffff;
+
+  // Improve text rendering
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+
+  // Prevent font scaling in landscape on iOS
+  -webkit-text-size-adjust: 100%;
+
+  // Hide horizontal overflow
+  overflow-x: hidden;
+
+  // Minimum height
+  min-height: 100vh;
+
+  // Dark theme
+  [data-theme="dark"] & {
+    color: var(--color-text-primary);
+    background-color: var(--color-bg-primary);
+  }
+}
+
+// HEADING RESET
+// ==========================================================================
+h1, h2, h3, h4, h5, h6 {
+  font-weight: font-weight('semibold');
+  line-height: line-height('tight');
+  color: inherit;
+  margin: 0;
+}
+
+// PARAGRAPH RESET
+// ==========================================================================
+p {
+  margin: 0;
+  line-height: line-height('relaxed');
+}
+
+// LIST RESET
+// ==========================================================================
+ul, ol {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+// LINK RESET
+// ==========================================================================
+a {
+  color: var(--color-primary-500);
+  text-decoration: none;
+  transition: color map-get($transition-durations, 'base') map-get($transition-easings, 'smooth');
+
+  &:hover {
+    color: var(--color-primary-600);
+    text-decoration: underline;
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--color-primary-500);
+    outline-offset: 2px;
+    border-radius: border-radius('sm');
+  }
+}
+
+// BUTTON RESET
+// ==========================================================================
+button {
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: inherit;
+  line-height: inherit;
+  color: inherit;
+
+  &:focus-visible {
+    outline: 2px solid var(--color-primary-500);
+    outline-offset: 2px;
+    border-radius: border-radius('sm');
+  }
+}
+
+// INPUT RESET
+// ==========================================================================
+input,
+textarea,
+select {
+  font-family: inherit;
+  font-size: inherit;
+  line-height: inherit;
+  color: inherit;
+  background: transparent;
+  border: none;
+
+  &:focus {
+    outline: none;
+  }
+}
+
+// IMAGE RESET
+// ==========================================================================
+img,
+svg {
+  display: block;
+  max-width: 100%;
+  height: auto;
+}
+
+img {
+  // Prevent dragging
+  -webkit-user-drag: none;
+  -khtml-user-drag: none;
+  -moz-user-drag: none;
+  -o-user-drag: none;
+
+  // Improve image rendering
+  image-rendering: -webkit-optimize-contrast;
+  image-rendering: crisp-edges;
+}
+
+// TABLE RESET
+// ==========================================================================
+table {
+  border-collapse: collapse;
+  border-spacing: 0;
+  width: 100%;
+}
+
+th,
+td {
+  text-align: left;
+  vertical-align: top;
+  padding: 0;
+}
+
+// FORM ELEMENT RESET
+// ==========================================================================
+fieldset {
+  border: none;
+  margin: 0;
+  padding: 0;
+}
+
+legend {
+  padding: 0;
+}
+
+// MISC ELEMENT RESET
+// ==========================================================================
+hr {
+  border: none;
+  height: 1px;
+  background-color: #e5e7eb;
+  margin: 0;
+
+  [data-theme="dark"] & {
+    background-color: var(--color-border-primary);
+  }
+}
+
+blockquote {
+  margin: 0;
+  padding: 0;
+}
+
+pre,
+code {
+  font-family: $font-family-mono;
+}
+
+// ACCESSIBILITY IMPROVEMENTS
+// ==========================================================================
+
+// Focus management
+:focus {
+  outline: none;
+}
+
+:focus-visible {
+  outline: 2px solid var(--color-primary-500);
+  outline-offset: 2px;
+}
+
+// Screen reader only content
+.sr-only {
+  @include visually-hidden;
+}
+
+// Reduced motion support
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+
+  html {
+    scroll-behavior: auto;
+  }
+}
+
+// High contrast mode support
+@media (prefers-contrast: high) {
+  :root {
+    --color-primary-500: #0000ff;
+    --color-status-online: #008000;
+    --color-status-offline: #ff0000;
+  }
+}
+
+// SELECTION STYLING
+// ==========================================================================
+::selection {
+  background-color: var(--color-primary-200);
+  color: var(--color-primary-900);
+}
+
+::-moz-selection {
+  background-color: var(--color-primary-200);
+  color: var(--color-primary-900);
+}
+
+// SCROLLBAR STYLING
+// ==========================================================================
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #f1f5f9;
+
+  [data-theme="dark"] & {
+    background: var(--color-bg-tertiary);
+  }
+}
+
+::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: border-radius('full');
+
+  &:hover {
+    background: #94a3b8;
+  }
+
+  [data-theme="dark"] & {
+    background: var(--color-border-secondary);
+
+    &:hover {
+      background: var(--color-text-tertiary);
+    }
+  }
+}
+
+// FIREFOX SCROLLBAR
+html {
+  scrollbar-width: thin;
+  scrollbar-color: #cbd5e1 #f1f5f9;
+
+  [data-theme="dark"] & {
+    scrollbar-color: var(--color-border-secondary) var(--color-bg-tertiary);
+  }
+}
+
+// PRINT STYLES
+// ==========================================================================
+@media print {
+  *,
+  *::before,
+  *::after {
+    background: transparent !important;
+    color: black !important;
+    box-shadow: none !important;
+    text-shadow: none !important;
+  }
+
+  a,
+  a:visited {
+    text-decoration: underline;
+  }
+
+  a[href]::after {
+    content: " (" attr(href) ")";
+  }
+
+  abbr[title]::after {
+    content: " (" attr(title) ")";
+  }
+
+  pre {
+    white-space: pre-wrap !important;
+  }
+
+  pre,
+  blockquote {
+    border: 1px solid #999;
+    page-break-inside: avoid;
+  }
+
+  thead {
+    display: table-header-group;
+  }
+
+  tr,
+  img {
+    page-break-inside: avoid;
+  }
+
+  p,
+  h2,
+  h3 {
+    orphans: 3;
+    widows: 3;
+  }
+
+  h2,
+  h3 {
+    page-break-after: avoid;
+  }
+}

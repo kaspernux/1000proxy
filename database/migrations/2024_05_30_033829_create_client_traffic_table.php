@@ -19,7 +19,7 @@ return new class extends Migration
             $table->string('email')->nullable();
             $table->bigInteger('up')->nullable();
             $table->bigInteger('down')->nullable();
-            $table->bigInteger('expiryTime')->nullable();
+            $table->bigInteger('expiry_time')->nullable();
             $table->bigInteger('total')->nullable();
             $table->boolean('reset')->default(false);
             $table->timestamps();

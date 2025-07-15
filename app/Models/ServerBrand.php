@@ -19,6 +19,12 @@ class ServerBrand extends Model
         'image',
         'desc',
         'is_active',
+        'website_url',
+        'support_url',
+        'tier',
+        'brand_color',
+        'featured',
+        'sort_order',
     ];
 
     protected static function boot()
@@ -45,6 +51,11 @@ class ServerBrand extends Model
 
     public function serverPlans(): HasMany
     {
-        return $this->hasMany(ServerPlan::class);
+        return $this->hasMany(ServerPlan::class, 'server_brand_id');
+    }
+
+    public function servers(): HasMany
+    {
+        return $this->hasMany(Server::class, 'server_brand_id');
     }
 }

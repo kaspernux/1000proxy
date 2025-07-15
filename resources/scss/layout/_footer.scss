@@ -1,0 +1,264 @@
+// ==========================================================================
+// FOOTER - Footer layout styles for the 1000proxy platform
+// ==========================================================================
+
+.footer {
+  background-color: #1f2937;
+  color: #d1d5db;
+
+  [data-theme="dark"] & {
+    background-color: #111827;
+  }
+
+  &__container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 spacing('lg');
+
+    @include respond-below('lg') {
+      padding: 0 spacing('md');
+    }
+  }
+
+  &__main {
+    padding: spacing('xl') 0;
+    border-bottom: 1px solid #374151;
+
+    [data-theme="dark"] & {
+      border-bottom-color: #1f2937;
+    }
+  }
+
+  &__grid {
+    display: grid;
+    grid-template-columns: 2fr 1fr 1fr 1fr;
+    gap: spacing('xl');
+
+    @include respond-below('lg') {
+      grid-template-columns: repeat(2, 1fr);
+      gap: spacing('lg');
+    }
+
+    @include respond-below('md') {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  &__brand {
+    &__logo {
+      @extend %flex-center;
+      gap: spacing('sm');
+      margin-bottom: spacing('lg');
+
+      &__icon {
+        width: 2rem;
+        height: 2rem;
+        color: var(--color-primary-400);
+      }
+
+      &__text {
+        font-size: font-size('xl');
+        font-weight: font-weight('bold');
+        color: white;
+      }
+    }
+
+    &__description {
+      color: #9ca3af;
+      line-height: 1.6;
+      margin-bottom: spacing('lg');
+    }
+
+    &__social {
+      display: flex;
+      gap: spacing('sm');
+
+      &__link {
+        @extend %flex-center;
+        width: 2.5rem;
+        height: 2.5rem;
+        background-color: #374151;
+        color: #9ca3af;
+        border-radius: border-radius('base');
+        text-decoration: none;
+        transition: all map-get($transition-durations, 'fast') map-get($transition-easings, 'smooth');
+
+        &:hover {
+          background-color: var(--color-primary-500);
+          color: white;
+          transform: translateY(-2px);
+        }
+
+        &__icon {
+          width: 1.25rem;
+          height: 1.25rem;
+        }
+      }
+    }
+  }
+
+  &__section {
+    &__title {
+      font-size: font-size('lg');
+      font-weight: font-weight('semibold');
+      color: white;
+      margin-bottom: spacing('lg');
+    }
+
+    &__list {
+      display: flex;
+      flex-direction: column;
+      gap: spacing('sm');
+
+      &__item {
+        &__link {
+          color: #9ca3af;
+          text-decoration: none;
+          transition: color map-get($transition-durations, 'fast') map-get($transition-easings, 'smooth');
+
+          &:hover {
+            color: var(--color-primary-400);
+          }
+        }
+      }
+    }
+  }
+
+  &__bottom {
+    @extend %flex-between;
+    padding: spacing('lg') 0;
+    gap: spacing('lg');
+
+    @include respond-below('md') {
+      flex-direction: column;
+      text-align: center;
+      gap: spacing('md');
+    }
+
+    &__copyright {
+      color: #9ca3af;
+      font-size: font-size('sm');
+    }
+
+    &__links {
+      display: flex;
+      gap: spacing('lg');
+
+      @include respond-below('md') {
+        justify-content: center;
+        gap: spacing('md');
+      }
+
+      &__link {
+        color: #9ca3af;
+        text-decoration: none;
+        font-size: font-size('sm');
+        transition: color map-get($transition-durations, 'fast') map-get($transition-easings, 'smooth');
+
+        &:hover {
+          color: var(--color-primary-400);
+        }
+      }
+    }
+  }
+}
+
+// NEWSLETTER SECTION
+// ==========================================================================
+
+.newsletter {
+  &__title {
+    font-size: font-size('lg');
+    font-weight: font-weight('semibold');
+    color: white;
+    margin-bottom: spacing('sm');
+  }
+
+  &__description {
+    color: #9ca3af;
+    margin-bottom: spacing('lg');
+    font-size: font-size('sm');
+  }
+
+  &__form {
+    display: flex;
+    gap: spacing('sm');
+
+    @include respond-below('sm') {
+      flex-direction: column;
+    }
+  }
+
+  &__input {
+    flex: 1;
+    padding: 0.75rem 1rem;
+    background-color: #374151;
+    border: 1px solid #4b5563;
+    border-radius: border-radius('base');
+    color: white;
+    font-size: font-size('sm');
+
+    &::placeholder {
+      color: #9ca3af;
+    }
+
+    &:focus {
+      outline: none;
+      border-color: var(--color-primary-500);
+      box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
+    }
+  }
+
+  &__button {
+    @extend %btn-primary;
+    white-space: nowrap;
+
+    @include respond-below('sm') {
+      width: 100%;
+    }
+  }
+}
+
+// TRUST BADGES
+// ==========================================================================
+
+.trust-badges {
+  display: flex;
+  align-items: center;
+  gap: spacing('lg');
+  margin-top: spacing('lg');
+
+  @include respond-below('md') {
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: spacing('md');
+  }
+
+  &__item {
+    @extend %flex-center;
+    gap: spacing('xs');
+    color: #9ca3af;
+    font-size: font-size('xs');
+
+    &__icon {
+      width: 1rem;
+      height: 1rem;
+      color: var(--color-status-online);
+    }
+  }
+}
+
+// FOOTER RESPONSIVE
+// ==========================================================================
+
+@include respond-below('lg') {
+  .footer {
+    &__grid {
+      .footer__brand {
+        grid-column: 1 / -1;
+        text-align: center;
+        margin-bottom: spacing('lg');
+      }
+    }
+  }
+}

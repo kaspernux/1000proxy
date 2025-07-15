@@ -10,7 +10,10 @@ export default defineConfig( {
     },
     plugins: [
         laravel( {
-            input: [ 'resources/css/app.css', 'resources/js/app.js' ],
+            input: [
+                'resources/css/app.css',
+                'resources/js/app.js'
+            ],
             refresh: [
                 'app/Filament/**',
                 'app/Forms/Components/**',
@@ -18,8 +21,14 @@ export default defineConfig( {
                 'app/Infolists/Components/**',
                 'app/Providers/Filament/**',
                 'app/Tables/Columns/**',
+                'resources/scss/**',  // Watch SCSS files for changes
             ],
         } ),
         tailwindcss(),
     ],
+    css: {
+        preprocessorOptions: {
+            scss: {},
+        },
+    },
 } );

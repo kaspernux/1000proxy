@@ -11,6 +11,7 @@ use App\Models\ServerInbound;
 use App\Models\ServerPlan;
 use Illuminate\Support\Facades\Storage;
 use SimpleSoftwareIO\QrCode\Facades\QrCode;
+use App\Services\QrCodeService;
 use Illuminate\Support\Str;
 
 class ServerClient extends Model
@@ -20,43 +21,110 @@ class ServerClient extends Model
     protected $table = 'server_clients';
 
     protected $fillable = [
-        'server_inbound_id', 'email', 'password', 'flow', 'limitIp', 'totalGb', 'expiryTime', 'tgId', 'subId',
-        'plan_id', 'enable', 'reset', 'qr_code_sub', 'qr_code_sub_json', 'qr_code_client', 'client_link', 'remote_sub_link',
-        'remote_json_link', 'security', 'pbk', 'fp', 'sni', 'sid', 'spx', 'grpc_service_name', 'network_type',
-        'tls_type', 'alpn', 'header_type', 'host', 'path', 'kcp_seed', 'kcp_type',
-        'order_id', 'customer_id', 'status', 'provisioned_at', 'activated_at', 'suspended_at', 'terminated_at',
-        'last_connection_at', 'traffic_limit_mb', 'traffic_used_mb', 'traffic_percentage_used', 'connection_stats',
-        'performance_metrics', 'connection_count', 'last_traffic_sync_at', 'client_config', 'provisioning_log',
-        'error_message', 'retry_count', 'auto_renew', 'next_billing_at', 'renewal_price',
-        // 3X-UI API specific fields
-        'tg_id',
-        'sub_id',
-        'limit_ip',
-        'total_gb_bytes',
-        'expiry_time',
-        'reset_counter',
-        'remote_client_id',
-        'remote_inbound_id',
+        // Core identification fields
+        'id',                       // UUID for 3X-UI compatibility
+        'server_inbound_id',
+        'email',                    // 3X-UI client email identifier
+        'password',                 // Legacy field
+
+        // 3X-UI API specific fields (exact match with API)
+        'flow',                     // 3X-UI flow control
+        'limit_ip',                 // 3X-UI IP connection limit
+        'total_gb_bytes',           // 3X-UI traffic limit (totalGB in bytes)
+        'expiry_time',              // 3X-UI expiry timestamp (milliseconds)
+        'enable',                   // 3X-UI client enabled status
+        'tg_id',                    // 3X-UI Telegram ID
+        'sub_id',                   // 3X-UI subscription ID (subId)
+        'reset',                    // 3X-UI reset counter/timestamp
+
+        // 3X-UI remote sync fields
+        'remote_client_id',         // 3X-UI client stats ID
+        'remote_inbound_id',        // 3X-UI inbound ID
+        'remote_up',                // 3X-UI upload bytes
+        'remote_down',              // 3X-UI download bytes
+        'remote_total',             // 3X-UI total bytes
+        'remote_client_config',     // Full 3X-UI client configuration
+
+        // Connection and IP management (3X-UI specific)
+        'connection_ips',           // Client IP addresses
+        'last_ip_clear_at',         // Last IP clear timestamp
+        'is_online',                // Current online status
+        'last_online_check_at',     // Last online check timestamp
+
+        // API sync tracking
         'last_api_sync_at',
         'api_sync_log',
         'api_sync_status',
         'api_sync_error',
-        'remote_up',
-        'remote_down',
-        'remote_total',
-        'remote_client_config',
-        'connection_ips',
-        'last_ip_clear_at',
-        'is_online',
-        'last_online_check_at',
+        'last_traffic_sync_at',
+
+        // Local management fields
+        'plan_id',
+        'order_id',
+        'customer_id',
+        'status',
+        'provisioned_at',
+        'activated_at',
+        'suspended_at',
+        'terminated_at',
+        'last_connection_at',
+        'traffic_limit_mb',
+        'traffic_used_mb',
+        'traffic_percentage_used',
+        'connection_stats',
+        'performance_metrics',
+        'connection_count',
+        'client_config',
+        'provisioning_log',
+        'error_message',
+        'retry_count',
+        'auto_renew',
+        'next_billing_at',
+        'renewal_price',
+
+        // Legacy QR and link fields
+        'qr_code_sub',
+        'qr_code_sub_json',
+        'qr_code_client',
+        'client_link',
+        'remote_sub_link',
+        'remote_json_link',
+
+        // Legacy connection fields
+        'security',
+        'pbk',
+        'fp',
+        'sni',
+        'sid',
+        'spx',
+        'grpc_service_name',
+        'network_type',
+        'tls_type',
+        'alpn',
+        'header_type',
+        'host',
+        'path',
+        'kcp_seed',
+        'kcp_type',
     ];
 
     protected $casts = [
-        'totalGb' => 'integer',
-        'total_gb_bytes' => 'integer',
-        'expiryTime' => 'datetime',
-        'expiry_time' => 'datetime',
-        'enable' => 'boolean',
+        // 3X-UI specific fields (matching API format)
+        'id' => 'string',               // UUID string
+        'total_gb_bytes' => 'integer',  // 3X-UI totalGB in bytes
+        'expiry_time' => 'integer',     // 3X-UI expiry timestamp (milliseconds)
+        'enable' => 'boolean',          // 3X-UI enabled status
+        'limit_ip' => 'integer',        // 3X-UI IP connection limit
+        'reset' => 'integer',           // 3X-UI reset counter/timestamp
+        'remote_client_id' => 'integer', // 3X-UI client stats ID
+        'remote_inbound_id' => 'integer', // 3X-UI inbound ID
+        'remote_up' => 'integer',       // 3X-UI upload bytes
+        'remote_down' => 'integer',     // 3X-UI download bytes
+        'remote_total' => 'integer',    // 3X-UI total bytes
+        'is_online' => 'boolean',       // 3X-UI online status
+
+        // Local management fields
+        'total_gb' => 'integer',        // Local traffic limit (GB)
         'provisioned_at' => 'datetime',
         'activated_at' => 'datetime',
         'suspended_at' => 'datetime',
@@ -68,17 +136,17 @@ class ServerClient extends Model
         'last_online_check_at' => 'datetime',
         'next_billing_at' => 'datetime',
         'auto_renew' => 'boolean',
-        'is_online' => 'boolean',
-        'remote_up' => 'integer',
-        'remote_down' => 'integer',
-        'remote_total' => 'integer',
+
+        // JSON fields
         'connection_stats' => 'array',
         'performance_metrics' => 'array',
         'client_config' => 'array',
-        'remote_client_config' => 'array',
+        'remote_client_config' => 'array',    // Full 3X-UI client config
         'provisioning_log' => 'array',
         'api_sync_log' => 'array',
-        'connection_ips' => 'array',
+        'connection_ips' => 'array',          // 3X-UI client IP addresses
+
+        // Decimal fields
         'renewal_price' => 'decimal:2',
         'traffic_percentage_used' => 'decimal:2',
     ];
@@ -193,9 +261,45 @@ class ServerClient extends Model
         $qrSubPath = "{$qrDir}/sub_{$subId}.png";
         $qrJsonPath = "{$qrDir}/json_{$subId}.png";
 
-        QrCode::format('png')->size(400)->generate($link, storage_path("app/public/{$qrClientPath}"));
-        QrCode::format('png')->size(400)->generate($subLink, storage_path("app/public/{$qrSubPath}"));
-        QrCode::format('png')->size(400)->generate($jsonLink, storage_path("app/public/{$qrJsonPath}"));
+        // Use the new QrCodeService for branded QR codes
+        try {
+            $qrCodeService = app(QrCodeService::class);
+
+            // Generate branded QR codes with 1000 Proxies styling
+            file_put_contents(
+                storage_path("app/public/{$qrClientPath}"),
+                base64_decode(str_replace('data:image/png;base64,', '', $qrCodeService->generateClientQrCode($link)))
+            );
+
+            file_put_contents(
+                storage_path("app/public/{$qrSubPath}"),
+                base64_decode(str_replace('data:image/png;base64,', '', $qrCodeService->generateSubscriptionQrCode($subLink)))
+            );
+
+            file_put_contents(
+                storage_path("app/public/{$qrJsonPath}"),
+                base64_decode(str_replace('data:image/png;base64,', '', $qrCodeService->generateSubscriptionQrCode($jsonLink)))
+            );
+        } catch (\Exception $e) {
+            // Fallback to simple QR code generation using our service
+            try {
+                $qrCodeService = app(\App\Services\QrCodeService::class);
+                file_put_contents(
+                    storage_path("app/public/{$qrClientPath}"),
+                    $qrCodeService->generateBrandedQrCode($link, 400, 'png', ['style' => 'square'])
+                );
+                file_put_contents(
+                    storage_path("app/public/{$qrSubPath}"),
+                    $qrCodeService->generateBrandedQrCode($subLink, 400, 'png', ['style' => 'square'])
+                );
+                file_put_contents(
+                    storage_path("app/public/{$qrJsonPath}"),
+                    $qrCodeService->generateBrandedQrCode($jsonLink, 400, 'png', ['style' => 'square'])
+                );
+            } catch (\Exception $fallbackException) {
+                \Log::warning("QR generation completely failed for client {$subId}: " . $fallbackException->getMessage());
+            }
+        }
 
         $query = parse_url($link, PHP_URL_QUERY);
         parse_str($query, $params);
@@ -207,10 +311,10 @@ class ServerClient extends Model
                 'email' => $client['email'] ?? null,
                 'password' => $client['id'],
                 'flow' => $params['flow'] ?? $client['flow'] ?? null,
-                'limitIp' => $client['limitIp'] ?? 0,
-                'totalGb' => isset($client['totalGB']) ? floor($client['totalGB'] / 1073741824) : 0,
-                'expiryTime' => isset($client['expiryTime']) ? Carbon::createFromTimestampMs($client['expiryTime']) : null,
-                'tgId' => $client['tgId'] ?? null,
+                'limit_ip' => $client['limit_ip'] ?? 0,
+                'total_gb_bytes' => $client['totalGB'] ?? 0,  // Store 3X-UI totalGB bytes directly
+                'expiry_time' => $client['expiry_time'] ?? 0,  // Store 3X-UI expiry_time milliseconds directly
+                'tg_id' => $client['tg_id'] ?? null,
                 'enable' => $client['enable'] ?? true,
                 'reset' => $client['reset'] ?? null,
                 'qr_code_client' => $qrClientPath,
@@ -301,11 +405,17 @@ class ServerClient extends Model
     }
 
     /**
-     * Check if client is expired
+     * Check if client is expired (3X-UI uses milliseconds timestamp)
      */
     public function isExpired(): bool
     {
-        return $this->expiryTime && $this->expiryTime->isPast();
+        if (!$this->expiry_time || $this->expiry_time == 0) {
+            return false; // 0 means never expires in 3X-UI
+        }
+
+        // 3X-UI uses milliseconds, convert to seconds for comparison
+        $expiryTimestamp = $this->expiry_time / 1000;
+        return $expiryTimestamp < time();
     }
 
     /**
@@ -313,7 +423,15 @@ class ServerClient extends Model
      */
     public function isNearExpiration(int $days = 7): bool
     {
-        return $this->expiryTime && $this->expiryTime->isBefore(now()->addDays($days));
+        if (!$this->expiry_time || $this->expiry_time == 0) {
+            return false; // 0 means never expires in 3X-UI
+        }
+
+        // 3X-UI uses milliseconds, convert to seconds for comparison
+        $expiryTimestamp = $this->expiry_time / 1000;
+        $daysLaterTimestamp = now()->addDays($days)->timestamp;
+
+        return $expiryTimestamp < $daysLaterTimestamp;
     }
 
     /**
@@ -373,11 +491,17 @@ class ServerClient extends Model
      */
     public function extend(int $days): void
     {
-        $newExpiry = $this->expiryTime
-            ? $this->expiryTime->addDays($days)
-            : now()->addDays($days);
+        if ($this->expiry_time && $this->expiry_time > 0) {
+            // Convert current expiry from milliseconds to timestamp, add days, convert back to milliseconds
+            $currentExpirySeconds = $this->expiry_time / 1000;
+            $newExpirySeconds = $currentExpirySeconds + ($days * 24 * 60 * 60);
+            $newExpiryMs = $newExpirySeconds * 1000;
+        } else {
+            // If no expiry set, set to days from now in milliseconds
+            $newExpiryMs = now()->addDays($days)->timestamp * 1000;
+        }
 
-        $this->update(['expiryTime' => $newExpiry]);
+        $this->update(['expiry_time' => $newExpiryMs]);
     }
 
     /**
@@ -394,9 +518,11 @@ class ServerClient extends Model
             $this->reactivate();
         }
 
-        // Update next billing date
+        // Update next billing date (7 days before expiry, converted from milliseconds)
+        $expirySeconds = $this->expiry_time / 1000;
+        $billingTimestamp = $expirySeconds - (7 * 24 * 60 * 60); // 7 days before expiry
         $this->update([
-            'next_billing_at' => $this->expiryTime->subDays(7), // Bill 7 days before expiry
+            'next_billing_at' => \Carbon\Carbon::createFromTimestamp($billingTimestamp),
         ]);
     }
 
@@ -411,7 +537,7 @@ class ServerClient extends Model
             // Update client enable/disable status
             $settings = [
                 'enable' => $this->enable,
-                'expiryTime' => $this->expiryTime ? $this->expiryTime->timestamp * 1000 : 0,
+                'expiry_time' => $this->expiry_time ?? 0,  // Already in milliseconds, use directly
             ];
 
             $xuiService->updateClient($this->password, $settings);
@@ -447,7 +573,7 @@ class ServerClient extends Model
                 'traffic_used_mb' => $this->traffic_used_mb,
                 'traffic_limit_mb' => $this->traffic_limit_mb,
                 'traffic_percentage' => $this->traffic_percentage_used,
-                'expires_at' => $this->expiryTime?->toISOString(),
+                'expires_at' => $this->expiry_time?->toISOString(),
                 'status' => $this->status,
             ],
         ];
@@ -464,13 +590,13 @@ class ServerClient extends Model
             'id' => $this->id, // UUID
             'flow' => $this->flow ?? '',
             'email' => $this->email,
-            'limitIp' => $this->limit_ip ?? 0,
-            'totalGB' => $this->total_gb_bytes ?? 0,
-            'expiryTime' => $this->expiry_time ? $this->expiry_time->timestamp * 1000 : 0, // 3X-UI uses milliseconds
+            'limit_ip' => $this->limit_ip ?? 0,
+            'totalGB' => $this->total_gb_bytes ?? 0, // 3X-UI uses totalGB for bytes
+            'expiry_time' => $this->expiry_time ?? 0, // 3X-UI uses milliseconds
             'enable' => $this->enable,
-            'tgId' => $this->tg_id ?? '',
+            'tg_id' => $this->tg_id ?? '',
             'subId' => $this->sub_id ?? '',
-            'reset' => $this->reset_counter ?? 0,
+            'reset' => $this->reset ?? 0,
         ];
     }
 
@@ -495,15 +621,13 @@ class ServerClient extends Model
             'id' => $data['id'] ?? $this->id,
             'flow' => $data['flow'] ?? $this->flow,
             'email' => $data['email'] ?? $this->email,
-            'limit_ip' => $data['limitIp'] ?? $this->limit_ip,
+            'limit_ip' => $data['limit_ip'] ?? $this->limit_ip,
             'total_gb_bytes' => $data['totalGB'] ?? $this->total_gb_bytes,
-            'expiry_time' => isset($data['expiryTime']) && $data['expiryTime'] > 0
-                ? Carbon::createFromTimestamp($data['expiryTime'] / 1000)
-                : null,
+            'expiry_time' => $data['expiry_time'] ?? $this->expiry_time,
             'enable' => $data['enable'] ?? $this->enable,
-            'tg_id' => $data['tgId'] ?? $this->tg_id,
+            'tg_id' => $data['tg_id'] ?? $this->tg_id,
             'sub_id' => $data['subId'] ?? $this->sub_id,
-            'reset_counter' => $data['reset'] ?? $this->reset_counter,
+            'reset' => $data['reset'] ?? $this->reset,
             'last_api_sync_at' => now(),
             'api_sync_status' => 'success',
             'api_sync_error' => null,
@@ -526,24 +650,22 @@ class ServerClient extends Model
             'remote_up' => $stats['up'] ?? 0,
             'remote_down' => $stats['down'] ?? 0,
             'remote_total' => $stats['total'] ?? 0,
-            'expiry_time' => isset($stats['expiryTime']) && $stats['expiryTime'] > 0
-                ? Carbon::createFromTimestamp($stats['expiryTime'] / 1000)
-                : null,
-            'reset_counter' => $stats['reset'] ?? $this->reset_counter,
+            'expiry_time' => $stats['expiryTime'] ?? $stats['expiry_time'] ?? $this->expiry_time,
+            'total_gb_bytes' => $stats['totalGB'] ?? $stats['total'] ?? $this->total_gb_bytes,
+            'reset' => $stats['reset'] ?? $this->reset,
             'last_traffic_sync_at' => now(),
         ]);
 
-        // Update traffic usage percentage
         $this->updateTrafficUsagePercentage();
     }
 
     /**
-     * Update traffic usage percentage based on remote traffic data
+     * Calculate and update traffic usage percentage
      */
     public function updateTrafficUsagePercentage(): void
     {
         if ($this->total_gb_bytes > 0) {
-            $this->traffic_percentage_used = min(100.0, ($this->remote_total / $this->total_gb_bytes) * 100);
+            $this->traffic_percentage_used = ($this->remote_total / $this->total_gb_bytes) * 100;
         } else {
             $this->traffic_percentage_used = 0.0;
         }
@@ -581,47 +703,6 @@ class ServerClient extends Model
     }
 
     /**
-     * Check if client is expired
-     */
-    public function isExpired(): bool
-    {
-        return $this->expiry_time && $this->expiry_time->isPast();
-    }
-
-    /**
-     * Check if client is depleted (over limit or expired)
-     */
-    public function isDepleted(): bool
-    {
-        return $this->isOverTrafficLimit() || $this->isExpired();
-    }
-
-    /**
-     * Get remaining traffic in bytes
-     */
-    public function getRemainingTrafficBytes(): int
-    {
-        if ($this->total_gb_bytes <= 0) {
-            return 0; // Unlimited
-        }
-
-        return max(0, $this->total_gb_bytes - $this->remote_total);
-    }
-
-    /**
-     * Get remaining days until expiry
-     */
-    public function getRemainingDays(): ?int
-    {
-        if (!$this->expiry_time) {
-            return null; // No expiry
-        }
-
-        $days = $this->expiry_time->diffInDays(now(), false);
-        return max(0, $days);
-    }
-
-    /**
      * Update connection IPs from 3X-UI API
      */
     public function updateConnectionIpsFromXuiApi(array $ips): void
@@ -652,7 +733,7 @@ class ServerClient extends Model
             'remote_up' => 0,
             'remote_down' => 0,
             'remote_total' => 0,
-            'reset_counter' => $this->reset_counter + 1,
+            'reset' => $this->reset + 1,
             'last_traffic_sync_at' => now(),
         ]);
 
@@ -660,40 +741,12 @@ class ServerClient extends Model
     }
 
     /**
-     * Get client status for monitoring
-     */
-    public function getMonitoringStatus(): array
-    {
-        return [
-            'is_online' => $this->is_online,
-            'is_enabled' => $this->enable,
-            'is_expired' => $this->isExpired(),
-            'is_over_limit' => $this->isOverTrafficLimit(),
-            'is_depleted' => $this->isDepleted(),
-            'traffic_percentage' => $this->traffic_percentage_used,
-            'remaining_days' => $this->getRemainingDays(),
-            'remaining_traffic_mb' => $this->getRemainingTrafficBytes() / 1024 / 1024,
-            'last_sync' => $this->last_api_sync_at?->toISOString(),
-        ];
-    }
-
-    /**
-     * Generate unique email for 3X-UI if not set
-     */
-    public function generateEmailIfMissing(): void
-    {
-        if (empty($this->email)) {
-            $this->email = 'client_' . $this->id . '_' . Str::random(8);
-        }
-    }
-
-    /**
-     * Generate unique UUID if not set
+     * Generate UUID if missing (required for 3X-UI)
      */
     public function generateUuidIfMissing(): void
     {
         if (empty($this->id) || !Str::isUuid($this->id)) {
-            $this->id = Str::uuid();
+            $this->id = (string) Str::uuid();
         }
     }
 
@@ -704,6 +757,16 @@ class ServerClient extends Model
     {
         if (empty($this->sub_id)) {
             $this->sub_id = Str::lower(Str::random(16));
+        }
+    }
+
+    /**
+     * Generate email if missing
+     */
+    public function generateEmailIfMissing(): void
+    {
+        if (empty($this->email)) {
+            $this->email = Str::lower(Str::random(8));
         }
     }
 
@@ -722,6 +785,7 @@ class ServerClient extends Model
         $this->total_gb_bytes = $this->total_gb_bytes ?? 0;
         $this->enable = $this->enable ?? true;
         $this->tg_id = $this->tg_id ?? '';
-        $this->reset_counter = $this->reset_counter ?? 0;
+        $this->reset = $this->reset ?? 0;
+        $this->expiry_time = $this->expiry_time ?? 0;
     }
 }

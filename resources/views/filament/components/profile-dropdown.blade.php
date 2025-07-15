@@ -1,5 +1,5 @@
 @php
-    $user = auth()->user();
+    $user = auth('customer')->user();
     $orders = $this->getOrderCounts();
 @endphp
 

@@ -328,6 +328,71 @@ class XUIService
     }
 
     /**
+     * Reset client (regenerate credentials and clear traffic)
+     */
+    public function resetClient(Server $server, $serverClient): array
+    {
+        try {
+            // First reset traffic
+            $trafficReset = $this->resetClientTraffic($server->xui_inbound_id, $serverClient->email);
+
+            if (!$trafficReset) {
+                return [
+                    'success' => false,
+                    'message' => 'Failed to reset client traffic'
+                ];
+            }
+
+            // Generate new UUID for the client
+            $newUuid = \Illuminate\Support\Str::uuid()->toString();
+
+            // Update client with new UUID
+            $clientData = [
+                'id' => $newUuid,
+                'email' => $serverClient->email,
+                'limitIp' => $serverClient->limit_ip ?? 0,
+                'totalGB' => $serverClient->total_gb ?? 0,
+                'expiryTime' => $serverClient->expiry_time ?? 0,
+                'enable' => true,
+                'tgId' => '',
+                'subId' => $serverClient->sub_id ?? \Illuminate\Support\Str::random(16),
+                'reset' => 0,
+                'flow' => ''
+            ];
+
+            $settings = json_encode(['clients' => [$clientData]]);
+
+            // Update the client
+            $updateResult = $this->updateClient($serverClient->uuid, $server->xui_inbound_id, $settings);
+
+            if ($updateResult) {
+                // Update local database
+                $serverClient->update([
+                    'uuid' => $newUuid
+                ]);
+
+                return [
+                    'success' => true,
+                    'message' => 'Client reset successfully',
+                    'new_uuid' => $newUuid
+                ];
+            } else {
+                return [
+                    'success' => false,
+                    'message' => 'Failed to update client configuration'
+                ];
+            }
+
+        } catch (Exception $e) {
+            Log::error("Failed to reset client {$serverClient->email}: " . $e->getMessage());
+            return [
+                'success' => false,
+                'message' => 'Reset failed: ' . $e->getMessage()
+            ];
+        }
+    }
+
+    /**
      * Reset all client traffic in an inbound
      */
     public function resetAllClientTraffics(int $inboundId): bool
@@ -569,6 +634,14 @@ class XUIService
     }
 
     // === HELPER METHODS ===
+
+    /**
+     * Generate UUID for client
+     */
+    public function generateUID(): string
+    {
+        return \Illuminate\Support\Str::uuid()->toString();
+    }
 
     /**
      * Test connection to 3X-UI server

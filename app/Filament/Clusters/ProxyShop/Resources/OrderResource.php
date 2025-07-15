@@ -2,340 +2,525 @@
 
 namespace App\Filament\Clusters\ProxyShop\Resources;
 
-use App\Filament\Clusters\ProxyShop;
 use App\Filament\Clusters\ProxyShop\Resources\OrderResource\Pages;
-use App\Filament\Clusters\ProxyShop\Resources\OrderResource\RelationManagers\InvoiceRelationManager;
+use App\Filament\Clusters\ProxyShop;
 use App\Models\Order;
-use App\Models\ServerPlan;
+use App\Models\Customer;
+use App\Models\PaymentMethod;
 use Filament\Forms;
 use Filament\Forms\Form;
-use Filament\Forms\Set;
-use Filament\Forms\Get;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
-use Filament\Forms\Components\Section;
 use Filament\Forms\Components\Group;
+use Filament\Forms\Components\Section;
 use Filament\Forms\Components\Select;
-use Filament\Forms\Components\SelectColumn;
-use Filament\Forms\Components\ToggleButtons;
-use Filament\Forms\Components\Placeholder;
-use Filament\Forms\Components\Repeater;
-use Filament\Forms\Components\Hidden;
-use Filament\Forms\Components\MarkdownEditor;
 use Filament\Forms\Components\TextInput;
-use Filament\Forms\Components\DatePicker;
-use GuzzleHttp\Client;
-use Filament\Forms\Components\Toggle;
-use App\Models\PaymentMethod;
-
+use Filament\Forms\Components\Textarea;
+use Filament\Forms\Components\Placeholder;
+use Filament\Forms\Components\Grid;
+use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Columns\BadgeColumn;
+use Filament\Tables\Columns\IconColumn;
+use Filament\Tables\Filters\SelectFilter;
+use Filament\Tables\Filters\Filter;
+use Filament\Tables\Actions\Action;
+use Filament\Tables\Actions\EditAction;
+use Filament\Tables\Actions\ViewAction;
+use Filament\Tables\Actions\BulkActionGroup;
+use Filament\Tables\Actions\DeleteBulkAction;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Collection;
+use Filament\Notifications\Notification;
+use Illuminate\Support\Str;
 
 class OrderResource extends Resource
 {
     protected static ?string $model = Order::class;
 
-    protected static ?string $navigationIcon = 'heroicon-o-shopping-bag';
-
-    protected static ?string $recordTitleAttribute = 'order_status';
-
     protected static ?string $cluster = ProxyShop::class;
+
+    protected static ?string $navigationIcon = 'heroicon-o-shopping-cart';
+
+    protected static ?int $navigationSort = 1;
+
+    protected static ?string $recordTitleAttribute = 'id';
+
+    protected static ?string $navigationLabel = '🛒 Orders';
+
+    protected static ?string $pluralModelLabel = 'Orders';
+
+    protected static ?string $modelLabel = 'Order';
+
+    public static function getLabel(): string
+    {
+        return 'Orders';
+    }
 
     public static function form(Form $form): Form
     {
         return $form
             ->schema([
-                Group::make([
-                    Section::make('Order Information')
+                Group::make()->schema([
+                    Section::make('🛒 Order Information')
+                        ->description('Order details and customer information')
+                        ->icon('heroicon-o-shopping-cart')
                         ->schema([
-                            Select::make('customer_id')
-                                ->label('Customer')
-                                ->relationship('customer', 'name')
-                                ->searchable()
-                                ->preload()
-                                ->required(),
-                            TextInput::make('created_at')
-                                ->label('Order date'),
-                            MarkdownEditor::make('notes')
-                                ->columnSpanFull()
-                                ->fileAttachmentsDirectory('Order'),
-                        ])->columns(2),
+                            Grid::make(2)->schema([
+                                Select::make('customer_id')
+                                    ->label('Customer')
+                                    ->relationship('customer', 'name')
+                                    ->required()
+                                    ->searchable()
+                                    ->preload()
+                                    ->prefixIcon('heroicon-o-user')
+                                    ->getOptionLabelFromRecordUsing(fn (Customer $record): string =>
+                                        "{$record->name} ({$record->email})")
+                                    ->helperText('Select the customer for this order'),
 
-                    Section::make('Items List')
+                                TextInput::make('grand_amount')
+                                    ->label('Total Amount')
+                                    ->required()
+                                    ->numeric()
+                                    ->prefix('$')
+                                    ->minValue(0)
+                                    ->step(0.01)
+                                    ->prefixIcon('heroicon-o-currency-dollar')
+                                    ->placeholder('0.00')
+                                    ->helperText('Total order amount including taxes'),
+                            ]),
+
+                            Grid::make(3)->schema([
+                                Select::make('currency')
+                                    ->label('Currency')
+                                    ->options([
+                                        'USD' => '💵 USD - US Dollar',
+                                        'EUR' => '💶 EUR - Euro',
+                                        'GBP' => '💷 GBP - British Pound',
+                                        'BTC' => '₿ BTC - Bitcoin',
+                                        'ETH' => '⟠ ETH - Ethereum',
+                                        'USDT' => '₮ USDT - Tether',
+                                    ])
+                                    ->default('USD')
+                                    ->required()
+                                    ->prefixIcon('heroicon-o-banknotes')
+                                    ->helperText('Order currency'),
+
+                                Select::make('payment_method')
+                                    ->label('Payment Method')
+                                    ->options([
+                                        'stripe' => '💳 Stripe (Card)',
+                                        'paypal' => '🅿️ PayPal',
+                                        'crypto' => '₿ Cryptocurrency',
+                                        'nowpayments' => '💰 NowPayments',
+                                        'wallet' => '👛 Customer Wallet',
+                                        'bank_transfer' => '🏦 Bank Transfer',
+                                        'manual' => '✋ Manual Payment',
+                                    ])
+                                    ->required()
+                                    ->prefixIcon('heroicon-o-credit-card')
+                                    ->helperText('Payment processing method'),
+
+                                TextInput::make('payment_invoice_url')
+                                    ->label('Invoice URL')
+                                    ->url()
+                                    ->prefixIcon('heroicon-o-link')
+                                    ->placeholder('https://...')
+                                    ->helperText('Payment gateway invoice URL'),
+                            ]),
+
+                            Textarea::make('notes')
+                                ->label('Order Notes')
+                                ->rows(3)
+                                ->maxLength(1000)
+                                ->placeholder('Enter any order notes or special instructions')
+                                ->helperText('Internal notes for this order'),
+                        ])->columns(1),
+
+                    Section::make('📊 Order Status')
+                        ->description('Payment and processing status')
+                        ->icon('heroicon-o-chart-bar')
                         ->schema([
-                            Repeater::make('items')
-                                ->relationship()
-                                ->schema([
-                                    Select::make('server_plan_id')
-                                        ->relationship('ServerPlan', 'name')
-                                        ->searchable()
-                                        ->columnSpan(2)
-                                        ->preload()
-                                        ->required()
-                                        ->distinct()
-                                        ->disableOptionsWhenSelectedInSiblingRepeaterItems()
-                                        ->reactive()
-                                        ->afterStateUpdated(function ($state, Set $set, Get $get) {
-                                            $ServerPlan = ServerPlan::find($state);
-                                            $unitAmount = (float) ($ServerPlan->price ?? 0);
-                                            $quantity = (int) ($get('quantity') ?? 1);
-                                            $set('unit_amount', $unitAmount);
-                                            $set('total_amount', $unitAmount * $quantity);
-                                            self::updatePaymentTotalAmount($get, $set);
-                                        }),
+                            Grid::make(2)->schema([
+                                Select::make('payment_status')
+                                    ->label('Payment Status')
+                                    ->options([
+                                        'pending' => '🟡 Pending',
+                                        'processing' => '🔄 Processing',
+                                        'paid' => '✅ Paid',
+                                        'failed' => '❌ Failed',
+                                        'cancelled' => '🚫 Cancelled',
+                                        'refunded' => '↩️ Refunded',
+                                        'disputed' => '⚠️ Disputed',
+                                    ])
+                                    ->default('pending')
+                                    ->required()
+                                    ->prefixIcon('heroicon-o-currency-dollar')
+                                    ->live()
+                                    ->helperText('Current payment status'),
 
-                                    TextInput::make('quantity')
-                                        ->required()
-                                        ->numeric()
-                                        ->columnSpan(2)
-                                        ->default(1)
-                                        ->reactive()
-                                        ->afterStateUpdated(function ($state, Set $set, Get $get) {
-                                            $quantity = (int) $state;
-                                            $unitAmount = (float) $get('unit_amount');
-                                            $set('total_amount', $quantity * $unitAmount);
-                                            self::updatePaymentTotalAmount($get, $set);
-                                        })
-                                        ->minValue(1),
-                                    TextInput::make('unit_amount')
-                                        ->columnSpan(2)
-                                        ->required()
-                                        ->numeric()
-                                        ->reactive()
-                                        ->afterStateUpdated(function ($state, Set $set, Get $get) {
-                                            $unitAmount = (float) $state;
-                                            $quantity = (int) ($get('quantity') ?? 1);
-                                            $set('total_amount', $unitAmount * $quantity);
-                                            self::updatePaymentTotalAmount($get, $set);
-                                        }),
-                                    TextInput::make('total_amount')
-                                        ->columnSpan(2)
-                                        ->required()
-                                        ->numeric()
-                                        ->dehydrated(false),
-                                    Toggle::make('agent_bought')
-                                        ->required()
-                                        ->default(false)
-                                ])->columns(8)
-                                ->reactive()
-                                ->afterStateUpdated(function (Get $get, Set $set) {
-                                    self::updatePaymentTotalAmount($get, $set);
-                                }),
+                                Select::make('order_status')
+                                    ->label('Order Status')
+                                    ->options([
+                                        'new' => '🆕 New',
+                                        'processing' => '⚙️ Processing',
+                                        'completed' => '✅ Completed',
+                                        'cancelled' => '🚫 Cancelled',
+                                        'dispute' => '⚠️ Dispute',
+                                        'refund_requested' => '↩️ Refund Requested',
+                                        'refunded' => '💸 Refunded',
+                                    ])
+                                    ->default('new')
+                                    ->required()
+                                    ->prefixIcon('heroicon-o-clipboard-document-check')
+                                    ->live()
+                                    ->helperText('Current order fulfillment status'),
+                            ]),
+                        ])->columns(1),
+
+                ])->columnSpan(2),
+
+                Group::make()->schema([
+                    Section::make('📈 Order Statistics')
+                        ->schema([
+                            Placeholder::make('created_at')
+                                ->label('Order Date')
+                                ->content(fn (Order $record): string =>
+                                    $record->created_at ? $record->created_at->format('M j, Y g:i A') : 'Not set')
+                                ->extraAttributes(['class' => 'text-sm']),
+
+                            Placeholder::make('updated_at')
+                                ->label('Last Updated')
+                                ->content(fn (Order $record): string =>
+                                    $record->updated_at ? $record->updated_at->diffForHumans() : 'Never')
+                                ->extraAttributes(['class' => 'text-sm']),
+
+                            Placeholder::make('items_count')
+                                ->label('Items Count')
+                                ->content(fn (Order $record): string =>
+                                    $record->items()->count() . ' items')
+                                ->extraAttributes(['class' => 'text-sm']),
+
+                            Placeholder::make('customer_orders_count')
+                                ->label('Customer Total Orders')
+                                ->content(fn (Order $record): string =>
+                                    $record->customer ? $record->customer->orders()->count() . ' orders' : 'N/A')
+                                ->extraAttributes(['class' => 'text-sm']),
+                        ]),
+
+                    Section::make('🎯 Quick Actions')
+                        ->schema([
+                            Placeholder::make('actions_info')
+                                ->content('Use the action buttons above to:')
+                                ->extraAttributes(['class' => 'text-sm text-gray-600']),
+
+                            Placeholder::make('actions_list')
+                                ->content('• Mark as paid/completed<br>• Send notifications<br>• Process refunds<br>• View order items')
+                                ->extraAttributes(['class' => 'text-xs text-gray-500'])
                         ])
-                ])->columnSpan(3),
-
-                Group::make([
-                    Section::make('Payment Details')
-                        ->schema([
-                            Placeholder::make('grand_amount_placeholder')
-                                ->label('Grand Total')
-                                ->columnSpanFull()
-                                ->content(function (Get $get, Set $set) {
-                                    $total = self::calculateTotalAmount($get, $set);
-                                    $currency = $get('currency') ?? 'usd';
-                                    $conversionRates = self::getConversionRates();
-
-                                    // Check if the currency key exists in conversionRates
-                                    if (!isset($conversionRates[$currency])) {
-                                        // Fallback to USD if conversion rate is not available
-                                        $currency = 'usd';
-                                    }
-
-                                    $conversionRate = $conversionRates[$currency] ?? 1; // Default to 1 if the rate is still not found
-                                    $convertedTotal = $total * $conversionRate;
-
-                                    $currencySymbols = [
-                                        'usd' => '$',
-                                        'rub' => '₽',
-                                        'xmr' => 'ɱ',
-                                        'btc' => '₿',
-                                        'stripe' => '$',
-                                    ];
-
-                                    $decimalPlaces = in_array($currency, ['btc', 'xmr']) ? 8 : 2;
-                                    return $currencySymbols[$currency] . ' ' . number_format($convertedTotal, $decimalPlaces);
-                                }),
-
-                            Hidden::make('grand_amount')
-                                ->default(0),
-
-                            Select::make('currency')
-                                ->required()
-                                ->default('usd')
-                                ->columnSpan(2)
-                                ->options([
-                                    'usd' => 'USD',
-                                    'rub' => 'RUB',
-                                    'xmr' => 'XMR',
-                                    'btc' => 'BTC',
-                                    'stripe' => 'USD',
-                                ])
-                                ->reactive(),
-
-                            Select::make('payment_method')
-                                ->label('Payment Method')
-                                ->options([
-                                        '1' => 'Wallet',
-                                        '2' => 'Stripe',
-                                        '3' => 'NowPayments',
-                                        '4' => 'MIR',
-                                ])
-                                ->searchable()
-                                ->preload()
-                                ->required()
-                                ->columnSpan(2),
-                        ])->columns(2),
-
-                    Section::make('Order Status')
-                        ->schema([
-                            ToggleButtons::make('order_status')
-                                ->required()
-                                ->columnSpanFull()
-                                ->default('new')
-                                ->options([
-                                    'new' => 'New',
-                                    'processing' => 'Processing',
-                                    'completed' => 'Completed',
-                                    'dispute' => 'Dispute',
-                                ])
-                                ->colors([
-                                    'new' => 'info',
-                                    'processing' => 'warning',
-                                    'completed' => 'success',
-                                    'dispute' => 'danger',
-                                ])
-                                ->icons([
-                                    'new' => 'heroicon-o-sparkles',
-                                    'processing' => 'heroicon-o-arrow-path',
-                                    'completed' => 'heroicon-o-check-badge',
-                                    'dispute' => 'heroicon-o-eye',
-                                ]),
-                        ]),
-
-                    Section::make('Payment Status')
-                        ->schema([
-                            ToggleButtons::make('payment_status')
-                                ->required()
-                                ->columnSpanFull()
-                                ->default('pending')
-                                ->options([
-                                    'pending' => 'Pending',
-                                    'paid' => 'Paid',
-                                    'failed' => 'Failed',
-                                ])
-                                ->colors([
-                                    'pending' => 'warning',
-                                    'paid' => 'success',
-                                    'failed' => 'danger',
-                                ])
-                                ->icons([
-                                    'pending' => 'heroicon-o-exclamation-circle',
-                                    'paid' => 'heroicon-o-check-circle',
-                                    'failed' => 'heroicon-o-exclamation-triangle',
-                                ]),
-                        ]),
+                        ->hidden(fn (?Order $record) => $record === null),
                 ])->columnSpan(1),
-            ])->columns(4);
+            ])
+            ->columns(3);
     }
 
     public static function table(Table $table): Table
     {
         return $table
             ->columns([
-                Tables\Columns\TextColumn::make('customer.name')
-                    ->label('Customer')
-                    ->sortable()
-                    ->searchable(),
-                Tables\Columns\SelectColumn::make('order_status')
-                    ->options([
-                            'new' => 'New',
-                            'processing' => 'Processing',
-                            'completed' => 'Completed',
-                            'dispute' => 'Dispute',
-                        ])
-                    ->searchable()
-                    ->sortable(),
-                Tables\Columns\TextColumn::make('grand_amount')
-                    ->numeric()
-                    ->sortable()
-                    ->money('USD'),
-                Tables\Columns\TextColumn::make('currency')
-                    ->label('Payment Currency')
+                TextColumn::make('id')
+                    ->label('🆔 Order ID')
                     ->searchable()
                     ->sortable()
-                    ->toggleable(isToggledHiddenByDefault: true),
-                Tables\Columns\SelectColumn::make('payment_method')
-                    ->label('Payment Method')
-                    ->options([
-                            '1' => 'Wallet',
-                            '2' => 'Stripe',
-                            '3' => 'NowPayments',
-                            '4' => 'MIR',
+                    ->copyable()
+                    ->copyMessage('Order ID copied')
+                    ->prefix('#')
+                    ->weight('bold')
+                    ->color('primary'),
+
+                TextColumn::make('customer.name')
+                    ->label('👤 Customer')
+                    ->searchable()
+                    ->sortable()
+                    ->icon('heroicon-o-user')
+                    ->formatStateUsing(fn (Order $record): string =>
+                        $record->customer ? "{$record->customer->name}" : 'Unknown')
+                    ->description(fn (Order $record): string =>
+                        $record->customer ? $record->customer->email : '')
+                    ->color('info'),
+
+                TextColumn::make('grand_amount')
+                    ->label('💰 Amount')
+                    ->money()
+                    ->sortable()
+                    ->icon('heroicon-o-currency-dollar')
+                    ->formatStateUsing(fn (Order $record): string =>
+                        $record->currency . ' ' . number_format($record->grand_amount, 2))
+                    ->weight('bold')
+                    ->color('success'),
+
+                BadgeColumn::make('payment_status')
+                    ->label('💳 Payment')
+                    ->colors([
+                        'warning' => 'pending',
+                        'info' => 'processing',
+                        'success' => 'paid',
+                        'danger' => ['failed', 'cancelled', 'disputed'],
+                        'gray' => 'refunded',
                     ])
-                    ->sortable(),
-                Tables\Columns\SelectColumn::make('payment_status')
-                    ->searchable()
-                    ->options([
-                            'pending' => 'Pending',
-                            'paid' => 'Paid',
-                            'failed' => 'Failed',
+                    ->icons([
+                        'heroicon-o-clock' => 'pending',
+                        'heroicon-o-arrow-path' => 'processing',
+                        'heroicon-o-check-circle' => 'paid',
+                        'heroicon-o-x-circle' => ['failed', 'cancelled'],
+                        'heroicon-o-exclamation-triangle' => 'disputed',
+                        'heroicon-o-arrow-uturn-left' => 'refunded',
                     ])
-                    ->sortable(),
-                Tables\Columns\TextColumn::make('created_at')
-                    ->dateTime()
+                    ->formatStateUsing(fn (string $state): string => match($state) {
+                        'pending' => '🟡 Pending',
+                        'processing' => '🔄 Processing',
+                        'paid' => '✅ Paid',
+                        'failed' => '❌ Failed',
+                        'cancelled' => '🚫 Cancelled',
+                        'refunded' => '↩️ Refunded',
+                        'disputed' => '⚠️ Disputed',
+                        default => ucfirst($state)
+                    }),
+
+                BadgeColumn::make('order_status')
+                    ->label('📦 Order')
+                    ->colors([
+                        'info' => 'new',
+                        'warning' => 'processing',
+                        'success' => 'completed',
+                        'danger' => ['cancelled', 'dispute'],
+                        'gray' => ['refund_requested', 'refunded'],
+                    ])
+                    ->icons([
+                        'heroicon-o-sparkles' => 'new',
+                        'heroicon-o-cog-6-tooth' => 'processing',
+                        'heroicon-o-check-circle' => 'completed',
+                        'heroicon-o-x-circle' => 'cancelled',
+                        'heroicon-o-exclamation-triangle' => 'dispute',
+                        'heroicon-o-arrow-uturn-left' => ['refund_requested', 'refunded'],
+                    ])
+                    ->formatStateUsing(fn (string $state): string => match($state) {
+                        'new' => '🆕 New',
+                        'processing' => '⚙️ Processing',
+                        'completed' => '✅ Completed',
+                        'cancelled' => '🚫 Cancelled',
+                        'dispute' => '⚠️ Dispute',
+                        'refund_requested' => '↩️ Refund Requested',
+                        'refunded' => '💸 Refunded',
+                        default => ucfirst($state)
+                    }),
+
+                TextColumn::make('payment_method')
+                    ->label('💳 Method')
+                    ->badge()
+                    ->color('gray')
+                    ->formatStateUsing(fn (string $state): string => match($state) {
+                        'stripe' => '💳 Stripe',
+                        'paypal' => '🅿️ PayPal',
+                        'crypto' => '₿ Crypto',
+                        'nowpayments' => '💰 NowPayments',
+                        'wallet' => '👛 Wallet',
+                        'bank_transfer' => '🏦 Bank',
+                        'manual' => '✋ Manual',
+                        default => ucfirst($state)
+                    })
+                    ->toggleable(),
+
+                TextColumn::make('items_count')
+                    ->label('📦 Items')
+                    ->counts('items')
+                    ->badge()
+                    ->color('info')
                     ->sortable()
-                    ->toggleable(isToggledHiddenByDefault: true),
-                Tables\Columns\TextColumn::make('updated_at')
-                    ->dateTime()
+                    ->toggleable(),
+
+                TextColumn::make('created_at')
+                    ->label('📅 Order Date')
+                    ->dateTime('M j, Y g:i A')
                     ->sortable()
+                    ->description(fn (Order $record): string =>
+                        $record->created_at ? $record->created_at->diffForHumans() : '')
+                    ->toggleable(),
+
+                TextColumn::make('updated_at')
+                    ->label('🔄 Updated')
+                    ->dateTime('M j, Y g:i A')
+                    ->sortable()
+                    ->since()
                     ->toggleable(isToggledHiddenByDefault: true),
             ])
             ->filters([
-                //
+                SelectFilter::make('payment_status')
+                    ->label('Payment Status')
+                    ->options([
+                        'pending' => '🟡 Pending',
+                        'processing' => '🔄 Processing',
+                        'paid' => '✅ Paid',
+                        'failed' => '❌ Failed',
+                        'cancelled' => '🚫 Cancelled',
+                        'refunded' => '↩️ Refunded',
+                        'disputed' => '⚠️ Disputed',
+                    ])
+                    ->multiple(),
+
+                SelectFilter::make('order_status')
+                    ->label('Order Status')
+                    ->options([
+                        'new' => '🆕 New',
+                        'processing' => '⚙️ Processing',
+                        'completed' => '✅ Completed',
+                        'cancelled' => '🚫 Cancelled',
+                        'dispute' => '⚠️ Dispute',
+                        'refund_requested' => '↩️ Refund Requested',
+                        'refunded' => '💸 Refunded',
+                    ])
+                    ->multiple(),
+
+                SelectFilter::make('payment_method')
+                    ->label('Payment Method')
+                    ->options([
+                        'stripe' => '💳 Stripe',
+                        'paypal' => '🅿️ PayPal',
+                        'crypto' => '₿ Crypto',
+                        'nowpayments' => '💰 NowPayments',
+                        'wallet' => '👛 Wallet',
+                        'bank_transfer' => '🏦 Bank',
+                        'manual' => '✋ Manual',
+                    ])
+                    ->multiple(),
+
+                SelectFilter::make('currency')
+                    ->label('Currency')
+                    ->options([
+                        'USD' => '💵 USD',
+                        'EUR' => '💶 EUR',
+                        'GBP' => '💷 GBP',
+                        'BTC' => '₿ BTC',
+                        'ETH' => '⟠ ETH',
+                        'USDT' => '₮ USDT',
+                    ])
+                    ->multiple(),
+
+                Filter::make('created_at')
+                    ->form([
+                        Forms\Components\DatePicker::make('created_from')
+                            ->label('Order Date From'),
+                        Forms\Components\DatePicker::make('created_until')
+                            ->label('Order Date Until'),
+                    ])
+                    ->query(function (Builder $query, array $data): Builder {
+                        return $query
+                            ->when(
+                                $data['created_from'],
+                                fn (Builder $query, $date): Builder => $query->whereDate('created_at', '>=', $date),
+                            )
+                            ->when(
+                                $data['created_until'],
+                                fn (Builder $query, $date): Builder => $query->whereDate('created_at', '<=', $date),
+                            );
+                    }),
             ])
             ->actions([
-                Tables\Actions\ActionGroup::make([
-                    Tables\Actions\EditAction::make(),
-                    Tables\Actions\ViewAction::make(),
-                    Tables\Actions\DeleteAction::make(),
-                ]),
+                ViewAction::make()
+                    ->label('View')
+                    ->icon('heroicon-o-eye'),
+
+                EditAction::make()
+                    ->label('Edit')
+                    ->icon('heroicon-o-pencil'),
+
+                Action::make('mark_paid')
+                    ->label('Mark as Paid')
+                    ->icon('heroicon-o-check-circle')
+                    ->color('success')
+                    ->requiresConfirmation()
+                    ->action(function (Order $record) {
+                        $record->update([
+                            'payment_status' => 'paid',
+                            'order_status' => 'processing'
+                        ]);
+
+                        Notification::make()
+                            ->title('Order marked as paid')
+                            ->body("Order #{$record->id} has been marked as paid and is now processing.")
+                            ->success()
+                            ->send();
+                    })
+                    ->visible(fn (Order $record): bool =>
+                        $record->payment_status !== 'paid'),
+
+                Action::make('mark_completed')
+                    ->label('Complete Order')
+                    ->icon('heroicon-o-check-badge')
+                    ->color('success')
+                    ->requiresConfirmation()
+                    ->action(function (Order $record) {
+                        $record->markAsCompleted();
+
+                        Notification::make()
+                            ->title('Order completed')
+                            ->body("Order #{$record->id} has been marked as completed.")
+                            ->success()
+                            ->send();
+                    })
+                    ->visible(fn (Order $record): bool =>
+                        $record->order_status !== 'completed'),
+
+                Action::make('view_items')
+                    ->label('View Items')
+                    ->icon('heroicon-o-list-bullet')
+                    ->color('info')
+                    ->url(fn (Order $record): string =>
+                        route('filament.admin.resources.order-items.index', ['order' => $record->id])),
             ])
             ->bulkActions([
-                Tables\Actions\BulkActionGroup::make([
-                    Tables\Actions\DeleteBulkAction::make(),
+                BulkActionGroup::make([
+                    DeleteBulkAction::make(),
+
+                    Tables\Actions\BulkAction::make('mark_paid')
+                        ->label('Mark as Paid')
+                        ->icon('heroicon-o-check-circle')
+                        ->color('success')
+                        ->requiresConfirmation()
+                        ->action(function (Collection $records) {
+                            $records->each(fn (Order $record) =>
+                                $record->update([
+                                    'payment_status' => 'paid',
+                                    'order_status' => 'processing'
+                                ])
+                            );
+
+                            Notification::make()
+                                ->title('Orders updated')
+                                ->body("{$records->count()} orders have been marked as paid.")
+                                ->success()
+                                ->send();
+                        }),
+
+                    Tables\Actions\BulkAction::make('mark_completed')
+                        ->label('Mark as Completed')
+                        ->icon('heroicon-o-check-badge')
+                        ->color('success')
+                        ->requiresConfirmation()
+                        ->action(function (Collection $records) {
+                            $records->each(fn (Order $record) => $record->markAsCompleted());
+
+                            Notification::make()
+                                ->title('Orders completed')
+                                ->body("{$records->count()} orders have been marked as completed.")
+                                ->success()
+                                ->send();
+                        }),
                 ]),
-            ]);
-    }
-
-    public static function updatePaymentTotalAmount(Get $get, Set $set)
-    {
-        $total = 0;
-        if (!$repeaters = $get('items')) {
-            $set('grand_amount', $total);
-            return;
-        }
-
-        foreach ($repeaters as $key => $repeater) {
-            $total += (float) $get("items.{$key}.total_amount");
-        }
-
-        $set('grand_amount', $total);
-    }
-
-    public static function calculateTotalAmount(Get $get, Set $set)
-    {
-        $items = $get('items');
-        $total = 0;
-        foreach ($items as $item) {
-            $total += (float) ($item['total_amount'] ?? 0);
-        }
-        return $total;
-    }
-
-    public static function getRelations(): array
-    {
-        return [
-            InvoiceRelationManager::class
-        ];
+            ])
+            ->defaultSort('created_at', 'desc')
+            ->striped()
+            ->paginated([10, 25, 50, 100]);
     }
 
     public static function getPages(): array
@@ -348,52 +533,23 @@ class OrderResource extends Resource
         ];
     }
 
-    public static function getNavigationBadge(): ?string {
-        return static::getModel()::count();
-    }
-    public static function getNavigationBadgeColor(): string|array|null {
-        return static::getModel()::count() > 1000 ? 'success':'danger';
+    public static function getNavigationBadge(): ?string
+    {
+        return static::getModel()::where('order_status', 'new')->count() ?: null;
     }
 
-    protected static function getConversionRates(): array
-{
-    $client = new Client();
-    $rates = [];
-
-    try {
-        $response = $client->get('https://api.coingecko.com/api/v3/simple/price', [
-            'query' => [
-                'ids' => 'bitcoin,monero',
-                'vs_currencies' => 'usd',
-            ],
-        ]);
-        $data = json_decode($response->getBody()->getContents(), true);
-
-        // Add USD conversion rate
-        $rates['usd'] = 1;
-
-        // Extract and store the conversion rates
-        if (isset($data['bitcoin']['usd'])) {
-            $rates['btc'] = 1 / (float) $data['bitcoin']['usd'];
-        }
-
-        if (isset($data['monero']['usd'])) {
-            $rates['xmr'] = 1 / (float) $data['monero']['usd'];
-        }
-
-        // Fetch RUB to USD conversion rate
-        $rubResponse = $client->get('https://v6.exchangerate-api.com/v6/b6c4172d7241466e49c86234/latest/USD');
-        $rubData = json_decode($rubResponse->getBody()->getContents(), true);
-        if (isset($rubData['conversion_rates']['RUB'])) {
-            $rates['rub'] = (float) $rubData['conversion_rates']['RUB'];
-        }
-    } catch (\Exception $e) {
-        // Handle exception gracefully, possibly log it
-        // Ensure the USD rate is set in case of an error
-        $rates['usd'] = 1;
+    public static function getNavigationBadgeColor(): ?string
+    {
+        return static::getModel()::where('order_status', 'new')->count() > 0 ? 'warning' : null;
     }
 
-    return $rates;
-}
+    public static function getGlobalSearchEloquentQuery(): Builder
+    {
+        return parent::getGlobalSearchEloquentQuery()->with(['customer']);
+    }
 
+    public static function getGlobalSearchAttributes(): array
+    {
+        return ['id', 'customer.name', 'customer.email', 'payment_invoice_url'];
+    }
 }

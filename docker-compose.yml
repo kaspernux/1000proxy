@@ -9,15 +9,32 @@ services:
             - "8000:8000"
         volumes:
             - .:/var/www/html
-            - ./database:/var/www/html/database
         environment:
             - APP_ENV=local
             - APP_DEBUG=true
-            - DB_CONNECTION=sqlite
-            - DB_DATABASE=/var/www/html/database/database.sqlite
+            - DB_CONNECTION=mysql
+            - DB_HOST=mysql
+            - DB_PORT=3306
+            - DB_DATABASE=1000proxy
+            - DB_USERNAME=root
+            - DB_PASSWORD=password
         depends_on:
+            - mysql
             - redis
         command: php artisan serve --host=0.0.0.0 --port=8000
+
+    mysql:
+        image: mysql:8.0
+        ports:
+            - "3306:3306"
+        environment:
+            - MYSQL_ROOT_PASSWORD=password
+            - MYSQL_DATABASE=1000proxy
+            - MYSQL_USER=1000proxy
+            - MYSQL_PASSWORD=password
+        volumes:
+            - mysql_data:/var/lib/mysql
+        command: --default-authentication-plugin=mysql_native_password
 
     redis:
         image: redis:7-alpine
@@ -31,12 +48,17 @@ services:
         volumes:
             - .:/var/www/html
         depends_on:
+            - mysql
             - redis
         environment:
             - APP_ENV=local
             - APP_DEBUG=true
-            - DB_CONNECTION=sqlite
-            - DB_DATABASE=/var/www/html/database/database.sqlite
+            - DB_CONNECTION=mysql
+            - DB_HOST=mysql
+            - DB_PORT=3306
+            - DB_DATABASE=1000proxy
+            - DB_USERNAME=root
+            - DB_PASSWORD=password
         command: php artisan queue:work
 
     scheduler:
@@ -46,10 +68,18 @@ services:
         volumes:
             - .:/var/www/html
         depends_on:
+            - mysql
             - redis
         environment:
             - APP_ENV=local
             - APP_DEBUG=true
-            - DB_CONNECTION=sqlite
-            - DB_DATABASE=/var/www/html/database/database.sqlite
+            - DB_CONNECTION=mysql
+            - DB_HOST=mysql
+            - DB_PORT=3306
+            - DB_DATABASE=1000proxy
+            - DB_USERNAME=root
+            - DB_PASSWORD=password
         command: php artisan schedule:work
+
+volumes:
+    mysql_data:

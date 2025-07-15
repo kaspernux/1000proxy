@@ -90,7 +90,6 @@ class ProcessXuiOrder implements ShouldQueue
 
         return $summary;
     }
-}
 
     // At the bottom of the ProcessXuiOrder class (above the last closing bracket)
     public static function dispatchWithDependencies(Order $order): void
@@ -101,6 +100,4 @@ class ProcessXuiOrder implements ShouldQueue
         // Dispatch job
         dispatch(new self($order));
     }
-
 }
-

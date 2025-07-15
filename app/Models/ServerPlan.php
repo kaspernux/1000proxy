@@ -16,6 +16,8 @@ class ServerPlan extends Model
 
     protected $fillable = [
         'server_id',
+        'server_brand_id',        // Brand relationship for filtering
+        'server_category_id',     // Category relationship for filtering
         'name',
         'slug',
         'product_image',
@@ -40,6 +42,14 @@ class ServerPlan extends Model
         'trial_days',
         'setup_fee',
         'renewable',
+        // Advanced filtering fields
+        'country_code',           // ISO country code for location filtering
+        'region',                 // Region/state for location filtering
+        'protocol',               // Protocol type for filtering
+        'bandwidth_mbps',         // Bandwidth for performance filtering
+        'supports_ipv6',          // IPv6 support for filtering
+        'popularity_score',       // Popularity for sorting
+        'server_status',          // Server status for filtering
     ];
 
     protected $casts = [
@@ -49,11 +59,14 @@ class ServerPlan extends Model
         'on_sale' => 'boolean',
         'auto_provision' => 'boolean',
         'renewable' => 'boolean',
+        'supports_ipv6' => 'boolean',
         'provision_settings' => 'array',
         'performance_metrics' => 'array',
         'price' => 'decimal:2',
         'setup_fee' => 'decimal:2',
         'data_limit_gb' => 'decimal:2',
+        'popularity_score' => 'integer',
+        'bandwidth_mbps' => 'integer',
     ];
 
     protected static function boot()
@@ -76,6 +89,16 @@ class ServerPlan extends Model
     public function server(): BelongsTo
     {
         return $this->belongsTo(Server::class, 'server_id');
+    }
+
+    public function brand(): BelongsTo
+    {
+        return $this->belongsTo(ServerBrand::class, 'server_brand_id');
+    }
+
+    public function category(): BelongsTo
+    {
+        return $this->belongsTo(ServerCategory::class, 'server_category_id');
     }
 
     public function preferredInbound(): BelongsTo
@@ -198,5 +221,163 @@ class ServerPlan extends Model
         $updated['updated_at'] = now()->toISOString();
 
         $this->update(['performance_metrics' => $updated]);
+    }
+
+    // === ADVANCED FILTERING SCOPES ===
+
+    /**
+     * Filter by location (country/region)
+     */
+    public function scopeByLocation($query, ?string $countryCode = null, ?string $region = null)
+    {
+        if ($countryCode) {
+            $query->where('country_code', $countryCode);
+        }
+
+        if ($region) {
+            $query->where('region', 'like', "%{$region}%");
+        }
+
+        return $query;
+    }
+
+    /**
+     * Filter by category
+     */
+    public function scopeByCategory($query, $categoryId)
+    {
+        return $query->where('server_category_id', $categoryId);
+    }
+
+    /**
+     * Filter by brand
+     */
+    public function scopeByBrand($query, $brandId)
+    {
+        return $query->where('server_brand_id', $brandId);
+    }
+
+    /**
+     * Filter by protocol
+     */
+    public function scopeByProtocol($query, $protocol)
+    {
+        return $query->where('protocol', $protocol);
+    }
+
+    /**
+     * Filter by price range
+     */
+    public function scopeByPriceRange($query, ?float $minPrice = null, ?float $maxPrice = null)
+    {
+        if ($minPrice !== null) {
+            $query->where('price', '>=', $minPrice);
+        }
+
+        if ($maxPrice !== null) {
+            $query->where('price', '<=', $maxPrice);
+        }
+
+        return $query;
+    }
+
+    /**
+     * Filter by bandwidth
+     */
+    public function scopeByBandwidth($query, ?int $minBandwidth = null)
+    {
+        if ($minBandwidth !== null) {
+            $query->where('bandwidth_mbps', '>=', $minBandwidth);
+        }
+
+        return $query;
+    }
+
+    /**
+     * Filter by IPv6 support
+     */
+    public function scopeWithIpv6($query, bool $requireIpv6 = true)
+    {
+        return $query->where('supports_ipv6', $requireIpv6);
+    }
+
+    /**
+     * Filter by server status
+     */
+    public function scopeByStatus($query, $status = 'online')
+    {
+        return $query->where('server_status', $status);
+    }
+
+    /**
+     * Sort by popularity
+     */
+    public function scopeByPopularity($query, string $direction = 'desc')
+    {
+        return $query->orderBy('popularity_score', $direction);
+    }
+
+    /**
+     * Sort by price
+     */
+    public function scopeByPrice($query, string $direction = 'asc')
+    {
+        return $query->orderBy('price', $direction);
+    }
+
+    /**
+     * Location-first sorting (as per TODO requirements)
+     */
+    public function scopeLocationFirstSort($query)
+    {
+        return $query->orderBy('country_code')
+                    ->orderBy('region')
+                    ->orderBy('server_category_id')
+                    ->orderBy('server_brand_id')
+                    ->orderBy('popularity_score', 'desc');
+    }
+
+    /**
+     * Get available countries with server counts
+     */
+    public static function getAvailableCountries()
+    {
+        return static::select('country_code', \DB::raw('count(*) as plan_count'))
+                    ->whereNotNull('country_code')
+                    ->where('is_active', true)
+                    ->where('server_status', 'online')
+                    ->groupBy('country_code')
+                    ->orderBy('country_code')
+                    ->get();
+    }
+
+    /**
+     * Get available categories with server counts
+     */
+    public static function getAvailableCategories()
+    {
+        return static::with('category')
+                    ->select('server_category_id', \DB::raw('count(*) as plan_count'))
+                    ->whereNotNull('server_category_id')
+                    ->where('is_active', true)
+                    ->where('server_status', 'online')
+                    ->groupBy('server_category_id')
+                    ->orderBy('plan_count', 'desc')
+                    ->get();
+    }
+
+    /**
+     * Get available brands with server counts
+     */
+    public static function getAvailableBrands()
+    {
+        return static::with('brand')
+                    ->select('server_brand_id', \DB::raw('count(*) as plan_count'))
+                    ->whereNotNull('server_brand_id')
+                    ->where('is_active', true)
+                    ->where('server_status', 'online')
+                    ->groupBy('server_brand_id')
+                    ->orderBy('plan_count', 'desc')
+                    ->get();
     }
 }

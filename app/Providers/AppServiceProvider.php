@@ -15,6 +15,7 @@ use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Gate;
 
 
 class AppServiceProvider extends ServiceProvider
@@ -49,9 +50,7 @@ class AppServiceProvider extends ServiceProvider
             return new \App\Services\CacheService();
         });
 
-        $this->app->singleton(\App\Services\XUIService::class, function ($app) {
-            return new \App\Services\XUIService(1); // Default server for singleton
-        });
+        // XUIService is not bound as singleton since it needs different Server instances
     }
 
     /**
@@ -60,6 +59,9 @@ class AppServiceProvider extends ServiceProvider
     public function boot(): void
     {
         Model::unguard();
+
+        // Register policies
+        Gate::policy(\App\Models\User::class, \App\Policies\UserPolicy::class);
 
         // Configure rate limiting
         $this->configureRateLimiting();
@@ -73,7 +75,7 @@ class AppServiceProvider extends ServiceProvider
                 'light' => false,
                 default => null,
             });
-        
+
             app()->setLocale(session('locale'));
         }
     }

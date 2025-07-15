@@ -1,0 +1,223 @@
+// ==========================================================================
+// HEADER - Header layout styles for the 1000proxy platform
+// ==========================================================================
+
+.header {
+  position: sticky;
+  top: 0;
+  z-index: z-index('header');
+  background-color: white;
+  border-bottom: 1px solid #e5e7eb;
+  backdrop-filter: blur(8px);
+
+  [data-theme="dark"] & {
+    background-color: rgba(var(--color-bg-primary-rgb), 0.9);
+    border-bottom-color: var(--color-border-primary);
+  }
+
+  &__container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 spacing('lg');
+
+    @include respond-below('lg') {
+      padding: 0 spacing('md');
+    }
+  }
+
+  &__content {
+    @extend %flex-between;
+    height: 4rem;
+    gap: spacing('lg');
+  }
+
+  &__brand {
+    @extend %flex-center;
+    gap: spacing('sm');
+    text-decoration: none;
+    color: var(--color-text-primary);
+    font-weight: font-weight('bold');
+    font-size: font-size('lg');
+
+    &__logo {
+      width: 2rem;
+      height: 2rem;
+    }
+
+    &__text {
+      @include respond-below('sm') {
+        display: none;
+      }
+    }
+  }
+
+  &__nav {
+    @extend %flex-center;
+    gap: spacing('lg');
+
+    @include respond-below('lg') {
+      display: none;
+    }
+
+    &__item {
+      text-decoration: none;
+      color: var(--color-text-secondary);
+      font-weight: font-weight('medium');
+      padding: spacing('sm') spacing('md');
+      border-radius: border-radius('base');
+      transition: all map-get($transition-durations, 'fast') map-get($transition-easings, 'smooth');
+
+      &:hover {
+        color: var(--color-text-primary);
+        background-color: rgba(0, 0, 0, 0.05);
+
+        [data-theme="dark"] & {
+          background-color: rgba(255, 255, 255, 0.05);
+        }
+      }
+
+      &--active {
+        color: var(--color-primary-600);
+        background-color: var(--color-primary-50);
+
+        [data-theme="dark"] & {
+          color: var(--color-primary-400);
+          background-color: rgba(59, 130, 246, 0.2);
+        }
+      }
+    }
+  }
+
+  &__actions {
+    @extend %flex-center;
+    gap: spacing('sm');
+  }
+
+  &__mobile-trigger {
+    @extend %btn-ghost;
+    padding: 0.5rem;
+
+    @include respond-to('lg') {
+      display: none;
+    }
+
+    &__icon {
+      width: 1.5rem;
+      height: 1.5rem;
+    }
+  }
+}
+
+// MOBILE MENU
+// ==========================================================================
+
+.mobile-menu {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: z-index('mobile-menu');
+  background-color: rgba(0, 0, 0, 0.5);
+  opacity: 0;
+  visibility: hidden;
+  transition: all map-get($transition-durations, 'base') map-get($transition-easings, 'smooth');
+
+  &--open {
+    opacity: 1;
+    visibility: visible;
+  }
+
+  &__panel {
+    position: absolute;
+    top: 0;
+    right: 0;
+    width: 280px;
+    height: 100%;
+    background-color: white;
+    box-shadow: shadow('2xl');
+    transform: translateX(100%);
+    transition: transform map-get($transition-durations, 'base') map-get($transition-easings, 'smooth');
+
+    [data-theme="dark"] & {
+      background-color: var(--color-bg-primary);
+    }
+
+    .mobile-menu--open & {
+      transform: translateX(0);
+    }
+  }
+
+  &__header {
+    @extend %flex-between;
+    padding: spacing('lg');
+    border-bottom: 1px solid #e5e7eb;
+
+    [data-theme="dark"] & {
+      border-bottom-color: var(--color-border-primary);
+    }
+  }
+
+  &__close {
+    @extend %btn-ghost;
+    padding: 0.5rem;
+
+    &__icon {
+      width: 1.25rem;
+      height: 1.25rem;
+    }
+  }
+
+  &__nav {
+    padding: spacing('lg') 0;
+
+    &__item {
+      display: block;
+      padding: spacing('md') spacing('lg');
+      text-decoration: none;
+      color: var(--color-text-primary);
+      font-weight: font-weight('medium');
+      border-bottom: 1px solid #f3f4f6;
+      transition: background-color map-get($transition-durations, 'fast') map-get($transition-easings, 'smooth');
+
+      [data-theme="dark"] & {
+        border-bottom-color: rgba(255, 255, 255, 0.05);
+      }
+
+      &:hover {
+        background-color: #f9fafb;
+
+        [data-theme="dark"] & {
+          background-color: rgba(255, 255, 255, 0.02);
+        }
+      }
+
+      &--active {
+        color: var(--color-primary-600);
+        background-color: var(--color-primary-50);
+
+        [data-theme="dark"] & {
+          color: var(--color-primary-400);
+          background-color: rgba(59, 130, 246, 0.2);
+        }
+      }
+
+      &:last-child {
+        border-bottom: none;
+      }
+    }
+  }
+
+  &__footer {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    padding: spacing('lg');
+    border-top: 1px solid #e5e7eb;
+
+    [data-theme="dark"] & {
+      border-top-color: var(--color-border-primary);
+    }
+  }
+}

@@ -1,0 +1,440 @@
+// ==========================================================================
+// PLACEHOLDERS - Reusable style patterns for the 1000proxy platform
+// ==========================================================================
+
+// LAYOUT PLACEHOLDERS
+// ==========================================================================
+
+%container {
+  width: 100%;
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 0 spacing('md');
+
+  @include respond-to('sm') {
+    padding: 0 spacing('lg');
+  }
+
+  @include respond-to('xl') {
+    padding: 0 spacing('xl');
+  }
+}
+
+%flex-center {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+%flex-between {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+%flex-start {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+}
+
+%grid-auto-fit {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: spacing('lg');
+}
+
+%grid-auto-fill {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+  gap: spacing('lg');
+}
+
+// TYPOGRAPHY PLACEHOLDERS
+// ==========================================================================
+
+%heading-primary {
+  font-size: font-size('3xl');
+  font-weight: font-weight('bold');
+  line-height: line-height('tight');
+  color: #111827;
+
+  @include respond-to('md') {
+    font-size: font-size('4xl');
+  }
+
+  @include respond-to('lg') {
+    font-size: font-size('5xl');
+  }
+
+  [data-theme="dark"] & {
+    color: var(--color-text-primary);
+  }
+}
+
+%heading-secondary {
+  font-size: font-size('2xl');
+  font-weight: font-weight('semibold');
+  line-height: line-height('tight');
+  color: #374151;
+
+  @include respond-to('md') {
+    font-size: font-size('3xl');
+  }
+
+  [data-theme="dark"] & {
+    color: var(--color-text-secondary);
+  }
+}
+
+%heading-tertiary {
+  font-size: font-size('xl');
+  font-weight: font-weight('medium');
+  line-height: line-height('snug');
+  color: #4b5563;
+
+  @include respond-to('md') {
+    font-size: font-size('2xl');
+  }
+
+  [data-theme="dark"] & {
+    color: var(--color-text-secondary);
+  }
+}
+
+%body-text {
+  font-size: font-size('base');
+  line-height: line-height('relaxed');
+  color: #6b7280;
+
+  [data-theme="dark"] & {
+    color: var(--color-text-tertiary);
+  }
+}
+
+%small-text {
+  font-size: font-size('sm');
+  line-height: line-height('normal');
+  color: #9ca3af;
+
+  [data-theme="dark"] & {
+    color: var(--color-text-tertiary);
+  }
+}
+
+%code-text {
+  font-family: $font-family-mono;
+  font-size: font-size('sm');
+  background-color: #f3f4f6;
+  padding: 0.125rem 0.25rem;
+  border-radius: border-radius('sm');
+
+  [data-theme="dark"] & {
+    background-color: var(--color-bg-tertiary);
+    color: var(--color-text-primary);
+  }
+}
+
+// BUTTON PLACEHOLDERS
+// ==========================================================================
+
+%btn-base {
+  @include button-base;
+  @include button-size('md');
+}
+
+%btn-primary {
+  @extend %btn-base;
+  @include button-variant(
+    var(--color-primary-500),
+    white,
+    var(--color-primary-600)
+  );
+}
+
+%btn-secondary {
+  @extend %btn-base;
+  @include button-variant(
+    var(--color-secondary-500),
+    white,
+    var(--color-secondary-600)
+  );
+}
+
+%btn-outline {
+  @extend %btn-base;
+  background-color: transparent;
+  color: var(--color-primary-500);
+  border: 1px solid var(--color-primary-500);
+
+  &:hover:not(:disabled) {
+    background-color: var(--color-primary-500);
+    color: white;
+    transform: translateY(-1px);
+    box-shadow: shadow('md');
+  }
+}
+
+%btn-ghost {
+  @extend %btn-base;
+  background-color: transparent;
+  color: var(--color-primary-500);
+
+  &:hover:not(:disabled) {
+    background-color: var(--color-primary-50);
+    color: var(--color-primary-600);
+  }
+
+  [data-theme="dark"] &:hover:not(:disabled) {
+    background-color: rgba(59, 130, 246, 0.1);
+    color: var(--color-primary-400);
+  }
+}
+
+%btn-danger {
+  @extend %btn-base;
+  @include button-variant(
+    var(--color-status-offline),
+    white,
+    darken-color(var(--color-status-offline), 10%)
+  );
+}
+
+// FORM PLACEHOLDERS
+// ==========================================================================
+
+%form-input {
+  @include form-input;
+}
+
+%form-label {
+  @include form-label;
+}
+
+%form-error {
+  display: block;
+  font-size: font-size('sm');
+  color: var(--color-status-offline);
+  margin-top: 0.25rem;
+}
+
+%form-help {
+  display: block;
+  font-size: font-size('sm');
+  color: #6b7280;
+  margin-top: 0.25rem;
+
+  [data-theme="dark"] & {
+    color: var(--color-text-tertiary);
+  }
+}
+
+%form-group {
+  margin-bottom: spacing('lg');
+
+  &:last-child {
+    margin-bottom: 0;
+  }
+}
+
+// CARD PLACEHOLDERS
+// ==========================================================================
+
+%card {
+  @include card-base;
+}
+
+%card-hover {
+  @include card-base;
+  @include card-hover;
+}
+
+%card-interactive {
+  @include card-base;
+  @include card-interactive;
+}
+
+%card-header {
+  padding: spacing('lg');
+  border-bottom: 1px solid #e5e7eb;
+
+  [data-theme="dark"] & {
+    border-bottom-color: var(--color-border-primary);
+  }
+}
+
+%card-body {
+  padding: spacing('lg');
+}
+
+%card-footer {
+  padding: spacing('lg');
+  border-top: 1px solid #e5e7eb;
+  background-color: #f9fafb;
+  border-radius: 0 0 border-radius('lg') border-radius('lg');
+
+  [data-theme="dark"] & {
+    border-top-color: var(--color-border-primary);
+    background-color: var(--color-bg-tertiary);
+  }
+}
+
+// STATUS PLACEHOLDERS
+// ==========================================================================
+
+%status-online {
+  @include status-indicator('online');
+}
+
+%status-offline {
+  @include status-indicator('offline');
+}
+
+%status-warning {
+  @include status-indicator('warning');
+}
+
+%status-badge-online {
+  @include status-badge('online');
+}
+
+%status-badge-offline {
+  @include status-badge('offline');
+}
+
+%status-badge-warning {
+  @include status-badge('warning');
+}
+
+// LOADING PLACEHOLDERS
+// ==========================================================================
+
+%loading-skeleton {
+  @include loading-skeleton;
+  border-radius: border-radius('base');
+  min-height: 1rem;
+}
+
+%loading-spinner {
+  @include loading-spinner;
+}
+
+%loading-spinner-sm {
+  @include loading-spinner(16px, 2px);
+}
+
+%loading-spinner-lg {
+  @include loading-spinner(32px, 3px);
+}
+
+// UTILITY PLACEHOLDERS
+// ==========================================================================
+
+%visually-hidden {
+  @include visually-hidden;
+}
+
+%clearfix {
+  @include clearfix;
+}
+
+%truncate {
+  @include truncate;
+}
+
+%line-clamp-2 {
+  @include line-clamp(2);
+}
+
+%line-clamp-3 {
+  @include line-clamp(3);
+}
+
+%glass-effect {
+  @include glassmorphism(0.1, 20px);
+}
+
+%glass-effect-strong {
+  @include glassmorphism(0.2, 30px);
+}
+
+// ANIMATION PLACEHOLDERS
+// ==========================================================================
+
+%fade-in {
+  opacity: 0;
+  animation: fade-in map-get($transition-durations, 'base') map-get($transition-easings, 'ease-out') forwards;
+}
+
+%slide-up {
+  opacity: 0;
+  transform: translateY(20px);
+  animation: slide-up map-get($transition-durations, 'base') map-get($transition-easings, 'ease-out') forwards;
+}
+
+%slide-down {
+  opacity: 0;
+  transform: translateY(-20px);
+  animation: slide-down map-get($transition-durations, 'base') map-get($transition-easings, 'ease-out') forwards;
+}
+
+%scale-in {
+  opacity: 0;
+  transform: scale(0.95);
+  animation: scale-in map-get($transition-durations, 'base') map-get($transition-easings, 'ease-out') forwards;
+}
+
+%bounce-in {
+  opacity: 0;
+  transform: scale(0.3);
+  animation: bounce-in map-get($transition-durations, 'slow') map-get($transition-easings, 'bounce') forwards;
+}
+
+// RESPONSIVE PLACEHOLDERS
+// ==========================================================================
+
+%hide-on-mobile {
+  @include respond-below('md') {
+    display: none !important;
+  }
+}
+
+%hide-on-desktop {
+  @include respond-to('md') {
+    display: none !important;
+  }
+}
+
+%show-on-mobile {
+  display: none;
+
+  @include respond-below('md') {
+    display: block;
+  }
+}
+
+%show-on-desktop {
+  display: none;
+
+  @include respond-to('md') {
+    display: block;
+  }
+}
+
+// ACCESSIBILITY PLACEHOLDERS
+// ==========================================================================
+
+%focus-visible {
+  &:focus-visible {
+    outline: 2px solid var(--color-primary-500);
+    outline-offset: 2px;
+    border-radius: border-radius('base');
+  }
+}
+
+%reduced-motion {
+  @media (prefers-reduced-motion: reduce) {
+    animation: none !important;
+    transition: none !important;
+  }
+}

@@ -4,11 +4,13 @@ namespace App\Models;
 
 use App\Models\Wallet;
 use App\Models\WalletTransaction;
+use App\Helpers\CartManagement;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Illuminate\Support\Facades\Log;
 use Laravel\Sanctum\HasApiTokens;
-use Illuminate\Support\Str; 
+use Illuminate\Support\Str;
 use SimpleSoftwareIO\QrCode\Facades\QrCode;
 use Illuminate\Contracts\Auth\MustVerifyEmail;
 
@@ -26,7 +28,10 @@ class Customer extends Authenticatable implements MustVerifyEmail
         'name',
         'email',
         'password',
-        'tgId',
+        'telegram_chat_id',
+        'telegram_username',
+        'telegram_first_name',
+        'telegram_last_name',
         'refcode',
         'date',
         'phone',
@@ -43,12 +48,15 @@ class Customer extends Authenticatable implements MustVerifyEmail
         'theme_mode',
         'email_notifications',
         'timezone',
+        'suspended_at',
+        'suspension_reason',
+        'last_login_at',
     ];
 
     protected $hidden = [
         'password',
         'remember_token',
-        'tgId',
+        'telegram_chat_id',
         'refcode',
         'temp',
         'spam_info',
@@ -65,6 +73,8 @@ class Customer extends Authenticatable implements MustVerifyEmail
     {
         return [
             'email_verified_at' => 'datetime',
+            'suspended_at' => 'datetime',
+            'last_login_at' => 'datetime',
             'password' => 'hashed',
         ];
     }
@@ -111,7 +121,7 @@ class Customer extends Authenticatable implements MustVerifyEmail
         $wallet = $this->getWallet();
 
         if (bccomp((string) $wallet->balance, (string) $amount, 8) < 0) {
-            \Log::warning("❌ Attempt to overdraw wallet for customer ID {$this->id}");
+            Log::warning("❌ Attempt to overdraw wallet for customer ID {$this->id}");
             return false;
         }
 
@@ -149,7 +159,7 @@ class Customer extends Authenticatable implements MustVerifyEmail
 
     public function getWalletAddress($currency)
     {
-        $wallet = $this->getWallet($currency);
+        $wallet = $this->getWallet();
         return [
             'address' => $wallet->address,
             'deposit_tag' => $wallet->deposit_tag,
@@ -158,7 +168,7 @@ class Customer extends Authenticatable implements MustVerifyEmail
 
     public function getWalletBalance($currency)
     {
-        $wallet = $this->getWallet($currency);
+        $wallet = $this->getWallet();
         return [
             'balance' => $wallet->balance,
         ];
@@ -166,10 +176,22 @@ class Customer extends Authenticatable implements MustVerifyEmail
 
     public function getWalletQrCode($currency)
     {
-        $wallet = $this->getWallet($currency);
-        return [
-            'qr_code' => QrCode::size(250)->generate($wallet->address),
-        ];
+        $wallet = $this->getWallet();
+        try {
+            $qrService = app(\App\Services\QrCodeService::class);
+            $qrCode = $qrService->generateBase64QrCode($wallet->address, 250, [
+                'colorScheme' => 'primary',
+                'style' => 'square'
+            ]);
+            return [
+                'qr_code' => $qrCode,
+            ];
+        } catch (\Exception $e) {
+            // Fallback to text representation
+            return [
+                'qr_code' => 'data:text/plain;base64,' . base64_encode($wallet->address),
+            ];
+        }
     }
 
     public function walletTransactions()
@@ -188,28 +210,28 @@ class Customer extends Authenticatable implements MustVerifyEmail
     {
         // 🛡 Prevent duplicate execution
         if (isset($transaction->metadata['order_created']) && $transaction->metadata['order_created']) {
-            \Log::warning("🚫 Order already created for this transaction: {$transaction->reference}");
+            Log::warning("🚫 Order already created for this transaction: {$transaction->reference}");
             return;
         }
 
         $cartItems = CartManagement::getCartItemsFromCookie();
 
         if (empty($cartItems)) {
-            \Log::info("❌ No cart items found for auto-order (customer ID: {$this->id})");
+            Log::info("❌ No cart items found for auto-order (customer ID: {$this->id})");
             return;
         }
 
         $total = CartManagement::calculateGrandTotal($cartItems);
 
         if (bccomp((string) $transaction->amount, (string) $total, 8) < 0) {
-            \Log::info("❌ Deposit insufficient for auto-order (deposit: {$transaction->amount}, total: {$total})");
+            Log::info("❌ Deposit insufficient for auto-order (deposit: {$transaction->amount}, total: {$total})");
             return;
         }
 
         // ✅ Get wallet and check balance
         $wallet = $this->getWallet();
         if (bccomp((string) $wallet->balance, (string) $total, 8) < 0) {
-            \Log::info("❌ Wallet balance insufficient for auto-order (balance: {$wallet->balance})");
+            Log::info("❌ Wallet balance insufficient for auto-order (balance: {$wallet->balance})");
             return;
         }
 
@@ -276,10 +298,56 @@ class Customer extends Authenticatable implements MustVerifyEmail
                 'metadata' => array_merge($transaction->metadata ?? [], ['order_created' => true]),
             ]);
 
-            \Log::info("✅ Auto-order created and XUI clients provisioned for {$this->email}");
+            Log::info("✅ Auto-order created and XUI clients provisioned for {$this->email}");
         } catch (\Exception $e) {
-            \Log::error("⚠️ XUI provisioning failed during auto-order: " . $e->getMessage());
+            Log::error("⚠️ XUI provisioning failed during auto-order: " . $e->getMessage());
         }
+    }
+
+    /**
+     * Check if customer has Telegram linked
+     */
+    public function hasTelegramLinked(): bool
+    {
+        return !empty($this->telegram_chat_id);
+    }
+
+    /**
+     * Get Telegram display name
+     */
+    public function getTelegramDisplayName(): string
+    {
+        if ($this->telegram_first_name && $this->telegram_last_name) {
+            return $this->telegram_first_name . ' ' . $this->telegram_last_name;
+        }
+
+        return $this->telegram_first_name ?: $this->telegram_username ?: 'Unknown';
+    }
+
+    /**
+     * Link Telegram account
+     */
+    public function linkTelegram(int $chatId, ?string $username = null, ?string $firstName = null, ?string $lastName = null): void
+    {
+        $this->update([
+            'telegram_chat_id' => $chatId,
+            'telegram_username' => $username,
+            'telegram_first_name' => $firstName,
+            'telegram_last_name' => $lastName,
+        ]);
+    }
+
+    /**
+     * Unlink Telegram account
+     */
+    public function unlinkTelegram(): void
+    {
+        $this->update([
+            'telegram_chat_id' => null,
+            'telegram_username' => null,
+            'telegram_first_name' => null,
+            'telegram_last_name' => null,
+        ]);
     }
 
 }

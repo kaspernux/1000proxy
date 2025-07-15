@@ -19,7 +19,7 @@ class ClientTraffic extends Model
         'email',
         'up',
         'down',
-        'expiryTime',
+        'expiry_time',
         'total',
         'reset',
     ];

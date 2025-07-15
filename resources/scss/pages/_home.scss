@@ -1,0 +1,118 @@
+// ==========================================================================
+// PAGES/HOME - Home page specific styles for the 1000proxy platform
+// ==========================================================================
+
+.home-page {
+  // Hero Section
+  &__hero {
+    background: linear-gradient(135deg, var(--color-primary-600), var(--color-primary-800));
+    color: white;
+    padding: spacing('3xl') 0;
+
+    @include respond-below('lg') {
+      padding: spacing('2xl') 0;
+    }
+
+    &__content {
+      text-align: center;
+      max-width: 800px;
+      margin: 0 auto;
+    }
+
+    &__title {
+      font-size: font-size('5xl');
+      font-weight: font-weight('bold');
+      margin-bottom: spacing('lg');
+
+      @include respond-below('lg') {
+        font-size: font-size('4xl');
+      }
+    }
+
+    &__subtitle {
+      font-size: font-size('xl');
+      margin-bottom: spacing('xl');
+      opacity: 0.9;
+
+      @include respond-below('lg') {
+        font-size: font-size('lg');
+      }
+    }
+
+    &__cta {
+      display: flex;
+      gap: spacing('md');
+      justify-content: center;
+
+      @include respond-below('sm') {
+        flex-direction: column;
+        align-items: center;
+      }
+    }
+  }
+
+  // Features Section
+  &__features {
+    padding: spacing('3xl') 0;
+
+    &__grid {
+      @extend .grid--responsive--3;
+    }
+
+    &__item {
+      text-align: center;
+      padding: spacing('lg');
+
+      &__icon {
+        width: 3rem;
+        height: 3rem;
+        margin: 0 auto spacing('lg');
+        color: var(--color-primary-500);
+      }
+
+      &__title {
+        font-size: font-size('xl');
+        font-weight: font-weight('semibold');
+        margin-bottom: spacing('sm');
+      }
+
+      &__description {
+        color: var(--color-text-secondary);
+        line-height: 1.6;
+      }
+    }
+  }
+
+  // Stats Section
+  &__stats {
+    background-color: #f9fafb;
+    padding: spacing('2xl') 0;
+
+    [data-theme="dark"] & {
+      background-color: var(--color-bg-secondary);
+    }
+
+    &__grid {
+      @extend .grid--responsive--4;
+      text-align: center;
+    }
+
+    &__item {
+      &__number {
+        font-size: font-size('3xl');
+        font-weight: font-weight('bold');
+        color: var(--color-primary-600);
+        margin-bottom: spacing('xs');
+
+        [data-theme="dark"] & {
+          color: var(--color-primary-400);
+        }
+      }
+
+      &__label {
+        color: var(--color-text-secondary);
+        font-weight: font-weight('medium');
+      }
+    }
+  }
+}

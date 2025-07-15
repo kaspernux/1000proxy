@@ -19,7 +19,10 @@ return new class extends Migration
             $table->string('name');
             $table->string('email')->unique();
             $table->string('password');
-            $table->string('tgId')->nullable();
+            $table->string('telegram_chat_id')->nullable()->index();
+            $table->string('telegram_username')->nullable();
+            $table->string('telegram_first_name')->nullable();
+            $table->string('telegram_last_name')->nullable();
             $table->string('refcode', 50)->nullable();
             $table->string('date', 50)->nullable();
             $table->string('phone', 15)->nullable();

@@ -19,7 +19,7 @@ class ClientLifecycleService
         Log::info("🕒 Processing expired clients");
 
         $expiredClients = ServerClient::where('status', 'active')
-            ->where('expiryTime', '<', now())
+            ->where('expiry_time', '<', now())
             ->with(['plan', 'customer', 'order'])
             ->get();
 
@@ -61,7 +61,7 @@ class ClientLifecycleService
 
         // Grace period check (e.g., 3 days)
         $gracePeriodDays = 3;
-        $graceExpiry = $client->expiryTime->addDays($gracePeriodDays);
+        $graceExpiry = $client->expiry_time->addDays($gracePeriodDays);
 
         if (now()->lessThan($graceExpiry)) {
             // Still in grace period, just suspend
@@ -111,7 +111,7 @@ class ClientLifecycleService
         Log::info("⚠️ Processing clients nearing expiration");
 
         $expiringClients = ServerClient::where('status', 'active')
-            ->whereBetween('expiryTime', [now(), now()->addDays(7)])
+            ->whereBetween('expiry_time', [now(), now()->addDays(7)])
             ->with(['plan', 'customer', 'order'])
             ->get();
 
@@ -159,11 +159,11 @@ class ClientLifecycleService
         // Update next billing date if not set
         if (!$client->next_billing_at) {
             $client->update([
-                'next_billing_at' => $client->expiryTime->subDays(3),
+                'next_billing_at' => $client->expiry_time->subDays(3),
             ]);
         }
 
-        Log::info("⚠️ Client {$client->id} expires in " . $client->expiryTime->diffInDays(now()) . " days");
+        Log::info("⚠️ Client {$client->id} expires in " . $client->expiry_time->diffInDays(now()) . " days");
     }
 
     /**
@@ -351,7 +351,7 @@ class ClientLifecycleService
     protected function queueAutoRenewal(ServerClient $client): void
     {
         // Queue a job to process auto-renewal 1 day before expiration
-        $renewalDate = $client->expiryTime->subDay();
+        $renewalDate = $client->expiry_time->subDay();
 
         // Implement job queuing here
         Log::info("⏰ Queued auto-renewal for client {$client->id} at {$renewalDate}");
@@ -366,8 +366,8 @@ class ClientLifecycleService
             'total_clients' => ServerClient::count(),
             'active_clients' => ServerClient::where('status', 'active')->count(),
             'suspended_clients' => ServerClient::where('status', 'suspended')->count(),
-            'expired_clients' => ServerClient::where('status', 'active')->where('expiryTime', '<', now())->count(),
-            'expiring_soon' => ServerClient::where('status', 'active')->whereBetween('expiryTime', [now(), now()->addDays(7)])->count(),
+            'expired_clients' => ServerClient::where('status', 'active')->where('expiry_time', '<', now())->count(),
+            'expiring_soon' => ServerClient::where('status', 'active')->whereBetween('expiry_time', [now(), now()->addDays(7)])->count(),
             'traffic_violations' => ServerClient::where('status', 'active')->whereNotNull('traffic_limit_mb')->whereRaw('traffic_used_mb >= traffic_limit_mb')->count(),
             'auto_renewal_enabled' => ServerClient::where('auto_renew', true)->count(),
         ];

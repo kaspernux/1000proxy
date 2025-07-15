@@ -1,0 +1,439 @@
+// ==========================================================================
+// BUTTONS - Button component styles for the 1000proxy platform
+// ==========================================================================
+
+// BUTTON BASE CLASS
+// ==========================================================================
+.btn {
+  @extend %btn-base;
+
+  // Icon support
+  &__icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    margin-right: 0.5rem;
+
+    &--right {
+      margin-right: 0;
+      margin-left: 0.5rem;
+    }
+
+    &--only {
+      margin: 0;
+    }
+  }
+
+  // Loading state
+  &--loading {
+    position: relative;
+    color: transparent !important;
+    pointer-events: none;
+
+    &::after {
+      content: '';
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      @include loading-spinner(16px, 2px, currentColor);
+    }
+  }
+}
+
+// BUTTON VARIANTS
+// ==========================================================================
+
+// Primary button
+.btn--primary {
+  @extend %btn-primary;
+}
+
+// Secondary button
+.btn--secondary {
+  @extend %btn-secondary;
+}
+
+// Outline button
+.btn--outline {
+  @extend %btn-outline;
+}
+
+// Ghost button
+.btn--ghost {
+  @extend %btn-ghost;
+}
+
+// Danger button
+.btn--danger {
+  @extend %btn-danger;
+}
+
+// Success button
+.btn--success {
+  @include button-variant(
+    var(--color-secondary-500),
+    white,
+    var(--color-secondary-600)
+  );
+}
+
+// Warning button
+.btn--warning {
+  @include button-variant(
+    var(--color-status-warning),
+    white,
+    darken-color(var(--color-status-warning), 10%)
+  );
+}
+
+// Info button
+.btn--info {
+  @include button-variant(
+    #06b6d4,
+    white,
+    #0891b2
+  );
+}
+
+// Light button
+.btn--light {
+  @include button-variant(
+    #f8fafc,
+    #1e293b,
+    #f1f5f9,
+    #0f172a
+  );
+
+  [data-theme="dark"] & {
+    @include button-variant(
+      var(--color-bg-tertiary),
+      var(--color-text-primary),
+      var(--color-border-secondary)
+    );
+  }
+}
+
+// Dark button
+.btn--dark {
+  @include button-variant(
+    #1e293b,
+    white,
+    #0f172a
+  );
+}
+
+// BUTTON SIZES
+// ==========================================================================
+
+.btn--xs {
+  @include button-size('xs');
+}
+
+.btn--sm {
+  @include button-size('sm');
+}
+
+.btn--md {
+  @include button-size('md');
+}
+
+.btn--lg {
+  @include button-size('lg');
+}
+
+.btn--xl {
+  @include button-size('xl');
+}
+
+// BUTTON SHAPES
+// ==========================================================================
+
+.btn--rounded {
+  border-radius: border-radius('full');
+}
+
+.btn--square {
+  border-radius: 0;
+}
+
+.btn--pill {
+  border-radius: border-radius('full');
+  padding-left: 2em;
+  padding-right: 2em;
+}
+
+// BUTTON GROUPS
+// ==========================================================================
+
+.btn-group {
+  display: inline-flex;
+  align-items: center;
+
+  .btn {
+    border-radius: 0;
+    margin-left: -1px;
+
+    &:first-child {
+      border-top-left-radius: border-radius('md');
+      border-bottom-left-radius: border-radius('md');
+      margin-left: 0;
+    }
+
+    &:last-child {
+      border-top-right-radius: border-radius('md');
+      border-bottom-right-radius: border-radius('md');
+    }
+
+    &:hover,
+    &:focus {
+      position: relative;
+      z-index: 1;
+    }
+
+    &:disabled {
+      z-index: 0;
+    }
+  }
+
+  // Vertical button group
+  &--vertical {
+    flex-direction: column;
+
+    .btn {
+      width: 100%;
+      margin-left: 0;
+      margin-top: -1px;
+
+      &:first-child {
+        border-radius: border-radius('md') border-radius('md') 0 0;
+        margin-top: 0;
+      }
+
+      &:last-child {
+        border-radius: 0 0 border-radius('md') border-radius('md');
+      }
+    }
+  }
+}
+
+// SPECIAL BUTTON TYPES
+// ==========================================================================
+
+// Payment gateway buttons
+.btn--stripe {
+  @include button-variant(
+    var(--color-stripe),
+    white,
+    darken-color(var(--color-stripe), 10%)
+  );
+}
+
+.btn--paypal {
+  @include button-variant(
+    var(--color-paypal),
+    white,
+    darken-color(var(--color-paypal), 10%)
+  );
+}
+
+.btn--crypto {
+  @include button-variant(
+    var(--color-crypto),
+    white,
+    darken-color(var(--color-crypto), 10%)
+  );
+}
+
+.btn--wallet {
+  @include button-variant(
+    var(--color-wallet),
+    white,
+    darken-color(var(--color-wallet), 10%)
+  );
+}
+
+// Status buttons
+.btn--online {
+  @include button-variant(
+    var(--color-status-online),
+    white,
+    darken-color(var(--color-status-online), 10%)
+  );
+}
+
+.btn--offline {
+  @include button-variant(
+    var(--color-status-offline),
+    white,
+    darken-color(var(--color-status-offline), 10%)
+  );
+}
+
+// Floating action button
+.btn--fab {
+  position: fixed;
+  bottom: spacing('xl');
+  right: spacing('xl');
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  box-shadow: shadow('lg');
+  z-index: z-index('fixed');
+
+  &:hover {
+    box-shadow: shadow('xl');
+    transform: scale(1.1);
+  }
+
+  .btn__icon {
+    margin: 0;
+  }
+}
+
+// Social media buttons
+.btn--github {
+  @include button-variant(
+    #24292e,
+    white,
+    #1a1e22
+  );
+}
+
+.btn--google {
+  @include button-variant(
+    #db4437,
+    white,
+    #c23321
+  );
+}
+
+.btn--facebook {
+  @include button-variant(
+    #4267b2,
+    white,
+    #365899
+  );
+}
+
+.btn--twitter {
+  @include button-variant(
+    #1da1f2,
+    white,
+    #0d8bd9
+  );
+}
+
+// BUTTON STATES
+// ==========================================================================
+
+.btn--active {
+  transform: scale(0.98);
+  box-shadow: shadow('sm');
+}
+
+.btn--pulse {
+  animation: pulse 2s infinite;
+}
+
+.btn--glow {
+  box-shadow: 0 0 20px rgba(59, 130, 246, 0.5);
+
+  &:hover {
+    box-shadow: 0 0 30px rgba(59, 130, 246, 0.7);
+  }
+}
+
+// RESPONSIVE BUTTON UTILITIES
+// ==========================================================================
+
+.btn--full {
+  width: 100%;
+}
+
+.btn--full-mobile {
+  @include respond-below('md') {
+    width: 100%;
+  }
+}
+
+// ACCESSIBILITY ENHANCEMENTS
+// ==========================================================================
+
+.btn {
+  // Minimum touch target size
+  min-height: 44px;
+  min-width: 44px;
+
+  // Better focus indicators
+  &:focus-visible {
+    outline: 2px solid var(--color-primary-500);
+    outline-offset: 2px;
+  }
+
+  // High contrast mode support
+  @media (prefers-contrast: high) {
+    border: 2px solid currentColor;
+  }
+
+  // Reduced motion support
+  @media (prefers-reduced-motion: reduce) {
+    transition: none;
+
+    &:hover {
+      transform: none;
+    }
+  }
+}
+
+// BUTTON ANIMATIONS
+// ==========================================================================
+
+@keyframes button-press {
+  0% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(1px);
+  }
+  100% {
+    transform: translateY(0);
+  }
+}
+
+.btn--animated {
+  &:active {
+    animation: button-press 0.1s ease-in-out;
+  }
+}
+
+// BUTTON TOOLTIPS
+// ==========================================================================
+
+.btn[data-tooltip] {
+  position: relative;
+
+  &::after {
+    content: attr(data-tooltip);
+    position: absolute;
+    bottom: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    background-color: #1f2937;
+    color: white;
+    padding: 0.5rem 0.75rem;
+    border-radius: border-radius('base');
+    font-size: font-size('sm');
+    white-space: nowrap;
+    opacity: 0;
+    visibility: hidden;
+    transition: all map-get($transition-durations, 'base') map-get($transition-easings, 'smooth');
+    z-index: z-index('tooltip');
+    margin-bottom: 0.5rem;
+  }
+
+  &:hover::after {
+    opacity: 1;
+    visibility: visible;
+  }
+}

@@ -1,0 +1,353 @@
+/**
+ * Design Tokens - CSS Custom Properties
+ *
+ * Central design system configuration for consistent styling
+ * across the entire application. These tokens should be used
+ * in all components for maintainable and cohesive design.
+ *
+ * @version 1.0.0
+ * @author ProxyAdmin System
+ */
+
+:root {
+    /* === COLOR PALETTE === */
+
+    /* Primary Colors */
+    --color-primary-50: #eff6ff;
+    --color-primary-100: #dbeafe;
+    --color-primary-200: #bfdbfe;
+    --color-primary-300: #93c5fd;
+    --color-primary-400: #60a5fa;
+    --color-primary-500: #3b82f6;
+    --color-primary-600: #2563eb;
+    --color-primary-700: #1d4ed8;
+    --color-primary-800: #1e40af;
+    --color-primary-900: #1e3a8a;
+    --color-primary-950: #172554;
+
+    /* Secondary Colors */
+    --color-secondary-50: #f8fafc;
+    --color-secondary-100: #f1f5f9;
+    --color-secondary-200: #e2e8f0;
+    --color-secondary-300: #cbd5e1;
+    --color-secondary-400: #94a3b8;
+    --color-secondary-500: #64748b;
+    --color-secondary-600: #475569;
+    --color-secondary-700: #334155;
+    --color-secondary-800: #1e293b;
+    --color-secondary-900: #0f172a;
+    --color-secondary-950: #020617;
+
+    /* Success Colors */
+    --color-success-50: #f0fdf4;
+    --color-success-100: #dcfce7;
+    --color-success-200: #bbf7d0;
+    --color-success-300: #86efac;
+    --color-success-400: #4ade80;
+    --color-success-500: #22c55e;
+    --color-success-600: #16a34a;
+    --color-success-700: #15803d;
+    --color-success-800: #166534;
+    --color-success-900: #14532d;
+    --color-success-950: #052e16;
+
+    /* Warning Colors */
+    --color-warning-50: #fffbeb;
+    --color-warning-100: #fef3c7;
+    --color-warning-200: #fde68a;
+    --color-warning-300: #fcd34d;
+    --color-warning-400: #fbbf24;
+    --color-warning-500: #f59e0b;
+    --color-warning-600: #d97706;
+    --color-warning-700: #b45309;
+    --color-warning-800: #92400e;
+    --color-warning-900: #78350f;
+    --color-warning-950: #451a03;
+
+    /* Error Colors */
+    --color-error-50: #fef2f2;
+    --color-error-100: #fee2e2;
+    --color-error-200: #fecaca;
+    --color-error-300: #fca5a5;
+    --color-error-400: #f87171;
+    --color-error-500: #ef4444;
+    --color-error-600: #dc2626;
+    --color-error-700: #b91c1c;
+    --color-error-800: #991b1b;
+    --color-error-900: #7f1d1d;
+    --color-error-950: #450a0a;
+
+    /* Info Colors */
+    --color-info-50: #f0f9ff;
+    --color-info-100: #e0f2fe;
+    --color-info-200: #bae6fd;
+    --color-info-300: #7dd3fc;
+    --color-info-400: #38bdf8;
+    --color-info-500: #0ea5e9;
+    --color-info-600: #0284c7;
+    --color-info-700: #0369a1;
+    --color-info-800: #075985;
+    --color-info-900: #0c4a6e;
+    --color-info-950: #082f49;
+
+    /* Neutral Colors */
+    --color-neutral-50: #fafafa;
+    --color-neutral-100: #f5f5f5;
+    --color-neutral-200: #e5e5e5;
+    --color-neutral-300: #d4d4d4;
+    --color-neutral-400: #a3a3a3;
+    --color-neutral-500: #737373;
+    --color-neutral-600: #525252;
+    --color-neutral-700: #404040;
+    --color-neutral-800: #262626;
+    --color-neutral-900: #171717;
+    --color-neutral-950: #0a0a0a;
+
+    /* === SEMANTIC COLOR MAPPINGS === */
+    --color-background: var(--color-neutral-50);
+    --color-background-secondary: var(--color-neutral-100);
+    --color-background-tertiary: var(--color-neutral-200);
+    --color-surface: #ffffff;
+    --color-surface-secondary: var(--color-neutral-50);
+    --color-surface-tertiary: var(--color-neutral-100);
+
+    --color-text: var(--color-neutral-900);
+    --color-text-secondary: var(--color-neutral-700);
+    --color-text-tertiary: var(--color-neutral-500);
+    --color-text-inverse: #ffffff;
+
+    --color-border: var(--color-neutral-300);
+    --color-border-secondary: var(--color-neutral-200);
+    --color-border-tertiary: var(--color-neutral-100);
+
+    --color-focus: var(--color-primary-500);
+    --color-focus-ring: var(--color-primary-200);
+
+    /* === TYPOGRAPHY === */
+
+    /* Font Families */
+    --font-family-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+    --font-family-mono: 'Fira Code', 'Monaco', 'Cascadia Code', 'Roboto Mono', Consolas, monospace;
+    --font-family-display: 'Cal Sans', var(--font-family-sans);
+
+    /* Font Sizes */
+    --font-size-xs: 0.75rem;    /* 12px */
+    --font-size-sm: 0.875rem;   /* 14px */
+    --font-size-base: 1rem;     /* 16px */
+    --font-size-lg: 1.125rem;   /* 18px */
+    --font-size-xl: 1.25rem;    /* 20px */
+    --font-size-2xl: 1.5rem;    /* 24px */
+    --font-size-3xl: 1.875rem;  /* 30px */
+    --font-size-4xl: 2.25rem;   /* 36px */
+    --font-size-5xl: 3rem;      /* 48px */
+    --font-size-6xl: 3.75rem;   /* 60px */
+    --font-size-7xl: 4.5rem;    /* 72px */
+    --font-size-8xl: 6rem;      /* 96px */
+    --font-size-9xl: 8rem;      /* 128px */
+
+    /* Line Heights */
+    --line-height-none: 1;
+    --line-height-tight: 1.25;
+    --line-height-snug: 1.375;
+    --line-height-normal: 1.5;
+    --line-height-relaxed: 1.625;
+    --line-height-loose: 2;
+
+    /* Font Weights */
+    --font-weight-thin: 100;
+    --font-weight-extralight: 200;
+    --font-weight-light: 300;
+    --font-weight-normal: 400;
+    --font-weight-medium: 500;
+    --font-weight-semibold: 600;
+    --font-weight-bold: 700;
+    --font-weight-extrabold: 800;
+    --font-weight-black: 900;
+
+    /* Letter Spacing */
+    --letter-spacing-tighter: -0.05em;
+    --letter-spacing-tight: -0.025em;
+    --letter-spacing-normal: 0em;
+    --letter-spacing-wide: 0.025em;
+    --letter-spacing-wider: 0.05em;
+    --letter-spacing-widest: 0.1em;
+
+    /* === SPACING === */
+    --spacing-px: 1px;
+    --spacing-0: 0px;
+    --spacing-0-5: 0.125rem;   /* 2px */
+    --spacing-1: 0.25rem;      /* 4px */
+    --spacing-1-5: 0.375rem;   /* 6px */
+    --spacing-2: 0.5rem;       /* 8px */
+    --spacing-2-5: 0.625rem;   /* 10px */
+    --spacing-3: 0.75rem;      /* 12px */
+    --spacing-3-5: 0.875rem;   /* 14px */
+    --spacing-4: 1rem;         /* 16px */
+    --spacing-5: 1.25rem;      /* 20px */
+    --spacing-6: 1.5rem;       /* 24px */
+    --spacing-7: 1.75rem;      /* 28px */
+    --spacing-8: 2rem;         /* 32px */
+    --spacing-9: 2.25rem;      /* 36px */
+    --spacing-10: 2.5rem;      /* 40px */
+    --spacing-11: 2.75rem;     /* 44px */
+    --spacing-12: 3rem;        /* 48px */
+    --spacing-14: 3.5rem;      /* 56px */
+    --spacing-16: 4rem;        /* 64px */
+    --spacing-20: 5rem;        /* 80px */
+    --spacing-24: 6rem;        /* 96px */
+    --spacing-28: 7rem;        /* 112px */
+    --spacing-32: 8rem;        /* 128px */
+    --spacing-36: 9rem;        /* 144px */
+    --spacing-40: 10rem;       /* 160px */
+    --spacing-44: 11rem;       /* 176px */
+    --spacing-48: 12rem;       /* 192px */
+    --spacing-52: 13rem;       /* 208px */
+    --spacing-56: 14rem;       /* 224px */
+    --spacing-60: 15rem;       /* 240px */
+    --spacing-64: 16rem;       /* 256px */
+    --spacing-72: 18rem;       /* 288px */
+    --spacing-80: 20rem;       /* 320px */
+    --spacing-96: 24rem;       /* 384px */
+
+    /* === BORDERS === */
+    --border-width-0: 0px;
+    --border-width-thin: 1px;
+    --border-width-base: 2px;
+    --border-width-thick: 4px;
+    --border-width-thicker: 8px;
+
+    /* Border Radius */
+    --border-radius-none: 0px;
+    --border-radius-sm: 0.125rem;   /* 2px */
+    --border-radius-base: 0.25rem;  /* 4px */
+    --border-radius-md: 0.375rem;   /* 6px */
+    --border-radius-lg: 0.5rem;     /* 8px */
+    --border-radius-xl: 0.75rem;    /* 12px */
+    --border-radius-2xl: 1rem;      /* 16px */
+    --border-radius-3xl: 1.5rem;    /* 24px */
+    --border-radius-full: 9999px;
+
+    /* === SHADOWS === */
+    --shadow-xs: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+    --shadow-sm: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
+    --shadow-base: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+    --shadow-md: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+    --shadow-lg: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
+    --shadow-xl: 0 25px 50px -12px rgb(0 0 0 / 0.25);
+    --shadow-2xl: 0 50px 100px -20px rgb(0 0 0 / 0.25);
+    --shadow-inner: inset 0 2px 4px 0 rgb(0 0 0 / 0.05);
+
+    /* Focus Shadows */
+    --shadow-focus: 0 0 0 3px var(--color-focus-ring);
+    --shadow-focus-error: 0 0 0 3px var(--color-error-200);
+    --shadow-focus-success: 0 0 0 3px var(--color-success-200);
+    --shadow-focus-warning: 0 0 0 3px var(--color-warning-200);
+
+    /* === BREAKPOINTS === */
+    --breakpoint-sm: 640px;
+    --breakpoint-md: 768px;
+    --breakpoint-lg: 1024px;
+    --breakpoint-xl: 1280px;
+    --breakpoint-2xl: 1536px;
+
+    /* === Z-INDEX === */
+    --z-index-dropdown: 1000;
+    --z-index-sticky: 1020;
+    --z-index-fixed: 1030;
+    --z-index-modal-backdrop: 1040;
+    --z-index-modal: 1050;
+    --z-index-popover: 1060;
+    --z-index-tooltip: 1070;
+    --z-index-toast: 1080;
+
+    /* === TRANSITIONS === */
+    --transition-fast: 150ms;
+    --transition-base: 200ms;
+    --transition-slow: 300ms;
+    --transition-slower: 500ms;
+
+    --transition-timing-function-ease: cubic-bezier(0.4, 0, 0.2, 1);
+    --transition-timing-function-ease-in: cubic-bezier(0.4, 0, 1, 1);
+    --transition-timing-function-ease-out: cubic-bezier(0, 0, 0.2, 1);
+    --transition-timing-function-ease-in-out: cubic-bezier(0.4, 0, 0.2, 1);
+
+    /* Common Transitions */
+    --transition-colors: color var(--transition-base) var(--transition-timing-function-ease),
+                        background-color var(--transition-base) var(--transition-timing-function-ease),
+                        border-color var(--transition-base) var(--transition-timing-function-ease);
+
+    --transition-opacity: opacity var(--transition-base) var(--transition-timing-function-ease);
+
+    --transition-transform: transform var(--transition-base) var(--transition-timing-function-ease);
+
+    --transition-all: all var(--transition-base) var(--transition-timing-function-ease);
+
+    /* === COMPONENT SPECIFIC === */
+
+    /* Button Heights */
+    --button-height-xs: 1.5rem;    /* 24px */
+    --button-height-sm: 2rem;      /* 32px */
+    --button-height-base: 2.5rem;  /* 40px */
+    --button-height-lg: 3rem;      /* 48px */
+    --button-height-xl: 3.5rem;    /* 56px */
+
+    /* Form Element Heights */
+    --form-element-height-xs: 1.75rem;   /* 28px */
+    --form-element-height-sm: 2.25rem;   /* 36px */
+    --form-element-height-base: 2.5rem;  /* 40px */
+    --form-element-height-lg: 3rem;      /* 48px */
+    --form-element-height-xl: 3.5rem;    /* 56px */
+
+    /* Container Max Widths */
+    --container-sm: 640px;
+    --container-md: 768px;
+    --container-lg: 1024px;
+    --container-xl: 1280px;
+    --container-2xl: 1536px;
+
+    /* Navigation Heights */
+    --navbar-height: 4rem;         /* 64px */
+    --sidebar-width: 16rem;        /* 256px */
+    --sidebar-width-collapsed: 4rem; /* 64px */
+}
+
+/* === DARK THEME === */
+@media (prefers-color-scheme: dark) {
+    :root {
+        --color-background: var(--color-neutral-900);
+        --color-background-secondary: var(--color-neutral-800);
+        --color-background-tertiary: var(--color-neutral-700);
+        --color-surface: var(--color-neutral-800);
+        --color-surface-secondary: var(--color-neutral-700);
+        --color-surface-tertiary: var(--color-neutral-600);
+
+        --color-text: var(--color-neutral-100);
+        --color-text-secondary: var(--color-neutral-300);
+        --color-text-tertiary: var(--color-neutral-400);
+        --color-text-inverse: var(--color-neutral-900);
+
+        --color-border: var(--color-neutral-600);
+        --color-border-secondary: var(--color-neutral-700);
+        --color-border-tertiary: var(--color-neutral-800);
+    }
+}
+
+/* === HIGH CONTRAST MODE === */
+@media (prefers-contrast: high) {
+    :root {
+        --color-focus: #ff0;
+        --shadow-focus: 0 0 0 3px #ff0;
+        --border-width-base: 2px;
+        --border-width-thick: 3px;
+    }
+}
+
+/* === REDUCED MOTION === */
+@media (prefers-reduced-motion: reduce) {
+    :root {
+        --transition-fast: 0ms;
+        --transition-base: 0ms;
+        --transition-slow: 0ms;
+        --transition-slower: 0ms;
+    }
+}

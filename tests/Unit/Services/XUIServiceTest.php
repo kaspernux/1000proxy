@@ -66,9 +66,9 @@ class XUIServiceTest extends TestCase
             'email' => 'test@example.com',
             'uuid' => 'uuid-123',
             'enable' => true,
-            'limitIp' => 1,
+            'limit_ip' => 1,
             'totalGB' => 1073741824, // 1GB
-            'expiryTime' => now()->addDays(30)->timestamp * 1000,
+            'expiry_time' => now()->addDays(30)->timestamp * 1000,
         ];
 
         $result = $this->xuiService->createClient($clientData, 'session_cookie');
@@ -150,7 +150,7 @@ class XUIServiceTest extends TestCase
 
         $updateData = [
             'email' => 'updated@example.com',
-            'limitIp' => 2,
+            'limit_ip' => 2,
             'totalGB' => 2147483648, // 2GB
             'enable' => true,
         ];

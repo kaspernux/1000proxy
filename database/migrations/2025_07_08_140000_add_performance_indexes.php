@@ -13,53 +13,44 @@ return new class extends Migration
     {
         // Add indexes for better query performance
         Schema::table('orders', function (Blueprint $table) {
-            $table->index(['user_id', 'created_at']);
             $table->index(['payment_status', 'created_at']);
-            $table->index(['status', 'created_at']);
-            $table->index('grand_amount');
+            $table->index(['order_status', 'created_at']);
+            $table->index(['grand_amount']);
         });
 
         Schema::table('server_clients', function (Blueprint $table) {
-            $table->index(['user_id', 'server_id']);
-            $table->index(['server_id', 'is_active']);
-            $table->index(['uuid']);
+            $table->index(['server_inbound_id', 'created_at']);
             $table->index(['created_at']);
-            $table->index(['expires_at']);
         });
 
         Schema::table('order_items', function (Blueprint $table) {
-            $table->index(['order_id', 'server_plan_id']);
-            $table->index(['server_id', 'created_at']);
+            $table->index(['order_id']);
         });
 
         Schema::table('invoices', function (Blueprint $table) {
             $table->index(['order_id']);
-            $table->index(['payment_id']);
-            $table->index(['status', 'created_at']);
+            $table->index(['payment_status', 'created_at']);
         });
 
         Schema::table('wallet_transactions', function (Blueprint $table) {
-            $table->index(['user_id', 'created_at']);
-            $table->index(['type', 'created_at']);
+            $table->index(['created_at']);
             $table->index(['status']);
         });
 
         Schema::table('server_plans', function (Blueprint $table) {
-            $table->index(['is_active', 'sort_order']);
+            $table->index(['is_active']);
             $table->index(['server_category_id', 'is_active']);
             $table->index(['server_brand_id', 'is_active']);
             $table->index(['price']);
         });
 
         Schema::table('servers', function (Blueprint $table) {
-            $table->index(['is_active', 'sort_order']);
+            $table->index(['is_active']);
             $table->index(['server_category_id', 'is_active']);
             $table->index(['server_brand_id', 'is_active']);
-            $table->index(['location']);
         });
 
         Schema::table('users', function (Blueprint $table) {
-            $table->index(['role', 'is_active']);
             $table->index(['created_at']);
             $table->index(['last_login_at']);
         });
@@ -71,53 +62,44 @@ return new class extends Migration
     public function down(): void
     {
         Schema::table('orders', function (Blueprint $table) {
-            $table->dropIndex(['user_id', 'created_at']);
             $table->dropIndex(['payment_status', 'created_at']);
-            $table->dropIndex(['status', 'created_at']);
+            $table->dropIndex(['order_status', 'created_at']);
             $table->dropIndex(['grand_amount']);
         });
 
         Schema::table('server_clients', function (Blueprint $table) {
-            $table->dropIndex(['user_id', 'server_id']);
-            $table->dropIndex(['server_id', 'is_active']);
-            $table->dropIndex(['uuid']);
+            $table->dropIndex(['server_inbound_id', 'created_at']);
             $table->dropIndex(['created_at']);
-            $table->dropIndex(['expires_at']);
         });
 
         Schema::table('order_items', function (Blueprint $table) {
-            $table->dropIndex(['order_id', 'server_plan_id']);
-            $table->dropIndex(['server_id', 'created_at']);
+            $table->dropIndex(['order_id']);
         });
 
         Schema::table('invoices', function (Blueprint $table) {
             $table->dropIndex(['order_id']);
-            $table->dropIndex(['payment_id']);
             $table->dropIndex(['status', 'created_at']);
         });
 
         Schema::table('wallet_transactions', function (Blueprint $table) {
-            $table->dropIndex(['user_id', 'created_at']);
-            $table->dropIndex(['type', 'created_at']);
+            $table->dropIndex(['created_at']);
             $table->dropIndex(['status']);
         });
 
         Schema::table('server_plans', function (Blueprint $table) {
-            $table->dropIndex(['is_active', 'sort_order']);
+            $table->dropIndex(['is_active']);
             $table->dropIndex(['server_category_id', 'is_active']);
             $table->dropIndex(['server_brand_id', 'is_active']);
             $table->dropIndex(['price']);
         });
 
         Schema::table('servers', function (Blueprint $table) {
-            $table->dropIndex(['is_active', 'sort_order']);
+            $table->dropIndex(['is_active']);
             $table->dropIndex(['server_category_id', 'is_active']);
             $table->dropIndex(['server_brand_id', 'is_active']);
-            $table->dropIndex(['location']);
         });
 
         Schema::table('users', function (Blueprint $table) {
-            $table->dropIndex(['role', 'is_active']);
             $table->dropIndex(['created_at']);
             $table->dropIndex(['last_login_at']);
         });

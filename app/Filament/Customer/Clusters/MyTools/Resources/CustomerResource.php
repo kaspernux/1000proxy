@@ -56,7 +56,7 @@ class CustomerResource extends Resource
                             TextInput::make('name')->required()->maxLength(255),
                             TextInput::make('email')->email()->required()->maxLength(255),
                             TextInput::make('phone')->tel(),
-                            TextInput::make('tgId')->tel()->maxLength(255),
+                            TextInput::make('telegram_chat_id')->tel()->maxLength(255),
                             TextInput::make('refcode')->nullable()->maxLength(50),
                             TextInput::make('refered_by')->nullable()->maxLength(50),
                             Select::make('timezone')

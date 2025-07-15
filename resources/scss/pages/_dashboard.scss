@@ -1,0 +1,19 @@
+// ==========================================================================
+// PAGES/DASHBOARD - Dashboard page styles for the 1000proxy platform
+// ==========================================================================
+
+.dashboard-page {
+  &__header {
+    margin-bottom: spacing('xl');
+  }
+
+  &__stats {
+    @extend .grid--responsive--4;
+    margin-bottom: spacing('xl');
+  }
+
+  &__content {
+    @extend .grid--responsive--2;
+    align-items: start;
+  }
+}

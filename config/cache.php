@@ -15,7 +15,7 @@ return [
     |
     */
 
-    'default' => env('CACHE_STORE', 'redis'),
+    'default' => env('CACHE_STORE', 'file'),
 
     /*
     |--------------------------------------------------------------------------
@@ -77,6 +77,12 @@ return [
         ],
 
         'redis_sessions' => [
+            'driver' => 'redis',
+            'connection' => env('REDIS_SESSION_CONNECTION', 'sessions'),
+            'lock_connection' => env('REDIS_SESSION_LOCK_CONNECTION', 'default'),
+        ],
+
+        'sessions' => [
             'driver' => 'redis',
             'connection' => env('REDIS_SESSION_CONNECTION', 'sessions'),
             'lock_connection' => env('REDIS_SESSION_LOCK_CONNECTION', 'default'),

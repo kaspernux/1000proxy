@@ -1,0 +1,497 @@
+/**
+ * Advanced Color System
+ * Semantic color tokens, status-based coding, and accessibility-compliant colors
+ */
+
+:root {
+    /* ===== PRIMARY BRAND COLORS ===== */
+    --color-primary-50: #eff6ff;
+    --color-primary-100: #dbeafe;
+    --color-primary-200: #bfdbfe;
+    --color-primary-300: #93c5fd;
+    --color-primary-400: #60a5fa;
+    --color-primary-500: #3b82f6;
+    --color-primary-600: #2563eb;
+    --color-primary-700: #1d4ed8;
+    --color-primary-800: #1e40af;
+    --color-primary-900: #1e3a8a;
+    --color-primary-950: #172554;
+
+    /* ===== SECONDARY BRAND COLORS ===== */
+    --color-secondary-50: #f8fafc;
+    --color-secondary-100: #f1f5f9;
+    --color-secondary-200: #e2e8f0;
+    --color-secondary-300: #cbd5e1;
+    --color-secondary-400: #94a3b8;
+    --color-secondary-500: #64748b;
+    --color-secondary-600: #475569;
+    --color-secondary-700: #334155;
+    --color-secondary-800: #1e293b;
+    --color-secondary-900: #0f172a;
+    --color-secondary-950: #020617;
+
+    /* ===== STATUS COLORS ===== */
+
+    /* Success Colors */
+    --color-success-50: #f0fdf4;
+    --color-success-100: #dcfce7;
+    --color-success-200: #bbf7d0;
+    --color-success-300: #86efac;
+    --color-success-400: #4ade80;
+    --color-success-500: #22c55e;
+    --color-success-600: #16a34a;
+    --color-success-700: #15803d;
+    --color-success-800: #166534;
+    --color-success-900: #14532d;
+    --color-success-950: #052e16;
+
+    /* Warning Colors */
+    --color-warning-50: #fffbeb;
+    --color-warning-100: #fef3c7;
+    --color-warning-200: #fde68a;
+    --color-warning-300: #fcd34d;
+    --color-warning-400: #fbbf24;
+    --color-warning-500: #f59e0b;
+    --color-warning-600: #d97706;
+    --color-warning-700: #b45309;
+    --color-warning-800: #92400e;
+    --color-warning-900: #78350f;
+    --color-warning-950: #451a03;
+
+    /* Error/Danger Colors */
+    --color-error-50: #fef2f2;
+    --color-error-100: #fee2e2;
+    --color-error-200: #fecaca;
+    --color-error-300: #fca5a5;
+    --color-error-400: #f87171;
+    --color-error-500: #ef4444;
+    --color-error-600: #dc2626;
+    --color-error-700: #b91c1c;
+    --color-error-800: #991b1b;
+    --color-error-900: #7f1d1d;
+    --color-error-950: #450a0a;
+
+    /* Info Colors */
+    --color-info-50: #ecfeff;
+    --color-info-100: #cffafe;
+    --color-info-200: #a5f3fc;
+    --color-info-300: #67e8f9;
+    --color-info-400: #22d3ee;
+    --color-info-500: #06b6d4;
+    --color-info-600: #0891b2;
+    --color-info-700: #0e7490;
+    --color-info-800: #155e75;
+    --color-info-900: #164e63;
+    --color-info-950: #083344;
+
+    /* ===== SEMANTIC COLOR TOKENS ===== */
+
+    /* Background Colors */
+    --color-bg-primary: var(--color-secondary-50);
+    --color-bg-secondary: var(--color-secondary-100);
+    --color-bg-tertiary: var(--color-secondary-200);
+    --color-bg-accent: var(--color-primary-50);
+    --color-bg-surface: #ffffff;
+    --color-bg-overlay: rgba(0, 0, 0, 0.5);
+
+    /* Text Colors */
+    --color-text-primary: var(--color-secondary-900);
+    --color-text-secondary: var(--color-secondary-700);
+    --color-text-tertiary: var(--color-secondary-500);
+    --color-text-accent: var(--color-primary-600);
+    --color-text-inverse: #ffffff;
+    --color-text-muted: var(--color-secondary-400);
+
+    /* Border Colors */
+    --color-border-primary: var(--color-secondary-300);
+    --color-border-secondary: var(--color-secondary-200);
+    --color-border-accent: var(--color-primary-300);
+    --color-border-focus: var(--color-primary-500);
+    --color-border-error: var(--color-error-500);
+    --color-border-success: var(--color-success-500);
+
+    /* Interactive Colors */
+    --color-interactive-primary: var(--color-primary-600);
+    --color-interactive-primary-hover: var(--color-primary-700);
+    --color-interactive-primary-active: var(--color-primary-800);
+    --color-interactive-secondary: var(--color-secondary-600);
+    --color-interactive-secondary-hover: var(--color-secondary-700);
+    --color-interactive-secondary-active: var(--color-secondary-800);
+
+    /* ===== COUNTRY-SPECIFIC COLOR SCHEMES ===== */
+
+    /* US Theme */
+    --color-country-us-primary: #1d4ed8;
+    --color-country-us-secondary: #dc2626;
+    --color-country-us-accent: #ffffff;
+
+    /* UK Theme */
+    --color-country-uk-primary: #1e40af;
+    --color-country-uk-secondary: #dc2626;
+    --color-country-uk-accent: #ffffff;
+
+    /* Germany Theme */
+    --color-country-de-primary: #1f2937;
+    --color-country-de-secondary: #dc2626;
+    --color-country-de-accent: #fbbf24;
+
+    /* Japan Theme */
+    --color-country-jp-primary: #dc2626;
+    --color-country-jp-secondary: #ffffff;
+    --color-country-jp-accent: #1f2937;
+
+    /* Singapore Theme */
+    --color-country-sg-primary: #dc2626;
+    --color-country-sg-secondary: #ffffff;
+    --color-country-sg-accent: #1f2937;
+
+    /* ===== BRAND-SPECIFIC COLOR PALETTES ===== */
+
+    /* Premium Brand Colors */
+    --color-brand-premium-primary: #7c3aed;
+    --color-brand-premium-secondary: #a855f7;
+    --color-brand-premium-accent: #c084fc;
+    --color-brand-premium-bg: #f3e8ff;
+
+    /* Gaming Brand Colors */
+    --color-brand-gaming-primary: #059669;
+    --color-brand-gaming-secondary: #10b981;
+    --color-brand-gaming-accent: #34d399;
+    --color-brand-gaming-bg: #ecfdf5;
+
+    /* Streaming Brand Colors */
+    --color-brand-streaming-primary: #dc2626;
+    --color-brand-streaming-secondary: #ef4444;
+    --color-brand-streaming-accent: #f87171;
+    --color-brand-streaming-bg: #fef2f2;
+
+    /* Business Brand Colors */
+    --color-brand-business-primary: #1f2937;
+    --color-brand-business-secondary: #374151;
+    --color-brand-business-accent: #6b7280;
+    --color-brand-business-bg: #f9fafb;
+
+    /* ===== SERVER STATUS COLORS ===== */
+    --color-status-online: var(--color-success-500);
+    --color-status-offline: var(--color-error-500);
+    --color-status-maintenance: var(--color-warning-500);
+    --color-status-partial: var(--color-warning-600);
+    --color-status-unknown: var(--color-secondary-400);
+
+    /* ===== PERFORMANCE INDICATORS ===== */
+    --color-performance-excellent: var(--color-success-500);
+    --color-performance-good: var(--color-success-400);
+    --color-performance-fair: var(--color-warning-500);
+    --color-performance-poor: var(--color-error-500);
+
+    /* ===== ACCESSIBILITY COMPLIANT COLORS ===== */
+    --color-a11y-focus: #0066cc;
+    --color-a11y-focus-bg: rgba(0, 102, 204, 0.1);
+    --color-a11y-high-contrast-text: #000000;
+    --color-a11y-high-contrast-bg: #ffffff;
+    --color-a11y-error-text: #d32f2f;
+    --color-a11y-success-text: #2e7d32;
+    --color-a11y-warning-text: #f57c00;
+    --color-a11y-info-text: #1976d2;
+}
+
+/* ===== DARK MODE COLOR OVERRIDES ===== */
+[data-theme="dark"] {
+    /* Dark Mode Background Colors */
+    --color-bg-primary: var(--color-secondary-900);
+    --color-bg-secondary: var(--color-secondary-800);
+    --color-bg-tertiary: var(--color-secondary-700);
+    --color-bg-accent: var(--color-primary-900);
+    --color-bg-surface: var(--color-secondary-800);
+    --color-bg-overlay: rgba(0, 0, 0, 0.8);
+
+    /* Dark Mode Text Colors */
+    --color-text-primary: var(--color-secondary-50);
+    --color-text-secondary: var(--color-secondary-200);
+    --color-text-tertiary: var(--color-secondary-400);
+    --color-text-accent: var(--color-primary-400);
+    --color-text-inverse: var(--color-secondary-900);
+    --color-text-muted: var(--color-secondary-500);
+
+    /* Dark Mode Border Colors */
+    --color-border-primary: var(--color-secondary-600);
+    --color-border-secondary: var(--color-secondary-700);
+    --color-border-accent: var(--color-primary-600);
+    --color-border-focus: var(--color-primary-400);
+
+    /* Dark Mode Interactive Colors */
+    --color-interactive-primary: var(--color-primary-500);
+    --color-interactive-primary-hover: var(--color-primary-400);
+    --color-interactive-primary-active: var(--color-primary-300);
+    --color-interactive-secondary: var(--color-secondary-500);
+    --color-interactive-secondary-hover: var(--color-secondary-400);
+    --color-interactive-secondary-active: var(--color-secondary-300);
+}
+
+/* ===== COLOR-BLIND FRIENDLY THEME ===== */
+[data-theme="colorblind"] {
+    /* High contrast colors for better accessibility */
+    --color-success-500: #0d7377;
+    --color-warning-500: #ff6b35;
+    --color-error-500: #c73e1d;
+    --color-info-500: #14a085;
+
+    /* Adjusted primary colors for better distinction */
+    --color-primary-500: #1a535c;
+    --color-primary-600: #14454d;
+    --color-primary-700: #0e363e;
+
+    /* Pattern-based indicators for status */
+    --color-status-online: #0d7377;
+    --color-status-offline: #c73e1d;
+    --color-status-maintenance: #ff6b35;
+    --color-status-partial: #ff8f50;
+    --color-status-unknown: #6c757d;
+}
+
+/* ===== HIGH CONTRAST THEME ===== */
+[data-theme="high-contrast"] {
+    --color-bg-primary: #000000;
+    --color-bg-secondary: #1a1a1a;
+    --color-bg-tertiary: #333333;
+    --color-bg-surface: #000000;
+
+    --color-text-primary: #ffffff;
+    --color-text-secondary: #f0f0f0;
+    --color-text-tertiary: #cccccc;
+
+    --color-border-primary: #ffffff;
+    --color-border-secondary: #cccccc;
+
+    --color-interactive-primary: #ffff00;
+    --color-interactive-primary-hover: #ffff99;
+    --color-interactive-secondary: #00ffff;
+    --color-interactive-secondary-hover: #99ffff;
+
+    --color-success-500: #00ff00;
+    --color-warning-500: #ffff00;
+    --color-error-500: #ff0000;
+    --color-info-500: #00ffff;
+}
+
+/* ===== SEMANTIC COLOR UTILITIES ===== */
+
+/* Status Indicators */
+.status-online { color: var(--color-status-online); }
+.status-offline { color: var(--color-status-offline); }
+.status-maintenance { color: var(--color-status-maintenance); }
+.status-partial { color: var(--color-status-partial); }
+.status-unknown { color: var(--color-status-unknown); }
+
+.bg-status-online { background-color: var(--color-status-online); }
+.bg-status-offline { background-color: var(--color-status-offline); }
+.bg-status-maintenance { background-color: var(--color-status-maintenance); }
+.bg-status-partial { background-color: var(--color-status-partial); }
+.bg-status-unknown { background-color: var(--color-status-unknown); }
+
+/* Performance Indicators */
+.performance-excellent { color: var(--color-performance-excellent); }
+.performance-good { color: var(--color-performance-good); }
+.performance-fair { color: var(--color-performance-fair); }
+.performance-poor { color: var(--color-performance-poor); }
+
+.bg-performance-excellent { background-color: var(--color-performance-excellent); }
+.bg-performance-good { background-color: var(--color-performance-good); }
+.bg-performance-fair { background-color: var(--color-performance-fair); }
+.bg-performance-poor { background-color: var(--color-performance-poor); }
+
+/* Brand Color Utilities */
+.brand-premium {
+    color: var(--color-brand-premium-primary);
+    background-color: var(--color-brand-premium-bg);
+}
+
+.brand-gaming {
+    color: var(--color-brand-gaming-primary);
+    background-color: var(--color-brand-gaming-bg);
+}
+
+.brand-streaming {
+    color: var(--color-brand-streaming-primary);
+    background-color: var(--color-brand-streaming-bg);
+}
+
+.brand-business {
+    color: var(--color-brand-business-primary);
+    background-color: var(--color-brand-business-bg);
+}
+
+/* Country Theme Utilities */
+.country-us {
+    --theme-primary: var(--color-country-us-primary);
+    --theme-secondary: var(--color-country-us-secondary);
+    --theme-accent: var(--color-country-us-accent);
+}
+
+.country-uk {
+    --theme-primary: var(--color-country-uk-primary);
+    --theme-secondary: var(--color-country-uk-secondary);
+    --theme-accent: var(--color-country-uk-accent);
+}
+
+.country-de {
+    --theme-primary: var(--color-country-de-primary);
+    --theme-secondary: var(--color-country-de-secondary);
+    --theme-accent: var(--color-country-de-accent);
+}
+
+.country-jp {
+    --theme-primary: var(--color-country-jp-primary);
+    --theme-secondary: var(--color-country-jp-secondary);
+    --theme-accent: var(--color-country-jp-accent);
+}
+
+.country-sg {
+    --theme-primary: var(--color-country-sg-primary);
+    --theme-secondary: var(--color-country-sg-secondary);
+    --theme-accent: var(--color-country-sg-accent);
+}
+
+/* Semantic Text Colors */
+.text-primary { color: var(--color-text-primary); }
+.text-secondary { color: var(--color-text-secondary); }
+.text-tertiary { color: var(--color-text-tertiary); }
+.text-accent { color: var(--color-text-accent); }
+.text-inverse { color: var(--color-text-inverse); }
+.text-muted { color: var(--color-text-muted); }
+
+/* Semantic Background Colors */
+.bg-primary { background-color: var(--color-bg-primary); }
+.bg-secondary { background-color: var(--color-bg-secondary); }
+.bg-tertiary { background-color: var(--color-bg-tertiary); }
+.bg-accent { background-color: var(--color-bg-accent); }
+.bg-surface { background-color: var(--color-bg-surface); }
+
+/* Semantic Border Colors */
+.border-primary { border-color: var(--color-border-primary); }
+.border-secondary { border-color: var(--color-border-secondary); }
+.border-accent { border-color: var(--color-border-accent); }
+.border-focus { border-color: var(--color-border-focus); }
+.border-error { border-color: var(--color-border-error); }
+.border-success { border-color: var(--color-border-success); }
+
+/* Interactive Element Colors */
+.interactive-primary {
+    background-color: var(--color-interactive-primary);
+    color: var(--color-text-inverse);
+
+    &:hover {
+        background-color: var(--color-interactive-primary-hover);
+    }
+
+    &:active {
+        background-color: var(--color-interactive-primary-active);
+    }
+}
+
+.interactive-secondary {
+    background-color: var(--color-interactive-secondary);
+    color: var(--color-text-inverse);
+
+    &:hover {
+        background-color: var(--color-interactive-secondary-hover);
+    }
+
+    &:active {
+        background-color: var(--color-interactive-secondary-active);
+    }
+}
+
+/* Accessibility Focus Styles */
+.focus-visible,
+*:focus-visible {
+    outline: 2px solid var(--color-a11y-focus);
+    outline-offset: 2px;
+    background-color: var(--color-a11y-focus-bg);
+}
+
+/* Color Validation Classes */
+.color-valid {
+    color: var(--color-a11y-success-text);
+    border-color: var(--color-success-500);
+}
+
+.color-invalid {
+    color: var(--color-a11y-error-text);
+    border-color: var(--color-error-500);
+}
+
+.color-warning {
+    color: var(--color-a11y-warning-text);
+    border-color: var(--color-warning-500);
+}
+
+.color-info {
+    color: var(--color-a11y-info-text);
+    border-color: var(--color-info-500);
+}
+
+/* ===== GRADIENT UTILITIES ===== */
+.gradient-primary {
+    background: linear-gradient(135deg, var(--color-primary-500), var(--color-primary-700));
+}
+
+.gradient-success {
+    background: linear-gradient(135deg, var(--color-success-500), var(--color-success-700));
+}
+
+.gradient-warning {
+    background: linear-gradient(135deg, var(--color-warning-500), var(--color-warning-700));
+}
+
+.gradient-error {
+    background: linear-gradient(135deg, var(--color-error-500), var(--color-error-700));
+}
+
+.gradient-brand-premium {
+    background: linear-gradient(135deg, var(--color-brand-premium-primary), var(--color-brand-premium-secondary));
+}
+
+.gradient-brand-gaming {
+    background: linear-gradient(135deg, var(--color-brand-gaming-primary), var(--color-brand-gaming-secondary));
+}
+
+/* ===== ANIMATION UTILITIES ===== */
+.color-transition {
+    transition: color 0.2s ease-in-out, background-color 0.2s ease-in-out, border-color 0.2s ease-in-out;
+}
+
+.color-pulse {
+    animation: colorPulse 2s infinite;
+}
+
+@keyframes colorPulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.7; }
+}
+
+/* ===== MEDIA QUERIES FOR REDUCED MOTION ===== */
+@media (prefers-reduced-motion: reduce) {
+    .color-transition {
+        transition: none;
+    }
+
+    .color-pulse {
+        animation: none;
+    }
+}
+
+/* ===== PRINT STYLES ===== */
+@media print {
+    :root {
+        --color-text-primary: #000000;
+        --color-text-secondary: #333333;
+        --color-bg-primary: #ffffff;
+        --color-bg-secondary: #ffffff;
+        --color-border-primary: #000000;
+    }
+
+    .status-online::after { content: " (Online)"; }
+    .status-offline::after { content: " (Offline)"; }
+    .status-maintenance::after { content: " (Maintenance)"; }
+}

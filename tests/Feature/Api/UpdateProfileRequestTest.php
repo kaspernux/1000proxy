@@ -15,7 +15,7 @@ class UpdateProfileRequestTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
-        
+
         $this->user = User::factory()->create([
             'name' => 'Original Name',
             'username' => 'original_username',
@@ -26,7 +26,7 @@ class UpdateProfileRequestTest extends TestCase
     public function test_update_profile_with_valid_data()
     {
         $response = $this->actingAs($this->user)
-            ->putJson('/api/v1/profile', [
+            ->putJson('/api/profile', [
                 'name' => 'Updated Name',
                 'username' => 'updated_username',
                 'email' => 'updated@example.com',
@@ -58,7 +58,7 @@ class UpdateProfileRequestTest extends TestCase
     public function test_update_profile_with_partial_data()
     {
         $response = $this->actingAs($this->user)
-            ->putJson('/api/v1/profile', [
+            ->putJson('/api/profile', [
                 'name' => 'Updated Name Only',
             ]);
 
@@ -75,7 +75,7 @@ class UpdateProfileRequestTest extends TestCase
     public function test_update_profile_validates_name_length()
     {
         $response = $this->actingAs($this->user)
-            ->putJson('/api/v1/profile', [
+            ->putJson('/api/profile', [
                 'name' => str_repeat('a', 256), // 256 characters
             ]);
 
@@ -88,7 +88,7 @@ class UpdateProfileRequestTest extends TestCase
         $otherUser = User::factory()->create(['username' => 'taken_username']);
 
         $response = $this->actingAs($this->user)
-            ->putJson('/api/v1/profile', [
+            ->putJson('/api/profile', [
                 'username' => 'taken_username',
             ]);
 
@@ -101,7 +101,7 @@ class UpdateProfileRequestTest extends TestCase
         $otherUser = User::factory()->create(['email' => 'taken@example.com']);
 
         $response = $this->actingAs($this->user)
-            ->putJson('/api/v1/profile', [
+            ->putJson('/api/profile', [
                 'email' => 'taken@example.com',
             ]);
 
@@ -112,7 +112,7 @@ class UpdateProfileRequestTest extends TestCase
     public function test_update_profile_validates_email_format()
     {
         $response = $this->actingAs($this->user)
-            ->putJson('/api/v1/profile', [
+            ->putJson('/api/profile', [
                 'email' => 'invalid-email-format',
             ]);
 
@@ -123,7 +123,7 @@ class UpdateProfileRequestTest extends TestCase
     public function test_update_profile_allows_same_user_to_keep_existing_values()
     {
         $response = $this->actingAs($this->user)
-            ->putJson('/api/v1/profile', [
+            ->putJson('/api/profile', [
                 'username' => $this->user->username,
                 'email' => $this->user->email,
             ]);
@@ -134,7 +134,7 @@ class UpdateProfileRequestTest extends TestCase
     public function test_update_profile_validates_username_length()
     {
         $response = $this->actingAs($this->user)
-            ->putJson('/api/v1/profile', [
+            ->putJson('/api/profile', [
                 'username' => str_repeat('a', 256), // 256 characters
             ]);
 
@@ -145,7 +145,7 @@ class UpdateProfileRequestTest extends TestCase
     public function test_update_profile_validates_username_format()
     {
         $response = $this->actingAs($this->user)
-            ->putJson('/api/v1/profile', [
+            ->putJson('/api/profile', [
                 'username' => 'invalid username with spaces',
             ]);
 
@@ -156,7 +156,7 @@ class UpdateProfileRequestTest extends TestCase
     public function test_update_profile_validates_phone_format()
     {
         $response = $this->actingAs($this->user)
-            ->putJson('/api/v1/profile', [
+            ->putJson('/api/profile', [
                 'phone' => 'invalid-phone',
             ]);
 
@@ -167,7 +167,7 @@ class UpdateProfileRequestTest extends TestCase
     public function test_update_profile_accepts_valid_phone()
     {
         $response = $this->actingAs($this->user)
-            ->putJson('/api/v1/profile', [
+            ->putJson('/api/profile', [
                 'phone' => '+1234567890',
             ]);
 
@@ -181,7 +181,7 @@ class UpdateProfileRequestTest extends TestCase
 
     public function test_unauthenticated_user_cannot_update_profile()
     {
-        $response = $this->putJson('/api/v1/profile', [
+        $response = $this->putJson('/api/profile', [
             'name' => 'Updated Name',
         ]);
 
@@ -194,7 +194,7 @@ class UpdateProfileRequestTest extends TestCase
         $originalId = $this->user->id;
 
         $response = $this->actingAs($this->user)
-            ->putJson('/api/v1/profile', [
+            ->putJson('/api/profile', [
                 'name' => 'Updated Name',
                 'role' => 'admin',
                 'id' => 999,

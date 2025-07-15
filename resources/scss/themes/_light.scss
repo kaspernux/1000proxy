@@ -1,0 +1,51 @@
+// ==========================================================================
+// THEMES/LIGHT - Light theme styles for the 1000proxy platform
+// ==========================================================================
+
+[data-theme="light"],
+:root {
+  // CSS Custom Properties for light theme (default)
+  --color-bg-primary: #{map-get($colors-white, 500)};
+  --color-bg-primary-rgb: 255, 255, 255;
+  --color-bg-secondary: #{map-get($colors-gray, 50)};
+  --color-bg-secondary-rgb: 249, 250, 251;
+  --color-bg-tertiary: #{map-get($colors-gray, 100)};
+
+  --color-text-primary: #{map-get($colors-gray, 900)};
+  --color-text-secondary: #{map-get($colors-gray, 600)};
+  --color-text-tertiary: #{map-get($colors-gray, 500)};
+
+  --color-border-primary: #{map-get($colors-gray, 200)};
+  --color-border-secondary: #{map-get($colors-gray, 300)};
+
+  // Component-specific light theme adjustments
+  body {
+    background-color: var(--color-bg-primary);
+    color: var(--color-text-primary);
+  }
+
+  // Selection colors
+  ::selection {
+    background-color: rgba(59, 130, 246, 0.2);
+    color: var(--color-text-primary);
+  }
+
+  // Scrollbar styling for light theme
+  ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background-color: var(--color-bg-secondary);
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background-color: var(--color-border-primary);
+    border-radius: 4px;
+
+    &:hover {
+      background-color: var(--color-border-secondary);
+    }
+  }
+}

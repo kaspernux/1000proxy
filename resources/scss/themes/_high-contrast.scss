@@ -1,0 +1,39 @@
+// ==========================================================================
+// THEMES/HIGH-CONTRAST - High contrast theme for accessibility
+// ==========================================================================
+
+[data-theme="high-contrast"] {
+  // High contrast color palette
+  --color-bg-primary: #000000;
+  --color-bg-secondary: #1a1a1a;
+  --color-bg-tertiary: #333333;
+
+  --color-text-primary: #ffffff;
+  --color-text-secondary: #cccccc;
+  --color-text-tertiary: #999999;
+
+  --color-border-primary: #666666;
+  --color-border-secondary: #888888;
+
+  --color-primary-500: #00ff00;
+  --color-primary-600: #00cc00;
+
+  // Enhanced contrast for better accessibility
+  .btn {
+    border-width: 2px;
+    font-weight: font-weight('bold');
+  }
+
+  .card {
+    border: 2px solid var(--color-border-primary);
+  }
+
+  a {
+    text-decoration: underline;
+
+    &:focus {
+      outline: 3px solid #ffff00;
+      outline-offset: 2px;
+    }
+  }
+}

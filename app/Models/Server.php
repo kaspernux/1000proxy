@@ -204,8 +204,8 @@ class Server extends Model
     public function checkHealth(): bool
     {
         try {
-            $xuiService = new \App\Services\XUIService($this->id);
-            $inbounds = $xuiService->getInbounds();
+            $xuiService = new \App\Services\XUIService($this);
+            $inbounds = $xuiService->listInbounds();
 
             $this->update([
                 'health_status' => 'healthy',
@@ -358,9 +358,9 @@ class Server extends Model
      */
     public function hasValidSession(): bool
     {
-        return !empty($this->session_cookie) &&
+        return $this->session_cookie &&
                $this->session_expires_at &&
-               $this->session_expires_at->isFuture();
+               $this->session_expires_at > now();
     }
 
     /**
@@ -372,7 +372,7 @@ class Server extends Model
             'session_cookie' => $sessionCookie,
             'session_expires_at' => now()->addMinutes($expiresInMinutes),
             'last_login_at' => now(),
-            'login_attempts' => 0,
+            'login_attempts' => 0, // Reset on successful login
         ]);
     }
 
@@ -392,10 +392,8 @@ class Server extends Model
      */
     public function incrementLoginAttempts(): void
     {
-        $this->update([
-            'login_attempts' => $this->login_attempts + 1,
-            'last_login_attempt_at' => now(),
-        ]);
+        $this->increment('login_attempts');
+        $this->update(['last_login_attempt_at' => now()]);
     }
 
     /**
@@ -403,12 +401,9 @@ class Server extends Model
      */
     public function isLoginLocked(): bool
     {
-        $maxAttempts = 5;
-        $lockoutMinutes = 15;
-
-        return $this->login_attempts >= $maxAttempts &&
+        return $this->login_attempts >= 5 &&
                $this->last_login_attempt_at &&
-               $this->last_login_attempt_at->diffInMinutes(now()) < $lockoutMinutes;
+               now()->diffInMinutes($this->last_login_attempt_at) < 30;
     }
 
     /**
@@ -460,12 +455,10 @@ class Server extends Model
      */
     public function getSessionHeader(): array
     {
-        if (!$this->session_cookie) {
-            return [];
-        }
-
         return [
             'Cookie' => 'session=' . $this->session_cookie,
+            'Accept' => 'application/json',
+            'Content-Type' => 'application/json',
         ];
     }
 
@@ -497,7 +490,7 @@ class Server extends Model
         }
 
         $intervalMinutes = $this->sync_interval_minutes ?? 5;
-        return $this->last_global_sync_at->diffInMinutes(now()) >= $intervalMinutes;
+        return now()->diffInMinutes($this->last_global_sync_at) >= $intervalMinutes;
     }
 
     /**
@@ -544,8 +537,8 @@ class Server extends Model
             'server_status' => $this->status,
             'health_status' => $this->health_status,
             'has_valid_session' => $this->hasValidSession(),
-            'last_login' => $this->last_login_at?->toISOString(),
-            'last_sync' => $this->last_global_sync_at?->toISOString(),
+            'last_login' => $this->last_login_at ? $this->last_login_at->format('c') : null,
+            'last_sync' => $this->last_global_sync_at ? $this->last_global_sync_at->format('c') : null,
             'login_attempts' => $this->login_attempts,
             'is_login_locked' => $this->isLoginLocked(),
             'auto_sync_enabled' => $this->auto_sync_enabled,

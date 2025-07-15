@@ -97,11 +97,31 @@ class Wallet extends Model
 
     protected function generateQrFor($address, $type)
     {
-        $filename = 'wallet_qr_' . $this->id . '_' . $type . '.png';
-        $path = storage_path('app/public/wallet_qr/' . $filename);
+        try {
+            $qrService = app(\App\Services\QrCodeService::class);
+            $filename = 'wallet_qr_' . $this->id . '_' . $type . '.png';
+            $path = storage_path('app/public/wallet_qr/' . $filename);
 
-        QrCode::format('png')->size(300)->generate($address, $path);
+            // Ensure directory exists
+            $directory = dirname($path);
+            if (!file_exists($directory)) {
+                mkdir($directory, 0755, true);
+            }
 
-        return 'wallet_qr/' . $filename;
+            // Generate QR code using our service with fallback handling
+            $qrData = $qrService->generateBrandedQrCode($address, 300, 'png', [
+                'colorScheme' => 'primary',
+                'style' => 'square', // Use simpler style for wallet QRs
+                'eye' => 'square'
+            ]);
+
+            file_put_contents($path, $qrData);
+
+            return 'wallet_qr/' . $filename;
+        } catch (\Exception $e) {
+            // If QR generation fails, return a placeholder path
+            \Log::warning("Failed to generate QR code for wallet {$this->id}, type {$type}: " . $e->getMessage());
+            return 'wallet_qr/placeholder_' . $type . '.png';
+        }
     }
 }

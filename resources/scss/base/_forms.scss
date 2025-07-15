@@ -1,0 +1,68 @@
+// ==========================================================================
+// BASE FORMS - Base form styles for the 1000proxy platform
+// ==========================================================================
+// Note: This file contains base form styles that complement components/_forms.scss
+
+// Base Form Element Styles
+// ==========================================================================
+
+fieldset {
+  border: none;
+  margin: 0;
+  padding: 0;
+}
+
+legend {
+  font-weight: font-weight('medium');
+  margin-bottom: spacing('md');
+}
+
+label {
+  display: block;
+  font-weight: font-weight('medium');
+  margin-bottom: spacing('xs');
+  color: var(--color-text-primary);
+  font-size: font-size('sm');
+}
+
+input, textarea, select {
+  font-family: inherit;
+  font-size: inherit;
+}
+
+// Remove default styling
+input[type="search"]::-webkit-search-decoration,
+input[type="search"]::-webkit-search-cancel-button {
+  -webkit-appearance: none;
+}
+
+input[type="number"]::-webkit-outer-spin-button,
+input[type="number"]::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+input[type="number"] {
+  appearance: textfield;
+  -moz-appearance: textfield;
+}
+
+// Autofill styles
+input:-webkit-autofill,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus,
+textarea:-webkit-autofill,
+textarea:-webkit-autofill:hover,
+textarea:-webkit-autofill:focus,
+select:-webkit-autofill,
+select:-webkit-autofill:hover,
+select:-webkit-autofill:focus {
+  border: 1px solid #d1d5db;
+  -webkit-text-fill-color: var(--color-text-primary);
+  -webkit-box-shadow: 0 0 0px 1000px white inset;
+  transition: background-color 5000s ease-in-out 0s;
+
+  [data-theme="dark"] & {
+    -webkit-box-shadow: 0 0 0px 1000px var(--color-bg-secondary) inset;
+  }
+}

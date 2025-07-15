@@ -1,0 +1,41 @@
+// ==========================================================================
+// VENDOR/ALPINE - Alpine.js component overrides
+// ==========================================================================
+
+// Alpine.js transition classes
+.transition-opacity {
+  transition: opacity map-get($transition-durations, 'base') map-get($transition-easings, 'smooth');
+}
+
+.transition-transform {
+  transition: transform map-get($transition-durations, 'base') map-get($transition-easings, 'smooth');
+}
+
+// Alpine.js show/hide utilities
+[x-cloak] {
+  display: none !important;
+}
+
+// Alpine.js animation states
+.fade-enter-active,
+.fade-leave-active {
+  transition: opacity map-get($transition-durations, 'base') map-get($transition-easings, 'smooth');
+}
+
+.fade-enter-from,
+.fade-leave-to {
+  opacity: 0;
+}
+
+.slide-enter-active,
+.slide-leave-active {
+  transition: transform map-get($transition-durations, 'base') map-get($transition-easings, 'smooth');
+}
+
+.slide-enter-from {
+  transform: translateX(-100%);
+}
+
+.slide-leave-to {
+  transform: translateX(100%);
+}

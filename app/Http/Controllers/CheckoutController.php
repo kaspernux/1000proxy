@@ -351,8 +351,8 @@ class CheckoutController extends Controller
                         'protocol' => $remoteInbound->protocol,
                         'remark' => $remoteInbound->remark ?? '',
                         'enable' => $remoteInbound->enable ?? true,
-                        'expiryTime' => isset($remoteInbound->expiryTime)
-                            ? now()->createFromTimestampMs($remoteInbound->expiryTime)
+                        'expiry_time' => isset($remoteInbound->expiry_time)
+                            ? now()->createFromTimestampMs($remoteInbound->expiry_time)
                             : null,
                         'settings' => is_string($remoteInbound->settings)
                             ? json_decode($remoteInbound->settings, true)
@@ -410,7 +410,7 @@ class CheckoutController extends Controller
                 'protocol' => $inbound->protocol,
                 'remark' => $inbound->remark ?? '',
                 'enable' => $inbound->enable ?? true,
-                'expiryTime' => isset($inbound->expiryTime) ? now()->createFromTimestampMs($inbound->expiryTime) : null,
+                'expiry_time' => isset($inbound->expiry_time) ? now()->createFromTimestampMs($inbound->expiry_time) : null,
                 'settings' => is_string($inbound->settings) ? json_decode($inbound->settings, true) : $inbound->settings,
                 'streamSettings' => is_string($inbound->streamSettings) ? json_decode($inbound->streamSettings, true) : $inbound->streamSettings,
                 'sniffing' => is_string($inbound->sniffing) ? json_decode($inbound->sniffing, true) : $inbound->sniffing,

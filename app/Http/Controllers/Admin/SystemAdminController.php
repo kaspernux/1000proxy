@@ -19,7 +19,7 @@ class SystemAdminController extends Controller
     private AdvancedAnalyticsService $analyticsService;
     private InventoryManagementService $inventoryService;
     private PricingEngineService $pricingService;
-    
+
     public function __construct(
         MonitoringService $monitoringService,
         CacheOptimizationService $cacheService,
@@ -34,11 +34,11 @@ class SystemAdminController extends Controller
         $this->analyticsService = $analyticsService;
         $this->inventoryService = $inventoryService;
         $this->pricingService = $pricingService;
-        
+
         $this->middleware('auth');
-        $this->middleware('admin'); // Assuming admin middleware exists
+        $this->middleware('staff.role:admin'); // Only admin staff can access system admin functions
     }
-    
+
     /**
      * System dashboard
      */
@@ -52,13 +52,13 @@ class SystemAdminController extends Controller
                 'performance_metrics' => $this->monitoringService->getPerformanceMetrics(),
                 'business_metrics' => $this->analyticsService->getBusinessMetrics(),
             ];
-            
+
             return view('admin.system.dashboard', $data);
         } catch (\Exception $e) {
             return back()->with('error', 'Failed to load system dashboard: ' . $e->getMessage());
         }
     }
-    
+
     /**
      * System health check API
      */
@@ -71,7 +71,7 @@ class SystemAdminController extends Controller
             return response()->json(['error' => $e->getMessage()], 500);
         }
     }
-    
+
     /**
      * Cache management
      */
@@ -87,13 +87,13 @@ class SystemAdminController extends Controller
                     'realtime' => 'Real-time Cache'
                 ]
             ];
-            
+
             return view('admin.system.cache', $data);
         } catch (\Exception $e) {
             return back()->with('error', 'Failed to load cache management: ' . $e->getMessage());
         }
     }
-    
+
     /**
      * Warm up cache
      */
@@ -101,7 +101,7 @@ class SystemAdminController extends Controller
     {
         try {
             $result = $this->cacheService->warmUpCache();
-            
+
             if ($result) {
                 return response()->json(['message' => 'Cache warmed up successfully']);
             } else {
@@ -111,7 +111,7 @@ class SystemAdminController extends Controller
             return response()->json(['error' => $e->getMessage()], 500);
         }
     }
-    
+
     /**
      * Clear cache
      */
@@ -119,7 +119,7 @@ class SystemAdminController extends Controller
     {
         try {
             $cacheType = $request->input('type', 'all');
-            
+
             if ($cacheType === 'all') {
                 \Illuminate\Support\Facades\Cache::flush();
                 $message = 'All cache cleared successfully';
@@ -138,13 +138,13 @@ class SystemAdminController extends Controller
                         return response()->json(['error' => 'Invalid cache type'], 400);
                 }
             }
-            
+
             return response()->json(['message' => $message]);
         } catch (\Exception $e) {
             return response()->json(['error' => $e->getMessage()], 500);
         }
     }
-    
+
     /**
      * Queue management
      */
@@ -157,13 +157,13 @@ class SystemAdminController extends Controller
                 'performance_metrics' => $this->queueService->getQueuePerformanceMetrics(),
                 'scaling_recommendations' => $this->queueService->autoScaleWorkers(),
             ];
-            
+
             return view('admin.system.queue', $data);
         } catch (\Exception $e) {
             return back()->with('error', 'Failed to load queue management: ' . $e->getMessage());
         }
     }
-    
+
     /**
      * Retry failed jobs
      */
@@ -172,13 +172,13 @@ class SystemAdminController extends Controller
         try {
             $limit = $request->input('limit', 10);
             $retried = $this->queueService->retryFailedJobs($limit);
-            
+
             return response()->json(['message' => "Retried $retried failed jobs"]);
         } catch (\Exception $e) {
             return response()->json(['error' => $e->getMessage()], 500);
         }
     }
-    
+
     /**
      * Analytics dashboard
      */
@@ -192,13 +192,13 @@ class SystemAdminController extends Controller
                 'user_metrics' => $this->analyticsService->getUserMetrics(),
                 'revenue_forecast' => $this->analyticsService->getForecastData('revenue', 'daily'),
             ];
-            
+
             return view('admin.analytics.dashboard', $data);
         } catch (\Exception $e) {
             return back()->with('error', 'Failed to load analytics: ' . $e->getMessage());
         }
     }
-    
+
     /**
      * Real-time metrics API
      */
@@ -211,7 +211,7 @@ class SystemAdminController extends Controller
             return response()->json(['error' => $e->getMessage()], 500);
         }
     }
-    
+
     /**
      * Inventory management
      */
@@ -224,13 +224,13 @@ class SystemAdminController extends Controller
                 'load_balancing' => $this->inventoryService->getLoadBalancingStatus(),
                 'auto_scaling' => $this->inventoryService->getAutoScalingStatus(),
             ];
-            
+
             return view('admin.inventory.management', $data);
         } catch (\Exception $e) {
             return back()->with('error', 'Failed to load inventory management: ' . $e->getMessage());
         }
     }
-    
+
     /**
      * Trigger server rebalancing
      */
@@ -238,7 +238,7 @@ class SystemAdminController extends Controller
     {
         try {
             $result = $this->inventoryService->rebalanceServerLoads();
-            
+
             if ($result) {
                 return response()->json(['message' => 'Server rebalancing completed successfully']);
             } else {
@@ -248,7 +248,7 @@ class SystemAdminController extends Controller
             return response()->json(['error' => $e->getMessage()], 500);
         }
     }
-    
+
     /**
      * Pricing engine management
      */
@@ -261,13 +261,13 @@ class SystemAdminController extends Controller
                 'bulk_discounts' => $this->pricingService->getBulkDiscountRules(),
                 'promotional_offers' => $this->pricingService->getActivePromotions(),
             ];
-            
+
             return view('admin.pricing.management', $data);
         } catch (\Exception $e) {
             return back()->with('error', 'Failed to load pricing management: ' . $e->getMessage());
         }
     }
-    
+
     /**
      * Update pricing rules
      */
@@ -276,7 +276,7 @@ class SystemAdminController extends Controller
         try {
             $rules = $request->input('rules', []);
             $result = $this->pricingService->updatePricingRules($rules);
-            
+
             if ($result) {
                 return response()->json(['message' => 'Pricing rules updated successfully']);
             } else {
@@ -286,7 +286,7 @@ class SystemAdminController extends Controller
             return response()->json(['error' => $e->getMessage()], 500);
         }
     }
-    
+
     /**
      * System logs
      */
@@ -295,15 +295,15 @@ class SystemAdminController extends Controller
         try {
             $level = $request->input('level', 'all');
             $lines = $request->input('lines', 100);
-            
+
             $logPath = storage_path('logs/laravel.log');
             $logs = [];
-            
+
             if (file_exists($logPath)) {
                 $content = file_get_contents($logPath);
                 $logLines = explode("\n", $content);
                 $logs = array_slice($logLines, -$lines);
-                
+
                 // Filter by level if specified
                 if ($level !== 'all') {
                     $logs = array_filter($logs, function($line) use ($level) {
@@ -311,13 +311,13 @@ class SystemAdminController extends Controller
                     });
                 }
             }
-            
+
             return view('admin.system.logs', ['logs' => $logs, 'level' => $level]);
         } catch (\Exception $e) {
             return back()->with('error', 'Failed to load system logs: ' . $e->getMessage());
         }
     }
-    
+
     /**
      * Export system report
      */
@@ -325,7 +325,7 @@ class SystemAdminController extends Controller
     {
         try {
             $type = $request->input('type', 'full');
-            
+
             $report = [
                 'timestamp' => now()->toISOString(),
                 'system_health' => $this->monitoringService->runHealthCheck(),
@@ -334,19 +334,19 @@ class SystemAdminController extends Controller
                 'queue_stats' => $this->queueService->getQueueStats(),
                 'business_metrics' => $this->analyticsService->getBusinessMetrics(),
             ];
-            
+
             if ($type === 'full') {
                 $report['server_metrics'] = $this->analyticsService->getServerMetrics();
                 $report['user_metrics'] = $this->analyticsService->getUserMetrics();
                 $report['inventory_status'] = $this->inventoryService->getServerCapacity();
             }
-            
+
             $filename = 'system_report_' . now()->format('Y-m-d_H-i-s') . '.json';
-            
+
             return response()->json($report)
                 ->header('Content-Type', 'application/json')
                 ->header('Content-Disposition', 'attachment; filename="' . $filename . '"');
-                
+
         } catch (\Exception $e) {
             return response()->json(['error' => $e->getMessage()], 500);
         }

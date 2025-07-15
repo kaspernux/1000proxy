@@ -4,42 +4,64 @@ namespace App\Filament\Customer\Clusters\MyOrders\Resources;
 
 use App\Filament\Customer\Clusters\MyOrders;
 use App\Filament\Customer\Clusters\MyOrders\Resources\OrderItemResource\Pages;
-use App\Filament\Customer\Clusters\MyOrders\Resources\OrderItemResource\RelationManagers;
 use App\Models\OrderItem;
-use App\Models\Order;
-use App\Models\ServerPlan;
 use App\Models\ServerClient;
+use App\Services\QrCodeService;
+use Carbon\Carbon;
 use Filament\Forms;
 use Filament\Forms\Form;
+use Filament\Infolists\Components\Grid;
+use Filament\Infolists\Components\Group;
+use Filament\Infolists\Components\ImageEntry;
+use Filament\Infolists\Components\Section;
+use Filament\Infolists\Components\Tabs;
+use Filament\Infolists\Components\TextEntry;
+use Filament\Infolists\Infolist;
+use Filament\Notifications\Notification;
 use Filament\Resources\Resource;
+use Filament\Support\Enums\FontWeight;
 use Filament\Tables;
+use Filament\Tables\Actions\Action;
+use Filament\Tables\Actions\ActionGroup;
+use Filament\Tables\Columns\BadgeColumn;
+use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Filters\Filter;
+use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Database\Eloquent\SoftDeletingScope;
 use Illuminate\Support\Facades\Auth;
-use Filament\Tables\Actions\ActionGroup;
-
-use Filament\Infolists\Infolist;
-use Filament\Infolists\Components\Section;
-use Filament\Infolists\Components\TextEntry;
-use Filament\Infolists\Components\View;
-use Filament\Infolists\Components\Tabs;
-use Illuminate\Support\Facades\Storage;
-use Filament\Infolists\Components\ImageEntry;
-use Filament\Infolists\Components\RepeatableEntry;
-use Filament\Infolists\Components\Grid;
-use Filament\Infolists\Components\IconEntry;
 
 
 class OrderItemResource extends Resource
 {
     protected static ?string $model = OrderItem::class;
     protected static ?string $navigationIcon = 'heroicon-o-clipboard-document-list';
+    protected static ?string $cluster = MyOrders::class;
     protected static ?string $navigationLabel = 'Purchased Items';
     protected static ?string $pluralLabel = 'Purchased Items';
     protected static ?string $label = 'Purchased Item';
-    protected static ?string $navigationGroup = 'My Orders';
-    protected static ?int $navigationSort = 2;
+    protected static ?int $navigationSort = 3;
+
+    // Security: Disable create, edit, delete operations
+    public static function canCreate(): bool
+    {
+        return false;
+    }
+
+    public static function canEdit($record): bool
+    {
+        return false;
+    }
+
+    public static function canDelete($record): bool
+    {
+        return false;
+    }
+
+    public static function canDeleteAny(): bool
+    {
+        return false;
+    }
 
     public static function getEloquentQuery(): Builder
     {
@@ -54,108 +76,529 @@ class OrderItemResource extends Resource
 
     public static function form(Form $form): Form
     {
-        return $form->schema([]);
+        return $form->schema([
+            Forms\Components\Placeholder::make('info')
+                ->content('Order items are created automatically when you purchase services. You cannot create or edit them manually.'),
+        ]);
     }
 
     public static function table(Table $table): Table
     {
         return $table
             ->columns([
-                Tables\Columns\TextColumn::make('id')->label('Item ID')->copyable()->sortable()->searchable(),
-                Tables\Columns\TextColumn::make('serverPlan.name')->label('Plan')->sortable()->searchable(),
-                Tables\Columns\TextColumn::make('unit_amount')->label('Unit Price')->money('usd')->sortable(),
-                Tables\Columns\TextColumn::make('quantity')->label('Quantity')->sortable(),
-                Tables\Columns\TextColumn::make('total_amount')->label('Total')->money('usd')->color('success')->sortable(),
-                Tables\Columns\TextColumn::make('created_at')->label('Ordered At')->since()->sortable(),
+                TextColumn::make('order.id')
+                    ->label('Order #')
+                    ->copyable()
+                    ->sortable()
+                    ->prefix('#')
+                    ->color('primary')
+                    ->weight(FontWeight::SemiBold)
+                    ->url(fn (OrderItem $record): string =>
+                        route('filament.customer.resources.my-orders.orders.view', ['record' => $record->order_id])
+                    ),
+
+                TextColumn::make('serverPlan.name')
+                    ->label('Plan Name')
+                    ->searchable()
+                    ->sortable()
+                    ->weight(FontWeight::SemiBold)
+                    ->color('info')
+                    ->description(fn (OrderItem $record): string =>
+                        $record->serverPlan->description ?? ''
+                    ),
+
+                TextColumn::make('serverPlan.server.name')
+                    ->label('Server')
+                    ->badge()
+                    ->color('gray')
+                    ->searchable(),
+
+                TextColumn::make('unit_amount')
+                    ->label('Unit Price')
+                    ->money('usd')
+                    ->sortable()
+                    ->color('success'),
+
+                TextColumn::make('quantity')
+                    ->label('Qty')
+                    ->numeric()
+                    ->sortable()
+                    ->badge()
+                    ->color('primary'),
+
+                TextColumn::make('total_amount')
+                    ->label('Total Amount')
+                    ->money('usd')
+                    ->sortable()
+                    ->color('success')
+                    ->weight(FontWeight::SemiBold),
+
+                BadgeColumn::make('provisioning_status')
+                    ->label('Status')
+                    ->colors([
+                        'warning' => 'pending',
+                        'info' => 'provisioning',
+                        'success' => 'active',
+                        'danger' => 'failed',
+                        'gray' => 'suspended',
+                    ])
+                    ->icons([
+                        'heroicon-m-clock' => 'pending',
+                        'heroicon-m-arrow-path' => 'provisioning',
+                        'heroicon-m-check-circle' => 'active',
+                        'heroicon-m-x-circle' => 'failed',
+                        'heroicon-m-pause-circle' => 'suspended',
+                    ])
+                    ->sortable(),
+
+                TextColumn::make('created_at')
+                    ->label('Purchased')
+                    ->since()
+                    ->sortable()
+                    ->color('gray'),
+            ])
+            ->filters([
+                SelectFilter::make('server_plan_id')
+                    ->label('Plan')
+                    ->relationship('serverPlan', 'name')
+                    ->searchable()
+                    ->indicator('Plan'),
+
+                SelectFilter::make('provisioning_status')
+                    ->label('Status')
+                    ->options([
+                        'pending' => 'Pending',
+                        'provisioning' => 'Provisioning',
+                        'active' => 'Active',
+                        'failed' => 'Failed',
+                        'suspended' => 'Suspended',
+                    ])
+                    ->indicator('Status'),
+
+                Filter::make('amount_range')
+                    ->form([
+                        Forms\Components\TextInput::make('amount_from')
+                            ->label('Amount From')
+                            ->numeric()
+                            ->prefix('$'),
+                        Forms\Components\TextInput::make('amount_to')
+                            ->label('Amount To')
+                            ->numeric()
+                            ->prefix('$'),
+                    ])
+                    ->query(function (Builder $query, array $data): Builder {
+                        return $query
+                            ->when(
+                                $data['amount_from'],
+                                fn (Builder $query, $amount): Builder => $query->where('total_amount', '>=', $amount * 100),
+                            )
+                            ->when(
+                                $data['amount_to'],
+                                fn (Builder $query, $amount): Builder => $query->where('total_amount', '<=', $amount * 100),
+                            );
+                    })
+                    ->indicator('Amount Range'),
             ])
             ->actions([
                 ActionGroup::make([
-                    Tables\Actions\ViewAction::make()->label('View Details'),
-                ]),
+                    Tables\Actions\ViewAction::make()
+                        ->label('View Details')
+                        ->icon('heroicon-o-eye')
+                        ->color('primary'),
+
+                    Action::make('download_config')
+                        ->label('Download Config')
+                        ->icon('heroicon-o-arrow-down-tray')
+                        ->color('success')
+                        ->visible(fn (OrderItem $record): bool =>
+                            $record->provisioning_status === 'active'
+                        )
+                        ->action(function (OrderItem $record) {
+                            // Configuration download logic
+                            $client = ServerClient::where('plan_id', $record->server_plan_id)
+                                ->where('email', 'LIKE', '%#ID ' . Auth::guard('customer')->id())
+                                ->first();
+
+                            if (!$client) {
+                                Notification::make()
+                                    ->title('Configuration Not Found')
+                                    ->body('No configuration found for this item.')
+                                    ->warning()
+                                    ->send();
+                                return;
+                            }
+
+                            try {
+                                $config = $client->config_data ?? $client->client_link;
+                                return response()->streamDownload(
+                                    fn () => print($config),
+                                    "config-{$record->id}.txt"
+                                );
+                            } catch (\Exception $e) {
+                                Notification::make()
+                                    ->title('Download Failed')
+                                    ->body('Could not download configuration. Please try again later.')
+                                    ->danger()
+                                    ->send();
+                            }
+                        }),
+
+                    Action::make('view_order')
+                        ->label('View Order')
+                        ->icon('heroicon-o-shopping-bag')
+                        ->color('info')
+                        ->url(fn (OrderItem $record): string =>
+                            route('filament.customer.resources.my-orders.orders.view', ['record' => $record->order_id])
+                        ),
+                ])
+                ->label('Actions')
+                ->icon('heroicon-m-ellipsis-vertical')
+                ->size('sm')
+                ->color('gray')
+                ->button()
+            ])
+            ->bulkActions([
+                // No bulk actions for security
             ])
             ->emptyStateHeading('No Purchased Items')
-            ->emptyStateDescription('Once you complete an order, your items will appear here.');
+            ->emptyStateDescription('Items from your completed orders will appear here.')
+            ->emptyStateIcon('heroicon-o-clipboard-document-list')
+            ->defaultSort('created_at', 'desc')
+            ->poll('30s')
+            ->striped();
     }
 
     public static function infolist(Infolist $infolist): Infolist
     {
-        return $infolist->schema([
-            Tabs::make('Item Details')->persistTab()->tabs([
-                Tabs\Tab::make('Overview')
-                    ->icon('heroicon-m-receipt-percent')
-                    ->schema([
-                        Section::make('Purchased Item Info')
-                            ->columns(2)
+        return $infolist
+            ->schema([
+                Tabs::make('Item Details')
+                    ->persistTab()
+                    ->tabs([
+                        Tabs\Tab::make('Overview')
+                            ->icon('heroicon-o-information-circle')
                             ->schema([
-                                TextEntry::make('id')->label('Item ID')->copyable()->color('primary'),
-                                TextEntry::make('order.id')->label('Order ID')->copyable()->color('gray'),
-                                TextEntry::make('serverPlan.name')->label('Plan Name')->color('primary'),
-                                TextEntry::make('serverPlan.description')->label('Plan Description')->markdown(),
-                                TextEntry::make('unit_amount')->label('Unit Price')->money('usd'),
-                                TextEntry::make('quantity')->label('Quantity'),
-                                TextEntry::make('total_amount')->label('Total Paid')->money('usd')->color('success'),
-                            ]),
-                    ]),
+                                Grid::make(2)
+                                    ->schema([
+                                        Section::make('Order Item Details')
+                                            ->icon('heroicon-o-clipboard-document-list')
+                                            ->schema([
+                                                TextEntry::make('order.id')
+                                                    ->label('Order Number')
+                                                    ->copyable()
+                                                    ->prefix('#')
+                                                    ->badge()
+                                                    ->color('primary'),
 
-                    Tabs\Tab::make('QR Codes')
-                    ->icon('heroicon-m-qr-code')
-                    ->schema([
-                        Section::make('📲 Proxy Configuration QR Codes')
-                            ->description('Scan or download your purchased proxy configuration QR codes.')
-                            ->schema([
-                                Tabs::make('Order Items')
-                                    ->tabs(function (OrderItem $record) {
-                                        $items = optional($record->order)->items ?? collect();
-                
-                                        return $items->map(function (OrderItem $item, $index) {
-                                            $client = ServerClient::query()
-                                                ->where('plan_id', $item->server_plan_id)
-                                                ->where('email', 'LIKE', '%#ID ' . auth('customer')->id())
-                                                ->first();
-                
-                                            return Tabs\Tab::make('Item ' . ($index + 1))
-                                                ->schema([
-                                                    Grid::make(['default' => 1, 'sm' => 2, 'lg' => 3])
-                                                        ->schema([
-                                                            ImageEntry::make('clientQr')
-                                                                ->label('Client QR')
-                                                                ->disk('public')
-                                                                ->tooltip('Click to view full size')
-                                                                ->openUrlInNewTab()
-                                                                ->getStateUsing(fn () => $client?->qr_code_client),
-                
-                                                            ImageEntry::make('subQr')
-                                                                ->label('Subscription QR')
-                                                                ->disk('public')
-                                                                ->tooltip('Click to view full size')
-                                                                ->openUrlInNewTab()
-                                                                ->getStateUsing(fn () => $client?->qr_code_sub),
-                
-                                                            ImageEntry::make('jsonQr')
-                                                                ->label('JSON Subscription QR')
-                                                                ->disk('public')
-                                                                ->tooltip('Click to view full size')
-                                                                ->openUrlInNewTab()
-                                                                ->getStateUsing(fn () => $client?->qr_code_sub_json),
-                                                        ]),
-                                                ]);
-                                        })->toArray();
-                                    }),
+                                                TextEntry::make('serverPlan.name')
+                                                    ->label('Plan Name')
+                                                    ->weight('bold')
+                                                    ->color('info'),
+
+                                                TextEntry::make('serverPlan.server.name')
+                                                    ->label('Server Location')
+                                                    ->badge()
+                                                    ->color('gray'),
+
+                                                TextEntry::make('quantity')
+                                                    ->label('Quantity')
+                                                    ->badge()
+                                                    ->color('primary'),
+
+                                                TextEntry::make('provisioning_status')
+                                                    ->label('Status')
+                                                    ->badge()
+                                                    ->color(fn (string $state): string => match ($state) {
+                                                        'pending' => 'warning',
+                                                        'provisioning' => 'info',
+                                                        'active' => 'success',
+                                                        'failed' => 'danger',
+                                                        'suspended' => 'gray',
+                                                        default => 'gray',
+                                                    }),
+
+                                                TextEntry::make('created_at')
+                                                    ->label('Purchased Date')
+                                                    ->since()
+                                                    ->color('gray'),
+                                            ]),
+
+                                        Section::make('Pricing Information')
+                                            ->icon('heroicon-o-currency-dollar')
+                                            ->schema([
+                                                TextEntry::make('unit_amount')
+                                                    ->label('Unit Price')
+                                                    ->money('usd')
+                                                    ->color('success'),
+
+                                                TextEntry::make('total_amount')
+                                                    ->label('Total Amount')
+                                                    ->money('usd')
+                                                    ->weight('bold')
+                                                    ->color('success'),
+
+                                                TextEntry::make('order.total_amount')
+                                                    ->label('Order Total')
+                                                    ->money('usd')
+                                                    ->color('info'),
+
+                                                TextEntry::make('order.status')
+                                                    ->label('Order Status')
+                                                    ->badge()
+                                                    ->color(fn (string $state): string => match ($state) {
+                                                        'completed' => 'success',
+                                                        'pending' => 'warning',
+                                                        'failed' => 'danger',
+                                                        default => 'gray',
+                                                    }),
+                                            ]),
+                                    ]),
                             ]),
-                        ]),
-                
-                    Tabs\Tab::make('Timestamps')
-                    ->icon('heroicon-m-clock')
-                    ->schema([
-                        Section::make('Timestamps')
+
+                        Tabs\Tab::make('Configuration')
+                            ->icon('heroicon-o-cog-6-tooth')
                             ->schema([
-                                TextEntry::make('created_at')->label('Purchased At')->since(),
-                                TextEntry::make('updated_at')->label('Last Updated')->since(),
+                                Section::make('Client Configuration')
+                                    ->icon('heroicon-o-link')
+                                    ->description('Download your configuration files or view QR codes for easy setup.')
+                                    ->schema([
+                                        Grid::make(2)
+                                            ->schema([
+                                                Group::make([
+                                                    TextEntry::make('serverClient.client_link')
+                                                        ->label('Connection Link')
+                                                        ->copyable()
+                                                        ->placeholder('Configuration will be available once provisioning is complete')
+                                                        ->visible(fn (OrderItem $record): bool =>
+                                                            $record->provisioning_status === 'active' &&
+                                                            $record->serverClient &&
+                                                            $record->serverClient->client_link
+                                                        ),
+
+                                                    TextEntry::make('serverClient.email')
+                                                        ->label('Client Identifier')
+                                                        ->copyable()
+                                                        ->placeholder('Identifier will be assigned after provisioning')
+                                                        ->visible(fn (OrderItem $record): bool =>
+                                                            $record->provisioning_status === 'active' &&
+                                                            $record->serverClient
+                                                        ),
+
+                                                    TextEntry::make('serverPlan.protocol')
+                                                        ->label('Protocol')
+                                                        ->badge()
+                                                        ->color('info'),
+
+                                                    TextEntry::make('serverPlan.port')
+                                                        ->label('Port')
+                                                        ->badge()
+                                                        ->color('gray'),
+                                                ]),
+
+                                                Group::make([
+                                                    ImageEntry::make('qr_code')
+                                                        ->label('QR Code for Easy Setup')
+                                                        ->state(function (OrderItem $record): ?string {
+                                                            if ($record->provisioning_status !== 'active' || !$record->serverClient?->client_link) {
+                                                                return null;
+                                                            }
+
+                                                            try {
+                                                                $qrCodeService = app(QrCodeService::class);
+                                                                return $qrCodeService->generateClientQrCode(
+                                                                    $record->serverClient->client_link,
+                                                                    [
+                                                                        'colorScheme' => 'primary',
+                                                                        'style' => 'dot',
+                                                                        'eye' => 'circle'
+                                                                    ]
+                                                                );
+                                                            } catch (\Exception $e) {
+                                                                return null;
+                                                            }
+                                                        })
+                                                        ->height(200)
+                                                        ->width(200)
+                                                        ->visible(fn (OrderItem $record): bool =>
+                                                            $record->provisioning_status === 'active' &&
+                                                            $record->serverClient?->client_link
+                                                        ),
+
+                                                    TextEntry::make('status_message')
+                                                        ->label('Configuration Status')
+                                                        ->state(function (OrderItem $record): string {
+                                                            return match ($record->provisioning_status) {
+                                                                'pending' => 'Waiting for provisioning to begin...',
+                                                                'provisioning' => 'Setting up your service, please wait...',
+                                                                'active' => 'Configuration ready for download',
+                                                                'failed' => 'Provisioning failed, please contact support',
+                                                                'suspended' => 'Service temporarily suspended',
+                                                                default => 'Status unknown',
+                                                            };
+                                                        })
+                                                        ->color(fn (OrderItem $record): string => match ($record->provisioning_status) {
+                                                            'pending' => 'warning',
+                                                            'provisioning' => 'info',
+                                                            'active' => 'success',
+                                                            'failed' => 'danger',
+                                                            'suspended' => 'gray',
+                                                            default => 'gray',
+                                                        })
+                                                        ->icon(fn (OrderItem $record): string => match ($record->provisioning_status) {
+                                                            'pending' => 'heroicon-o-clock',
+                                                            'provisioning' => 'heroicon-o-arrow-path',
+                                                            'active' => 'heroicon-o-check-circle',
+                                                            'failed' => 'heroicon-o-x-circle',
+                                                            'suspended' => 'heroicon-o-pause-circle',
+                                                            default => 'heroicon-o-question-mark-circle',
+                                                        }),
+                                                ]),
+                                            ]),
+                                    ]),
                             ]),
-                    ]),
-            ])
-            ->columnSpanFull(),
-        ]);
+
+                        Tabs\Tab::make('Technical Details')
+                            ->icon('heroicon-o-server')
+                            ->schema([
+                                Grid::make(2)
+                                    ->schema([
+                                        Section::make('Plan Specifications')
+                                            ->icon('heroicon-o-chart-bar')
+                                            ->schema([
+                                                TextEntry::make('serverPlan.description')
+                                                    ->label('Plan Description')
+                                                    ->markdown()
+                                                    ->placeholder('No description available'),
+
+                                                TextEntry::make('serverPlan.bandwidth')
+                                                    ->label('Bandwidth')
+                                                    ->suffix(' GB')
+                                                    ->placeholder('Unlimited'),
+
+                                                TextEntry::make('serverPlan.max_connections')
+                                                    ->label('Max Connections')
+                                                    ->numeric()
+                                                    ->placeholder('Unlimited'),
+
+                                                TextEntry::make('serverPlan.features')
+                                                    ->label('Features')
+                                                    ->listWithLineBreaks()
+                                                    ->placeholder('Standard features'),
+                                            ]),
+
+                                        Section::make('Server Information')
+                                            ->icon('heroicon-o-server')
+                                            ->schema([
+                                                TextEntry::make('serverPlan.server.location')
+                                                    ->label('Server Location')
+                                                    ->badge()
+                                                    ->color('info'),
+
+                                                TextEntry::make('serverPlan.server.ip_address')
+                                                    ->label('Server IP')
+                                                    ->copyable()
+                                                    ->placeholder('IP will be assigned'),
+
+                                                TextEntry::make('serverPlan.server.status')
+                                                    ->label('Server Status')
+                                                    ->badge()
+                                                    ->color(fn (string $state): string => match ($state) {
+                                                        'active' => 'success',
+                                                        'maintenance' => 'warning',
+                                                        'offline' => 'danger',
+                                                        default => 'gray',
+                                                    }),
+
+                                                TextEntry::make('serverPlan.server.load_percentage')
+                                                    ->label('Server Load')
+                                                    ->suffix('%')
+                                                    ->color(fn (?int $state): string => match (true) {
+                                                        $state === null => 'gray',
+                                                        $state < 70 => 'success',
+                                                        $state < 90 => 'warning',
+                                                        default => 'danger',
+                                                    }),
+                                            ]),
+                                    ]),
+                            ]),
+
+                        Tabs\Tab::make('Order Information')
+                            ->icon('heroicon-o-shopping-bag')
+                            ->schema([
+                                Section::make('Related Order Details')
+                                    ->icon('heroicon-o-document-text')
+                                    ->schema([
+                                        Grid::make(3)
+                                            ->schema([
+                                                TextEntry::make('order.id')
+                                                    ->label('Order ID')
+                                                    ->copyable()
+                                                    ->prefix('#')
+                                                    ->badge()
+                                                    ->color('primary'),
+
+                                                TextEntry::make('order.status')
+                                                    ->label('Order Status')
+                                                    ->badge()
+                                                    ->color(fn (string $state): string => match ($state) {
+                                                        'completed' => 'success',
+                                                        'pending' => 'warning',
+                                                        'failed' => 'danger',
+                                                        default => 'gray',
+                                                    }),
+
+                                                TextEntry::make('order.created_at')
+                                                    ->label('Order Date')
+                                                    ->since()
+                                                    ->color('gray'),
+
+                                                TextEntry::make('order.total_amount')
+                                                    ->label('Order Total')
+                                                    ->money('usd')
+                                                    ->color('success'),
+
+                                                TextEntry::make('order.payment_status')
+                                                    ->label('Payment Status')
+                                                    ->badge()
+                                                    ->color(fn (string $state): string => match ($state) {
+                                                        'paid' => 'success',
+                                                        'pending' => 'warning',
+                                                        'failed' => 'danger',
+                                                        'refunded' => 'gray',
+                                                        default => 'gray',
+                                                    }),
+
+                                                TextEntry::make('order.payment_method')
+                                                    ->label('Payment Method')
+                                                    ->badge()
+                                                    ->color('info'),
+                                            ]),
+                                    ]),
+                            ]),
+                    ])
+                    ->columnSpanFull(),
+            ]);
+    }
+
+    public static function getNavigationBadge(): ?string
+    {
+        $customerId = Auth::guard('customer')->id();
+        if (!$customerId) {
+            return null;
+        }
+
+        $count = static::getModel()::query()
+            ->whereHas('order', function (Builder $query) use ($customerId) {
+                $query->where('customer_id', $customerId);
+            })
+            ->count();
+
+        return $count > 0 ? (string) $count : null;
+    }
+
+    public static function getNavigationBadgeColor(): ?string
+    {
+        return 'primary';
     }
 
     public static function getPages(): array

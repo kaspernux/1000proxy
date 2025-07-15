@@ -8,6 +8,7 @@ use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Filament\Models\Contracts\FilamentUser;
 use Laravel\Sanctum\HasApiTokens;
+use App\Traits\HasStaffRoles;
 
 use Filament\Panel;
 
@@ -15,7 +16,7 @@ use Filament\Panel;
 
 class User extends Authenticatable implements FilamentUser
     {
-    use HasFactory, Notifiable, HasFactory, HasApiTokens;
+    use HasFactory, Notifiable, HasFactory, HasApiTokens, HasStaffRoles;
 
     /**
      * The attributes that are mass assignable.
@@ -71,10 +72,8 @@ class User extends Authenticatable implements FilamentUser
 
     public function canAccessPanel(Panel $panel): bool
     {
-        // Secure admin access - only specific roles or admin emails
-        return $this->hasRole('admin') || 
-               str_ends_with($this->email, '@admin.com') || 
-               in_array($this->email, ['admin@1000proxy.com', 'support@1000proxy.com']);
+        // Allow users with admin, support_manager, or sales_support roles to access admin panel
+        return in_array($this->role, ['admin', 'support_manager', 'sales_support']) && $this->is_active;
     }
 
     /**
@@ -101,7 +100,7 @@ class User extends Authenticatable implements FilamentUser
         if ($this->telegram_first_name && $this->telegram_last_name) {
             return $this->telegram_first_name . ' ' . $this->telegram_last_name;
         }
-        
+
         return $this->telegram_first_name ?: $this->telegram_username ?: 'Unknown';
     }
 
@@ -129,5 +128,136 @@ class User extends Authenticatable implements FilamentUser
             'telegram_first_name' => null,
             'telegram_last_name' => null,
         ]);
+    }
+
+    /**
+     * SCOPES
+     */
+
+    /**
+     * Scope for active users
+     */
+    public function scopeActive($query)
+    {
+        return $query->where('is_active', true);
+    }
+
+    /**
+     * Scope for inactive users
+     */
+    public function scopeInactive($query)
+    {
+        return $query->where('is_active', false);
+    }
+
+    /**
+     * Scope for users with Telegram linked
+     */
+    public function scopeWithTelegram($query)
+    {
+        return $query->whereNotNull('telegram_chat_id');
+    }
+
+    /**
+     * Scope for users without Telegram
+     */
+    public function scopeWithoutTelegram($query)
+    {
+        return $query->whereNull('telegram_chat_id');
+    }
+
+    /**
+     * Scope for administrators
+     */
+    public function scopeAdmins($query)
+    {
+        return $query->where('role', 'admin');
+    }
+
+    /**
+     * Scope for support managers
+     */
+    public function scopeSupportManagers($query)
+    {
+        return $query->where('role', 'support_manager');
+    }
+
+    /**
+     * Scope for sales support
+     */
+    public function scopeSalesSupport($query)
+    {
+        return $query->where('role', 'sales_support');
+    }
+
+    /**
+     * Scope for recent logins (last 30 days)
+     */
+    public function scopeRecentLogins($query)
+    {
+        return $query->where('last_login_at', '>=', now()->subDays(30));
+    }
+
+    /**
+     * ACCESSORS & MUTATORS
+     */
+
+    /**
+     * Get user's full name with role indicator
+     */
+    public function getDisplayNameAttribute(): string
+    {
+        $roleMap = [
+            'admin' => ' (Admin)',
+            'support_manager' => ' (Support Manager)',
+            'sales_support' => ' (Sales Support)',
+        ];
+
+        $roleIndicator = $roleMap[$this->role] ?? '';
+        return $this->name . $roleIndicator;
+    }
+
+    /**
+     * Get user's registration age in days
+     */
+    public function getRegistrationAgeInDays(): int
+    {
+        return $this->created_at->diffInDays(now());
+    }
+
+    /**
+     * Check if user is an administrator
+     */
+    public function isAdmin(): bool
+    {
+        return $this->role === 'admin';
+    }
+
+    /**
+     * Check if user is a support manager
+     */
+    public function isSupportManager(): bool
+    {
+        return $this->role === 'support_manager';
+    }
+
+    /**
+     * Check if user is sales support
+     */
+    public function isSalesSupport(): bool
+    {
+        return $this->role === 'sales_support';
+    }
+
+    /**
+     * Get available user roles
+     */
+    public static function getAvailableRoles(): array
+    {
+        return [
+            'admin' => 'Administrator',
+            'support_manager' => 'Support Manager',
+            'sales_support' => 'Sales Support',
+        ];
     }
 }

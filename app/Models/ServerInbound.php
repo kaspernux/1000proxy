@@ -16,71 +16,89 @@ class ServerInbound extends Model
 
     protected $fillable = [
         'server_id',
-        'protocol',
-        'port',
-        'enable',
-        'remark',
-        'expiryTime',
-        'settings',
-        'streamSettings',
-        'sniffing',
-        'up',
-        'down',
-        'total',
-        'allocate',
-        'capacity',
-        'current_clients',
-        'is_default',
-        'provisioning_enabled',
+
+        // Core 3X-UI inbound fields
+        'remote_id',                // 3X-UI inbound ID
+        'tag',                      // 3X-UI inbound tag identifier
+        'listen',                   // 3X-UI binding IP address
+        'port',                     // 3X-UI inbound port
+        'protocol',                 // 3X-UI protocol (vless, vmess, trojan, etc.)
+        'enable',                   // 3X-UI inbound enabled status
+        'remark',                   // 3X-UI inbound remark/name
+        'expiry_time',              // 3X-UI expiry timestamp (milliseconds)
+
+        // Traffic monitoring (3X-UI uses bytes)
+        'up',                       // Upload traffic bytes
+        'down',                     // Download traffic bytes
+        'total',                    // Total traffic bytes
+        'remote_up',                // 3X-UI remote upload bytes
+        'remote_down',              // 3X-UI remote download bytes
+        'remote_total',             // 3X-UI remote total bytes
+
+        // 3X-UI JSON configuration fields (stored as TEXT for API compatibility)
+        'settings',                 // 3X-UI settings JSON string
+        'streamSettings',           // 3X-UI streamSettings JSON string
+        'sniffing',                 // 3X-UI sniffing JSON string
+        'allocate',                 // 3X-UI allocate JSON string
+
+        // API synchronization tracking
+        'last_api_sync_at',
+        'api_sync_status',
+        'api_sync_error',
+        'api_sync_log',
+        'last_traffic_sync_at',
+
+        // Local management fields
+        'capacity',                 // Maximum client capacity
+        'current_clients',          // Current active clients
+        'is_default',               // Default inbound for new clients
+        'provisioning_enabled',     // Auto-provisioning enabled
+        'status',                   // Local status (active, inactive, error)
+        'status_message',           // Local status message
         'performance_metrics',
         'traffic_limit_bytes',
         'traffic_used_bytes',
         'client_template',
         'provisioning_rules',
         'last_sync_at',
-        'status',
-        'status_message',
-        // 3X-UI API specific fields
-        'tag',
-        'listen',
-        'remote_settings',
-        'remote_stream_settings',
-        'remote_sniffing',
-        'remote_allocate',
-        'remote_id',
-        'last_api_sync_at',
-        'api_sync_log',
-        'api_sync_status',
-        'api_sync_error',
-        'remote_up',
-        'remote_down',
-        'remote_total',
-        'last_traffic_sync_at',
     ];
 
     protected $casts = [
+        // Core 3X-UI fields
+        'remote_id' => 'integer',           // 3X-UI inbound ID
+        'port' => 'integer',                // 3X-UI inbound port
+        'enable' => 'boolean',              // 3X-UI inbound enabled status
+        'expiry_time' => 'integer',         // 3X-UI expiry timestamp (milliseconds)
+
+        // Traffic data (bytes) - 3X-UI uses big integers
         'up' => 'integer',
         'down' => 'integer',
         'total' => 'integer',
         'remote_up' => 'integer',
         'remote_down' => 'integer',
         'remote_total' => 'integer',
-        'enable' => 'boolean',
+
+        // Boolean flags
         'is_default' => 'boolean',
         'provisioning_enabled' => 'boolean',
-        'expiryTime' => 'datetime',
+
+        // Timestamps
         'last_sync_at' => 'datetime',
         'last_api_sync_at' => 'datetime',
         'last_traffic_sync_at' => 'datetime',
-        'clientStats' => 'array',
-        'settings' => 'array',
-        'streamSettings' => 'array',
-        'sniffing' => 'array',
-        'allocate' => 'array',
+
+        // JSON arrays (for internal use - parsed versions)
         'performance_metrics' => 'array',
+        'traffic_limit_bytes' => 'integer',
+        'traffic_used_bytes' => 'integer',
         'client_template' => 'array',
         'provisioning_rules' => 'array',
         'api_sync_log' => 'array',
+        'capacity' => 'integer',
+        'current_clients' => 'integer',
+
+        // Note: settings, streamSettings, sniffing, allocate are stored as TEXT (JSON strings)
+        // for 3X-UI API compatibility - they are NOT cast to arrays here
     ];
 
     public function clients(): HasMany
@@ -178,7 +196,7 @@ class ServerInbound extends Model
     {
         $defaults = [
             'flow' => 'xtls-rprx-vision',
-            'limitIp' => 2,
+            'limit_ip' => 2,
             'security' => 'reality',
             'network' => 'tcp',
             'header_type' => 'none',
@@ -272,9 +290,7 @@ class ServerInbound extends Model
                 'protocol' => $inbound->protocol ?? null,
                 'remark' => $inbound->remark ?? '',
                 'enable' => $inbound->enable ?? true,
-                'expiryTime' => isset($inbound->expiryTime)
-                    ? Carbon::createFromTimestampMs($inbound->expiryTime)
-                    : null,
+                'expiry_time' => $inbound->expiry_time ?? 0,  // Store milliseconds directly from 3X-UI API
                 'settings' => $settings,
                 'streamSettings' => is_string($inbound->streamSettings) ? json_decode($inbound->streamSettings, true) : (array) $inbound->streamSettings,
                 'sniffing' => json_decode($inbound->sniffing ?? '{}', true),
@@ -286,107 +302,7 @@ class ServerInbound extends Model
         );
     }
 
-    // 3X-UI API Integration Methods
-
-    /**
-     * Get the 3X-UI settings as a JSON string (as expected by the API)
-     */
-    public function getRemoteSettingsAttribute(): ?string
-    {
-        return $this->attributes['remote_settings'] ?? null;
-    }
-
-    /**
-     * Set the 3X-UI settings from a JSON string
-     */
-    public function setRemoteSettingsAttribute(?string $value): void
-    {
-        $this->attributes['remote_settings'] = $value;
-
-        // Also update the parsed settings array for internal use
-        if ($value) {
-            try {
-                $this->attributes['settings'] = json_decode($value, true);
-            } catch (\Exception $e) {
-                \Log::warning("Failed to parse remote_settings JSON for inbound {$this->id}: " . $e->getMessage());
-            }
-        }
-    }
-
-    /**
-     * Get the 3X-UI stream settings as a JSON string
-     */
-    public function getRemoteStreamSettingsAttribute(): ?string
-    {
-        return $this->attributes['remote_stream_settings'] ?? null;
-    }
-
-    /**
-     * Set the 3X-UI stream settings from a JSON string
-     */
-    public function setRemoteStreamSettingsAttribute(?string $value): void
-    {
-        $this->attributes['remote_stream_settings'] = $value;
-
-        // Also update the parsed streamSettings array for internal use
-        if ($value) {
-            try {
-                $this->attributes['streamSettings'] = json_decode($value, true);
-            } catch (\Exception $e) {
-                \Log::warning("Failed to parse remote_stream_settings JSON for inbound {$this->id}: " . $e->getMessage());
-            }
-        }
-    }
-
-    /**
-     * Get the 3X-UI sniffing settings as a JSON string
-     */
-    public function getRemoteSniffingAttribute(): ?string
-    {
-        return $this->attributes['remote_sniffing'] ?? null;
-    }
-
-    /**
-     * Set the 3X-UI sniffing settings from a JSON string
-     */
-    public function setRemoteSniffingAttribute(?string $value): void
-    {
-        $this->attributes['remote_sniffing'] = $value;
-
-        // Also update the parsed sniffing array for internal use
-        if ($value) {
-            try {
-                $this->attributes['sniffing'] = json_decode($value, true);
-            } catch (\Exception $e) {
-                \Log::warning("Failed to parse remote_sniffing JSON for inbound {$this->id}: " . $e->getMessage());
-            }
-        }
-    }
-
-    /**
-     * Get the 3X-UI allocate settings as a JSON string
-     */
-    public function getRemoteAllocateAttribute(): ?string
-    {
-        return $this->attributes['remote_allocate'] ?? null;
-    }
-
-    /**
-     * Set the 3X-UI allocate settings from a JSON string
-     */
-    public function setRemoteAllocateAttribute(?string $value): void
-    {
-        $this->attributes['remote_allocate'] = $value;
-
-        // Also update the parsed allocate array for internal use
-        if ($value) {
-            try {
-                $this->attributes['allocate'] = json_decode($value, true);
-            } catch (\Exception $e) {
-                \Log::warning("Failed to parse remote_allocate JSON for inbound {$this->id}: " . $e->getMessage());
-            }
-        }
-    }
+    // === 3X-UI API INTEGRATION METHODS ===
 
     /**
      * Create inbound data for 3X-UI API (add/update operations)
@@ -394,17 +310,18 @@ class ServerInbound extends Model
     public function toXuiApiData(): array
     {
         return [
-            'up' => $this->up ?? 0,
-            'down' => $this->down ?? 0,
-            'total' => $this->total ?? 0,
+            'up' => $this->remote_up ?? 0,
+            'down' => $this->remote_down ?? 0,
+            'total' => $this->remote_total ?? 0,
             'remark' => $this->remark ?? '',
             'enable' => $this->enable,
-            'expiryTime' => $this->expiryTime ? $this->expiryTime->timestamp * 1000 : 0, // 3X-UI uses milliseconds
+            'expiry_time' => $this->expiry_time ?? 0, // 3X-UI uses milliseconds timestamp
             'listen' => $this->listen ?? '',
             'port' => $this->port,
             'protocol' => $this->protocol,
             'settings' => $this->remote_settings ?? '{}',
             'streamSettings' => $this->remote_stream_settings ?? '{}',
+            'tag' => $this->tag ?? "inbound-{$this->port}",
             'sniffing' => $this->remote_sniffing ?? '{}',
             'allocate' => $this->remote_allocate ?? '{}',
         ];
@@ -425,25 +342,49 @@ class ServerInbound extends Model
             'remote_total' => $data['total'] ?? 0,
             'remark' => $data['remark'] ?? '',
             'enable' => $data['enable'] ?? true,
-            'expiryTime' => isset($data['expiryTime']) && $data['expiryTime'] > 0
-                ? Carbon::createFromTimestamp($data['expiryTime'] / 1000)
-                : null,
+            'expiry_time' => $data['expiry_time'] ?? 0,
             'listen' => $data['listen'] ?? '',
             'port' => $data['port'] ?? $this->port,
             'protocol' => $data['protocol'] ?? $this->protocol,
-            'tag' => $data['tag'] ?? null,
-            'remote_settings' => $data['settings'] ?? '{}',
-            'remote_stream_settings' => $data['streamSettings'] ?? '{}',
-            'remote_sniffing' => $data['sniffing'] ?? '{}',
-            'remote_allocate' => $data['allocate'] ?? '{}',
+            'tag' => $data['tag'] ?? $this->tag,
+            'remote_settings' => $data['settings'] ?? null,
+            'remote_stream_settings' => $data['streamSettings'] ?? null,
+            'remote_sniffing' => $data['sniffing'] ?? null,
+            'remote_allocate' => $data['allocate'] ?? null,
             'last_api_sync_at' => now(),
             'api_sync_status' => 'success',
             'api_sync_error' => null,
         ]);
 
-        // Update client statistics if provided
+        // Parse and update internal arrays for easier access
+        $this->parseRemoteSettingsToLocal();
+
+        // Sync client statistics if provided
         if (isset($data['clientStats']) && is_array($data['clientStats'])) {
             $this->syncClientsFromApiData($data['clientStats']);
+        }
+    }
+
+    /**
+     * Parse remote JSON settings to local arrays for easier access
+     */
+    protected function parseRemoteSettingsToLocal(): void
+    {
+        try {
+            if ($this->remote_settings) {
+                $this->settings = json_decode($this->remote_settings, true);
+            }
+            if ($this->remote_stream_settings) {
+                $this->streamSettings = json_decode($this->remote_stream_settings, true);
+            }
+            if ($this->remote_sniffing) {
+                $this->sniffing = json_decode($this->remote_sniffing, true);
+            }
+            if ($this->remote_allocate) {
+                $this->allocate = json_decode($this->remote_allocate, true);
+            }
+        } catch (\Exception $e) {
+            \Log::warning("Failed to parse remote settings for inbound {$this->id}: " . $e->getMessage());
         }
     }
 
@@ -486,30 +427,16 @@ class ServerInbound extends Model
     }
 
     /**
-     * Get traffic usage percentage based on remote traffic data
+     * Get clients that need to be synced with 3X-UI
      */
-    public function getRemoteTrafficUsagePercentage(): float
+    public function getClientsNeedingSync(): \Illuminate\Database\Eloquent\Collection
     {
-        if (!$this->traffic_limit_bytes || $this->traffic_limit_bytes <= 0) {
-            return 0.0;
-        }
-
-        return min(100.0, ($this->remote_total / $this->traffic_limit_bytes) * 100);
-    }
-
-    /**
-     * Check if inbound is over traffic limit
-     */
-    public function isOverTrafficLimit(): bool
-    {
-        return $this->traffic_limit_bytes > 0 && $this->remote_total >= $this->traffic_limit_bytes;
-    }
-
-    /**
-     * Get online clients count from last sync
-     */
-    public function getOnlineClientsCount(): int
-    {
-        return $this->clients()->where('is_online', true)->count();
+        return $this->clients()
+            ->where(function ($query) {
+                $query->where('api_sync_status', '!=', 'success')
+                      ->orWhere('last_api_sync_at', '<', now()->subHour())
+                      ->orWhereNull('last_api_sync_at');
+            })
+            ->get();
     }
 }

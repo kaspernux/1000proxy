@@ -1,0 +1,549 @@
+// ==========================================================================
+// CARDS - Card component styles for the 1000proxy platform
+// ==========================================================================
+
+// CARD BASE CLASS
+// ==========================================================================
+.card {
+  @extend %card;
+
+  // Card hover effect
+  &--hover {
+    @extend %card-hover;
+  }
+
+  // Interactive card
+  &--interactive {
+    @extend %card-interactive;
+  }
+
+  // Card with border
+  &--bordered {
+    border: 1px solid #e5e7eb;
+
+    [data-theme="dark"] & {
+      border-color: var(--color-border-primary);
+    }
+  }
+
+  // Card without shadow
+  &--flat {
+    box-shadow: none;
+    border: 1px solid #e5e7eb;
+
+    [data-theme="dark"] & {
+      border-color: var(--color-border-primary);
+    }
+  }
+
+  // Glass morphism effect
+  &--glass {
+    @include glassmorphism(0.1, 20px);
+  }
+
+  // Gradient background
+  &--gradient {
+    @include gradient-primary;
+    color: white;
+
+    .card__title,
+    .card__subtitle,
+    .card__text {
+      color: inherit;
+    }
+  }
+}
+
+// CARD STRUCTURE
+// ==========================================================================
+
+.card__header {
+  @extend %card-header;
+
+  &--center {
+    text-align: center;
+  }
+
+  &--between {
+    @extend %flex-between;
+  }
+}
+
+.card__body {
+  @extend %card-body;
+
+  &--center {
+    text-align: center;
+  }
+
+  &--padded {
+    padding: spacing('xl');
+  }
+
+  &--compact {
+    padding: spacing('sm');
+  }
+}
+
+.card__footer {
+  @extend %card-footer;
+
+  &--center {
+    text-align: center;
+  }
+
+  &--between {
+    @extend %flex-between;
+  }
+
+  &--actions {
+    display: flex;
+    gap: spacing('sm');
+    justify-content: flex-end;
+
+    &--center {
+      justify-content: center;
+    }
+
+    &--start {
+      justify-content: flex-start;
+    }
+
+    &--between {
+      justify-content: space-between;
+    }
+  }
+}
+
+// CARD CONTENT ELEMENTS
+// ==========================================================================
+
+.card__title {
+  @extend %heading-tertiary;
+  margin-bottom: spacing('sm');
+
+  &--large {
+    @extend %heading-secondary;
+  }
+
+  &--small {
+    font-size: font-size('lg');
+    font-weight: font-weight('medium');
+  }
+}
+
+.card__subtitle {
+  @extend %small-text;
+  margin-bottom: spacing('md');
+
+  &--muted {
+    color: #9ca3af;
+
+    [data-theme="dark"] & {
+      color: var(--color-text-tertiary);
+    }
+  }
+}
+
+.card__text {
+  @extend %body-text;
+  margin-bottom: spacing('md');
+
+  &:last-child {
+    margin-bottom: 0;
+  }
+}
+
+.card__image {
+  width: 100%;
+  height: auto;
+  object-fit: cover;
+
+  &--rounded {
+    border-radius: border-radius('lg') border-radius('lg') 0 0;
+  }
+
+  &--avatar {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    object-fit: cover;
+
+    &--large {
+      width: 64px;
+      height: 64px;
+    }
+
+    &--small {
+      width: 32px;
+      height: 32px;
+    }
+  }
+}
+
+// SPECIALIZED CARD TYPES
+// ==========================================================================
+
+// Server/Proxy plan card
+.card--server {
+  position: relative;
+  overflow: hidden;
+
+  &::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 4px;
+    background: linear-gradient(90deg, var(--color-primary-500), var(--color-secondary-500));
+  }
+
+  .card__header {
+    @extend %flex-between;
+
+    .server-status {
+      @include status-badge('online');
+
+      &--offline {
+        @include status-badge('offline');
+      }
+
+      &--warning {
+        @include status-badge('warning');
+      }
+    }
+  }
+
+  .server-location {
+    display: flex;
+    align-items: center;
+    gap: spacing('xs');
+    margin-bottom: spacing('sm');
+
+    &__flag {
+      width: 20px;
+      height: auto;
+      border-radius: border-radius('sm');
+    }
+
+    &__name {
+      font-weight: font-weight('medium');
+    }
+  }
+
+  .server-protocols {
+    display: flex;
+    flex-wrap: wrap;
+    gap: spacing('xs');
+    margin-bottom: spacing('md');
+
+    &__item {
+      padding: 0.25rem 0.5rem;
+      background-color: var(--color-primary-50);
+      color: var(--color-primary-700);
+      border-radius: border-radius('base');
+      font-size: font-size('xs');
+      font-weight: font-weight('medium');
+      text-transform: uppercase;
+
+      [data-theme="dark"] & {
+        background-color: var(--color-primary-900);
+        color: var(--color-primary-300);
+      }
+    }
+  }
+
+  .server-price {
+    @extend %flex-between;
+    padding-top: spacing('md');
+    border-top: 1px solid #e5e7eb;
+
+    [data-theme="dark"] & {
+      border-top-color: var(--color-border-primary);
+    }
+
+    &__amount {
+      font-size: font-size('2xl');
+      font-weight: font-weight('bold');
+      color: var(--color-primary-600);
+
+      &__currency {
+        font-size: font-size('lg');
+        font-weight: font-weight('normal');
+      }
+    }
+
+    &__period {
+      @extend %small-text;
+    }
+  }
+}
+
+// Payment method card
+.card--payment {
+  border: 2px solid transparent;
+  cursor: pointer;
+  transition: all map-get($transition-durations, 'base') map-get($transition-easings, 'smooth');
+
+  &:hover {
+    border-color: var(--color-primary-200);
+    transform: translateY(-2px);
+  }
+
+  &--selected {
+    border-color: var(--color-primary-500);
+    background-color: var(--color-primary-50);
+
+    [data-theme="dark"] & {
+      background-color: rgba(59, 130, 246, 0.1);
+    }
+  }
+
+  .payment-icon {
+    width: 48px;
+    height: 48px;
+    margin-bottom: spacing('sm');
+
+    &--stripe {
+      color: var(--color-stripe);
+    }
+
+    &--paypal {
+      color: var(--color-paypal);
+    }
+
+    &--crypto {
+      color: var(--color-crypto);
+    }
+
+    &--wallet {
+      color: var(--color-wallet);
+    }
+  }
+
+  .payment-fee {
+    @extend %small-text;
+    color: var(--color-status-warning);
+    margin-top: spacing('xs');
+  }
+}
+
+// Stats card
+.card--stats {
+  text-align: center;
+
+  .stats-icon {
+    width: 48px;
+    height: 48px;
+    margin: 0 auto spacing('sm');
+    padding: spacing('sm');
+    background-color: var(--color-primary-100);
+    color: var(--color-primary-600);
+    border-radius: 50%;
+
+    [data-theme="dark"] & {
+      background-color: var(--color-primary-900);
+      color: var(--color-primary-300);
+    }
+  }
+
+  .stats-value {
+    font-size: font-size('3xl');
+    font-weight: font-weight('bold');
+    color: var(--color-primary-600);
+    margin-bottom: spacing('xs');
+
+    &__suffix {
+      font-size: font-size('lg');
+      font-weight: font-weight('normal');
+      color: #6b7280;
+
+      [data-theme="dark"] & {
+        color: var(--color-text-tertiary);
+      }
+    }
+  }
+
+  .stats-label {
+    @extend %small-text;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+
+  .stats-change {
+    @extend %small-text;
+    margin-top: spacing('xs');
+
+    &--positive {
+      color: var(--color-secondary-600);
+    }
+
+    &--negative {
+      color: var(--color-status-offline);
+    }
+  }
+}
+
+// Feature card
+.card--feature {
+  text-align: center;
+  padding: spacing('xl');
+
+  .feature-icon {
+    width: 64px;
+    height: 64px;
+    margin: 0 auto spacing('lg');
+    padding: spacing('lg');
+    background: linear-gradient(135deg, var(--color-primary-500), var(--color-secondary-500));
+    color: white;
+    border-radius: 50%;
+  }
+
+  .feature-title {
+    @extend %heading-tertiary;
+    margin-bottom: spacing('sm');
+  }
+
+  .feature-description {
+    @extend %body-text;
+  }
+}
+
+// Testimonial card
+.card--testimonial {
+  .testimonial-quote {
+    @extend %body-text;
+    font-style: italic;
+    margin-bottom: spacing('lg');
+
+    &::before {
+      content: '"';
+      font-size: font-size('2xl');
+      color: var(--color-primary-500);
+    }
+
+    &::after {
+      content: '"';
+      font-size: font-size('2xl');
+      color: var(--color-primary-500);
+    }
+  }
+
+  .testimonial-author {
+    @extend %flex-start;
+    gap: spacing('sm');
+
+    &__avatar {
+      @extend .card__image--avatar;
+    }
+
+    &__info {
+      flex: 1;
+    }
+
+    &__name {
+      font-weight: font-weight('medium');
+      margin-bottom: 0.25rem;
+    }
+
+    &__title {
+      @extend %small-text;
+    }
+  }
+}
+
+// CARD LAYOUTS
+// ==========================================================================
+
+.card-grid {
+  @extend %grid-auto-fit;
+
+  &--2-col {
+    grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+  }
+
+  &--3-col {
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  }
+
+  &--4-col {
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  }
+}
+
+.card-list {
+  display: flex;
+  flex-direction: column;
+  gap: spacing('lg');
+}
+
+// CARD ANIMATIONS
+// ==========================================================================
+
+.card--animated {
+  opacity: 0;
+  transform: translateY(20px);
+  animation: card-reveal 0.6s ease-out forwards;
+}
+
+@keyframes card-reveal {
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.card--stagger {
+  animation-delay: var(--stagger-delay, 0s);
+}
+
+// RESPONSIVE CARD UTILITIES
+// ==========================================================================
+
+.card--full-mobile {
+  @include respond-below('md') {
+    margin: 0 calc(-1 * spacing('md'));
+    border-radius: 0;
+  }
+}
+
+.card--stack-mobile {
+  @include respond-below('md') {
+    .card__header,
+    .card__footer {
+      flex-direction: column;
+      align-items: stretch;
+      gap: spacing('sm');
+    }
+  }
+}
+
+// CARD LOADING STATES
+// ==========================================================================
+
+.card--loading {
+  .card__title,
+  .card__text,
+  .card__image {
+    @extend %loading-skeleton;
+  }
+
+  .card__title {
+    height: 1.5rem;
+    margin-bottom: spacing('sm');
+  }
+
+  .card__text {
+    height: 1rem;
+    margin-bottom: spacing('xs');
+
+    &:last-child {
+      width: 60%;
+    }
+  }
+
+  .card__image {
+    height: 200px;
+  }
+}

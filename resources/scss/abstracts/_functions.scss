@@ -1,0 +1,279 @@
+// ==========================================================================
+// FUNCTIONS - SCSS utility functions for the 1000proxy platform
+// ==========================================================================
+
+// COLOR FUNCTIONS
+// ==========================================================================
+
+/// Lighten a color by mixing it with white
+/// @param {Color} $color - The color to lighten
+/// @param {Number} $percentage - The percentage to lighten (0-100)
+/// @return {Color}
+@function lighten-color($color, $percentage) {
+  @return mix(white, $color, $percentage);
+}
+
+/// Darken a color by mixing it with black
+/// @param {Color} $color - The color to darken
+/// @param {Number} $percentage - The percentage to darken (0-100)
+/// @return {Color}
+@function darken-color($color, $percentage) {
+  @return mix(black, $color, $percentage);
+}
+
+/// Get a color value from CSS custom properties with fallback
+/// @param {String} $name - The CSS custom property name (without --)
+/// @param {Color} $fallback - Fallback color if custom property is not available
+/// @return {Color}
+@function get-color($name, $fallback: #000000) {
+  @return var(--color-#{$name}, #{$fallback});
+}
+
+// SPACING FUNCTIONS
+// ==========================================================================
+
+/// Get a spacing value from the spacing scale
+/// @param {String} $size - The size key from $spacing-scale
+/// @return {Length}
+@function spacing($size) {
+  @if map-has-key($spacing-scale, $size) {
+    @return map-get($spacing-scale, $size);
+  } @else {
+    @warn "Spacing size '#{$size}' not found in $spacing-scale map.";
+    @return 0;
+  }
+}
+
+/// Calculate relative spacing based on a multiplier
+/// @param {Number} $multiplier - The multiplier for base spacing
+/// @return {Length}
+@function relative-spacing($multiplier) {
+  @return $spacing-base * $multiplier;
+}
+
+// TYPOGRAPHY FUNCTIONS
+// ==========================================================================
+
+/// Get a font size from the font sizes map
+/// @param {String} $size - The size key from $font-sizes
+/// @return {Length}
+@function font-size($size) {
+  @if map-has-key($font-sizes, $size) {
+    @return map-get($font-sizes, $size);
+  } @else {
+    @warn "Font size '#{$size}' not found in $font-sizes map.";
+    @return 1rem;
+  }
+}
+
+/// Get a font weight from the font weights map
+/// @param {String} $weight - The weight key from $font-weights
+/// @return {Number}
+@function font-weight($weight) {
+  @if map-has-key($font-weights, $weight) {
+    @return map-get($font-weights, $weight);
+  } @else {
+    @warn "Font weight '#{$weight}' not found in $font-weights map.";
+    @return 400;
+  }
+}
+
+/// Get a line height from the line heights map
+/// @param {String} $height - The height key from $line-heights
+/// @return {Number}
+@function line-height($height) {
+  @if map-has-key($line-heights, $height) {
+    @return map-get($line-heights, $height);
+  } @else {
+    @warn "Line height '#{$height}' not found in $line-heights map.";
+    @return 1.5;
+  }
+}
+
+// LAYOUT FUNCTIONS
+// ==========================================================================
+
+/// Get a breakpoint value from the breakpoints map
+/// @param {String} $breakpoint - The breakpoint key from $breakpoints
+/// @return {Length}
+@function breakpoint($breakpoint) {
+  @if map-has-key($breakpoints, $breakpoint) {
+    @return map-get($breakpoints, $breakpoint);
+  } @else {
+    @warn "Breakpoint '#{$breakpoint}' not found in $breakpoints map.";
+    @return 0;
+  }
+}
+
+/// Get a z-index value from the z-indexes map
+/// @param {String} $layer - The layer key from $z-indexes
+/// @return {Number}
+@function z-index($layer) {
+  @if map-has-key($z-indexes, $layer) {
+    @return map-get($z-indexes, $layer);
+  } @else {
+    @warn "Z-index layer '#{$layer}' not found in $z-indexes map.";
+    @return 1;
+  }
+}
+
+/// Get a border radius value from the border radius map
+/// @param {String} $size - The size key from $border-radius
+/// @return {Length}
+@function border-radius($size) {
+  @if map-has-key($border-radius, $size) {
+    @return map-get($border-radius, $size);
+  } @else {
+    @warn "Border radius '#{$size}' not found in $border-radius map.";
+    @return 0;
+  }
+}
+
+/// Get a shadow value from the shadows map
+/// @param {String} $size - The size key from $shadows
+/// @return {String}
+@function shadow($size) {
+  @if map-has-key($shadows, $size) {
+    @return map-get($shadows, $size);
+  } @else {
+    @warn "Shadow '#{$size}' not found in $shadows map.";
+    @return none;
+  }
+}
+
+// UTILITY FUNCTIONS
+// ==========================================================================
+
+/// Convert pixels to rem units
+/// @param {Number} $pixels - The pixel value to convert
+/// @param {Number} $context - The base font size context (default: 16px)
+/// @return {Length}
+@function px-to-rem($pixels, $context: 16) {
+  @if unitless($pixels) {
+    $pixels: $pixels * 1px;
+  }
+
+  @if unitless($context) {
+    $context: $context * 1px;
+  }
+
+  @return calc($pixels / $context) * 1rem;
+}
+
+/// Convert rem to pixels
+/// @param {Number} $rems - The rem value to convert
+/// @param {Number} $context - The base font size context (default: 16px)
+/// @return {Length}
+@function rem-to-px($rems, $context: 16) {
+  @if unitless($rems) {
+    $rems: $rems * 1rem;
+  }
+
+  @if unitless($context) {
+    $context: $context * 1px;
+  }
+
+  @return calc($rems / 1rem) * $context;
+}
+
+/// Strip units from a number
+/// @param {Number} $number - The number to strip units from
+/// @return {Number}
+@function strip-unit($number) {
+  @if type-of($number) == 'number' and not unitless($number) {
+    @return calc($number / ($number * 0 + 1));
+  }
+
+  @return $number;
+}
+
+/// Check if a string starts with a specific substring
+/// @param {String} $string - The string to check
+/// @param {String} $substring - The substring to look for
+/// @return {Boolean}
+@function str-starts-with($string, $substring) {
+  @return str-index($string, $substring) == 1;
+}
+
+/// Replace a substring in a string
+/// @param {String} $string - The original string
+/// @param {String} $search - The substring to search for
+/// @param {String} $replace - The replacement string
+/// @return {String}
+@function str-replace($string, $search, $replace: '') {
+  $index: str-index($string, $search);
+
+  @if $index {
+    @return str-slice($string, 1, $index - 1) + $replace + str-replace(str-slice($string, $index + str-length($search)), $search, $replace);
+  }
+
+  @return $string;
+}
+
+// MATH FUNCTIONS
+// ==========================================================================
+
+/// Clamp a number between a minimum and maximum value
+/// @param {Number} $number - The number to clamp
+/// @param {Number} $min - The minimum value
+/// @param {Number} $max - The maximum value
+/// @return {Number}
+@function clamp-number($number, $min, $max) {
+  @return max($min, min($number, $max));
+}
+
+/// Calculate a percentage based on a fraction
+/// @param {Number} $numerator - The numerator
+/// @param {Number} $denominator - The denominator
+/// @return {Number}
+@function percentage-from-fraction($numerator, $denominator) {
+  @return calc($numerator / $denominator) * 100%;
+}
+
+/// Round a number to a specific number of decimal places
+/// @param {Number} $number - The number to round
+/// @param {Number} $digits - The number of decimal places (default: 2)
+/// @return {Number}
+@function round-decimal($number, $digits: 2) {
+  $multiplier: pow(10, $digits);
+  @return calc(round($number * $multiplier) / $multiplier);
+}
+
+// MAP UTILITIES
+// ==========================================================================
+
+/// Deep merge two maps
+/// @param {Map} $map1 - The first map
+/// @param {Map} $map2 - The second map
+/// @return {Map}
+@function map-deep-merge($map1, $map2) {
+  $result: $map1;
+
+  @each $key, $value in $map2 {
+    @if type-of($value) == map and type-of(map-get($result, $key)) == map {
+      $result: map-merge($result, ($key: map-deep-merge(map-get($result, $key), $value)));
+    } @else {
+      $result: map-merge($result, ($key: $value));
+    }
+  }
+
+  @return $result;
+}
+
+/// Get a nested value from a map using a path
+/// @param {Map} $map - The map to search in
+/// @param {List} $path - The path to the value
+/// @return {*}
+@function map-deep-get($map, $path...) {
+  $value: $map;
+
+  @each $key in $path {
+    @if type-of($value) == map and map-has-key($value, $key) {
+      $value: map-get($value, $key);
+    } @else {
+      @return null;
+    }
+  }
+
+  @return $value;
+}
