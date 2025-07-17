@@ -1,6 +1,6 @@
 # API Documentation
 
-The 1000proxy API provides programmatic access to all system functionality including order management, user authentication, service provisioning, and administrative tasks.
+The 1000proxy API provides programmatic access to all system functionality including order management, user authentication, service provisioning, and administrative tasks. The API powers the modern, professional UI built with Livewire 3.x components and Heroicons integration.
 
 ## Base Information
 
@@ -9,6 +9,7 @@ The 1000proxy API provides programmatic access to all system functionality inclu
 - **Content Type**: `application/json`
 - **Authentication**: Bearer Token (Laravel Sanctum)
 - **Rate Limiting**: 60 requests per minute per IP
+- **UI Integration**: Powers reactive Livewire components with real-time updates
 
 ## Authentication
 
