@@ -10,14 +10,11 @@ class CustomerSeeder extends Seeder
 {
     public function run(): void
     {
-        // Create 20 random customers
-        Customer::factory()->count(20)->create();
-
-        // Create the specific test customer or find existing
+        // Create the specific demo customer or find existing
         $customer = Customer::where('email', 'demo@1000proxy.io')->first();
 
         if (!$customer) {
-            $customer = Customer::factory()->create([
+            $customer = Customer::create([
                 'is_active' => true,
                 'image' => 'https://via.placeholder.com/640x480.png/00dd77?text=demo-customer',
                 'name' => 'Demo Customer',
@@ -39,6 +36,6 @@ class CustomerSeeder extends Seeder
             ]);
         }
 
-        $this->command->info('Created customers successfully!');
+        $this->command->info('Created demo customer successfully!');
     }
 }
