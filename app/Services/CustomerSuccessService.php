@@ -6,6 +6,7 @@ use App\Models\User;
 use App\Models\Order;
 use App\Models\ServerClient;
 use App\Models\WalletTransaction;
+use App\Services\EnhancedMailService;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\DB;
@@ -17,14 +18,16 @@ class CustomerSuccessService
     private array $automationRules = [];
     private array $customerSegments = [];
     private array $healthScoreMetrics = [];
-    
-    public function __construct()
+    private EnhancedMailService $mailService;
+
+    public function __construct(EnhancedMailService $mailService)
     {
+        $this->mailService = $mailService;
         $this->initializeAutomationRules();
         $this->initializeCustomerSegments();
         $this->initializeHealthScoreMetrics();
     }
-    
+
     /**
      * Initialize automation rules
      */
@@ -81,7 +84,7 @@ class CustomerSuccessService
             ]
         ];
     }
-    
+
     /**
      * Initialize customer segments
      */
@@ -120,7 +123,7 @@ class CustomerSuccessService
             ]
         ];
     }
-    
+
     /**
      * Initialize health score metrics
      */
@@ -153,22 +156,22 @@ class CustomerSuccessService
             ]
         ];
     }
-    
+
     /**
      * Calculate customer health score
      */
     public function calculateHealthScore(User $user): float
     {
         $score = 0;
-        
+
         foreach ($this->healthScoreMetrics as $metric => $config) {
             $value = $this->calculateMetricValue($user, $metric);
             $score += $value * $config['weight'];
         }
-        
+
         return round($score, 2);
     }
-    
+
     /**
      * Calculate individual metric value
      */
@@ -182,14 +185,14 @@ class CustomerSuccessService
                     ->distinct('login_date')
                     ->count();
                 return ($loginDays / 30) * 100;
-                
+
             case 'usage_consistency':
                 $activeDays = ServerClient::where('user_id', $user->id)
                     ->where('last_used_at', '>=', now()->subMonth())
                     ->distinct('last_used_date')
                     ->count();
                 return ($activeDays / 30) * 100;
-                
+
             case 'payment_timeliness':
                 $totalPayments = Order::where('user_id', $user->id)->count();
                 $onTimePayments = Order::where('user_id', $user->id)
@@ -197,65 +200,65 @@ class CustomerSuccessService
                     ->where('paid_at', '<=', DB::raw('due_date'))
                     ->count();
                 return $totalPayments > 0 ? ($onTimePayments / $totalPayments) * 100 : 100;
-                
+
             case 'support_interaction':
                 // This would need a support tickets system
                 return 85; // Default positive score
-                
+
             case 'feature_adoption':
                 $totalFeatures = 10; // Total available features
                 $usedFeatures = $this->countUsedFeatures($user);
                 return ($usedFeatures / $totalFeatures) * 100;
-                
+
             case 'renewal_rate':
                 $totalSubscriptions = ServerClient::where('user_id', $user->id)->count();
                 $renewedSubscriptions = ServerClient::where('user_id', $user->id)
                     ->where('renewed_at', '>=', now()->subYear())
                     ->count();
                 return $totalSubscriptions > 0 ? ($renewedSubscriptions / $totalSubscriptions) * 100 : 100;
-                
+
             default:
                 return 0;
         }
     }
-    
+
     /**
      * Count used features for a user
      */
     private function countUsedFeatures(User $user): int
     {
         $features = 0;
-        
+
         // Check various feature usage
         if ($user->orders()->exists()) $features++;
         if ($user->walletTransactions()->exists()) $features++;
         if ($user->serverClients()->exists()) $features++;
         if ($user->telegram_chat_id) $features++;
         if ($user->email_verified_at) $features++;
-        
+
         return $features;
     }
-    
+
     /**
      * Segment customers based on criteria
      */
     public function segmentCustomers(): array
     {
         $segments = [];
-        
+
         foreach ($this->customerSegments as $segmentKey => $segment) {
             $segments[$segmentKey] = User::query();
-            
+
             foreach ($segment['criteria'] as $criterion => $value) {
                 $segments[$segmentKey] = $this->applyCriterion($segments[$segmentKey], $criterion, $value);
             }
-            
+
             $segments[$segmentKey] = $segments[$segmentKey]->get();
         }
-        
+
         return $segments;
     }
-    
+
     /**
      * Apply segmentation criterion
      */
@@ -268,7 +271,7 @@ class CustomerSuccessService
                     return $query->where('created_at', '>=', now()->subDays($days));
                 }
                 break;
-                
+
             case 'order_count':
                 if (strpos($value, '>') !== false) {
                     $count = (int) str_replace('>', '', $value);
@@ -277,7 +280,7 @@ class CustomerSuccessService
                     return $query->doesntHave('orders');
                 }
                 break;
-                
+
             case 'last_login':
                 if (strpos($value, '<=') !== false) {
                     $days = (int) str_replace('<=', '', $value);
@@ -287,7 +290,7 @@ class CustomerSuccessService
                     return $query->where('last_login_at', '<', now()->subDays($days));
                 }
                 break;
-                
+
             case 'monthly_spend':
                 if (strpos($value, '>') !== false) {
                     $amount = (float) str_replace('>', '', $value);
@@ -298,7 +301,7 @@ class CustomerSuccessService
                     });
                 }
                 break;
-                
+
             case 'health_score':
                 if (strpos($value, '<') !== false) {
                     $score = (float) str_replace('<', '', $value);
@@ -306,10 +309,10 @@ class CustomerSuccessService
                 }
                 break;
         }
-        
+
         return $query;
     }
-    
+
     /**
      * Process automation rules
      */
@@ -319,7 +322,7 @@ class CustomerSuccessService
             $this->processRule($ruleKey, $rule);
         }
     }
-    
+
     /**
      * Process individual automation rule
      */
@@ -327,11 +330,11 @@ class CustomerSuccessService
     {
         try {
             $users = $this->getUsersForRule($rule);
-            
+
             foreach ($users as $user) {
                 if ($this->shouldTriggerRule($user, $rule)) {
                     $this->executeRuleActions($user, $rule);
-                    
+
                     // Log automation execution
                     Log::info("Customer success automation executed", [
                         'rule' => $ruleKey,
@@ -340,27 +343,27 @@ class CustomerSuccessService
                     ]);
                 }
             }
-            
+
         } catch (\Exception $e) {
             Log::error("Error processing automation rule {$ruleKey}: " . $e->getMessage());
         }
     }
-    
+
     /**
      * Get users for automation rule
      */
     private function getUsersForRule(array $rule): \Illuminate\Database\Eloquent\Collection
     {
         $query = User::query();
-        
+
         // Apply rule conditions to filter users
         foreach ($rule['conditions'] as $condition => $value) {
             $query = $this->applyRuleCondition($query, $condition, $value);
         }
-        
+
         return $query->get();
     }
-    
+
     /**
      * Apply rule condition
      */
@@ -372,23 +375,23 @@ class CustomerSuccessService
                     return $query->where('created_at', '>=', now()->subDay());
                 }
                 break;
-                
+
             case 'hours_since_registration':
                 return $query->where('created_at', '<=', now()->subHours($value));
-                
+
             case 'order_count':
                 return $query->has('orders', '=', $value);
-                
+
             case 'days_since_order':
                 return $query->whereHas('orders', function ($q) use ($value) {
                     $q->where('created_at', '<=', now()->subDays($value));
                 });
-                
+
             case 'days_until_expiry':
                 return $query->whereHas('serverClients', function ($q) use ($value) {
                     $q->where('expires_at', '<=', now()->addDays($value));
                 });
-                
+
             case 'health_score':
                 if (strpos($value, '<') !== false) {
                     $score = (float) str_replace('<', '', $value);
@@ -396,10 +399,10 @@ class CustomerSuccessService
                 }
                 break;
         }
-        
+
         return $query;
     }
-    
+
     /**
      * Check if rule should trigger for user
      */
@@ -407,14 +410,14 @@ class CustomerSuccessService
     {
         // Check if rule was already executed recently
         $lastExecution = Cache::get("automation.{$user->id}.last_execution");
-        
+
         if ($lastExecution && $lastExecution > now()->subHours($rule['delay'])) {
             return false;
         }
-        
+
         return true;
     }
-    
+
     /**
      * Execute rule actions
      */
@@ -423,11 +426,11 @@ class CustomerSuccessService
         foreach ($rule['actions'] as $action) {
             $this->executeAction($user, $action);
         }
-        
+
         // Update last execution time
         Cache::put("automation.{$user->id}.last_execution", now(), now()->addDays(1));
     }
-    
+
     /**
      * Execute individual action
      */
@@ -437,82 +440,96 @@ class CustomerSuccessService
             case 'send_welcome_email':
                 $this->sendWelcomeEmail($user);
                 break;
-                
+
             case 'send_onboarding_email':
                 $this->sendOnboardingEmail($user);
                 break;
-                
+
             case 'send_congratulations_email':
                 $this->sendCongratulationsEmail($user);
                 break;
-                
+
             case 'send_usage_tips':
                 $this->sendUsageTips($user);
                 break;
-                
+
             case 'send_renewal_reminder':
                 $this->sendRenewalReminder($user);
                 break;
-                
+
             case 'send_retention_email':
                 $this->sendRetentionEmail($user);
                 break;
-                
+
             case 'send_upsell_email':
                 $this->sendUpsellEmail($user);
                 break;
-                
+
             case 'send_loyalty_reward':
                 $this->sendLoyaltyReward($user);
                 break;
-                
+
             case 'offer_discount':
                 $this->offerDiscount($user);
                 break;
-                
+
             case 'create_onboarding_task':
                 $this->createOnboardingTask($user);
                 break;
-                
+
             case 'schedule_support_call':
                 $this->scheduleSupportCall($user);
                 break;
         }
     }
-    
+
     /**
      * Send welcome email
      */
     private function sendWelcomeEmail(User $user): void
     {
-        // Implementation would use Mail facade
-        Log::info("Welcome email sent to user {$user->id}");
+        $this->mailService->sendWelcomeEmail($user);
     }
-    
+
     /**
      * Send onboarding email
      */
     private function sendOnboardingEmail(User $user): void
     {
-        Log::info("Onboarding email sent to user {$user->id}");
+        $this->mailService->sendAdminNotification(
+            $user,
+            'Complete Your 1000 PROXIES Setup',
+            'Welcome! Let\'s get your proxy service up and running. Visit your dashboard to configure your first proxy connection.',
+            'info'
+        );
     }
-    
+
     /**
      * Send congratulations email
      */
     private function sendCongratulationsEmail(User $user): void
     {
-        Log::info("Congratulations email sent to user {$user->id}");
+        $this->mailService->sendAdminNotification(
+            $user,
+            'Congratulations on Your First Order! 🎉',
+            'Thank you for choosing 1000 PROXIES! Your proxy service is now active. Check your dashboard for connection details and setup instructions.',
+            'success'
+        );
     }
-    
+
     /**
      * Send usage tips
      */
     private function sendUsageTips(User $user): void
     {
-        Log::info("Usage tips sent to user {$user->id}");
+        $this->mailService->sendAdminNotification(
+            $user,
+            'Maximize Your Proxy Performance',
+            'Here are some tips to get the most out of your 1000 PROXIES service: Use rotating IPs for better anonymity, configure sticky sessions for specific use cases, and monitor your usage in the dashboard.',
+            'info'
+        );
     }
-    
+
     /**
      * Send renewal reminder
      */
@@ -520,7 +537,7 @@ class CustomerSuccessService
     {
         Log::info("Renewal reminder sent to user {$user->id}");
     }
-    
+
     /**
      * Send retention email
      */
@@ -528,7 +545,7 @@ class CustomerSuccessService
     {
         Log::info("Retention email sent to user {$user->id}");
     }
-    
+
     /**
      * Send upsell email
      */
@@ -536,7 +553,7 @@ class CustomerSuccessService
     {
         Log::info("Upsell email sent to user {$user->id}");
     }
-    
+
     /**
      * Send loyalty reward
      */
@@ -544,7 +561,7 @@ class CustomerSuccessService
     {
         Log::info("Loyalty reward sent to user {$user->id}");
     }
-    
+
     /**
      * Offer discount
      */
@@ -553,7 +570,7 @@ class CustomerSuccessService
         // Create discount code or wallet credit
         Log::info("Discount offered to user {$user->id}");
     }
-    
+
     /**
      * Create onboarding task
      */
@@ -561,7 +578,7 @@ class CustomerSuccessService
     {
         Log::info("Onboarding task created for user {$user->id}");
     }
-    
+
     /**
      * Schedule support call
      */
@@ -569,16 +586,16 @@ class CustomerSuccessService
     {
         Log::info("Support call scheduled for user {$user->id}");
     }
-    
+
     /**
      * Generate customer success report
      */
     public function generateReport(string $period = 'monthly'): array
     {
         $startDate = $period === 'weekly' ? now()->subWeek() : now()->subMonth();
-        
+
         $segments = $this->segmentCustomers();
-        
+
         return [
             'period' => $period,
             'start_date' => $startDate->toDateString(),
@@ -592,7 +609,7 @@ class CustomerSuccessService
             'growth_metrics' => $this->getGrowthMetrics($startDate)
         ];
     }
-    
+
     /**
      * Get health score distribution
      */
@@ -605,7 +622,7 @@ class CustomerSuccessService
             'poor' => User::where('health_score', '<', 40)->count()
         ];
     }
-    
+
     /**
      * Get automation statistics
      */
@@ -618,7 +635,7 @@ class CustomerSuccessService
             'conversion_rate' => 0.08
         ];
     }
-    
+
     /**
      * Get churn metrics
      */
@@ -626,14 +643,14 @@ class CustomerSuccessService
     {
         $totalUsers = User::count();
         $churnedUsers = User::where('last_login_at', '<', now()->subMonths(3))->count();
-        
+
         return [
             'churn_rate' => $totalUsers > 0 ? ($churnedUsers / $totalUsers) * 100 : 0,
             'at_risk_users' => User::where('health_score', '<', 50)->count(),
             'saved_users' => 0 // Would track successful retention efforts
         ];
     }
-    
+
     /**
      * Get growth metrics
      */
@@ -651,7 +668,7 @@ class CustomerSuccessService
                 ->sum('total')
         ];
     }
-    
+
     /**
      * Update customer health scores
      */
@@ -663,23 +680,23 @@ class CustomerSuccessService
                 $user->update(['health_score' => $healthScore]);
             }
         });
-        
+
         Log::info("Health scores updated for all users");
     }
-    
+
     /**
      * Run customer success automation
      */
     public function runAutomation(): void
     {
         Log::info("Starting customer success automation");
-        
+
         // Update health scores
         $this->updateHealthScores();
-        
+
         // Process automation rules
         $this->processAutomationRules();
-        
+
         Log::info("Customer success automation completed");
     }
 }

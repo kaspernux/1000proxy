@@ -3,12 +3,14 @@
 namespace App\Services;
 
 use App\Models\Customer;
+use App\Models\User;
 use App\Models\Order;
 use App\Models\WalletTransaction;
 use App\Models\MarketingCampaign;
 use App\Models\EmailTemplate;
 use App\Models\CustomerSegment;
 use App\Models\ReferralCode;
+use App\Services\EnhancedMailService;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Cache;
@@ -20,9 +22,11 @@ class AutomatedMarketingService
     protected $campaigns = [];
     protected $segments = [];
     protected $emailTemplates = [];
+    protected $mailService;
 
-    public function __construct()
+    public function __construct(EnhancedMailService $mailService)
     {
+        $this->mailService = $mailService;
         $this->loadCampaigns();
         $this->loadSegments();
         $this->loadEmailTemplates();
@@ -214,19 +218,22 @@ class AutomatedMarketingService
     {
         $newCustomers = Customer::where('created_at', '>=', now()->subDays(1))
             ->where('welcome_email_sent', false)
+            ->with('user') // Make sure we have the user relationship
             ->get();
 
         $emailsSent = 0;
         foreach ($newCustomers as $customer) {
             try {
-                $this->sendEmail($customer, 'welcome', [
-                    'customer_name' => $customer->name,
-                    'dashboard_url' => route('customer.dashboard'),
-                    'support_url' => route('support.contact'),
-                ]);
-
-                $customer->update(['welcome_email_sent' => true]);
-                $emailsSent++;
+                // Use the enhanced mail service to send welcome email
+                if ($customer->user) {
+                    $success = $this->mailService->sendWelcomeEmail($customer->user);
+                    if ($success) {
+                        $customer->update(['welcome_email_sent' => true]);
+                        $emailsSent++;
+                    }
+                } else {
+                    Log::warning('Customer without user found', ['customer_id' => $customer->id]);
+                }
 
             } catch (\Exception $e) {
                 Log::error('Welcome email failed', [

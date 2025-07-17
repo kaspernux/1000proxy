@@ -8,6 +8,8 @@ use Livewire\Attributes\Title;
 use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\User;
+use App\Mail\OrderPlaced;
+use App\Services\EnhancedMailService;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Mail;
@@ -273,8 +275,21 @@ class SuccessPage extends Component
     private function sendOrderConfirmationEmail()
     {
         try {
-            // Send order confirmation email logic
-            // Mail::to($this->order->customer)->send(new OrderConfirmation($this->order));
+            // Use the enhanced mail service for better error handling and logging
+            $mailService = app(EnhancedMailService::class);
+            $success = $mailService->sendOrderPlacedEmail($this->order);
+
+            if ($success) {
+                Log::info('Order confirmation email sent successfully via EnhancedMailService', [
+                    'order_id' => $this->order->id,
+                    'email' => $this->order->user->email
+                ]);
+            } else {
+                Log::warning('Order confirmation email failed via EnhancedMailService', [
+                    'order_id' => $this->order->id,
+                    'email' => $this->order->user->email
+                ]);
+            }
         } catch (\Exception $e) {
             Log::error('Order confirmation email failed', [
                 'order_id' => $this->order->id,

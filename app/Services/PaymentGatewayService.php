@@ -7,6 +7,7 @@ use App\Models\Order;
 use App\Models\Payment;
 use App\Models\Customer;
 use App\Models\PaymentMethod;
+use App\Services\EnhancedMailService;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\DB;
@@ -34,9 +35,11 @@ class PaymentGatewayService
 
     private $fraudDetectionRules = [];
     private $retryStrategies = [];
+    private EnhancedMailService $mailService;
 
-    public function __construct()
+    public function __construct(EnhancedMailService $mailService)
     {
+        $this->mailService = $mailService;
         $this->initializeFraudDetectionRules();
         $this->initializeRetryStrategies();
     }
@@ -1419,20 +1422,55 @@ class PaymentGatewayService
 
     private function sendPaymentConfirmationNotifications(array $paymentData, array $paymentResult): void
     {
-        // Implementation would send emails, SMS, webhooks, etc.
-        Log::info('Payment confirmation notifications sent', [
-            'order_id' => $paymentData['order_id'],
-            'transaction_id' => $paymentResult['transaction_id']
-        ]);
+        try {
+            $order = Order::find($paymentData['order_id']);
+            if ($order && $order->user) {
+                // Send payment received confirmation
+                $this->mailService->sendPaymentReceivedEmail(
+                    $order,
+                    $paymentData['gateway'] ?? 'Unknown',
+                    $paymentResult['transaction_id'] ?? null
+                );
+
+                Log::info('Payment confirmation notifications sent', [
+                    'order_id' => $paymentData['order_id'],
+                    'transaction_id' => $paymentResult['transaction_id'],
+                    'user_id' => $order->user_id
+                ]);
+            }
+        } catch (\Exception $e) {
+            Log::error('Failed to send payment confirmation notification', [
+                'order_id' => $paymentData['order_id'],
+                'error' => $e->getMessage()
+            ]);
+        }
     }
 
     private function sendPaymentFailureNotifications(array $paymentData, array $paymentResult): void
     {
-        // Implementation would send failure notifications
-        Log::warning('Payment failure notifications sent', [
-            'order_id' => $paymentData['order_id'],
-            'error' => $paymentResult['error']
-        ]);
+        try {
+            $order = Order::find($paymentData['order_id']);
+            if ($order && $order->user) {
+                // Send payment failed notification
+                $this->mailService->sendPaymentFailedEmail(
+                    $order->user,
+                    $paymentData['order_id'],
+                    $paymentData['amount'] ?? 0,
+                    $paymentResult['error'] ?? 'Payment processing failed'
+                );
+
+                Log::warning('Payment failure notifications sent', [
+                    'order_id' => $paymentData['order_id'],
+                    'user_id' => $order->user_id,
+                    'error' => $paymentResult['error']
+                ]);
+            }
+        } catch (\Exception $e) {
+            Log::error('Failed to send payment failure notification', [
+                'order_id' => $paymentData['order_id'],
+                'error' => $e->getMessage()
+            ]);
+        }
     }
 
     private function determineRetryStrategy(array $paymentResult): array
