@@ -27,13 +27,13 @@ This guide covers Docker development and deployment for the 1000proxy applicatio
 git clone https://github.com/your-username/1000proxy.git
 cd 1000proxy
 
-# Copy environment file
+# Quick setup with automated script (recommended)
+chmod +x scripts/docker-setup.sh
+./scripts/docker-setup.sh
+
+# Or manual setup
 cp .env.example .env
-
-# Build and start services
 docker-compose up -d
-
-# Install dependencies and setup database
 docker-compose exec app composer install
 docker-compose exec app npm install
 docker-compose exec app npm run build

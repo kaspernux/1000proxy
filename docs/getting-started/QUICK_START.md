@@ -23,13 +23,17 @@ Before you begin, ensure you have:
 git clone https://github.com/kaspernux/1000proxy.git
 cd 1000proxy
 
-# Copy environment file
-cp .env.example .env
+# Automated setup (recommended)
+chmod +x scripts/docker-setup.sh
+./scripts/docker-setup.sh
 ```
 
-### 2. Start with Docker
+### 2. Alternative Manual Setup
 
 ```bash
+# Copy environment file
+cp .env.example .env
+
 # Build and start all services
 docker-compose up -d
 
@@ -39,6 +43,8 @@ docker-compose exec app npm install && npm run build
 docker-compose exec app php artisan key:generate
 docker-compose exec app php artisan migrate:fresh --seed
 ```
+
+**Windows Users**: Use `.\scripts\docker-setup.ps1` for automated setup
 
 ### 3. Access Your Application
 

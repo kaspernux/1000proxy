@@ -47,7 +47,14 @@ This documentation is organized into several sections to help developers, admini
 - [Database Migrations](development/MIGRATIONS.md) *(Coming Soon)*
 - [Queue System](development/QUEUE_SYSTEM.md) *(Coming Soon)*
 
-### 🚀 Deployment
+### �️ Scripts & Automation
+
+- [Scripts Overview](../scripts/README.md) - Development and deployment scripts *(New)*
+- [Docker Setup Scripts](../scripts/README.md#docker-scripts) - Automated Docker environment setup
+- [Testing Scripts](../scripts/README.md#testing-scripts) - Comprehensive testing automation
+- [Debug Scripts](../scripts/README.md#debug-scripts) - Diagnostic and troubleshooting tools
+
+### �🚀 Deployment
 
 - [Deployment Guide](deployment/DEPLOYMENT_GUIDE.md)
 - [Production Deployment](deployment/PRODUCTION_DEPLOYMENT.md) *(Coming Soon)*

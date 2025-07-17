@@ -32,18 +32,20 @@
 git clone https://github.com/kaspernux/1000proxy.git
 cd 1000proxy
 
-# Copy environment file
+# Automated setup (recommended)
+chmod +x scripts/docker-setup.sh
+./scripts/docker-setup.sh
+
+# Or manual setup
 cp .env.example .env
-
-# Build and start with Docker
 docker-compose up -d
-
-# Setup application
 docker-compose exec app composer install
 docker-compose exec app npm install && npm run build
 docker-compose exec app php artisan key:generate
 docker-compose exec app php artisan migrate:fresh --seed
 ```
+
+**Windows Users**: Use `.\scripts\docker-setup.ps1` instead
 
 **Access**: http://localhost:8000 | **Admin**: http://localhost:8000/admin (admin@example.com / password)
 
@@ -86,29 +88,47 @@ Comprehensive documentation is available in the `/docs` directory:
 
 ## 🛠️ Development Scripts
 
-Three essential PowerShell scripts for comprehensive project management:
+Essential scripts for project management located in the `scripts/` directory:
+
+### 🐳 Docker Setup
+```bash
+# Linux/macOS
+chmod +x scripts/docker-setup.sh
+./scripts/docker-setup.sh
+
+# Windows PowerShell
+.\scripts\docker-setup.ps1
+```
 
 ### 🔍 Debug & Diagnostics
 ```powershell
-./debug-project.ps1              # Complete system diagnostics
-./debug-project.ps1 -Verbose     # Detailed debug output
-./debug-project.ps1 -OutputFile "report.txt"  # Save report to file
+.\scripts\debug-project.ps1              # Complete system diagnostics
+.\scripts\debug-project.ps1 -Verbose     # Detailed debug output
+.\scripts\debug-project.ps1 -OutputFile "report.txt"  # Save report to file
 ```
 
 ### 🧪 Testing
 ```powershell
-./test-project.ps1               # Run all tests
-./test-project.ps1 -Coverage     # Run tests with coverage
-./test-project.ps1 -API          # Test API endpoints only
-./test-project.ps1 -Filter "AuthTest"  # Filter specific tests
+.\scripts\test-project.ps1               # Run all tests
+.\scripts\test-project.ps1 -Coverage     # Run tests with coverage
+.\scripts\test-project.ps1 -API          # Test API endpoints only
+.\scripts\test-project.ps1 -Filter "AuthTest"  # Filter specific tests
 ```
 
 ### ✅ Feature Verification
 ```powershell
-./check-features.ps1             # Verify all features
-./check-features.ps1 -Verbose    # Detailed feature check
-./check-features.ps1 -Authentication -AdminPanels  # Check specific features
+.\scripts\check-features.ps1             # Verify all features
+.\scripts\check-features.ps1 -Verbose    # Detailed feature check
+.\scripts\check-features.ps1 -Authentication -AdminPanels  # Check specific features
 ```
+
+### 🧹 Cleanup & Maintenance
+```powershell
+.\scripts\cleanup-project.ps1            # Basic cleanup
+.\scripts\cleanup-project.ps1 -Deep      # Deep cleanup with optimization
+```
+
+**📋 Full Documentation**: See [scripts/README.md](scripts/README.md) for detailed usage
 
 # 🔧 Full Project Presentation
 
