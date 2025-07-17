@@ -78,7 +78,7 @@ class MobileOrderController extends Controller
                         'protocol' => 'VLESS'
                     ],
                     'configuration' => [
-                        'server' => 'us1.1000proxy.com',
+                        'server' => 'us1.1000proxy.io',
                         'port' => 443,
                         'uuid' => '12345678-1234-1234-1234-123456789012'
                     ],
@@ -188,13 +188,13 @@ class MobileOrderController extends Controller
                 'configuration' => [
                     'order_id' => $orderId,
                     'server_details' => [
-                        'host' => 'us1.1000proxy.com',
+                        'host' => 'us1.1000proxy.io',
                         'port' => 443,
                         'protocol' => 'VLESS',
                         'uuid' => '12345678-1234-1234-1234-123456789012',
                         'encryption' => 'none'
                     ],
-                    'connection_string' => 'vless://12345678-1234-1234-1234-123456789012@us1.1000proxy.com:443',
+                    'connection_string' => 'vless://12345678-1234-1234-1234-123456789012@us1.1000proxy.io:443',
                     'qr_code_url' => url('/qr-codes/' . $orderId),
                     'setup_instructions' => [
                         'Download a VLESS-compatible client',

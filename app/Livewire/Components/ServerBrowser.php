@@ -69,8 +69,8 @@ class ServerBrowser extends Component
     {
         $this->loading = true;
 
-        $query = ServerPlan::with(['server', 'serverCategory', 'serverBrand'])
-            ->where('is_active', true);
+        $query = ServerPlan::with(['server', 'category', 'brand'])
+            ->where('server_plans.is_active', true);
 
         // Apply search filter
         if ($this->searchTerm) {
@@ -93,14 +93,14 @@ class ServerBrowser extends Component
 
         // Apply category filter
         if ($this->selectedCategory) {
-            $query->whereHas('serverCategory', function($q) {
+            $query->whereHas('category', function($q) {
                 $q->where('slug', $this->selectedCategory);
             });
         }
 
         // Apply brand filter
         if ($this->selectedBrand) {
-            $query->whereHas('serverBrand', function($q) {
+            $query->whereHas('brand', function($q) {
                 $q->where('slug', $this->selectedBrand);
             });
         }
@@ -120,6 +120,7 @@ class ServerBrowser extends Component
         switch ($this->sortBy) {
             case 'location_first':
                 $query->join('servers', 'server_plans.server_id', '=', 'servers.id')
+                      ->where('servers.is_active', true)
                       ->orderBy('servers.country')
                       ->orderBy('server_plans.price');
                 break;

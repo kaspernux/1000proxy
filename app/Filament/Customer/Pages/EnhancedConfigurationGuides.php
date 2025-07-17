@@ -335,7 +335,7 @@ class EnhancedConfigurationGuides extends Page
                 'id' => $client->id,
                 'name' => $client->server->name ?? "Proxy {$client->id}",
                 'server_location' => $client->server->location ?? 'Unknown',
-                'server_brand' => $client->server->serverBrand->name ?? 'Generic',
+                'server_brand' => $client->server->brand->name ?? 'Generic',
                 'protocol' => $client->inbound_name ?? 'vless',
                 'port' => $client->server->api_port ?? 443,
                 'status' => $client->status,

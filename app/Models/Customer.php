@@ -133,7 +133,7 @@ class Customer extends Authenticatable implements MustVerifyEmail
             'amount' => -$amount,
             'type' => 'debit',
             'status' => 'completed',
-            'reference' => 'wallet_' . strtoupper(Str::random(8)),
+            'reference' => 'DebitWallet_' . strtoupper(Str::random(8)),
             'description' => $description,
         ]);
 
@@ -151,7 +151,7 @@ class Customer extends Authenticatable implements MustVerifyEmail
             'amount' => $amount,
             'type' => 'credit',
             'status' => 'completed',
-            'reference' => 'wallet_' . strtoupper(Str::random(8)),
+            'reference' => 'CreditWallet_' . strtoupper(Str::random(8)),
             'description' => $description,
         ]);
     }
@@ -282,7 +282,7 @@ class Customer extends Authenticatable implements MustVerifyEmail
             'amount' => -$total,
             'type' => 'debit',
             'status' => 'completed',
-            'reference' => 'wallet_' . strtoupper(Str::random(8)),
+            'reference' => 'DebitWallet_' . strtoupper(Str::random(8)),
             'description' => 'Auto-paid from confirmed deposit for Order #' . $order->id,
         ]);
 

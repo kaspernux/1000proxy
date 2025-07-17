@@ -153,7 +153,7 @@ class CachingStrategyService
             $serverListKey = $this->cachePrefix . 'servers:active';
             $servers = Cache::remember($serverListKey, $this->defaultTtl, function () {
                 return Server::where('is_active', true)
-                    ->with(['serverPlans', 'serverBrand', 'serverCategory'])
+                    ->with(['serverPlans', 'brand', 'category'])
                     ->get();
             });
 

@@ -19,13 +19,13 @@
                     wire:click="switchDemo('server-browser')"
                     class="px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 {{ $activeDemo === 'server-browser' ? 'bg-blue-500 text-white' : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white' }}"
                 >
-                    🖥️ Server Browser
+                    <x-custom-icon name="server" class="w-4 h-4 mr-2" /> Server Browser
                 </button>
                 <button
                     wire:click="switchDemo('proxy-config')"
                     class="px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 {{ $activeDemo === 'proxy-config' ? 'bg-blue-500 text-white' : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white' }}"
                 >
-                    ⚙️ Proxy Configuration
+                    <x-custom-icon name="cog-6-tooth" class="w-4 h-4 mr-2" /> Proxy Configuration
                 </button>
                 <button
                     wire:click="switchDemo('payment-processor')"
@@ -37,7 +37,7 @@
                     wire:click="switchDemo('health-monitor')"
                     class="px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 {{ $activeDemo === 'health-monitor' ? 'bg-blue-500 text-white' : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white' }}"
                 >
-                    📊 Health Monitor
+                    <x-custom-icon name="chart-bar" class="w-4 h-4 mr-2" /> Health Monitor
                 </button>
             </nav>
         </div>
@@ -259,14 +259,14 @@
 
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
                     <div class="implementation-card p-4 border border-gray-200 dark:border-gray-600 rounded-lg">
-                        <h4 class="font-semibold text-gray-900 dark:text-white mb-2">🚀 Quick Integration</h4>
+                        <h4 class="font-semibold text-gray-900 dark:text-white mb-2 flex items-center gap-2"><x-custom-icon name="bolt" class="w-4 h-4" /> Quick Integration</h4>
                         <p class="text-sm text-gray-600 dark:text-gray-400">
                             Simply include the component in your Blade templates using the <code>&lt;livewire:components.component-name /&gt;</code> syntax.
                         </p>
                     </div>
 
                     <div class="implementation-card p-4 border border-gray-200 dark:border-gray-600 rounded-lg">
-                        <h4 class="font-semibold text-gray-900 dark:text-white mb-2">⚡ Real-time Features</h4>
+                        <h4 class="font-semibold text-gray-900 dark:text-white mb-2 flex items-center gap-2"><x-custom-icon name="bolt" class="w-4 h-4" /> Real-time Features</h4>
                         <p class="text-sm text-gray-600 dark:text-gray-400">
                             All components support real-time updates with automatic polling, event broadcasting, and live notifications.
                         </p>
@@ -280,7 +280,7 @@
                     </div>
 
                     <div class="implementation-card p-4 border border-gray-200 dark:border-gray-600 rounded-lg">
-                        <h4 class="font-semibold text-gray-900 dark:text-white mb-2">🔒 Security First</h4>
+                        <h4 class="font-semibold text-gray-900 dark:text-white mb-2 flex items-center gap-2"><x-custom-icon name="shield-check" class="w-4 h-4" /> Security First</h4>
                         <p class="text-sm text-gray-600 dark:text-gray-400">
                             Implements proper validation, CSRF protection, and secure data handling for payment processing and sensitive operations.
                         </p>

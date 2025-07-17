@@ -262,7 +262,7 @@ return [
     'monitoring' => [
         'log_security_events' => env('LOG_SECURITY_EVENTS', true),
         'alert_critical_events' => env('ALERT_CRITICAL_EVENTS', true),
-        'admin_notification_email' => env('ADMIN_NOTIFICATION_EMAIL', 'admin@1000proxy.com'),
+        'admin_notification_email' => env('ADMIN_NOTIFICATION_EMAIL', 'admin@1000proxy.io'),
 
         // Security metrics
         'track_failed_logins' => env('TRACK_FAILED_LOGINS', true),

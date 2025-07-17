@@ -11,7 +11,7 @@ class SetupStaffRoles extends Command
 {
     protected $signature = 'staff:setup
                            {--force : Force setup even if users exist}
-                           {--admin-email=admin@1000proxy.com : Admin email}
+                           {--admin-email=admin@1000proxy.io : Admin email}
                            {--admin-password=admin123!@# : Admin password}';
 
     protected $description = 'Setup staff roles and create default admin users';
@@ -79,11 +79,11 @@ class SetupStaffRoles extends Command
 
         // Create support manager (if it doesn't exist)
         $supportManager = User::firstOrCreate(
-            ['email' => 'support@1000proxy.com'],
+            ['email' => 'support@1000proxy.io'],
             [
                 'name' => 'Support Manager',
                 'username' => 'support_manager',
-                'email' => 'support@1000proxy.com',
+                'email' => 'support@1000proxy.io',
                 'password' => Hash::make('support123!@#'),
                 'role' => 'support_manager',
                 'is_active' => true,
@@ -92,16 +92,16 @@ class SetupStaffRoles extends Command
         );
 
         if ($supportManager->wasRecentlyCreated) {
-            $this->info("✓ Created support manager: support@1000proxy.com");
+            $this->info("✓ Created support manager: support@1000proxy.io");
         }
 
         // Create sales support (if it doesn't exist)
         $salesSupport = User::firstOrCreate(
-            ['email' => 'sales@1000proxy.com'],
+            ['email' => 'sales@1000proxy.io'],
             [
                 'name' => 'Sales Support',
                 'username' => 'sales_support',
-                'email' => 'sales@1000proxy.com',
+                'email' => 'sales@1000proxy.io',
                 'password' => Hash::make('sales123!@#'),
                 'role' => 'sales_support',
                 'is_active' => true,
@@ -110,7 +110,7 @@ class SetupStaffRoles extends Command
         );
 
         if ($salesSupport->wasRecentlyCreated) {
-            $this->info("✓ Created sales support: sales@1000proxy.com");
+            $this->info("✓ Created sales support: sales@1000proxy.io");
         }
     }
 

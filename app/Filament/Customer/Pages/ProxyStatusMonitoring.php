@@ -237,7 +237,7 @@ class ProxyStatusMonitoring extends Page
             return ServerClient::whereHas('orderItem.order', function ($query) use ($customer) {
                 $query->where('customer_id', $customer->id);
             })
-            ->with(['server.serverBrand', 'server.serverCategory', 'orderItem.order'])
+            ->with(['server.brand', 'server.category', 'orderItem.order'])
             ->where('status', 'active')
             ->get()
             ->map(function ($client) {
@@ -246,7 +246,7 @@ class ProxyStatusMonitoring extends Page
                     'id' => $client->id,
                     'name' => $client->server->name ?? "Proxy {$client->id}",
                     'location' => $client->server->location ?? 'Unknown',
-                    'brand' => $client->server->serverBrand->name ?? 'Generic',
+                    'brand' => $client->server->brand->name ?? 'Generic',
                     'protocol' => $client->inbound_name ?? 'vless',
                     'status' => $status['status'],
                     'status_text' => $status['text'],

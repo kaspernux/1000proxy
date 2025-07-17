@@ -62,7 +62,7 @@ class ClientProvisioningService
                 $results[] = $result;
 
                 if (!$result['success']) {
-                    Log::warning("❌ Failed to provision client {$i + 1} for order item {$item->id}");
+                    Log::warning("❌ Failed to provision client " . (($i + 1)) . " for order item " . $item->id);
                 }
             } catch (\Exception $e) {
                 Log::error("💥 Exception during client provisioning", [
@@ -252,10 +252,6 @@ class ClientProvisioningService
             'json_link' => "https://{$inbound->server->getPanelHost()}:{$inbound->server->getSubscriptionPort()}/json/{$clientConfig['subId']}",
         ]);
     }
-            'sub_link' => "https://{$inbound->server->getPanelHost()}:{$inbound->server->getSubscriptionPort()}/sub/{$clientConfig['subId']}",
-            'json_link' => "https://{$inbound->server->getPanelHost()}:{$inbound->server->getSubscriptionPort()}/json/{$clientConfig['subId']}",
-        ]);
-    }
 
     /**
      * Create local client record
@@ -337,7 +333,7 @@ class ClientProvisioningService
 
         foreach ($failedProvisions as $provision) {
             try {
-                Log::info("🔄 Retrying provision for Order #{$order->id}, attempt #{$provision->provision_attempts + 1}");
+                Log::info("🔄 Retrying provision for Order #{$order->id}, attempt #" . ($provision->provision_attempts + 1));
 
                 $item = $provision->orderItem;
                 $result = $this->provisionSingleClient($item, 1);

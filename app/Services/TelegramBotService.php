@@ -648,7 +648,7 @@ class TelegramBotService
         if (empty($params)) {
             $message = "📞 Support Options\n\n";
             $message .= "🔗 Web Support: " . config('app.url') . "/support\n";
-            $message .= "📧 Email: support@1000proxy.com\n";
+            $message .= "📧 Email: support@1000proxy.io\n";
             $message .= "📱 Telegram: Use /support [your message] to send a message\n\n";
             $message .= "💡 Example: /support I can't connect to my proxy";
 

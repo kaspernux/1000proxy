@@ -43,7 +43,7 @@ class ProductDetailPage extends Component
     {
         return Cache::remember("product.{$this->slug}", 1800, function() {
             return ServerPlan::where('slug', $this->slug)
-                ->with(['serverBrand', 'serverCategory', 'server'])
+                ->with(['brand', 'category', 'server'])
                 ->firstOrFail();
         });
     }

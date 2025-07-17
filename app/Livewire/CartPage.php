@@ -74,7 +74,7 @@ class CartPage extends Component
             ->where('is_active', true)
             ->where('is_featured', true)
             ->whereNotIn('id', collect($this->order_items)->pluck('server_plan_id'))
-            ->with(['serverBrand', 'serverCategory'])
+            ->with(['brand', 'category'])
             ->limit(3)
             ->get();
     }

@@ -26,7 +26,10 @@ use Illuminate\Support\Str;
         <div class="lg:hidden mb-6">
             <button @click="showFilters = !showFilters"
                     class="btn-filter-toggle">
-                <span class="font-bold text-lg">🔽 Filters & Search</span>
+                <span class="font-bold text-lg flex items-center">
+                    <x-custom-icon name="funnel" class="h-5 w-5 mr-2" />
+                    Filters & Search
+                </span>
                 <span x-text="showFilters ? '▲' : '▼'" class="text-yellow-600 transition-transform duration-200"></span>
             </button>
         </div>
@@ -42,7 +45,8 @@ use Illuminate\Support\Str;
                     <!-- Location Filter (Priority First) -->
                     <div class="filter-section">
                         <h2 class="text-lg lg:text-2xl font-bold text-white flex items-center">
-                            🌍 <span class="ml-2">Location</span>
+                            <x-custom-icon name="globe-alt" class="h-6 w-6 mr-2" />
+                            <span>Location</span>
                         </h2>
                         <div class="w-12 lg:w-16 border-b border-yellow-600 mb-3 lg:mb-4"></div>
                         <ul class="max-h-32 lg:max-h-40 overflow-y-auto space-y-1 lg:space-y-2 custom-scrollbar">
@@ -51,7 +55,10 @@ use Illuminate\Support\Str;
                                     <label class="flex items-center space-x-2 text-white cursor-pointer hover:text-yellow-200 transition-colors duration-200">
                                         <input type="checkbox" wire:model.live="selected_countries" value="{{ $country }}"
                                             class="filter-input focus-visible-custom">
-                                        <span class="text-sm lg:text-lg">🏴‍☠️ {{ strtoupper($country) }}</span>
+                                        <span class="text-sm lg:text-lg flex items-center">
+                                            <x-custom-icon name="flag" class="h-4 w-4 mr-2" />
+                                            {{ strtoupper($country) }}
+                                        </span>
                                     </label>
                                 </li>
                             @endforeach
@@ -61,7 +68,8 @@ use Illuminate\Support\Str;
                     <!-- Category Filter -->
                     <div class="filter-section">
                         <h2 class="text-lg lg:text-2xl font-bold text-white flex items-center">
-                            📂 <span class="ml-2">Category</span>
+                            <x-custom-icon name="folder" class="h-6 w-6 mr-2" />
+                            <span>Category</span>
                         </h2>
                         <div class="w-12 lg:w-16 border-b border-yellow-600 mb-3 lg:mb-4"></div>
                         <ul class="space-y-1 lg:space-y-2">
@@ -80,7 +88,8 @@ use Illuminate\Support\Str;
                     <!-- Brand Filter -->
                     <div class="filter-section">
                         <h2 class="text-lg lg:text-2xl font-bold text-white flex items-center">
-                            🏢 <span class="ml-2">Brand</span>
+                            <x-custom-icon name="building-office" class="h-6 w-6 mr-2" />
+                            <span>Brand</span>
                         </h2>
                         <div class="w-12 lg:w-16 border-b border-yellow-600 mb-3 lg:mb-4"></div>
                         <ul class="space-y-1 lg:space-y-2">
@@ -99,7 +108,7 @@ use Illuminate\Support\Str;
                     <!-- Protocol Filter -->
                     <div class="p-3 lg:p-4 border-2 border-double border-yellow-600 bg-green-900 rounded-lg">
                         <h2 class="text-lg lg:text-2xl font-bold text-white flex items-center">
-                            🔐 <span class="ml-2">Protocol</span>
+                            <x-custom-icon name="shield-check" class="w-4 h-4" /> <span class="ml-2">Protocol</span>
                         </h2>
                         <div class="w-12 lg:w-16 border-b border-yellow-600 mb-3 lg:mb-4"></div>
                         <ul class="space-y-1 lg:space-y-2">
@@ -145,7 +154,7 @@ use Illuminate\Support\Str;
                     <!-- Price Range Filter -->
                     <div class="p-3 lg:p-4 border-2 border-double border-yellow-600 bg-green-900 rounded-lg">
                         <h2 class="text-lg lg:text-2xl font-bold text-white flex items-center">
-                            💰 <span class="ml-2">Price Range</span>
+                            <x-custom-icon name="credit-card" class="w-4 h-4" /> <span class="ml-2">Price Range</span>
                         </h2>
                         <div class="w-12 lg:w-16 border-b border-yellow-600 mb-3 lg:mb-4"></div>
                         <div class="space-y-2 lg:space-y-3">
@@ -168,7 +177,7 @@ use Illuminate\Support\Str;
                     <!-- Bandwidth Filter -->
                     <div class="p-3 lg:p-4 border-2 border-double border-yellow-600 bg-green-900 rounded-lg">
                         <h2 class="text-lg lg:text-2xl font-bold text-white flex items-center">
-                            ⚡ <span class="ml-2">Bandwidth</span>
+                            <x-custom-icon name="bolt" class="w-4 h-4" /> <span class="ml-2">Bandwidth</span>
                         </h2>
                         <div class="w-12 lg:w-16 border-b border-yellow-600 mb-3 lg:mb-4"></div>
                         <div class="space-y-2 lg:space-y-3">
@@ -191,7 +200,8 @@ use Illuminate\Support\Str;
                     <!-- Product Status -->
                     <div class="p-3 lg:p-4 border-2 border-double border-yellow-600 bg-green-900 rounded-lg">
                         <h2 class="text-lg lg:text-2xl font-bold text-white flex items-center">
-                            ⭐ <span class="ml-2">Product Status</span>
+                            <x-custom-icon name="star" class="h-6 w-6 mr-2" />
+                            <span>Product Status</span>
                         </h2>
                         <div class="w-12 lg:w-16 border-b border-yellow-600 mb-3 lg:mb-4"></div>
                         <ul class="space-y-1 lg:space-y-2">
@@ -199,14 +209,20 @@ use Illuminate\Support\Str;
                                 <label class="flex items-center space-x-2 text-white cursor-pointer">
                                     <input type="checkbox" wire:model.live="featured"
                                         class="w-4 h-4 border-yellow-600 rounded-lg border-2 shrink-0">
-                                    <span class="text-sm lg:text-lg">⭐ Featured</span>
+                                    <span class="text-sm lg:text-lg flex items-center">
+                                        <x-custom-icon name="star" class="h-4 w-4 mr-2" />
+                                        Featured
+                                    </span>
                                 </label>
                             </li>
                             <li class="mb-2 lg:mb-3">
                                 <label class="flex items-center space-x-2 text-white cursor-pointer">
                                     <input type="checkbox" wire:model.live="on_sale"
                                         class="w-4 h-4 border-yellow-600 rounded-lg border-2 shrink-0">
-                                    <span class="text-sm lg:text-lg">🏷️ On Sale</span>
+                                    <span class="text-sm lg:text-lg flex items-center">
+                                        <x-custom-icon name="credit-card" class="h-4 w-4 mr-2" />
+                                        On Sale
+                                    </span>
                                 </label>
                             </li>
                         </ul>
@@ -222,12 +238,15 @@ use Illuminate\Support\Str;
                         </div>
                         <select wire:model.live="sortOrder"
                             class="w-full sm:w-60 px-3 py-2 bg-yellow-600 text-white font-bold rounded-lg focus:outline-none focus:ring text-sm lg:text-base">
-                            <option value="location_first">🌍 Location First</option>
-                            <option value="price_low">💰 Price: Low to High</option>
-                            <option value="price_high">💰 Price: High to Low</option>
-                            <option value="speed">⚡ Speed: Fastest First</option>
-                            <option value="popularity">⭐ Most Popular</option>
-                            <option value="latest">🆕 Latest First</option>
+                            <option value="location_first">
+                                <x-custom-icon name="globe-alt" class="h-4 w-4 mr-2 inline" />
+                                Location First
+                            </option>
+                            <option value="price_low">Price: Low to High</option>
+                            <option value="price_high">Price: High to Low</option>
+                            <option value="speed">Speed: Fastest First</option>
+                            <option value="popularity">Most Popular</option>
+                            <option value="latest">Latest First</option>
                         </select>
                     </div>
 
@@ -248,10 +267,10 @@ use Illuminate\Support\Str;
                                     <!-- Additional Info Pills -->
                                     <div class="flex flex-wrap gap-1 mt-2">
                                         @if($plan->featured)
-                                            <span class="px-2 py-1 bg-yellow-100 text-yellow-800 text-xs rounded-full">⭐ Featured</span>
+                                            <span class="px-2 py-1 bg-yellow-100 text-yellow-800 text-xs rounded-full flex items-center gap-1"><x-custom-icon name="star" class="w-3 h-3" /> Featured</span>
                                         @endif
                                         @if($plan->on_sale)
-                                            <span class="px-2 py-1 bg-red-100 text-red-800 text-xs rounded-full">🏷️ Sale</span>
+                                            <span class="px-2 py-1 bg-red-100 text-red-800 text-xs rounded-full flex items-center gap-1"><x-custom-icon name="star" class="w-3 h-3" /> Sale</span>
                                         @endif
                                     </div>
                                 </div>
@@ -274,7 +293,7 @@ use Illuminate\Support\Str;
                         @empty
                             <div class="col-span-full text-center text-white text-base lg:text-lg py-8 animate-fade-in">
                                 <div class="bg-green-800 rounded-lg p-6 border-2 border-yellow-600">
-                                    <p class="mb-2 text-xl">🔍 No products found.</p>
+                                    <p class="mb-2 text-xl flex items-center gap-2"><x-custom-icon name="magnifying-glass" class="w-5 h-5" /> No products found.</p>
                                     <p class="text-sm opacity-75">Try adjusting your filters to see more results.</p>
                                     <button @click="$wire.call('resetFilters')"
                                             class="mt-4 px-4 py-2 bg-yellow-600 text-green-900 rounded-lg font-bold hover:bg-yellow-500 transition-colors duration-200">

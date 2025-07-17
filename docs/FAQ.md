@@ -171,7 +171,7 @@ A: Contact support to request account deletion. Note that this will permanently 
 
 ### Q: How do I contact support?
 
-A: - **Email**: support@1000proxy.com
+A: - **Email**: support@1000proxy.io
 
 -   **Dashboard**: Submit a ticket through your account
 -   **Documentation**: Check our comprehensive guides

@@ -2,22 +2,86 @@
   <img src="/images/1000proxy.png" width="400" alt="1000Proxy Logo">
 </div>
 
-<h1 align="center">1000Proxy - XUI-Based Proxy Client Sales Platform</h1>
+<h1 align="center">1000proxy - Professional Proxy Management Platform</h1>
 
 <p align="center">
   <b>Version 2.0.0</b><br>
-  <i>A professional Laravel 12 application for managing proxy client sales using XUI panels, multi-protocol support, crypto payments, wallet management, and Laravel Horizon queue system.</i>
+  <i>A comprehensive Laravel-based proxy client sales platform with advanced 3X-UI integration, multi-panel administration, and automated client provisioning.</i>
 </p>
 
 <p align="center">
   <a href="https://laravel.com"><img src="https://img.shields.io/badge/Laravel-12.x-red.svg" alt="Laravel"></a>
-  <a href="https://php.net"><img src="https://img.shields.io/badge/PHP-8.1+-blue.svg" alt="PHP"></a>
+  <a href="https://php.net"><img src="https://img.shields.io/badge/PHP-8.3+-blue.svg" alt="PHP"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-green.svg" alt="License"></a>
-  <a href="tests/"><img src="https://img.shields.io/badge/Tests-100%25-brightgreen.svg" alt="Tests"></a>
-  <a href="docs/SECURITY.md"><img src="https://img.shields.io/badge/Security-Hardened-orange.svg" alt="Security"></a>
+  <a href="tests/"><img src="https://img.shields.io/badge/Tests-Comprehensive-brightgreen.svg" alt="Tests"></a>
+  <a href="docs/security/SECURITY_BEST_PRACTICES.md"><img src="https://img.shields.io/badge/Security-Hardened-orange.svg" alt="Security"></a>
+  <a href="docs/README.md"><img src="https://img.shields.io/badge/Documentation-Complete-blue.svg" alt="Documentation"></a>
 </p>
 
 ---
+
+## 🚀 Quick Start
+
+```bash
+# Clone the repository
+git clone https://github.com/kaspernux/1000proxy.git
+cd 1000proxy
+
+# Install dependencies
+composer install && npm install
+
+# Setup environment
+cp .env.example .env
+php artisan key:generate
+
+# Setup database
+php artisan migrate:fresh --seed
+
+# Start development server
+php artisan serve
+```
+
+**Default Admin Access**: http://localhost:8000/admin (admin@example.com / password)
+
+## 📚 Documentation
+
+Comprehensive documentation is available in the `/docs` directory:
+
+- **[📖 Complete Documentation](docs/README.md)** - Full documentation index
+- **[🚀 Quick Start Guide](docs/getting-started/QUICK_START.md)** - Get running in 10 minutes
+- **[⚙️ Installation Guide](docs/getting-started/INSTALLATION.md)** - Detailed setup instructions
+- **[🔧 Configuration Guide](docs/getting-started/CONFIGURATION.md)** - Environment configuration
+- **[👨‍💻 Development Setup](docs/getting-started/DEVELOPMENT_SETUP.md)** - Development environment
+- **[🔌 API Documentation](docs/api/API_DOCUMENTATION.md)** - Complete API reference
+- **[👥 User Guides](docs/user-guides/USER_GUIDES.md)** - Admin and customer guides
+- **[🚀 Deployment Guide](docs/deployment/DEPLOYMENT_GUIDE.md)** - Production deployment
+- **[🛡️ Security Guide](docs/security/SECURITY_BEST_PRACTICES.md)** - Security best practices
+
+## 🛠️ Development Scripts
+
+Three essential PowerShell scripts for comprehensive project management:
+
+### 🔍 Debug & Diagnostics
+```powershell
+./debug-project.ps1              # Complete system diagnostics
+./debug-project.ps1 -Verbose     # Detailed debug output
+./debug-project.ps1 -OutputFile "report.txt"  # Save report to file
+```
+
+### 🧪 Testing
+```powershell
+./test-project.ps1               # Run all tests
+./test-project.ps1 -Coverage     # Run tests with coverage
+./test-project.ps1 -API          # Test API endpoints only
+./test-project.ps1 -Filter "AuthTest"  # Filter specific tests
+```
+
+### ✅ Feature Verification
+```powershell
+./check-features.ps1             # Verify all features
+./check-features.ps1 -Verbose    # Detailed feature check
+./check-features.ps1 -Authentication -AdminPanels  # Check specific features
+```
 
 # 🔧 Full Project Presentation
 

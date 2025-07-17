@@ -26,8 +26,8 @@ class CacheService
     {
         return Cache::remember('active_servers', self::CACHE_DURATION_MEDIUM, function () {
             return Server::where('is_active', true)
-                ->with(['serverBrand', 'serverCategory'])
-                ->orderBy('sort_order')
+                ->with(['brand', 'category'])
+                ->orderBy('name')
                 ->get();
         });
     }
@@ -39,8 +39,8 @@ class CacheService
     {
         return Cache::remember('server_plans', self::CACHE_DURATION_MEDIUM, function () {
             return ServerPlan::where('is_active', true)
-                ->with(['serverBrand', 'serverCategory'])
-                ->orderBy('sort_order')
+                ->with(['brand', 'category'])
+                ->orderBy('name')
                 ->get();
         });
     }
@@ -51,7 +51,7 @@ class CacheService
     public function getServerStats(int $serverId): array
     {
         $cacheKey = "server_stats_{$serverId}";
-        
+
         return Cache::remember($cacheKey, self::CACHE_DURATION_SHORT, function () use ($serverId) {
             return [
                 'total_clients' => ServerClient::where('server_id', $serverId)->count(),
@@ -71,7 +71,7 @@ class CacheService
     public function getUserServerClients(int $userId): \Illuminate\Support\Collection
     {
         $cacheKey = "user_server_clients_{$userId}";
-        
+
         return Cache::remember($cacheKey, self::CACHE_DURATION_SHORT, function () use ($userId) {
             return ServerClient::where('user_id', $userId)
                 ->with(['server', 'serverPlan', 'order'])

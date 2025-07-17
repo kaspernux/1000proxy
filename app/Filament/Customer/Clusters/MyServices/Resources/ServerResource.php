@@ -84,7 +84,7 @@ class ServerResource extends Resource
                         'warning' => 'mhsanaei',
                     ]),
 
-                TextColumn::make('serverBrand.name')
+                TextColumn::make('brand.name')
                     ->label('Provider')
                     ->badge()
                     ->color('info')
@@ -130,7 +130,7 @@ class ServerResource extends Resource
                     ]),
 
                 SelectFilter::make('server_brand_id')
-                    ->relationship('serverBrand', 'name')
+                    ->relationship('brand', 'name')
                     ->label('Provider')
                     ->preload(),
 
@@ -188,11 +188,11 @@ class ServerResource extends Resource
                                             ->label('Location')
                                             ->formatStateUsing(fn (?string $state): string => $state ? strtoupper($state) : 'Unknown'),
 
-                                        TextEntry::make('serverBrand.name')
+                                        TextEntry::make('brand.name')
                                             ->label('Provider')
                                             ->default('Unknown Provider'),
 
-                                        TextEntry::make('serverCategory.name')
+                                        TextEntry::make('category.name')
                                             ->label('Category')
                                             ->default('General'),
 

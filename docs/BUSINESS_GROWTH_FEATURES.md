@@ -450,7 +450,7 @@ php artisan automation:debug
 ### Support Channels
 
 -   GitHub Issues: [Repository Issues](https://github.com/kaspernux/1000proxy/issues)
--   Email Support: support@1000proxy.com
+-   Email Support: support@1000proxy.io
 -   Documentation: [Project Documentation](docs/)
 
 This comprehensive business growth feature set positions 1000proxy for scalable growth and enhanced customer experience through automation, diversification, and strategic partnerships.

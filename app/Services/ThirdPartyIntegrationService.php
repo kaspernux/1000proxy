@@ -511,7 +511,7 @@ class ThirdPartyIntegrationService
             ],
             'documentation_provided' => true,
             'sandbox_access' => true,
-            'support_contact' => 'partners@1000proxy.com'
+            'support_contact' => 'partners@1000proxy.io'
         ];
     }
 

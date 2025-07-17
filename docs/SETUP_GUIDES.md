@@ -632,6 +632,6 @@ For additional help with client setup:
 
 -   Check our [FAQ](FAQ.md)
 -   Visit our [Troubleshooting Guide](TROUBLESHOOTING.md)
--   Contact support at support@1000proxy.com
+-   Contact support at support@1000proxy.io
 
 _Last updated: July 8, 2025_

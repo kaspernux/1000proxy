@@ -104,6 +104,3 @@ class ServerPlanController extends Controller
     }
 }
 
-        return response()->json($serverPlan, 201);
-    }
-}

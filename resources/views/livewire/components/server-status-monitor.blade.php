@@ -1,5 +1,5 @@
 {{-- Server Status Monitor - Real-time server monitoring with WebSocket integration --}}
-<div x-data="{ 
+<div x-data="{
         autoRefreshTimer: null,
         startAutoRefresh(interval) {
             this.stopAutoRefresh();
@@ -46,7 +46,7 @@
             {{-- Control Buttons --}}
             <div class="flex items-center space-x-3">
                 {{-- Refresh Button --}}
-                <button wire:click="refreshServers" 
+                <button wire:click="refreshServers"
                         :disabled="$wire.isLoading"
                         class="flex items-center px-3 py-2 text-sm font-medium text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md hover:bg-gray-50 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 transition-colors">
                     <svg class="w-4 h-4 mr-2" :class="{ 'animate-spin': $wire.isLoading }" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -68,14 +68,14 @@
                 {{-- Auto-refresh Toggle --}}
                 <div class="flex items-center">
                     <label class="flex items-center text-sm text-gray-700 dark:text-gray-200">
-                        <input type="checkbox" 
-                               wire:model.live="autoRefresh" 
+                        <input type="checkbox"
+                               wire:model.live="autoRefresh"
                                wire:change="toggleAutoRefresh"
                                class="mr-2 rounded border-gray-300 dark:border-gray-600 text-blue-600 focus:ring-blue-500">
                         Auto-refresh
                     </label>
                     @if($autoRefresh)
-                        <select wire:model.live="refreshInterval" 
+                        <select wire:model.live="refreshInterval"
                                 wire:change="updateRefreshInterval($event.target.value)"
                                 class="ml-2 text-xs border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-200">
                             <option value="10">10s</option>
@@ -123,8 +123,8 @@
                 <div class="flex space-x-1">
                     @foreach(['all' => 'All', 'online' => 'Online', 'offline' => 'Offline', 'warning' => 'Warning'] as $status => $label)
                         <button wire:click="filterByStatus('{{ $status }}')"
-                                class="px-3 py-1 text-xs font-medium rounded-full transition-colors {{ $filterStatus === $status 
-                                    ? 'bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200' 
+                                class="px-3 py-1 text-xs font-medium rounded-full transition-colors {{ $filterStatus === $status
+                                    ? 'bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200'
                                     : 'bg-gray-100 dark:bg-gray-600 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-500' }}">
                             {{ $label }}
                         </button>
@@ -194,10 +194,10 @@
                     </thead>
                     <tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
                         @foreach($servers as $server)
-                            <tr wire:key="server-{{ $server['id'] }}" 
+                            <tr wire:key="server-{{ $server['id'] }}"
                                 class="hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors cursor-pointer"
                                 wire:click="selectServer({{ $server['id'] }})">
-                                
+
                                 {{-- Status --}}
                                 <td class="px-6 py-4 whitespace-nowrap">
                                     <div class="flex items-center">
@@ -228,7 +228,7 @@
                                 {{-- Location --}}
                                 <td class="px-6 py-4 whitespace-nowrap">
                                     <div class="flex items-center">
-                                        <span class="text-lg mr-2">{{ $server['flag_emoji'] }}</span>
+                                        <x-custom-icon name="flag" class="h-5 w-5 mr-2" />
                                         <span class="text-sm text-gray-900 dark:text-white">{{ $server['country'] }}</span>
                                     </div>
                                 </td>
@@ -299,19 +299,19 @@
                     </svg>
                 </button>
             </div>
-            
+
             <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
                 <div>
                     <h4 class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Connection</h4>
                     <div class="space-y-2 text-sm">
                         <div><span class="font-medium">Hostname:</span> {{ $selectedServer['hostname'] }}</div>
                         <div><span class="font-medium">Port:</span> {{ $selectedServer['port'] }}</div>
-                        <div><span class="font-medium">Status:</span> 
+                        <div><span class="font-medium">Status:</span>
                             <span class="{{ $selectedServer['status_color'] }}">{{ ucfirst($selectedServer['status']) }}</span>
                         </div>
                     </div>
                 </div>
-                
+
                 <div>
                     <h4 class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Performance</h4>
                     <div class="space-y-2 text-sm">
@@ -320,13 +320,13 @@
                         <div><span class="font-medium">Last Check:</span> {{ $selectedServer['last_checked_human'] ?? 'Never' }}</div>
                     </div>
                 </div>
-                
+
                 <div>
                     <h4 class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Usage</h4>
                     <div class="space-y-2 text-sm">
                         <div><span class="font-medium">Server Plans:</span> {{ $selectedServer['server_plans_count'] }}</div>
                         <div><span class="font-medium">Active Clients:</span> {{ $selectedServer['active_clients_count'] }}</div>
-                        <div><span class="font-medium">Location:</span> {{ $selectedServer['flag_emoji'] }} {{ $selectedServer['country'] }}</div>
+                        <div><span class="font-medium">Location:</span> <x-custom-icon name="flag" class="h-4 w-4 inline mr-1" /> {{ $selectedServer['country'] }}</div>
                     </div>
                 </div>
             </div>
@@ -359,13 +359,13 @@
             window.showNotification(type, `Server ${data.serverId} is now ${status}`);
         }
     });
-    
+
     $wire.on('server-checked', (data) => {
         if (window.showNotification) {
             window.showNotification('info', `Server ${data.serverId} checked - ${data.responseTime}ms`);
         }
     });
-    
+
     $wire.on('all-servers-checked', () => {
         if (window.showNotification) {
             window.showNotification('success', 'All servers checked successfully');

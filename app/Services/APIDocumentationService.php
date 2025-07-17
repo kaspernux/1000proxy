@@ -61,14 +61,14 @@ class APIDocumentationService
             'version' => '2.0.0',
             'contact' => [
                 'name' => '1000proxy API Support',
-                'email' => 'api-support@1000proxy.com',
-                'url' => 'https://docs.1000proxy.com'
+                'email' => 'api-support@1000proxy.io',
+                'url' => 'https://docs.1000proxy.io'
             ],
             'license' => [
                 'name' => 'Proprietary',
-                'url' => 'https://1000proxy.com/license'
+                'url' => 'https://1000proxy.io/license'
             ],
-            'termsOfService' => 'https://1000proxy.com/terms'
+            'termsOfService' => 'https://1000proxy.io/terms'
         ];
     }
 
@@ -87,7 +87,7 @@ class APIDocumentationService
                 'description' => 'Production API v2 (Latest)'
             ],
             [
-                'url' => 'https://staging.1000proxy.com/api/v2',
+                'url' => 'https://staging.1000proxy.io/api/v2',
                 'description' => 'Staging Environment'
             ],
             [
@@ -346,7 +346,7 @@ class APIDocumentationService
                 'properties' => [
                     'id' => ['type' => 'integer', 'example' => 1],
                     'name' => ['type' => 'string', 'example' => 'US-East-01'],
-                    'host' => ['type' => 'string', 'example' => 'us-east-01.1000proxy.com'],
+                    'host' => ['type' => 'string', 'example' => 'us-east-01.1000proxy.io'],
                     'port' => ['type' => 'integer', 'example' => 54321],
                     'username' => ['type' => 'string', 'example' => 'admin'],
                     'location' => ['type' => 'string', 'example' => 'New York, USA'],
@@ -442,10 +442,10 @@ class APIDocumentationService
             'PaginationLinks' => [
                 'type' => 'object',
                 'properties' => [
-                    'first' => ['type' => 'string', 'example' => 'https://api.1000proxy.com/v2/servers?page=1'],
-                    'last' => ['type' => 'string', 'example' => 'https://api.1000proxy.com/v2/servers?page=5'],
+                    'first' => ['type' => 'string', 'example' => 'https://api.1000proxy.io/v2/servers?page=1'],
+                    'last' => ['type' => 'string', 'example' => 'https://api.1000proxy.io/v2/servers?page=5'],
                     'prev' => ['type' => 'string', 'nullable' => true, 'example' => null],
-                    'next' => ['type' => 'string', 'example' => 'https://api.1000proxy.com/v2/servers?page=2']
+                    'next' => ['type' => 'string', 'example' => 'https://api.1000proxy.io/v2/servers?page=2']
                 ]
             ],
 

@@ -554,9 +554,9 @@ chown -R www-data:www-data /var/www/html
 
 ### Emergency Contacts
 
--   **System Administrator**: admin@1000proxy.com
--   **Technical Lead**: tech@1000proxy.com
--   **Security Team**: security@1000proxy.com
+-   **System Administrator**: admin@1000proxy.io
+-   **Technical Lead**: tech@1000proxy.io
+-   **Security Team**: security@1000proxy.io
 
 ### External Services
 

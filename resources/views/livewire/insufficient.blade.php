@@ -12,7 +12,7 @@
      class="flex flex-col items-center justify-center min-h-screen bg-gradient-to-r from-green-900 to-green-600 px-6">
 
     <div class="bg-white text-green-900 text-center rounded-xl shadow-2xl p-10 w-full max-w-md">
-        <h2 class="text-3xl font-bold font-mono mb-4">⚠️ Insufficient Balance</h2>
+        <h2 class="text-3xl font-bold font-mono mb-4 flex items-center gap-3"><x-custom-icon name="x-circle" class="w-8 h-8 text-red-400" /> Insufficient Balance</h2>
 
         <p class="text-lg font-mono mb-6">
             You do not have enough <strong class="text-yellow-600">{{ strtoupper($currency) }}</strong> in your wallet to complete this transaction.

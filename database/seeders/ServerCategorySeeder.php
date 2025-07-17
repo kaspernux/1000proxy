@@ -40,6 +40,12 @@ class ServerCategorySeeder extends Seeder
             ],
         ];
 
-        DB::table('server_categories')->insert($categories);
+        // Use updateOrCreate to avoid duplicate entry errors
+        foreach ($categories as $category) {
+            \App\Models\ServerCategory::updateOrCreate(
+                ['slug' => $category['slug']], // Check by slug
+                $category // Update with all data
+            );
+        }
     }
 }

@@ -53,7 +53,7 @@ class ServerPlanResource extends Resource
         return parent::getEloquentQuery()
             ->where('is_active', true)
             ->where('in_stock', true)
-            ->with(['server', 'serverBrand', 'serverCategory'])
+            ->with(['server', 'brand', 'category'])
             ->orderBy('price', 'asc');
     }
 
@@ -86,13 +86,13 @@ class ServerPlanResource extends Resource
                     ->sortable()
                     ->color(Color::Blue),
 
-                Tables\Columns\TextColumn::make('serverBrand.name')
+                Tables\Columns\TextColumn::make('brand.name')
                     ->label('Brand')
                     ->badge()
                     ->color(Color::Purple)
                     ->placeholder('No Brand'),
 
-                Tables\Columns\TextColumn::make('serverCategory.name')
+                Tables\Columns\TextColumn::make('category.name')
                     ->label('Category')
                     ->badge()
                     ->color(Color::Gray)
@@ -166,12 +166,12 @@ class ServerPlanResource extends Resource
 
                 Tables\Filters\SelectFilter::make('server_brand_id')
                     ->label('Brand')
-                    ->relationship('serverBrand', 'name')
+                    ->relationship('brand', 'name')
                     ->preload(),
 
                 Tables\Filters\SelectFilter::make('server_category_id')
                     ->label('Category')
-                    ->relationship('serverCategory', 'name')
+                    ->relationship('category', 'name')
                     ->preload(),
 
                 Tables\Filters\SelectFilter::make('type')
@@ -372,13 +372,13 @@ class ServerPlanResource extends Resource
                     ->schema([
                         Infolists\Components\Grid::make(2)
                             ->schema([
-                                Infolists\Components\TextEntry::make('serverBrand.name')
+                                Infolists\Components\TextEntry::make('brand.name')
                                     ->label('Brand')
                                     ->badge()
                                     ->color(Color::Purple)
                                     ->placeholder('No Brand'),
 
-                                Infolists\Components\TextEntry::make('serverCategory.name')
+                                Infolists\Components\TextEntry::make('category.name')
                                     ->label('Category')
                                     ->badge()
                                     ->color(Color::Gray)

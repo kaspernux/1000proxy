@@ -14,14 +14,14 @@ class CustomerSeeder extends Seeder
         Customer::factory()->count(20)->create();
 
         // Create the specific test customer or find existing
-        $customer = Customer::where('email', 'nook@1000proxy.bot')->first();
+        $customer = Customer::where('email', 'nook@1000proxy.io')->first();
 
         if (!$customer) {
             $customer = Customer::factory()->create([
                 'is_active' => true,
                 'image' => 'https://via.placeholder.com/640x480.png/00dd77?text=minima',
                 'name' => 'Nook Codes',
-                'email' => 'nook@1000proxy.bot',
+                'email' => 'nook@1000proxy.io',
                 'password' => bcrypt('Password'),
                 'telegram_chat_id' => '761184038',
                 'refcode' => 'ucy6bU914w',
@@ -39,17 +39,6 @@ class CustomerSeeder extends Seeder
             ]);
         }
 
-        // ✅ Retrieve the auto-created wallet
-        $wallet = $customer->wallet;
-
-        // ✅ Update balance manually if needed
-        $wallet->update([
-            'balance' => 1000.00,
-        ]);
-
-        // ✅ Generate fresh deposit addresses and real QR codes
-        $wallet->generateDepositAddresses();
-
-        $this->command->info('✅ Test customer and wallet (with real QR codes) seeded successfully.');
+        $this->command->info('Created customers successfully!');
     }
 }

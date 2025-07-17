@@ -7,6 +7,7 @@ use App\Models\ServerClient;
 use App\Services\XUIService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\DB;
 
 class ServerInboundController extends Controller
 {
@@ -103,7 +104,7 @@ class ServerInboundController extends Controller
         } catch (\Exception $e) {
             DB::rollBack();
 
-            Log::error('Error adding server inbound: ' . $ e->getMessage());
+            Log::error('Error adding server inbound: ' . $e->getMessage());
             return response()->json(['error' => 'Failed to add server inbound'], 500);
         }
     }

@@ -79,7 +79,7 @@ class HomePage extends Component
         return Cache::remember('homepage.featured_plans', 1800, function() {
             return ServerPlan::where('is_active', true)
                 ->where('is_featured', true)
-                ->with(['serverBrand', 'serverCategory', 'server'])
+                ->with(['brand', 'category', 'server'])
                 ->orderBy('price')
                 ->limit(6)
                 ->get();
@@ -95,6 +95,7 @@ class HomePage extends Component
                 'active_servers' => ServerPlan::where('is_active', true)->count(),
                 'countries_count' => ServerPlan::where('server_plans.is_active', true)
                     ->join('servers', 'server_plans.server_id', '=', 'servers.id')
+                    ->where('servers.is_active', true)
                     ->distinct('servers.country')
                     ->count('servers.country'),
                 'avg_rating' => 4.8, // This could be calculated from reviews

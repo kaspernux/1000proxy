@@ -203,7 +203,7 @@ class PaymentProcessor extends Component
             $this->user->update(['balance' => $newBalance]);
 
             // Create transaction record (assuming a transactions table exists)
-            $transactionId = 'wallet_' . uniqid();
+            $transactionId = 'TxID_' . uniqid();
 
             return [
                 'success' => true,

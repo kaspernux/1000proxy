@@ -115,7 +115,7 @@ class ProductsPage extends Component
 
     public function render()
     {
-        $serverQuery = ServerPlan::query()->where('is_active', 1);
+        $serverQuery = ServerPlan::query()->where('server_plans.is_active', 1);
 
         // Location-first filtering
         if (!empty($this->selected_countries)) {
@@ -126,13 +126,13 @@ class ProductsPage extends Component
 
         // Category filtering (Gaming, Streaming, General)
         if (!empty($this->selected_categories)) {
-            $serverQuery->whereIn('server_category_id', $this->selected_categories);
+            $serverQuery->whereIn('server_plans.server_category_id', $this->selected_categories);
         }
 
         // Brand filtering (different X-UI server instances)
         if (!empty($this->selected_brands)) {
             $serverQuery->whereHas('server', function ($query) {
-                $query->whereIn('server_brand_id', $this->selected_brands);
+                $query->whereIn('servers.server_brand_id', $this->selected_brands);
             });
         }
 
@@ -193,6 +193,7 @@ class ProductsPage extends Component
         // Advanced sorting with location-first priority
         if ($this->sortOrder === 'location_first') {
             $serverQuery->join('servers', 'server_plans.server_id', '=', 'servers.id')
+                        ->where('servers.is_active', true)
                         ->orderBy('servers.country', 'asc')
                         ->orderBy('server_plans.created_at', 'desc')
                         ->select('server_plans.*');

@@ -82,9 +82,7 @@
                                         <span class="text-white font-bold">{{ Number::currency($item['total_amount']) }}</span>
                                         <button wire:click='removeItem({{ $item["server_plan_id"] }})'
                                                 class="text-red-400 hover:text-red-300 transition">
-                                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
-                                            </svg>
+                                            <x-custom-icon name="x-circle" class="w-5 h-5" />
                                         </button>
                                     </div>
                                 </div>
@@ -95,11 +93,13 @@
                         {{-- Cart Actions --}}
                         <div class="flex flex-col md:flex-row justify-between items-center mt-6 pt-6 border-t border-white/20">
                             <button wire:click="clearCart"
-                                    class="text-red-400 hover:text-red-300 font-medium mb-4 md:mb-0">
+                                    class="text-red-400 hover:text-red-300 font-medium mb-4 md:mb-0 flex items-center">
+                                <x-custom-icon name="x-circle" class="h-4 w-4 mr-2" />
                                 Clear entire cart
                             </button>
                             <a href="/" wire:navigate
-                               class="bg-white/20 text-white px-6 py-3 rounded-lg hover:bg-white/30 transition duration-200">
+                               class="bg-white/20 text-white px-6 py-3 rounded-lg hover:bg-white/30 transition duration-200 flex items-center">
+                                <x-custom-icon name="shopping-cart" class="h-4 w-4 mr-2" />
                                 Continue Shopping
                             </a>
                         </div>
@@ -183,11 +183,13 @@
                     @if (count($order_items) > 0)
                     <div class="space-y-3">
                         <a href="/checkout" wire:navigate
-                           class="w-full bg-green-600 text-white py-3 px-6 rounded-lg font-semibold text-center hover:bg-green-700 transition duration-200 block">
+                           class="w-full bg-green-600 text-white py-3 px-6 rounded-lg font-semibold hover:bg-green-700 transition duration-200 flex items-center justify-center">
+                            <x-custom-icon name="credit-card" class="h-5 w-5 mr-2" />
                             Proceed to Checkout
                         </a>
                         <button wire:click="saveCart"
-                                class="w-full bg-white/20 text-white py-3 px-6 rounded-lg font-semibold hover:bg-white/30 transition duration-200">
+                                class="w-full bg-white/20 text-white py-3 px-6 rounded-lg font-semibold hover:bg-white/30 transition duration-200 flex items-center justify-center">
+                            <x-custom-icon name="heart" class="h-5 w-5 mr-2" />
                             Save Cart for Later
                         </button>
                     </div>

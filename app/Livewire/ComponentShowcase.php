@@ -16,7 +16,7 @@ class ComponentShowcase extends Component
     public function render()
     {
         // Sample data for demonstrations
-        $sampleServers = Server::with(['serverPlans', 'serverPlans.serverCategory', 'serverPlans.serverBrand'])
+        $sampleServers = Server::with(['serverPlans', 'serverPlans.category', 'serverPlans.brand'])
             ->take(6)
             ->get();
 

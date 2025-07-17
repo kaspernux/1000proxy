@@ -52,7 +52,7 @@
     {{-- Server Features --}}
     <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
         <div>
-            <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-3">🚀 Features</h3>
+            <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-3 flex items-center gap-2"><x-custom-icon name="bolt" class="w-5 h-5" /> Features</h3>
             <ul class="space-y-2">
                 <li class="flex items-center">
                     <svg class="w-5 h-5 text-green-500 mr-2" fill="currentColor" viewBox="0 0 20 20">
@@ -88,7 +88,7 @@
         </div>
 
         <div>
-            <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-3">🔧 Protocols</h3>
+            <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-3 flex items-center gap-2"><x-custom-icon name="cog-6-tooth" class="w-5 h-5" /> Protocols</h3>
             <div class="grid grid-cols-2 gap-2">
                 <div class="bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 px-3 py-2 rounded-lg text-center text-sm font-medium">
                     VLESS
@@ -108,7 +108,7 @@
 
     {{-- Performance Chart Placeholder --}}
     <div>
-        <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-3">📊 Performance History</h3>
+        <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-3 flex items-center gap-2"><x-custom-icon name="chart-bar" class="w-5 h-5" /> Performance History</h3>
         <div class="bg-gray-50 dark:bg-gray-700 rounded-lg p-6 text-center">
             <div class="w-full h-32 bg-gradient-to-r from-blue-400 to-purple-500 rounded-lg flex items-center justify-center text-white">
                 <div>
@@ -121,7 +121,7 @@
 
     {{-- Technical Specifications --}}
     <div>
-        <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-3">⚙️ Technical Specifications</h3>
+        <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-3 flex items-center gap-2"><x-custom-icon name="cog-6-tooth" class="w-5 h-5" /> Technical Specifications</h3>
         <div class="bg-gray-50 dark:bg-gray-700 rounded-lg p-4">
             <dl class="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
@@ -154,7 +154,7 @@
 
     {{-- Customer Reviews Section --}}
     <div>
-        <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-3">⭐ Customer Reviews</h3>
+        <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-3 flex items-center gap-2"><x-custom-icon name="star" class="w-5 h-5" /> Customer Reviews</h3>
         <div class="space-y-3">
             @forelse($server->reviews()->latest()->limit(3)->get() as $review)
             <div class="bg-gray-50 dark:bg-gray-700 rounded-lg p-4">
@@ -187,13 +187,13 @@
     {{-- Action Buttons --}}
     <div class="flex space-x-3 pt-4 border-t border-gray-200 dark:border-gray-600">
         <button class="flex-1 bg-blue-600 text-white py-3 px-4 rounded-lg hover:bg-blue-700 transition-colors font-medium">
-            🛒 Purchase Server Access - ${{ $server->price }}/month
+            <x-custom-icon name="shopping-cart" class="w-4 h-4 mr-2" /> Purchase Server Access - ${{ $server->price }}/month
         </button>
         <button class="px-4 py-3 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
-            ❤️ Add to Favorites
+            <x-custom-icon name="heart" class="w-4 h-4 mr-2" /> Add to Favorites
         </button>
         <button class="px-4 py-3 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
-            📊 Compare
+            <x-custom-icon name="chart-bar" class="w-4 h-4 mr-2" /> Compare
         </button>
     </div>
 </div>

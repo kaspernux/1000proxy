@@ -195,7 +195,7 @@ export default function activityTimeline ()
                     severity: 'info',
                     title: 'Server Configuration Updated',
                     description: 'Admin updated inbound configuration for server EU-West-01',
-                    user: { name: 'Admin User', email: 'admin@1000proxy.com' },
+                    user: { name: 'Admin User', email: 'admin@1000proxy.io' },
                     timestamp: new Date( Date.now() - 45 * 60 * 1000 ), // 45 minutes ago
                     metadata: { server: 'EU-West-01', changes: [ 'max_clients', 'protocol' ] }
                 },

@@ -322,7 +322,7 @@ If payment is confirmed on blockchain but not in your account:
 1. **Check Spam Filters**
 
     - Look in spam/junk folder
-    - Add noreply@1000proxy.com to contacts
+    - Add noreply@1000proxy.io to contacts
     - Check email provider's filters
 
 2. **Domain Blocking**
@@ -431,7 +431,7 @@ Always provide:
 
 ### Support Channels
 
--   **Email**: support@1000proxy.com
+-   **Email**: support@1000proxy.io
 -   **Ticket System**: Through your account dashboard
 -   **Documentation**: Check docs/ folder for guides
 -   **FAQ**: Common issues and solutions

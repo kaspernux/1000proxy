@@ -474,7 +474,7 @@ class MonitoringService
     private function sendEmailAlert(string $subject, array $healthStatus): void
     {
         try {
-            $adminEmails = ['admin@1000proxy.com']; // Configure admin emails
+            $adminEmails = ['admin@1000proxy.io']; // Configure admin emails
 
             foreach ($adminEmails as $email) {
                 Mail::send('emails.health-alert', ['healthStatus' => $healthStatus], function ($message) use ($email, $subject) {

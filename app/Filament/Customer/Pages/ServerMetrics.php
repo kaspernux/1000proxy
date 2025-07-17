@@ -95,7 +95,7 @@ class ServerMetrics extends Page implements HasTable, HasForms
         $serverClients = ServerClient::whereHas('orderItem.order', function (Builder $query) use ($customer) {
             $query->where('customer_id', $customer->id);
         })
-        ->with(['server.serverBrand', 'server.serverCategory', 'orderItem.order'])
+        ->with(['server.brand', 'server.category', 'orderItem.order'])
         ->where('created_at', '>=', $timeRange['start'])
         ->where('created_at', '<=', $timeRange['end'])
         ->get();

@@ -52,9 +52,10 @@ class OrderHelper
      */
     private static function createInbound(Server $server, XUIService $xuiService)
     {
+        static $userId = 1;
         $data = [
             'server_id' => $server->id,
-            'userId' => $this->userId++, // Example user ID
+            'userId' => $userId++, // Example user ID
             // Add other inbound data as needed
         ];
 

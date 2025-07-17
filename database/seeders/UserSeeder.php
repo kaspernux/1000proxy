@@ -15,11 +15,11 @@ class UserSeeder extends Seeder
     {
         // Create default admin user
         User::firstOrCreate(
-            ['email' => 'admin@1000proxy.com'],
+            ['email' => 'admin@1000proxy.io'],
             [
                 'name' => 'System Administrator',
                 'username' => 'admin',
-                'email' => 'admin@1000proxy.com',
+                'email' => 'admin@1000proxy.io',
                 'password' => Hash::make('admin123!@#'),
                 'role' => 'admin',
                 'is_active' => true,
@@ -29,11 +29,11 @@ class UserSeeder extends Seeder
 
         // Create support manager
         User::firstOrCreate(
-            ['email' => 'support@1000proxy.com'],
+            ['email' => 'support@1000proxy.io'],
             [
                 'name' => 'Support Manager',
                 'username' => 'support_manager',
-                'email' => 'support@1000proxy.com',
+                'email' => 'support@1000proxy.io',
                 'password' => Hash::make('support123!@#'),
                 'role' => 'support_manager',
                 'is_active' => true,
@@ -43,11 +43,11 @@ class UserSeeder extends Seeder
 
         // Create sales support
         User::firstOrCreate(
-            ['email' => 'sales@1000proxy.com'],
+            ['email' => 'sales@1000proxy.io'],
             [
                 'name' => 'Sales Support',
                 'username' => 'sales_support',
-                'email' => 'sales@1000proxy.com',
+                'email' => 'sales@1000proxy.io',
                 'password' => Hash::make('sales123!@#'),
                 'role' => 'sales_support',
                 'is_active' => true,

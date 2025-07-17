@@ -1,7 +1,6 @@
 <div>
     {{-- Hero Section Start  --}}
-    <div
-        class="w-full max-h-auto pt-3 py-auto font-mono bg-gradient-to-r from-green-900 to-green-600 px-4 sm:px-6 lg:px-8 mx-auto relative">
+    <div class="w-full max-h-auto pt-3 py-auto font-mono bg-gradient-to-r from-green-900 to-green-600 px-4 sm:px-6 lg:px-8 mx-auto relative">
         <div class="max-w-[85rem] mx-auto px-4 sm:px-6 lg:px-8">
             <!-- Grid -->
             <div class="grid md:grid-cols-2 gap-4 md:gap-8 xl:gap-20 md:items-center">
@@ -41,11 +40,7 @@
                         <a wire:navigate class="py-3 px-4 font-mono inline-flex justify-center items-center gap-x-2 text-sm font-semibold rounded-lg border border-transparent bg-green-500 text-white hover:bg-yellow-600 disabled:opacity-50 disabled:pointer-events-none dark:focus:outline-none dark:focus:ring-1 dark:focus:ring-gray-600"
                             href="/register">
                             Get Started
-                            <svg class="flex-shrink-0 w-4 h-4" xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                                stroke-linecap="round" stroke-linejoin="round">
-                                <path d="m9 18 6-6-6-6" />
-                            </svg>
+                            <x-custom-icon name="arrow-right" class="flex-shrink-0 w-4 h-4" />
                         </a>
                         <a wire:navigate class="py-3 px-4 inline-flex font-mono justify-center items-center gap-x-2 text-sm font-medium rounded-lg border border-white bg-green-800 text-green-600 shadow-sm hover:bg-yellow-600 disabled:opacity-50 disabled:pointer-events-none dark:bg-slate-900 dark:border-green-600 dark:text-white dark:hover:bg-yellow-600 dark:focus:outline-none dark:focus:ring-1 dark:focus:ring-gray-600"
                             href="/contact">
@@ -277,15 +272,15 @@
                 @foreach($this->featuredPlans as $plan)
                 <div class="bg-white/10 backdrop-blur-sm rounded-xl p-6 hover:bg-white/20 transition duration-300">
                     <div class="flex items-center mb-4">
-                        @if($plan->serverBrand)
-                            <img src="{{ url('storage/'.$plan->serverBrand->image) }}"
-                                 alt="{{ $plan->serverBrand->name }}"
+                        @if($plan->brand)
+                            <img src="{{ url('storage/'.$plan->brand->image) }}"
+                                 alt="{{ $plan->brand->name }}"
                                  class="w-12 h-12 rounded-lg mr-3">
                         @endif
                         <div>
                             <h3 class="text-xl font-bold text-white">{{ $plan->name }}</h3>
-                            @if($plan->serverCategory)
-                                <p class="text-green-300 text-sm">{{ $plan->serverCategory->name }}</p>
+                            @if($plan->category)
+                                <p class="text-green-300 text-sm">{{ $plan->category->name }}</p>
                             @endif
                         </div>
                     </div>

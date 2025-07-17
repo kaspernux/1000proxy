@@ -19,7 +19,7 @@ class APITestingService
     {
         $this->baseUrl = config('app.url') . '/api/v2';
         $this->testUser = [
-            'email' => 'api.test@1000proxy.com',
+            'email' => 'api.test@1000proxy.io',
             'password' => 'ApiTest123!'
         ];
     }

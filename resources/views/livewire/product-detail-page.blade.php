@@ -38,13 +38,7 @@
                         {{-- Quick Info Section --}}
                         <div class="px-6 pb-6 mt-6 border-t border-accent-yellow dark:border-green-400">
                             <div class="flex flex-wrap items-center mt-6">
-                                <span class="mr-2">
-                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="white" class="w-4 h-4 text-white dark:text-white"
-                                        viewBox="0 0 24 24" stroke="currentColor">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                            d="M3 4a1 1 0 011-1h3a1 1 0 011 1v3a1 1 0 01-1 1H4a1 1 0 01-1-1V4zM7 14h1v1H7v-1zM14 14h1v1h-1v-1zM14 20h1v1h-1v-1zM14 17h1v1h-1v-1zM17 14h1v1h-1v-1zM17 17h1v1h-1v-1zM17 20h1v1h-1v-1zM4 14h1v1H4v-1zM4 17h1v1H4v-1zM4 20h1v1H4v-1zM7 17h1v1H7v-1zM7 20h1v1H7v-1zM10 14h1v1h-1v-1zM10 17h1v1h-1v-1zM10 20h1v1h-1v-1zM14 10h1v1h-1v-1zM14 7h1v1h-1V7zM14 4h1v1h-1V4zM17 10h1v1h-1v-1zM17 7h1v1h-1V7zM17 4h1v1h-1V4zM10 10h1v1h-1v-1zM10 7h1v1h-1V7zM10 4h1v1h-1V4zM3 10h1v1H3v-1zM3 7h1v1H3V7zM3 17h1v1H3v-1zM7 10h1v1H7v-1zM7 7h1v1H7V7zM7 4h1v1H7V4zM20 10h1v1h-1v-1zM20 7h1v1h-1V7zM20 4h1v1h-1V4zM20 14h1v1h-1v-1zM20 17h1v1h-1v-1zM20 20h1v1h-1v-1z" />
-                                    </svg>
-                                </span>
+                                <x-custom-icon name="server" class="w-4 h-4 text-white mr-2" />
                                 <h2 class="text-sm font-medium text-white dark:text-white">Instant configuration delivery to your account</h2>
                             </div>
                         </div>
@@ -61,9 +55,9 @@
                                     <a href="/" wire:navigate class="hover:text-white">Home</a>
                                     <span class="mx-2">/</span>
                                     <a href="/servers" wire:navigate class="hover:text-white">Servers</a>
-                                    @if($this->serverPlan->serverCategory)
+                                    @if($this->serverPlan->category)
                                         <span class="mx-2">/</span>
-                                        <span>{{ $this->serverPlan->serverCategory->name }}</span>
+                                        <span>{{ $this->serverPlan->category->name }}</span>
                                     @endif
                                 </nav>
                                 <h2 class="max-w-xl mb-6 text-2xl text-white font-bold dark:text-white md:text-4xl">
@@ -72,14 +66,14 @@
 
                                 {{-- Brand & Category Info --}}
                                 <div class="flex flex-wrap gap-2 mb-4">
-                                    @if($this->serverPlan->serverBrand)
+                                    @if($this->serverPlan->brand)
                                         <span class="px-3 py-1 bg-blue-600/20 text-blue-300 rounded-full text-sm">
-                                            {{ $this->serverPlan->serverBrand->name }}
+                                            {{ $this->serverPlan->brand->name }}
                                         </span>
                                     @endif
-                                    @if($this->serverPlan->serverCategory)
+                                    @if($this->serverPlan->category)
                                         <span class="px-3 py-1 bg-green-600/20 text-green-300 rounded-full text-sm">
-                                            {{ $this->serverPlan->serverCategory->name }}
+                                            {{ $this->serverPlan->category->name }}
                                         </span>
                                     @endif
                                 </div>

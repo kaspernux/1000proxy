@@ -489,9 +489,9 @@ Official client libraries are available for:
 
 ## Support
 For API support and questions:
-- Email: support@1000proxy.com
-- Documentation: https://docs.1000proxy.com
-- Status Page: https://status.1000proxy.com
+- Email: support@1000proxy.io
+- Documentation: https://docs.1000proxy.io
+- Status Page: https://status.1000proxy.io
 
 ## Changelog
 ### v1.0.0 (2025-07-08)

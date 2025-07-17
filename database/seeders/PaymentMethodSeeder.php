@@ -96,6 +96,12 @@ class PaymentMethodSeeder extends Seeder
             ],
         ];
 
-        DB::table('payment_methods')->insert($paymentMethods);
+        // Use updateOrCreate to avoid duplicate entry errors
+        foreach ($paymentMethods as $method) {
+            \App\Models\PaymentMethod::updateOrCreate(
+                ['slug' => $method['slug']], // Check by slug
+                $method // Update with all data
+            );
+        }
     }
 }

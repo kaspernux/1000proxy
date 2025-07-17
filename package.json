@@ -8,6 +8,7 @@
         "test": "tests"
     },
     "dependencies": {
+        "@heroicons/react": "^2.2.0",
         "alpinejs": "^3.14.9",
         "ansi-regex": "^6.0.1",
         "ansi-styles": "^6.2.1",
@@ -118,7 +119,7 @@
     "devDependencies": {
         "@babel/core": "^7.23.0",
         "@babel/preset-env": "^7.23.0",
-        "@tailwindcss/forms": "^0.5.7",
+        "@tailwindcss/forms": "^0.5.10",
         "@tailwindcss/typography": "^0.5.13",
         "@testing-library/jest-dom": "^6.1.0",
         "autoprefixer": "^10.4.19",

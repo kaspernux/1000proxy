@@ -47,7 +47,7 @@ class UserTest extends TestCase
 
     public function test_specific_emails_can_access_panel()
     {
-        $adminEmail = 'admin@1000proxy.com';
+        $adminEmail = 'admin@1000proxy.io';
         $user = User::factory()->create(['email' => $adminEmail]);
 
         $this->assertTrue($user->canAccessPanel());
@@ -65,22 +65,22 @@ class UserTest extends TestCase
     public function test_user_last_login_is_updated()
     {
         $user = User::factory()->create(['last_login_at' => null]);
-        
+
         $this->assertNull($user->last_login_at);
-        
+
         $user->update(['last_login_at' => now()]);
-        
+
         $this->assertNotNull($user->fresh()->last_login_at);
     }
 
     public function test_user_can_be_deactivated()
     {
         $user = User::factory()->create(['is_active' => true]);
-        
+
         $this->assertTrue($user->is_active);
-        
+
         $user->update(['is_active' => false]);
-        
+
         $this->assertFalse($user->fresh()->is_active);
     }
 

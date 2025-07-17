@@ -84,7 +84,7 @@ public function createCryptoPayment(CreatePaymentRequest $request): JsonResponse
     // AFTER: Proper role-based access control
     public function canAccessPanel(): bool {
         return $this->hasRole('admin') ||
-               in_array($this->email, ['admin@1000proxy.com', 'support@1000proxy.com']);
+               in_array($this->email, ['admin@1000proxy.io', 'support@1000proxy.io']);
     }
     ```
 

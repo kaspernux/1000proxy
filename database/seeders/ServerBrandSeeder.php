@@ -43,6 +43,12 @@ class ServerBrandSeeder extends Seeder
             ],
         ];
 
-        DB::table('server_brands')->insert($brands);
+        // Use updateOrCreate to avoid duplicate entry errors
+        foreach ($brands as $brand) {
+            \App\Models\ServerBrand::updateOrCreate(
+                ['slug' => $brand['slug']], // Check by slug
+                $brand // Update with all data
+            );
+        }
     }
 }
