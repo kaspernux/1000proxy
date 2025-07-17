@@ -28,7 +28,7 @@
         "laravel/horizon": "^5.31",
         "laravel/sanctum": "^4.0",
         "laravel/tinker": "^2.9",
-        "livewire/livewire": "^3.5",
+        "livewire/livewire": "^3.6.4",
         "moneyphp/money": "^4.5.0",
         "predis/predis": "^3.0",
         "prevailexcel/laravel-nowpayments": "^1.0",
