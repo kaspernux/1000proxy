@@ -70,7 +70,11 @@ php artisan migrate:fresh --seed
 php artisan serve
 ```
 
-**Default Admin Access**: http://localhost:8000/admin (admin@example.com / password)
+🔐 **Default Admin Access**: <http://localhost:8000/admin>  
+📧 **Admin Email**: `admin@1000proxy.io`  
+🔑 **Password**: See [Admin Credentials](docs/ADMIN_CREDENTIALS.md)
+
+⚠️ **Security Notice**: Change default passwords immediately in production!
 
 ## 📚 Documentation
 

@@ -14,28 +14,28 @@ class CustomerSeeder extends Seeder
         Customer::factory()->count(20)->create();
 
         // Create the specific test customer or find existing
-        $customer = Customer::where('email', 'nook@1000proxy.io')->first();
+        $customer = Customer::where('email', 'demo@1000proxy.io')->first();
 
         if (!$customer) {
             $customer = Customer::factory()->create([
                 'is_active' => true,
-                'image' => 'https://via.placeholder.com/640x480.png/00dd77?text=minima',
-                'name' => 'Nook Codes',
-                'email' => 'nook@1000proxy.io',
-                'password' => bcrypt('Password'),
+                'image' => 'https://via.placeholder.com/640x480.png/00dd77?text=demo-customer',
+                'name' => 'Demo Customer',
+                'email' => 'demo@1000proxy.io',
+                'password' => bcrypt('D3m0#Cust0mer!2024$'),
                 'telegram_chat_id' => '761184038',
-                'refcode' => 'ucy6bU914w',
-                'date' => '1995-01-30',
-                'phone' => '+15809581739',
+                'refcode' => 'DEMO2024',
+                'date' => '1990-01-01',
+                'phone' => '+1-800-DEMO-001',
                 'refered_by' => null,
                 'step' => 9,
-                'freetrial' => false,
-                'first_start' => '2021-02-23 05:57:52',
-                'temp' => 50,
+                'freetrial' => true,
+                'first_start' => now()->subDays(30),
+                'temp' => 25,
                 'is_agent' => false,
-                'discount_percent' => 0,
-                'agent_date' => '2002-12-24 08:02:21',
-                'spam_info' => 'Consectetur molestias praesentium ut quasi et cum ut.',
+                'discount_percent' => 10,
+                'agent_date' => now()->subDays(15),
+                'spam_info' => 'Demo customer account for testing purposes.',
             ]);
         }
 

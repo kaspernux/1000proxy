@@ -65,6 +65,7 @@ This documentation is organized into several sections to help developers, admini
 
 ### 🛡️ Security
 
+- [**Admin Credentials**](ADMIN_CREDENTIALS.md) - Default passwords & security setup
 - [Security Best Practices](security/SECURITY_BEST_PRACTICES.md)
 - [Authentication & Authorization](security/AUTH_SYSTEM.md) *(Coming Soon)*
 - [Data Protection](security/DATA_PROTECTION.md) *(Coming Soon)*
