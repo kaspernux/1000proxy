@@ -12,6 +12,11 @@ This documentation is organized into several sections to help developers, admini
 - [Configuration Guide](getting-started/CONFIGURATION.md) - Environment and system configuration
 - [Development Setup](getting-started/DEVELOPMENT_SETUP.md) - Development environment setup
 
+### 🐳 Docker
+- [Docker Guide](docker/DOCKER_GUIDE.md) - Complete Docker development and deployment *(New)*
+- [Docker Compose](docker/DOCKER_COMPOSE.md) - Multi-service orchestration *(Coming Soon)*
+- [Production Docker](docker/PRODUCTION_DOCKER.md) - Production deployment with Docker *(Coming Soon)*
+
 ### 🎨 UI/UX Documentation
 - [Modern UI Guide](ui/MODERN_UI_GUIDE.md) - Modern interface documentation *(Updated)*
 - [Heroicons Integration](ui/HEROICONS_INTEGRATION.md) - Professional icon system *(Updated)*

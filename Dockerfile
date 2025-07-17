@@ -1,4 +1,14 @@
-FROM php:8.4-fpm
+# Multi-stage build for production
+FROM node:20-alpine AS frontend-build
+
+WORKDIR /app
+COPY package*.json ./
+RUN npm ci --only=production
+
+COPY . .
+RUN npm run build
+
+FROM php:8.3-fpm AS backend
 
 # Install system dependencies
 RUN apt-get update && apt-get install -y \
@@ -9,14 +19,26 @@ RUN apt-get update && apt-get install -y \
     libxml2-dev \
     zip \
     unzip \
-    sqlite3 \
-    libsqlite3-dev \
-    nodejs \
-    npm \
+    libzip-dev \
+    icu-dev \
+    autoconf \
+    g++ \
+    make \
+    mysql-client \
     && rm -rf /var/lib/apt/lists/*
 
 # Install PHP extensions
-RUN docker-php-ext-install pdo pdo_sqlite mbstring exif pcntl bcmath gd sockets
+RUN docker-php-ext-install \
+    pdo_mysql \
+    mbstring \
+    exif \
+    pcntl \
+    bcmath \
+    gd \
+    zip \
+    intl \
+    opcache \
+    sockets
 
 # Install Redis PHP extension
 RUN pecl install redis && docker-php-ext-enable redis
@@ -35,38 +57,26 @@ RUN composer install --no-dev --no-scripts --no-autoloader --prefer-dist
 
 # Copy application files
 COPY . .
+COPY --from=frontend-build /app/public/build ./public/build
 
-# Install composer dependencies (complete)
+# Complete composer installation
 RUN composer install --no-dev --optimize-autoloader
-
-# Install npm dependencies
-RUN npm install
-
-# Build frontend assets
-RUN npm run build
-
-# Create database directory and file
-RUN mkdir -p /var/www/html/database
-RUN touch /var/www/html/database/database.sqlite
 
 # Set permissions
 RUN chown -R www-data:www-data /var/www/html \
     && chmod -R 755 /var/www/html/storage \
     && chmod -R 755 /var/www/html/bootstrap/cache
 
-# Generate application key
-RUN php artisan key:generate
+# Copy PHP configuration
+COPY docker/php/php.ini /usr/local/etc/php/php.ini
+COPY docker/php/opcache.ini /usr/local/etc/php/conf.d/opcache.ini
 
-# Run database migrations
-RUN php artisan migrate --force
-
-# Clear and cache config
-RUN php artisan config:cache
-RUN php artisan route:cache
-RUN php artisan view:cache
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+    CMD curl -f http://localhost:9000/health || exit 1
 
 # Expose port
-EXPOSE 8000
+EXPOSE 9000
 
 # Start command
-CMD ["php", "artisan", "serve", "--host=0.0.0.0", "--port=8000"]
+CMD ["php-fpm"]

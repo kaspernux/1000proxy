@@ -6,6 +6,7 @@ Get up and running with 1000proxy in under 10 minutes and experience the modern,
 
 Before you begin, ensure you have:
 
+- **Docker & Docker Compose** (recommended) OR
 - **PHP 8.3+** installed
 - **Composer** package manager
 - **Node.js 18+** and npm
@@ -13,7 +14,44 @@ Before you begin, ensure you have:
 - **Redis** server (recommended)
 - **Git** for version control
 
-## Quick Installation
+## 🐳 Quick Installation with Docker (Recommended)
+
+### 1. Clone and Setup
+
+```bash
+# Clone the repository
+git clone https://github.com/kaspernux/1000proxy.git
+cd 1000proxy
+
+# Copy environment file
+cp .env.example .env
+```
+
+### 2. Start with Docker
+
+```bash
+# Build and start all services
+docker-compose up -d
+
+# Setup application
+docker-compose exec app composer install
+docker-compose exec app npm install && npm run build
+docker-compose exec app php artisan key:generate
+docker-compose exec app php artisan migrate:fresh --seed
+```
+
+### 3. Access Your Application
+
+- **Frontend**: http://localhost:8000
+- **Admin Panel**: http://localhost:8000/admin
+- **Database**: localhost:3306
+- **Redis**: localhost:6379
+
+**Default Admin Credentials**:
+- Email: admin@example.com
+- Password: password
+
+## 📦 Traditional Installation
 
 ### 1. Clone the Repository
 

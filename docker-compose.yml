@@ -6,40 +6,90 @@ services:
             context: .
             dockerfile: Dockerfile
         ports:
-            - "8000:8000"
+            - "8000:9000"
         volumes:
             - .:/var/www/html
+            - ./storage:/var/www/html/storage
+            - ./bootstrap/cache:/var/www/html/bootstrap/cache
         environment:
             - APP_ENV=local
             - APP_DEBUG=true
+            - APP_KEY=${APP_KEY}
             - DB_CONNECTION=mysql
             - DB_HOST=mysql
             - DB_PORT=3306
             - DB_DATABASE=1000proxy
             - DB_USERNAME=root
             - DB_PASSWORD=password
+            - CACHE_DRIVER=redis
+            - SESSION_DRIVER=redis
+            - QUEUE_CONNECTION=redis
+            - REDIS_HOST=redis
+            - REDIS_PORT=6379
+            - LIVEWIRE_ASSET_URL=http://localhost:8000
         depends_on:
-            - mysql
-            - redis
-        command: php artisan serve --host=0.0.0.0 --port=8000
+            mysql:
+                condition: service_healthy
+            redis:
+                condition: service_healthy
+        networks:
+            - proxy-network
+        healthcheck:
+            test: ["CMD", "php", "artisan", "health:check"]
+            interval: 30s
+            timeout: 10s
+            retries: 3
+            start_period: 40s
+
+    nginx:
+        image: nginx:alpine
+        ports:
+            - "80:80"
+        volumes:
+            - ./docker/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+            - ./public:/var/www/html/public:ro
+        depends_on:
+            - app
+        networks:
+            - proxy-network
 
     mysql:
         image: mysql:8.0
         ports:
             - "3306:3306"
         environment:
-            - MYSQL_ROOT_PASSWORD=password
-            - MYSQL_DATABASE=1000proxy
-            - MYSQL_USER=1000proxy
-            - MYSQL_PASSWORD=password
+            MYSQL_ROOT_PASSWORD: password
+            MYSQL_DATABASE: 1000proxy
+            MYSQL_USER: proxy_user
+            MYSQL_PASSWORD: password
         volumes:
             - mysql_data:/var/lib/mysql
-        command: --default-authentication-plugin=mysql_native_password
+            - ./docker/mysql/my.cnf:/etc/mysql/conf.d/my.cnf:ro
+        networks:
+            - proxy-network
+        healthcheck:
+            test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+            interval: 20s
+            timeout: 10s
+            retries: 5
+            start_period: 30s
+        command: --default-authentication-plugin=mysql_native_password --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
 
     redis:
         image: redis:7-alpine
         ports:
             - "6379:6379"
+        volumes:
+            - redis_data:/data
+        networks:
+            - proxy-network
+        healthcheck:
+            test: ["CMD", "redis-cli", "ping"]
+            interval: 20s
+            timeout: 10s
+            retries: 3
+            start_period: 20s
+        command: redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru
 
     queue:
         build:
@@ -47,19 +97,31 @@ services:
             dockerfile: Dockerfile
         volumes:
             - .:/var/www/html
+            - ./storage:/var/www/html/storage
         depends_on:
-            - mysql
-            - redis
+            mysql:
+                condition: service_healthy
+            redis:
+                condition: service_healthy
         environment:
             - APP_ENV=local
             - APP_DEBUG=true
+            - APP_KEY=${APP_KEY}
             - DB_CONNECTION=mysql
             - DB_HOST=mysql
             - DB_PORT=3306
             - DB_DATABASE=1000proxy
             - DB_USERNAME=root
             - DB_PASSWORD=password
-        command: php artisan queue:work
+            - CACHE_DRIVER=redis
+            - SESSION_DRIVER=redis
+            - QUEUE_CONNECTION=redis
+            - REDIS_HOST=redis
+            - REDIS_PORT=6379
+        networks:
+            - proxy-network
+        command: php artisan queue:work --sleep=3 --tries=3 --max-time=3600
+        restart: unless-stopped
 
     scheduler:
         build:
@@ -67,19 +129,50 @@ services:
             dockerfile: Dockerfile
         volumes:
             - .:/var/www/html
+            - ./storage:/var/www/html/storage
         depends_on:
-            - mysql
-            - redis
+            mysql:
+                condition: service_healthy
+            redis:
+                condition: service_healthy
         environment:
             - APP_ENV=local
             - APP_DEBUG=true
+            - APP_KEY=${APP_KEY}
             - DB_CONNECTION=mysql
             - DB_HOST=mysql
             - DB_PORT=3306
             - DB_DATABASE=1000proxy
             - DB_USERNAME=root
             - DB_PASSWORD=password
-        command: php artisan schedule:work
+            - CACHE_DRIVER=redis
+            - SESSION_DRIVER=redis
+            - QUEUE_CONNECTION=redis
+            - REDIS_HOST=redis
+            - REDIS_PORT=6379
+        networks:
+            - proxy-network
+        command: |
+            sh -c 'while true; do
+                php artisan schedule:run
+                sleep 60
+            done'
+        restart: unless-stopped
+
+    mailhog:
+        image: mailhog/mailhog:latest
+        ports:
+            - "1025:1025"
+            - "8025:8025"
+        networks:
+            - proxy-network
 
 volumes:
     mysql_data:
+        driver: local
+    redis_data:
+        driver: local
+
+networks:
+    proxy-network:
+        driver: bridge

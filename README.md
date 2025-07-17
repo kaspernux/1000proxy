@@ -25,6 +25,30 @@
 
 ## 🚀 Quick Start
 
+### 🐳 Docker (Recommended)
+
+```bash
+# Clone the repository
+git clone https://github.com/kaspernux/1000proxy.git
+cd 1000proxy
+
+# Copy environment file
+cp .env.example .env
+
+# Build and start with Docker
+docker-compose up -d
+
+# Setup application
+docker-compose exec app composer install
+docker-compose exec app npm install && npm run build
+docker-compose exec app php artisan key:generate
+docker-compose exec app php artisan migrate:fresh --seed
+```
+
+**Access**: http://localhost:8000 | **Admin**: http://localhost:8000/admin (admin@example.com / password)
+
+### 📦 Traditional Setup
+
 ```bash
 # Clone the repository
 git clone https://github.com/kaspernux/1000proxy.git
