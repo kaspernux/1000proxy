@@ -176,7 +176,7 @@ sudo ./scripts/quick-setup.sh
 - Hardens SSH (moves to port 2222, disables root login)
 - Configures UFW firewall with rate limiting
 - Sets up Fail2Ban intrusion detection
-- Installs and configures: PHP 8.2, Nginx, MySQL 8.0, Redis
+- Installs and configures: PHP 8.3, Nginx, MySQL 8.0, Redis
 - Configures SSL with Let's Encrypt (if domain provided)
 - Sets up automated backups and monitoring
 - Creates comprehensive audit logging
@@ -312,7 +312,7 @@ sudo /usr/local/bin/1000proxy-health-check.sh
 ```bash
 # Check application status
 sudo systemctl status nginx
-sudo systemctl status php8.2-fpm
+sudo systemctl status php8.3-fpm
 sudo systemctl status mysql
 sudo systemctl status redis
 sudo systemctl status 1000proxy-queue
@@ -324,7 +324,7 @@ sudo tail -f /var/log/nginx/1000proxy.error.log
 
 # Restart services
 sudo systemctl restart nginx
-sudo systemctl restart php8.2-fpm
+sudo systemctl restart php8.3-fpm
 sudo systemctl restart 1000proxy-queue
 
 # Run Laravel commands
@@ -423,7 +423,7 @@ sudo clamscan -r /var/www/1000proxy
 - **Web Server**: `/var/log/nginx/1000proxy.*.log`
 - **Application**: `/var/www/1000proxy/storage/logs/laravel.log`
 - **Database**: `/var/log/mysql/error.log`
-- **PHP**: `/var/log/php8.2-fpm.log`
+- **PHP**: `/var/log/php8.3-fpm.log`
 
 ### Getting Help
 

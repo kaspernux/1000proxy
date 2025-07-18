@@ -418,42 +418,42 @@ systemctl start auditd
 print_success "System auditing configured"
 
 # =============================================================================
-# 6. Install and Configure PHP 8.2
+# 6. Install and Configure PHP 8.3
 # =============================================================================
-print_header "PHP 8.2 Installation and Configuration"
+print_header "PHP 8.3 Installation and Configuration"
 
 # Add PHP repository
 add-apt-repository ppa:ondrej/php -y
 apt update
 
-# Install PHP 8.2 and extensions
+# Install PHP 8.3 and extensions
 apt install -y \
-    php8.2 \
-    php8.2-fpm \
-    php8.2-cli \
-    php8.2-common \
-    php8.2-mysql \
-    php8.2-pgsql \
-    php8.2-sqlite3 \
-    php8.2-redis \
-    php8.2-curl \
-    php8.2-gd \
-    php8.2-mbstring \
-    php8.2-xml \
-    php8.2-zip \
-    php8.2-bcmath \
-    php8.2-intl \
-    php8.2-imagick \
-    php8.2-soap \
-    php8.2-xsl \
-    php8.2-opcache \
-    php8.2-readline \
-    php8.2-dev
+    php8.3 \
+    php8.3-fpm \
+    php8.3-cli \
+    php8.3-common \
+    php8.3-mysql \
+    php8.3-pgsql \
+    php8.3-sqlite3 \
+    php8.3-redis \
+    php8.3-curl \
+    php8.3-gd \
+    php8.3-mbstring \
+    php8.3-xml \
+    php8.3-zip \
+    php8.3-bcmath \
+    php8.3-intl \
+    php8.3-imagick \
+    php8.3-soap \
+    php8.3-xsl \
+    php8.3-opcache \
+    php8.3-readline \
+    php8.3-dev
 
-print_success "PHP 8.2 installed"
+print_success "PHP 8.3 installed"
 
 # Secure PHP configuration
-PHP_INI="/etc/php/8.2/fpm/php.ini"
+PHP_INI="/etc/php/8.3/fpm/php.ini"
 cp "$PHP_INI" "$PHP_INI.backup"
 
 # PHP Security hardening
@@ -477,7 +477,7 @@ cat > "$FPM_POOL" << EOF
 [1000proxy]
 user = $PROJECT_USER
 group = www-data
-listen = /run/php/php8.2-1000proxy.sock
+listen = /run/php/php8.3-1000proxy.sock
 listen.owner = www-data
 listen.group = www-data
 listen.mode = 0660
@@ -496,9 +496,9 @@ php_admin_flag[allow_url_include] = off
 php_admin_flag[expose_php] = off
 EOF
 
-systemctl enable php8.2-fpm
-systemctl start php8.2-fpm
-print_success "PHP 8.2 configured securely"
+systemctl enable php8.3-fpm
+systemctl start php8.3-fpm
+print_success "PHP 8.3 configured securely"
 
 # =============================================================================
 # 7. Install and Configure Nginx
@@ -628,7 +628,7 @@ server {
     # PHP handling
     location ~ \.php$ {
         fastcgi_split_path_info ^(.+\.php)(/.+)$;
-        fastcgi_pass unix:/run/php/php8.2-1000proxy.sock;
+        fastcgi_pass unix:/run/php/php8.3-1000proxy.sock;
         fastcgi_index index.php;
         include fastcgi_params;
         fastcgi_param SCRIPT_FILENAME \$realpath_root\$fastcgi_script_name;
@@ -1250,7 +1250,7 @@ cat > /etc/motd << EOF
 🔧 Management Commands:
    • Check fail2ban: fail2ban-client status
    • Check firewall: ufw status
-   • Check services: systemctl status nginx php8.2-fpm mysql redis
+   • Check services: systemctl status nginx php8.3-fpm mysql redis
    • Security scan: lynis audit system
 
 Last login: $(date)
@@ -1315,7 +1315,7 @@ SECURITY FEATURES IMPLEMENTED:
 
 INSTALLED SOFTWARE:
 ═══════════════════════════════════════════════════════════════════════════════
-✓ PHP 8.2 with security extensions
+✓ PHP 8.3 with security extensions
 ✓ Nginx web server
 ✓ MySQL 8.0 database
 ✓ Redis cache server

@@ -131,7 +131,7 @@
             <li>Check application logs: <code>tail -f storage/logs/laravel.log</code></li>
             <li>Monitor system resources: <code>htop</code></li>
             <li>Check queue status: <code>php artisan horizon:status</code></li>
-            <li>Restart services if needed: <code>sudo systemctl restart nginx php8.2-fpm redis-server</code></li>
+            <li>Restart services if needed: <code>sudo systemctl restart nginx php8.3-fpm redis-server</code></li>
             <li>Run health check manually: <code>php artisan system:health-check</code></li>
         </ul>
         

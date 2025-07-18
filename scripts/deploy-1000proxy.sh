@@ -948,7 +948,7 @@ server {
     # PHP handling
     location ~ \.php$ {
         fastcgi_split_path_info ^(.+\.php)(/.+)$;
-        fastcgi_pass unix:/run/php/php8.2-1000proxy.sock;
+        fastcgi_pass unix:/run/php/php8.3-1000proxy.sock;
         fastcgi_index index.php;
         include fastcgi_params;
         fastcgi_param SCRIPT_FILENAME \$realpath_root\$fastcgi_script_name;
@@ -1169,7 +1169,7 @@ cat > /etc/php/8.2/fpm/pool.d/1000proxy-optimized.conf << EOF
 [1000proxy]
 user = $PROJECT_USER
 group = www-data
-listen = /run/php/php8.2-1000proxy.sock
+listen = /run/php/php8.3-1000proxy.sock
 listen.owner = www-data
 listen.group = www-data
 listen.mode = 0660
@@ -1206,7 +1206,7 @@ EOF
 # Remove old pool configuration
 rm -f /etc/php/8.2/fpm/pool.d/1000proxy.conf
 
-systemctl restart php8.2-fpm
+systemctl restart php8.3-fpm
 print_success "PHP-FPM optimized"
 
 # =============================================================================
