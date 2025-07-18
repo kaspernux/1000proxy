@@ -1,53 +1,24 @@
 
-<div align="center">
-  <img src="/images/1000proxy.png" width="500" alt="1000Proxy Logo">
 
-  # 🚀 1000proxy
-  ### Professional Proxy Management Platform
+![1000Proxy Logo](/images/1000proxy.png)
 
-  <p align="center">
-    <b>Version 2.1.0</b> • <i>Enterprise-Grade Proxy Management Solution</i>
-  </p>
+# 🚀 1000proxy
+### Professional Proxy Management Platform
 
-  <p align="center">
-    <em>
-      Modern, professional proxy management platform with stunning UI, comprehensive 3X-UI integration,<br>
-      multi-panel administration, and fully automated client provisioning system.
-    </em>
-  </p>
+**Version 2.1.0** • *Enterprise-Grade Proxy Management Solution*
 
-  <p align="center">
-    <img src="https://img.shields.io/badge/Laravel-12.x-FF2D20?style=for-the-badge&logo=laravel&logoColor=white" alt="Laravel">
-    <a href="https://php.net" target="_blank">
-      <img src="https://img.shields.io/badge/PHP-8.3+-777BB4?style=for-the-badge&logo=php&logoColor=white" alt="PHP">
-    </a>
-    <a href="LICENSE">
-      <img src="https://img.shields.io/badge/License-MIT-green?style=for-the-badge" alt="License">
-    </a>
-    <a href="tests/">
-      <img src="https://img.shields.io/badge/Tests-100%25_Coverage-brightgreen?style=for-the-badge" alt="Tests">
-    </a>
-    <a href="docs/security/SECURITY_BEST_PRACTICES.md">
-      <img src="https://img.shields.io/badge/Security-Enterprise_Grade-orange?style=for-the-badge&logo=shield&logoColor=white" alt="Security">
-    </a>
-    <a href="https://github.com/kaspernux/1000proxy/releases/latest">
-      <img src="https://img.shields.io/github/v/release/kaspernux/1000proxy?style=for-the-badge&logo=github" alt="Latest Release">
-    </a>
-    <a href="https://github.com/kaspernux/1000proxy/stargazers">
-      <img src="https://img.shields.io/github/stars/kaspernux/1000proxy?style=for-the-badge&logo=github" alt="GitHub Stars">
-    </a>
-  </p>
+*Modern, professional proxy management platform with stunning UI, comprehensive 3X-UI integration, multi-panel administration, and fully automated client provisioning system.*
 
-  <!-- Quick Links -->
-  <p align="center">
-    <a href="#-quick-start">🚀 Quick Start</a> •
-    <a href="#-features">✨ Features</a> •
-    <a href="#-documentation">📚 Documentation</a> •
-    <a href="#-deployment">🌐 Deployment</a> •
-    <a href="#-api">🔌 API</a> •
-    <a href="#-support">💬 Support</a>
-  </p>
-</div>
+![Laravel](https://img.shields.io/badge/Laravel-12.x-FF2D20?style=for-the-badge&logo=laravel&logoColor=white)
+[![PHP](https://img.shields.io/badge/PHP-8.3+-777BB4?style=for-the-badge&logo=php&logoColor=white)](https://php.net)
+[![License](https://img.shields.io/badge/License-MIT-green?style=for-the-badge)](LICENSE)
+[![Tests](https://img.shields.io/badge/Tests-100%25_Coverage-brightgreen?style=for-the-badge)](tests/)
+[![Security](https://img.shields.io/badge/Security-Enterprise_Grade-orange?style=for-the-badge&logo=shield&logoColor=white)](docs/security/SECURITY_BEST_PRACTICES.md)
+[![Latest Release](https://img.shields.io/github/v/release/kaspernux/1000proxy?style=for-the-badge&logo=github)](https://github.com/kaspernux/1000proxy/releases/latest)
+[![GitHub Stars](https://img.shields.io/github/stars/kaspernux/1000proxy?style=for-the-badge&logo=github)](https://github.com/kaspernux/1000proxy/stargazers)
+
+<!-- Quick Links -->
+**[🚀 Quick Start](#-quick-start) • [✨ Features](#-features) • [📚 Documentation](#-documentation) • [🌐 Deployment](#-deployment) • [🔌 API](#-api) • [💬 Support](#-support)**
 
 ---
 
@@ -74,35 +45,13 @@ Welcome to **1000proxy** - the most advanced proxy service management platform a
 
 ## 🧭 Quick Navigation
 
-<table>
-<tr>
 
+### 🧭 Quick Navigation
 
-<table>
-  <tr>
-    <td width="25%" align="center">
-      [📖 Quick Start](docs/getting-started/QUICK_START.md)<br>
-      [⚙️ Installation](docs/getting-started/INSTALLATION.md)<br>
-      [🔧 Configuration](docs/getting-started/CONFIGURATION.md)<br>
-      [💻 Development](docs/getting-started/DEVELOPMENT_SETUP.md)
-    </td>
-    <td width="25%" align="center">
-      <strong>🌐 Deployment</strong><br>
-      Production-ready deployment guides<br>
-      [🛡️ Secure Setup](docs/SECURE_SETUP_GUIDE.md)
-    </td>
-    <td width="25%" align="center">
-      <strong>🔐 Security</strong><br>
-      [🔐 Best Practices](docs/security/SECURITY_BEST_PRACTICES.md)<br>
-      [🚨 Monitoring](docs/security/MONITORING.md)<br>
-      [🔍 Audit Logging](docs/security/AUDIT_LOGGING.md)
-    </td>
-    <td width="25%" align="center">
-      <strong>🔌 API & Integration</strong><br>
-      Complete API and integration guides
-    </td>
-  </tr>
-</table>
+| [📖 Quick Start](docs/getting-started/QUICK_START.md) | [⚙️ Installation](docs/getting-started/INSTALLATION.md) | [🔧 Configuration](docs/getting-started/CONFIGURATION.md) | [💻 Development](docs/getting-started/DEVELOPMENT_SETUP.md) |
+|---|---|---|---|
+| [🛡️ Secure Setup](docs/SECURE_SETUP_GUIDE.md) | [🔐 Best Practices](docs/security/SECURITY_BEST_PRACTICES.md) | [🚨 Monitoring](docs/security/MONITORING.md) | [🔍 Audit Logging](docs/security/AUDIT_LOGGING.md) |
+| [🔌 API & Integration](#-api) | | | |
 
 ## 🚀 Quick Start
 
