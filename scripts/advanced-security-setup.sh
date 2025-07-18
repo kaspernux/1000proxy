@@ -279,7 +279,7 @@ cat > /var/ossec/etc/ossec.conf << 'EOF'
   <rules>
     <include>rules_config.xml</include>
     <include>pam_rules.xml</include>
-    <include>sshd_rules.xml</include>
+    <include>ssh_rules.xml</include>
     <include>telnetd_rules.xml</include>
     <include>syslog_rules.xml</include>
     <include>arpwatch_rules.xml</include>

@@ -707,10 +707,10 @@ apt update && apt upgrade -y
 apt install -y fail2ban ufw rkhunter chkrootkit
 
 # Configure SSH security
-sed -i 's/#Port 22/Port 2222/' /etc/ssh/sshd_config
-sed -i 's/#PermitRootLogin yes/PermitRootLogin no/' /etc/ssh/sshd_config
-sed -i 's/#PasswordAuthentication yes/PasswordAuthentication no/' /etc/ssh/sshd_config
-sed -i 's/#PubkeyAuthentication yes/PubkeyAuthentication yes/' /etc/ssh/sshd_config
+sed -i 's/#Port 22/Port 2222/' /etc/ssh/ssh_config
+sed -i 's/#PermitRootLogin yes/PermitRootLogin no/' /etc/ssh/ssh_config
+sed -i 's/#PasswordAuthentication yes/PasswordAuthentication no/' /etc/ssh/sshconfig
+sed -i 's/#PubkeyAuthentication yes/PubkeyAuthentication yes/' /etc/ssh/ssh_config
 
 # Configure fail2ban
 cat > /etc/fail2ban/jail.local << EOF
@@ -719,7 +719,7 @@ bantime = 3600
 findtime = 600
 maxretry = 3
 
-[sshd]
+[ssh]
 enabled = true
 port = 2222
 EOF

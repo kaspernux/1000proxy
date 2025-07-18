@@ -160,9 +160,9 @@ if [[ ! -f "/home/$PROJECT_USER/.ssh/id_rsa" ]]; then
 fi
 
 # SSH Hardening
-cp /etc/ssh/sshd_config /etc/ssh/sshd_config.backup
+cp /etc/ssh/ssh_config /etc/ssh/ssh_config.backup
 
-cat > /etc/ssh/sshd_config << EOF
+cat > /etc/ssh/ssh_config << EOF
 # 1000proxy SSH Configuration - Maximum Security
 Port 2222
 Protocol 2
@@ -217,8 +217,8 @@ cat > /etc/ssh/banner << EOF
 ***************************************************************************
 EOF
 
-systemctl restart sshd
-systemctl enable sshd
+systemctl restart ssh
+systemctl enable ssh
 print_success "SSH hardened and configured"
 
 # =============================================================================
@@ -269,10 +269,10 @@ backend = systemd
 usedns = warn
 ignoreip = 127.0.0.1/8 ::1
 
-[sshd]
+[ssh]
 enabled = true
 port = 2222
-filter = sshd
+filter = ssh
 logpath = /var/log/auth.log
 maxretry = 3
 bantime = 7200
@@ -1363,13 +1363,13 @@ Check fail2ban status:       fail2ban-client status
 View security logs:          tail -f /var/log/security-monitor.log
 Run security scan:           /usr/local/bin/security-monitor.sh
 Manual backup:               /usr/local/bin/backup-1000proxy.sh
-Check intrusions:            fail2ban-client status sshd
+Check intrusions:            fail2ban-client status ssh
 
 IMPORTANT FILES TO SECURE:
 ═══════════════════════════════════════════════════════════════════════════════
 - /root/1000proxy-security-report.txt (this file - contains passwords!)
 - $PROJECT_DIR/.env (application configuration)
-- /etc/ssh/sshd_config (SSH configuration)
+- /etc/ssh/ssh_config (SSH configuration)
 - /etc/nginx/sites-available/1000proxy (web server config)
 
 WARNING: This file contains sensitive information. Store it securely and delete

@@ -834,7 +834,7 @@ if [ -s /tmp/suspicious_ips.txt ]; then
         if [ $count -gt 10 ]; then
             echo "Suspicious IP detected: $ip with $count failed attempts"
             # Optionally block IP with fail2ban or iptables
-            # fail2ban-client set sshd banip $ip
+            # fail2ban-client set ssh banip $ip
         fi
     done < /tmp/suspicious_ips.txt
 fi

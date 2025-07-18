@@ -293,7 +293,7 @@ sudo ufw status verbose
 
 # Check fail2ban status
 sudo fail2ban-client status
-sudo fail2ban-client status sshd
+sudo fail2ban-client status ssh
 
 # View security logs
 sudo tail -f /var/log/security-monitor.log
@@ -379,7 +379,7 @@ sudo mysql 1000proxy < /var/backups/1000proxy/YYYYMMDD_HHMMSS/database.sql
 ### If Under Attack
 
 1. **Check Fail2Ban**: `sudo fail2ban-client status`
-2. **Block IPs**: `sudo fail2ban-client set sshd banip <IP>`
+2. **Block IPs**: `sudo fail2ban-client set ssh banip <IP>`
 3. **Check Connections**: `sudo netstat -tuln | grep :443`
 4. **Review Logs**: Check `/var/log/realtime-security.log`
 5. **Update Rules**: Add more restrictive firewall rules if needed
