@@ -39,8 +39,10 @@ print_info() {
     echo -e "${CYAN}ℹ $1${NC}"
 }
 
-clear
 
+STATE_FILE=".setup_state"
+
+clear
 echo -e "${BLUE}╔══════════════════════════════════════════════════════════════╗${NC}"
 echo -e "${BLUE}║                     1000PROXY SETUP                          ║${NC}"
 echo -e "${BLUE}║               Enterprise Security & Deployment               ║${NC}"
@@ -54,14 +56,35 @@ if [[ $EUID -ne 0 ]]; then
    exit 1
 fi
 
-# Make scripts executable
+# Make scripts executable only if not already done
 if [[ -d "scripts" ]]; then
-    chmod +x scripts/*.sh
-    print_success "Made all scripts executable"
+    if ! find scripts -type f -name "*.sh" ! -executable | grep -q .; then
+        print_info "Scripts already executable. Skipping chmod."
+    else
+        chmod +x scripts/*.sh
+        print_success "Made all scripts executable"
+    fi
 else
     print_error "Scripts directory not found!"
     exit 1
 fi
+
+# Step tracking logic
+function save_state() {
+    echo "$1" > "$STATE_FILE"
+}
+
+function load_state() {
+    if [[ -f "$STATE_FILE" ]]; then
+        cat "$STATE_FILE"
+    else
+        echo ""
+    fi
+}
+
+function clear_state() {
+    rm -f "$STATE_FILE"
+}
 
 print_header "Setup Options"
 echo "1. 🚀 Quick Setup (Complete deployment)"
@@ -71,12 +94,26 @@ echo "4. 📋 View Setup Summary"
 echo "5. ❌ Exit"
 echo
 
-read -p "Choose an option (1-5): " choice
+if [[ -f "$STATE_FILE" ]]; then
+    print_warning "Previous setup was interrupted."
+    last_step=$(load_state)
+    print_info "Resuming from step: $last_step"
+else
+    last_step=""
+fi
+
+if [[ -z "$last_step" ]]; then
+    read -p "Choose an option (1-5): " choice
+else
+    choice="$last_step"
+fi
 
 case $choice in
     1)
         print_header "Starting Quick Setup"
-        exec ./scripts/quick-setup.sh
+        save_state "1"
+        ./scripts/quick-setup.sh || { print_error "Quick Setup failed."; exit 1; }
+        clear_state
         ;;
     2)
         print_header "Security Setup Menu"
@@ -84,18 +121,28 @@ case $choice in
         echo "2. Advanced Security Setup"
         echo "3. Both (Recommended)"
         echo
-        read -p "Choose security option (1-3): " sec_choice
-
+        if [[ "$last_step" == "2" ]]; then
+            sec_choice=$(load_state)
+        else
+            read -p "Choose security option (1-3): " sec_choice
+        fi
+        save_state "2"
         case $sec_choice in
             1)
-                exec ./scripts/secure-server-setup.sh
+                save_state "2.1"
+                ./scripts/secure-server-setup.sh || { print_error "Core Security Setup failed."; exit 1; }
+                clear_state
                 ;;
             2)
-                exec ./scripts/advanced-security-setup.sh
+                save_state "2.2"
+                ./scripts/advanced-security-setup.sh || { print_error "Advanced Security Setup failed."; exit 1; }
+                clear_state
                 ;;
             3)
-                ./scripts/secure-server-setup.sh
-                exec ./scripts/advanced-security-setup.sh
+                save_state "2.3"
+                ./scripts/secure-server-setup.sh || { print_error "Core Security Setup failed."; exit 1; }
+                ./scripts/advanced-security-setup.sh || { print_error "Advanced Security Setup failed."; exit 1; }
+                clear_state
                 ;;
             *)
                 print_error "Invalid option"
@@ -105,14 +152,19 @@ case $choice in
         ;;
     3)
         print_header "Starting Application Deployment"
-        exec ./scripts/deploy-1000proxy.sh
+        save_state "3"
+        ./scripts/deploy-1000proxy.sh || { print_error "Application Deployment failed."; exit 1; }
+        clear_state
         ;;
     4)
         print_header "Setup Summary"
-        exec ./scripts/setup-summary.sh
+        save_state "4"
+        ./scripts/setup-summary.sh || { print_error "Setup Summary failed."; exit 1; }
+        clear_state
         ;;
     5)
         print_info "Exiting..."
+        clear_state
         exit 0
         ;;
     *)
