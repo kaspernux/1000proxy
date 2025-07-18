@@ -1,29 +1,25 @@
+
 <div align="center">
   <img src="/images/1000proxy.png" width="500" alt="1000Proxy Logo">
-  
+
   # 🚀 1000proxy
   ### Professional Proxy Management Platform
-  
+
   <p align="center">
     <b>Version 2.1.0</b> • <i>Enterprise-Grade Proxy Management Solution</i>
   </p>
-  
-    <p align="center">
-        <em>Modern, professional proxy management platform with stunning UI, comprehensive 3X-UI integration,<br>
-        multi-panel administration, and fully automated client provisioning system.
-        </em>
-    </p>
-    <p align="center">
-        <img src="https://img.shields.io/badge/Laravel-12.x-FF2D20?style=for-the-badge&logo=laravel&logoColor=white" alt="Laravel">
-        </a>
-        <a href="https://php.net" target="_blank">
-        <img src="https://img.shields.io/badge/PHP-8.3+-777BB4?style=for-the-badge&logo=php&logoColor=white" alt="PHP">
-        </a>
-    </a>
-  </p>
-  
+
   <p align="center">
-    <a href="https://heroicons.com" target="_blank">
+    <em>
+      Modern, professional proxy management platform with stunning UI, comprehensive 3X-UI integration,<br>
+      multi-panel administration, and fully automated client provisioning system.
+    </em>
+  </p>
+
+  <p align="center">
+    <img src="https://img.shields.io/badge/Laravel-12.x-FF2D20?style=for-the-badge&logo=laravel&logoColor=white" alt="Laravel">
+    <a href="https://php.net" target="_blank">
+      <img src="https://img.shields.io/badge/PHP-8.3+-777BB4?style=for-the-badge&logo=php&logoColor=white" alt="PHP">
     </a>
     <a href="LICENSE">
       <img src="https://img.shields.io/badge/License-MIT-green?style=for-the-badge" alt="License">
@@ -34,8 +30,14 @@
     <a href="docs/security/SECURITY_BEST_PRACTICES.md">
       <img src="https://img.shields.io/badge/Security-Enterprise_Grade-orange?style=for-the-badge&logo=shield&logoColor=white" alt="Security">
     </a>
+    <a href="https://github.com/kaspernux/1000proxy/releases/latest">
+      <img src="https://img.shields.io/github/v/release/kaspernux/1000proxy?style=for-the-badge&logo=github" alt="Latest Release">
+    </a>
+    <a href="https://github.com/kaspernux/1000proxy/stargazers">
+      <img src="https://img.shields.io/github/stars/kaspernux/1000proxy?style=for-the-badge&logo=github" alt="GitHub Stars">
+    </a>
   </p>
-  
+
   <!-- Quick Links -->
   <p align="center">
     <a href="#-quick-start">🚀 Quick Start</a> •
@@ -45,15 +47,6 @@
     <a href="#-api">🔌 API</a> •
     <a href="#-support">💬 Support</a>
   </p>
-  
-  <p align="center">
-    <a href="https://github.com/kaspernux/1000proxy/releases/latest">
-      <img src="https://img.shields.io/github/v/release/kaspernux/1000proxy?style=for-the-badge&logo=github" alt="Latest Release">
-    </a>
-    <a href="https://github.com/kaspernux/1000proxy/stargazers">
-      <img src="https://img.shields.io/github/stars/kaspernux/1000proxy?style=for-the-badge&logo=github" alt="GitHub Stars">
-  </p>
-  
 </div>
 
 ---
