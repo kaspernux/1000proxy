@@ -77,31 +77,32 @@ Welcome to **1000proxy** - the most advanced proxy service management platform a
 <table>
 <tr>
 
-[📖 Quick Start](docs/getting-started/QUICK_START.md)<br>
-[⚙️ Installation](docs/getting-started/INSTALLATION.md)<br>
-[🔧 Configuration](docs/getting-started/CONFIGURATION.md)<br>
-[💻 Development](docs/getting-started/DEVELOPMENT_SETUP.md)
-</td>
-<td width="25%" align="center">
 
-### 🌐 **Deployment**
-Production-ready deployment guides
-
-[🛡️ Secure Setup](docs/SECURE_SETUP_GUIDE.md)<br>
-</td>
-<td width="25%" align="center">
-[🔐 Best Practices](docs/security/SECURITY_BEST_PRACTICES.md)<br>
-[🚨 Monitoring](docs/security/MONITORING.md)<br>
-[🔍 Audit Logging](docs/security/AUDIT_LOGGING.md)<br>
-
-</td>
-<td width="25%" align="center">
-
-### 🔌 **API & Integration**
-Complete API and integration guides
-
-
-</td>
+<table>
+  <tr>
+    <td width="25%" align="center">
+      [📖 Quick Start](docs/getting-started/QUICK_START.md)<br>
+      [⚙️ Installation](docs/getting-started/INSTALLATION.md)<br>
+      [🔧 Configuration](docs/getting-started/CONFIGURATION.md)<br>
+      [💻 Development](docs/getting-started/DEVELOPMENT_SETUP.md)
+    </td>
+    <td width="25%" align="center">
+      <strong>🌐 Deployment</strong><br>
+      Production-ready deployment guides<br>
+      [🛡️ Secure Setup](docs/SECURE_SETUP_GUIDE.md)
+    </td>
+    <td width="25%" align="center">
+      <strong>🔐 Security</strong><br>
+      [🔐 Best Practices](docs/security/SECURITY_BEST_PRACTICES.md)<br>
+      [🚨 Monitoring](docs/security/MONITORING.md)<br>
+      [🔍 Audit Logging](docs/security/AUDIT_LOGGING.md)
+    </td>
+    <td width="25%" align="center">
+      <strong>🔌 API & Integration</strong><br>
+      Complete API and integration guides
+    </td>
+  </tr>
+</table>
 
 ## 🚀 Quick Start
 
