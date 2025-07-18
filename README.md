@@ -8,14 +8,17 @@
     <b>Version 2.1.0</b> • <i>Enterprise-Grade Proxy Management Solution</i>
   </p>
   
-  <p align="center">
-    <em>Modern, professional proxy management platform with stunning UI, comprehensive 3X-UI integration,<br>
-    multi-panel administration, and fully automated client provisioning system.</em>
-      <img src="https://img.shields.io/badge/Laravel-12.x-FF2D20?style=for-the-badge&logo=laravel&logoColor=white" alt="Laravel">
-    </a>
-    <a href="https://php.net" target="_blank">
-      <img src="https://img.shields.io/badge/PHP-8.3+-777BB4?style=for-the-badge&logo=php&logoColor=white" alt="PHP">
-    </a>
+    <p align="center">
+        <em>Modern, professional proxy management platform with stunning UI, comprehensive 3X-UI integration,<br>
+        multi-panel administration, and fully automated client provisioning system.
+        </em>
+    </p>
+    <p align="center">
+        <img src="https://img.shields.io/badge/Laravel-12.x-FF2D20?style=for-the-badge&logo=laravel&logoColor=white" alt="Laravel">
+        </a>
+        <a href="https://php.net" target="_blank">
+        <img src="https://img.shields.io/badge/PHP-8.3+-777BB4?style=for-the-badge&logo=php&logoColor=white" alt="PHP">
+        </a>
     </a>
   </p>
   
