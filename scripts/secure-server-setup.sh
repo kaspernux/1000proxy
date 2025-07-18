@@ -472,7 +472,7 @@ sed -i 's/max_execution_time = 30/max_execution_time = 300/' "$PHP_INI"
 sed -i 's/memory_limit = 128M/memory_limit = 512M/' "$PHP_INI"
 
 # Configure PHP-FPM pool
-FPM_POOL="/etc/php/8.2/fpm/pool.d/1000proxy.conf"
+FPM_POOL="/etc/php/8.3/fpm/pool.d/1000proxy.conf"
 cat > "$FPM_POOL" << EOF
 [1000proxy]
 user = $PROJECT_USER

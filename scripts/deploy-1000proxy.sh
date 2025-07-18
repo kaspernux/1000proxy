@@ -1165,7 +1165,7 @@ print_success "Application backup configured"
 print_header "Performance Optimization"
 
 # Configure PHP-FPM for optimal performance
-cat > /etc/php/8.2/fpm/pool.d/1000proxy-optimized.conf << EOF
+cat > /etc/php/8.3/fpm/pool.d/1000proxy-optimized.conf << EOF
 [1000proxy]
 user = $PROJECT_USER
 group = www-data
@@ -1204,7 +1204,7 @@ php_admin_value[opcache.revalidate_freq] = 60
 EOF
 
 # Remove old pool configuration
-rm -f /etc/php/8.2/fpm/pool.d/1000proxy.conf
+rm -f /etc/php/8.3/fpm/pool.d/1000proxy.conf
 
 systemctl restart php8.3-fpm
 print_success "PHP-FPM optimized"
