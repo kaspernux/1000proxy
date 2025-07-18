@@ -714,6 +714,11 @@ print_header "Redis Installation and Configuration"
 
 apt install -y redis-server
 
+sudo mkdir -p /var/log/redis
+sudo chown redis:redis /var/log/redis
+sudo touch /var/log/redis/redis-server.log
+sudo chown redis:redis /var/log/redis/redis-server.log
+
 # Redis security configuration
 cat > /etc/redis/redis.conf << EOF
 # Network and Security
@@ -759,6 +764,11 @@ print_success "Redis configured securely"
 print_header "Additional Security Tools Installation"
 
 # Install ClamAV antivirus
+sudo mkdir -p /var/log/clamav
+sudo touch /var/log/clamav/freshclam.log
+sudo chown clamav:clamav /var/log/clamav/freshclam.log
+sudo chmod 664 /var/log/clamav/freshclam.log
+
 apt install -y clamav clamav-daemon
 freshclam
 systemctl enable clamav-daemon
