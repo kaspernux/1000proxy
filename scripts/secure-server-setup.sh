@@ -825,11 +825,19 @@ EOF
 chmod +x /etc/cron.daily/aide-check
 
 # Install and configure rkhunter
+
+# Fix rkhunter WEB_CMD configuration error
+if grep -q '^WEB_CMD=' /etc/rkhunter.conf; then
+    sed -i 's|^WEB_CMD=.*|WEB_CMD=/usr/bin/false|' /etc/rkhunter.conf
+else
+    echo 'WEB_CMD=/usr/bin/false' >> /etc/rkhunter.conf
+fi
+
 apt-get install -y rkhunter || {
     print_error "rkhunter installation failed."; exit 1;
 }
 rkhunter --update || {
-    print_error "rkhunter update failed."; exit 1;
+    print_error "rkhunter update failed. Check WEB_CMD in /etc/rkhunter.conf is set to /usr/bin/false."; exit 1;
 }
 rkhunter --propupd || {
     print_error "rkhunter propupd failed."; exit 1;
@@ -938,93 +946,13 @@ print_success "Project directory configured"
 # =============================================================================
 print_header "Environment Configuration"
 
-# Create .env file
-cat > "$PROJECT_DIR/.env" << EOF
-APP_NAME="1000proxy"
-APP_ENV=production
-APP_KEY=
-APP_DEBUG=false
-APP_TIMEZONE=UTC
-APP_URL=https://$DOMAIN
-
-APP_LOCALE=en
-APP_FALLBACK_LOCALE=en
-APP_FAKER_LOCALE=en_US
-
-APP_MAINTENANCE_DRIVER=file
-# APP_MAINTENANCE_STORE=database
-
-# Database Configuration
-DB_CONNECTION=mysql
-DB_HOST=127.0.0.1
-DB_PORT=3306
-DB_DATABASE=1000proxy
-DB_USERNAME=1000proxy
-DB_PASSWORD=$DB_PASSWORD
-
-# Session Configuration
-SESSION_DRIVER=redis
-SESSION_LIFETIME=120
-SESSION_ENCRYPT=true
-SESSION_PATH=/
-SESSION_DOMAIN=.$DOMAIN
-
-# Cache Configuration
-CACHE_STORE=redis
-CACHE_PREFIX=1000proxy
-
-# Redis Configuration
-REDIS_CLIENT=phpredis
-REDIS_HOST=127.0.0.1
-REDIS_PASSWORD=$REDIS_PASSWORD
-REDIS_PORT=6379
-
-# Queue Configuration
-QUEUE_CONNECTION=redis
-QUEUE_FAILED_DRIVER=database-uuids
-
-# Mail Configuration
-MAIL_MAILER=log
-MAIL_HOST=127.0.0.1
-MAIL_PORT=2525
-MAIL_USERNAME=null
-MAIL_PASSWORD=null
-MAIL_ENCRYPTION=null
-MAIL_FROM_ADDRESS="noreply@$DOMAIN"
-MAIL_FROM_NAME="\${APP_NAME}"
-
-# Logging Configuration
-LOG_CHANNEL=daily
-LOG_STACK=single
-LOG_DEPRECATIONS_CHANNEL=null
-LOG_LEVEL=error
-
-# Security Configuration
-BCRYPT_ROUNDS=12
-HASH_VERIFY=true
-
-# Filesystem Configuration
-FILESYSTEM_DISK=local
-
-# Broadcasting (if needed)
-# BROADCAST_CONNECTION=log
-# REVERB_APP_ID=
-# REVERB_APP_KEY=
-# REVERB_APP_SECRET=
-# REVERB_HOST="localhost"
-# REVERB_PORT=8080
-# REVERB_SCHEME=http
-
-# AWS Configuration (if needed)
-# AWS_ACCESS_KEY_ID=
-# AWS_SECRET_ACCESS_KEY=
-# AWS_DEFAULT_REGION=us-east-1
-# AWS_BUCKET=
-# AWS_USE_PATH_STYLE_ENDPOINT=false
-
-# Vite Configuration
-VITE_APP_NAME="\${APP_NAME}"
-EOF
+# Copy .env.production to .env
+if [[ -f "$PROJECT_DIR/.env.production" ]]; then
+    cp "$PROJECT_DIR/.env.production" "$PROJECT_DIR/.env"
+    print_success ".env.production copied to .env"
+else
+    print_warning ".env.production not found, skipping copy"
+fi
 
 chown "$PROJECT_USER:www-data" "$PROJECT_DIR/.env"
 chmod 640 "$PROJECT_DIR/.env"
