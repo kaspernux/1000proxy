@@ -76,7 +76,7 @@ print_info "Log file: $LOG_FILE"
 print_header "System Update and Basic Hardening"
 
 # Update system
-apt update && apt upgrade -y
+apt-get update && apt-get upgrade -y
 print_success "System updated"
 
 # Install essential security packages individually and log failures
@@ -84,7 +84,7 @@ ESSENTIAL_PACKAGES=(
     ufw
     fail2ban
     unattended-upgrades
-    apt-listchanges
+    apt-get-listchanges
     logrotate
     rsyslog
     auditd
@@ -108,14 +108,14 @@ ESSENTIAL_PACKAGES=(
     zip
     unzip
     software-properties-common
-    apt-transport-https
+    apt-get-transport-https
     ca-certificates
     gnupg
     lsb-release
 )
 FAILED_PACKAGES=()
 for pkg in "${ESSENTIAL_PACKAGES[@]}"; do
-    if ! apt install -y "$pkg"; then
+    if ! apt-get install -y "$pkg"; then
         print_warning "Package $pkg failed to install. Please install it manually."
         FAILED_PACKAGES+=("$pkg")
     fi
@@ -127,14 +127,14 @@ else
 fi
 
 # Configure automatic security updates
-cat > /etc/apt/apt.conf.d/20auto-upgrades << EOF
+cat > /etc/apt-get/apt-get.conf.d/20auto-upgrades << EOF
 APT::Periodic::Update-Package-Lists "1";
 APT::Periodic::Download-Upgradeable-Packages "1";
 APT::Periodic::AutocleanInterval "7";
 APT::Periodic::Unattended-Upgrade "1";
 EOF
 
-cat > /etc/apt/apt.conf.d/50unattended-upgrades << EOF
+cat > /etc/apt-get/apt-get.conf.d/50unattended-upgrades << EOF
 Unattended-Upgrade::Allowed-Origins {
     "\${distro_id}:\${distro_codename}";
     "\${distro_id}:\${distro_codename}-security";
@@ -440,11 +440,11 @@ print_success "System auditing configured"
 print_header "PHP 8.3 Installation and Configuration"
 
 # Add PHP repository
-add-apt-repository ppa:ondrej/php -y
-apt update
+add-apt-get-repository ppa:ondrej/php -y
+apt-get update
 
 # Install PHP 8.3 and extensions
-apt install -y \
+apt-get install -y \
     php8.3 \
     php8.3-fpm \
     php8.3-cli \
@@ -522,7 +522,7 @@ print_success "PHP 8.3 configured securely"
 # =============================================================================
 print_header "Nginx Installation and Configuration"
 
-apt install -y nginx
+apt-get install -y nginx
 systemctl enable nginx
 
 # Remove default site
@@ -687,7 +687,7 @@ print_success "Nginx configured securely"
 print_header "MySQL 8.0 Installation and Configuration"
 
 # Install MySQL
-DEBIAN_FRONTEND=noninteractive apt install -y mysql-server mysql-client
+DEBIAN_FRONTEND=noninteractive apt-get install -y mysql-server mysql-client
 
 # Secure MySQL installation
 mysql --execute="DELETE FROM mysql.user WHERE User='';"
@@ -729,7 +729,7 @@ print_success "MySQL 8.0 configured securely"
 # =============================================================================
 print_header "Redis Installation and Configuration"
 
-apt install -y redis-server
+apt-get install -y redis-server
 
 sudo mkdir -p /var/log/redis
 sudo chown redis:redis /var/log/redis
@@ -781,11 +781,11 @@ print_success "Redis configured securely"
 print_header "Additional Security Tools Installation"
 
 # Fix ClamAV installation for Ubuntu 24.04
-apt-get update
-apt-get install -y clamav clamav-daemon clamav-freshclam || {
+apt-get-get update
+apt-get-get install -y clamav clamav-daemon clamav-freshclam || {
     print_error "ClamAV installation failed. Attempting to fix..."
-    apt-get -f install -y
-    apt-get install -y clamav clamav-daemon clamav-freshclam || exit 1
+    apt-get-get -f install -y
+    apt-get-get install -y clamav clamav-daemon clamav-freshclam || exit 1
 }
 
 # Ensure log directory and permissions
@@ -809,7 +809,7 @@ systemctl enable clamav-daemon
 systemctl start clamav-daemon
 
 # Install and configure AIDE (Advanced Intrusion Detection Environment)
-apt-get install -y aide || {
+apt-get-get install -y aide || {
     print_error "AIDE installation failed."; exit 1;
 }
 aideinit || {
@@ -833,7 +833,7 @@ else
     echo 'WEB_CMD=/usr/bin/false' >> /etc/rkhunter.conf
 fi
 
-apt-get install -y rkhunter || {
+apt-get-get install -y rkhunter || {
     print_error "rkhunter installation failed."; exit 1;
 }
 rkhunter --update || {
@@ -900,7 +900,7 @@ print_success "Node.js and NPM installed"
 print_header "SSL/TLS Configuration"
 
 # Install Certbot
-apt install -y snapd
+apt-get install -y snapd
 snap install core; snap refresh core
 snap install --classic certbot
 ln -sf /snap/bin/certbot /usr/bin/certbot
@@ -965,7 +965,7 @@ print_success "Environment file created"
 print_header "Security Monitoring Setup"
 
 # Install and configure logwatch
-apt install -y logwatch
+apt-get install -y logwatch
 
 cat > /etc/logwatch/conf/logwatch.conf << EOF
 LogDir = /var/log
@@ -1093,7 +1093,7 @@ print_success "Backup system configured"
 print_header "Process Monitoring Setup"
 
 # Install htop and iotop for monitoring
-apt install -y htop iotop nethogs
+apt-get install -y htop iotop nethogs
 
 # Configure process limits
 cat > /etc/security/limits.d/1000proxy.conf << EOF
@@ -1405,8 +1405,8 @@ print_success "Your server is now highly secured against attacks!"
 print_header "Setup Complete"
 
 # Clean up
-apt autoremove -y
-apt autoclean
+apt-get autoremove -y
+apt-get autoclean
 
 echo "Setup log saved to: $LOG_FILE"
 echo "Security report saved to: /root/1000proxy-security-report.txt"
