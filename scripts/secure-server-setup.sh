@@ -84,7 +84,7 @@ ESSENTIAL_PACKAGES=(
     ufw
     fail2ban
     unattended-upgrades
-    apt-get-listchanges
+    apt-listchanges
     logrotate
     rsyslog
     auditd
@@ -108,7 +108,7 @@ ESSENTIAL_PACKAGES=(
     zip
     unzip
     software-properties-common
-    apt-get-transport-https
+    apt-transport-https
     ca-certificates
     gnupg
     lsb-release
@@ -127,14 +127,14 @@ else
 fi
 
 # Configure automatic security updates
-cat > /etc/apt-get/apt-get.conf.d/20auto-upgrades << EOF
+cat > /etc/apt/apt.conf.d/20auto-upgrades << EOF
 APT::Periodic::Update-Package-Lists "1";
 APT::Periodic::Download-Upgradeable-Packages "1";
 APT::Periodic::AutocleanInterval "7";
 APT::Periodic::Unattended-Upgrade "1";
 EOF
 
-cat > /etc/apt-get/apt-get.conf.d/50unattended-upgrades << EOF
+cat > /etc/apt/apt.conf.d/50unattended-upgrades << EOF
 Unattended-Upgrade::Allowed-Origins {
     "\${distro_id}:\${distro_codename}";
     "\${distro_id}:\${distro_codename}-security";
@@ -440,7 +440,7 @@ print_success "System auditing configured"
 print_header "PHP 8.3 Installation and Configuration"
 
 # Add PHP repository
-add-apt-get-repository ppa:ondrej/php -y
+add-apt-repository ppa:ondrej/php -y
 apt-get update
 
 # Install PHP 8.3 and extensions
@@ -781,11 +781,11 @@ print_success "Redis configured securely"
 print_header "Additional Security Tools Installation"
 
 # Fix ClamAV installation for Ubuntu 24.04
-apt-get-get update
-apt-get-get install -y clamav clamav-daemon clamav-freshclam || {
+apt-get update
+apt-get install -y clamav clamav-daemon clamav-freshclam || {
     print_error "ClamAV installation failed. Attempting to fix..."
-    apt-get-get -f install -y
-    apt-get-get install -y clamav clamav-daemon clamav-freshclam || exit 1
+    apt-get -f install -y
+    apt-get install -y clamav clamav-daemon clamav-freshclam || exit 1
 }
 
 # Ensure log directory and permissions
@@ -809,7 +809,7 @@ systemctl enable clamav-daemon
 systemctl start clamav-daemon
 
 # Install and configure AIDE (Advanced Intrusion Detection Environment)
-apt-get-get install -y aide || {
+apt-get install -y aide || {
     print_error "AIDE installation failed."; exit 1;
 }
 aideinit || {
@@ -833,7 +833,7 @@ else
     echo 'WEB_CMD=/usr/bin/false' >> /etc/rkhunter.conf
 fi
 
-apt-get-get install -y rkhunter || {
+apt-get install -y rkhunter || {
     print_error "rkhunter installation failed."; exit 1;
 }
 rkhunter --update || {
@@ -1405,8 +1405,8 @@ print_success "Your server is now highly secured against attacks!"
 print_header "Setup Complete"
 
 # Clean up
-apt-get autoremove -y
-apt-get autoclean
+apt autoremove -y
+apt autoclean
 
 echo "Setup log saved to: $LOG_FILE"
 echo "Security report saved to: /root/1000proxy-security-report.txt"
