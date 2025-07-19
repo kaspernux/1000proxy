@@ -929,8 +929,8 @@ fi
 # =============================================================================
 print_header "Project Directory Setup"
 
-# Create project directory
-mkdir -p "$PROJECT_DIR"
+# Set project directory to the directory containing this script
+PROJECT_DIR="$(dirname "$(realpath "$0")")"
 chown "$PROJECT_USER:www-data" "$PROJECT_DIR"
 chmod 755 "$PROJECT_DIR"
 
@@ -961,10 +961,13 @@ else
     print_warning ".env.production not found, skipping copy"
 fi
 
-chown "$PROJECT_USER:www-data" "$PROJECT_DIR/.env"
-chmod 640 "$PROJECT_DIR/.env"
-
-print_success "Environment file created"
+if [[ -f "$PROJECT_DIR/.env" ]]; then
+    chown "$PROJECT_USER:www-data" "$PROJECT_DIR/.env"
+    chmod 640 "$PROJECT_DIR/.env"
+    print_success "Environment file created"
+else
+    print_warning "Environment file $PROJECT_DIR/.env does not exist, skipping permission change"
+fi
 
 # =============================================================================
 # 16. Security Monitoring and Alerting
