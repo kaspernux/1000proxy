@@ -1056,13 +1056,16 @@ mkdir -p /var/backups/1000proxy
 chown root:root /var/backups/1000proxy
 chmod 700 /var/backups/1000proxy
 
+# Export PROJECT_DIR for use in backup script heredoc
+export PROJECT_DIR
+
 # Create backup script
 cat > /usr/local/bin/backup-1000proxy.sh << EOF
 #!/bin/bash
 
 BACKUP_DIR="/var/backups/1000proxy"
 DATE=\$(date +%Y%m%d_%H%M%S)
-PROJECT_DIR="$PROJECT_DIR"
+PROJECT_DIR="${PROJECT_DIR}"
 
 # Create backup directory for today
 mkdir -p "\$BACKUP_DIR/\$DATE"
@@ -1099,8 +1102,9 @@ chown root:root "\$BACKUP_DIR/\$DATE"/*
 
 echo "Backup completed: \$BACKUP_DIR/\$DATE"
 EOF
-
-chmod +x /usr/local/bin/backup-1000proxy.sh
+# Schedule daily backups at 2 AM, avoiding duplicate entries
+CRON_BACKUP_JOB="0 2 * * * /usr/local/bin/backup-1000proxy.sh"
+(crontab -l 2>/dev/null | grep -v "/usr/local/bin/backup-1000proxy.sh"; echo "$CRON_BACKUP_JOB") | crontab -
 
 # Schedule daily backups at 2 AM
 (crontab -l 2>/dev/null; echo "0 2 * * * /usr/local/bin/backup-1000proxy.sh") | crontab -
