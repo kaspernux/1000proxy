@@ -79,41 +79,52 @@ print_header "System Update and Basic Hardening"
 apt update && apt upgrade -y
 print_success "System updated"
 
-# Install essential security packages
-apt install -y \
-    ufw \
-    fail2ban \
-    unattended-upgrades \
-    apt-listchanges \
-    logrotate \
-    rsyslog \
-    auditd \
-    rkhunter \
-    chkrootkit \
-    clamav \
-    clamav-daemon \
-    aide \
-    lynis \
-    htop \
-    iotop \
-    netstat-nat \
-    tcpdump \
-    nmap \
-    curl \
-    wget \
-    git \
-    vim \
-    nano \
-    tree \
-    zip \
-    unzip \
-    software-properties-common \
-    apt-transport-https \
-    ca-certificates \
-    gnupg \
+# Install essential security packages individually and log failures
+ESSENTIAL_PACKAGES=(
+    ufw
+    fail2ban
+    unattended-upgrades
+    apt-listchanges
+    logrotate
+    rsyslog
+    auditd
+    rkhunter
+    chkrootkit
+    clamav
+    clamav-daemon
+    aide
+    lynis
+    htop
+    iotop
+    netstat-nat
+    tcpdump
+    nmap
+    curl
+    wget
+    git
+    vim
+    nano
+    tree
+    zip
+    unzip
+    software-properties-common
+    apt-transport-https
+    ca-certificates
+    gnupg
     lsb-release
-
-print_success "Essential security packages installed"
+)
+FAILED_PACKAGES=()
+for pkg in "${ESSENTIAL_PACKAGES[@]}"; do
+    if ! apt install -y "$pkg"; then
+        print_warning "Package $pkg failed to install. Please install it manually."
+        FAILED_PACKAGES+=("$pkg")
+    fi
+done
+if [ ${#FAILED_PACKAGES[@]} -gt 0 ]; then
+    print_warning "The following essential packages failed to install: ${FAILED_PACKAGES[*]}"
+else
+    print_success "All essential security packages installed"
+fi
 
 # Configure automatic security updates
 cat > /etc/apt/apt.conf.d/20auto-upgrades << EOF
@@ -157,6 +168,12 @@ if [[ ! -f "/home/$PROJECT_USER/.ssh/id_rsa" ]]; then
     sudo -u "$PROJECT_USER" chmod 600 "/home/$PROJECT_USER/.ssh/id_rsa"
     sudo -u "$PROJECT_USER" chmod 644 "/home/$PROJECT_USER/.ssh/id_rsa.pub"
     print_success "SSH key generated for $PROJECT_USER"
+    print_info "To connect from your local machine, copy the public key from /home/$PROJECT_USER/.ssh/id_rsa.pub to your local ~/.ssh/authorized_keys or use ssh-copy-id."
+    print_info "Example: ssh-copy-id -i /home/$PROJECT_USER/.ssh/id_rsa.pub $PROJECT_USER@<your-server-ip> -p 2222"
+    SERVER_IP=$(hostname -I | awk '{print $1}')
+    LOCAL_KEY_NAME="id_rsa_1000proxy_${SERVER_IP}"
+    print_info "To copy the private key to your local machine (for testing only), run this on your local machine:"
+    print_info "scp -P 2222 $PROJECT_USER@${SERVER_IP}:/home/$PROJECT_USER/.ssh/id_rsa ~/.ssh/${LOCAL_KEY_NAME}"
 fi
 
 # SSH Hardening
@@ -763,20 +780,41 @@ print_success "Redis configured securely"
 # =============================================================================
 print_header "Additional Security Tools Installation"
 
-# Install ClamAV antivirus
-sudo mkdir -p /var/log/clamav
-sudo touch /var/log/clamav/freshclam.log
-sudo chown clamav:clamav /var/log/clamav/freshclam.log
-sudo chmod 664 /var/log/clamav/freshclam.log
+# Fix ClamAV installation for Ubuntu 24.04
+apt-get update
+apt-get install -y clamav clamav-daemon clamav-freshclam || {
+    print_error "ClamAV installation failed. Attempting to fix..."
+    apt-get -f install -y
+    apt-get install -y clamav clamav-daemon clamav-freshclam || exit 1
+}
 
-apt install -y clamav clamav-daemon
-freshclam
+# Ensure log directory and permissions
+mkdir -p /var/log/clamav
+chown clamav:clamav /var/log/clamav
+touch /var/log/clamav/freshclam.log
+chown clamav:clamav /var/log/clamav/freshclam.log
+chmod 664 /var/log/clamav/freshclam.log
+
+# Stop clamav-freshclam if running, then update DB
+systemctl stop clamav-freshclam || true
+freshclam || {
+    print_error "freshclam failed. Attempting to fix permissions and rerun..."
+    chown clamav:clamav /var/log/clamav/freshclam.log
+    chmod 664 /var/log/clamav/freshclam.log
+    freshclam || exit 1
+}
+systemctl start clamav-freshclam
+systemctl enable clamav-freshclam
 systemctl enable clamav-daemon
 systemctl start clamav-daemon
 
 # Install and configure AIDE (Advanced Intrusion Detection Environment)
-apt install -y aide
-aideinit
+apt-get install -y aide || {
+    print_error "AIDE installation failed."; exit 1;
+}
+aideinit || {
+    print_error "AIDE initialization failed."; exit 1;
+}
 cp /var/lib/aide/aide.db.new /var/lib/aide/aide.db
 
 # Create daily AIDE check
@@ -787,8 +825,15 @@ EOF
 chmod +x /etc/cron.daily/aide-check
 
 # Install and configure rkhunter
-rkhunter --update
-rkhunter --propupd
+apt-get install -y rkhunter || {
+    print_error "rkhunter installation failed."; exit 1;
+}
+rkhunter --update || {
+    print_error "rkhunter update failed."; exit 1;
+}
+rkhunter --propupd || {
+    print_error "rkhunter propupd failed."; exit 1;
+}
 
 # Create weekly rkhunter scan
 cat > /etc/cron.weekly/rkhunter-scan << 'EOF'
@@ -806,6 +851,7 @@ print_header "Composer Installation"
 
 # Download and install Composer
 cd /tmp
+
 curl -sS https://getcomposer.org/installer -o composer-setup.php
 HASH="$(curl -sS https://composer.github.io/installer.sig)"
 php -r "if (hash_file('SHA384', 'composer-setup.php') === '$HASH') { echo 'Installer verified'; } else { echo 'Installer corrupt'; unlink('composer-setup.php'); } echo PHP_EOL;"
@@ -819,9 +865,21 @@ print_success "Composer installed"
 # =============================================================================
 print_header "Node.js and NPM Installation"
 
-# Install Node.js 20.x
-curl -fsSL https://deb.nodesource.com/setup_20.x | bash -
-apt install -y nodejs
+# Download and install nvm:
+curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.3/install.sh | bash
+
+# in lieu of restarting the shell
+\. "$HOME/.nvm/nvm.sh"
+
+# Download and install Node.js:
+nvm install 22
+
+# Verify the Node.js version:
+node -v # Should print "v22.17.1".
+nvm current # Should print "v22.17.1".
+
+# Verify npm version:
+npm -v # Should print "10.9.2".
 
 # Install Yarn
 npm install -g yarn
