@@ -26,8 +26,8 @@ NC='\033[0m' # No Color
 PROJECT_NAME="1000proxy"
 PROJECT_USER="proxy1000"
 PROJECT_DIR="/var/www/1000proxy"
-DOMAIN="${DOMAIN:-localhost}"
-EMAIL="${EMAIL:-admin@${DOMAIN}}"
+DOMAIN="${DOMAIN:-1000proxy.io}"
+EMAIL="${EMAIL:-admin@1000proxy.io}"
 DB_PASSWORD="${DB_PASSWORD:-$(openssl rand -base64 32)}"
 REDIS_PASSWORD="${REDIS_PASSWORD:-$(openssl rand -base64 32)}"
 
@@ -73,6 +73,12 @@ print_info "Setting up Ubuntu 24.04 server with maximum security"
 print_info "Project: $PROJECT_NAME"
 print_info "Domain: $DOMAIN"
 print_info "Log file: $LOG_FILE"
+
+# Ensure /var/www exists
+if [[ ! -d "/var/www" ]]; then
+    mkdir -p /var/www
+    print_success "/var/www directory created"
+fi
 
 # =============================================================================
 # 1. System Update and Basic Hardening
