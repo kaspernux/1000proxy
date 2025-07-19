@@ -36,6 +36,9 @@ LOG_FILE="/var/log/1000proxy-setup.log"
 exec > >(tee -a "$LOG_FILE")
 exec 2>&1
 
+# Error collection for final report
+SETUP_ERRORS=()
+
 print_header() {
     echo -e "${BLUE}============================================================${NC}"
     echo -e "${BLUE} $1 ${NC}"
@@ -52,6 +55,7 @@ print_warning() {
 
 print_error() {
     echo -e "${RED}✗ $1${NC}"
+    SETUP_ERRORS+=("$1")
 }
 
 print_info() {
@@ -917,13 +921,17 @@ ln -sf /snap/bin/certbot /usr/bin/certbot
 # If domain is not localhost, obtain SSL certificate
 if [[ "$DOMAIN" != "localhost" ]]; then
     print_info "Obtaining SSL certificate for $DOMAIN"
+fi
+# Safety: ensure script continues regardless of previous errors
+true
     if certbot --nginx -d "$DOMAIN" -d "www.$DOMAIN" --non-interactive --agree-tos --email "$EMAIL" --redirect; then
         print_success "SSL certificate obtained and auto-renewal configured"
     else
         print_warning "Certbot failed, continuing setup. Check /var/log/letsencrypt/letsencrypt.log for details."
+        SETUP_ERRORS+=("SSL certificate setup failed for $DOMAIN")
     fi
     # Setup auto-renewal
-    (crontab -l 2>/dev/null; echo "0 12 * * * /usr/bin/certbot renew --quiet") | crontab -
+    (crontab -l 2>/dev/null; echo "0 12 * * * /usr/bin/certbot renew --quiet") | crontab - || true
 else
     print_warning "Skipping SSL for localhost domain"
 fi
@@ -1326,18 +1334,10 @@ Project Directory: $PROJECT_DIR
 SSH Port: 2222
 
 Database Information:
-- MySQL Database: 1000proxy
-- MySQL User: 1000proxy
-- MySQL Password: $DB_PASSWORD
 
 Redis Information:
-- Redis Password: $REDIS_PASSWORD
 
 SSH Access:
-- SSH Port: 2222
-- Root login: DISABLED
-- Password authentication: DISABLED
-- Key-based authentication: ENABLED
 
 SECURITY FEATURES IMPLEMENTED:
 ═══════════════════════════════════════════════════════════════════════════════
@@ -1377,6 +1377,16 @@ SECURITY MONITORING:
 ✓ RKHunter rootkit scanning
 ✓ ClamAV antivirus scanning
 
+SETUP ERRORS:
+═══════════════════════════════════════════════════════════════════════════════
+$(if [ ${#SETUP_ERRORS[@]} -gt 0 ]; then
+    echo "The following errors occurred during setup:"
+    for err in "${SETUP_ERRORS[@]}"; do
+        echo "✗ $err"
+    done
+else
+    echo "No critical errors detected during setup."
+fi)
 IMPORTANT SECURITY NOTES:
 ═══════════════════════════════════════════════════════════════════════════════
 1. SSH is now on port 2222 - update your SSH client configuration
