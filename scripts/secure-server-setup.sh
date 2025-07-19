@@ -729,7 +729,12 @@ print_success "MySQL 8.0 configured securely"
 # =============================================================================
 print_header "Redis Installation and Configuration"
 
-apt-get install -y redis-server
+sudo apt-get install -y lsb-release curl gpg
+curl -fsSL https://packages.redis.io/gpg | sudo gpg --dearmor -o /usr/share/keyrings/redis-archive-keyring.gpg
+sudo chmod 644 /usr/share/keyrings/redis-archive-keyring.gpg
+echo "deb [signed-by=/usr/share/keyrings/redis-archive-keyring.gpg] https://packages.redis.io/deb $(lsb_release -cs) main" | sudo tee /etc/apt/sources.list.d/redis.list
+sudo apt-get update
+sudo apt-get install -y redis-server
 
 sudo mkdir -p /var/log/redis
 sudo chown redis:redis /var/log/redis
@@ -740,13 +745,11 @@ sudo chown redis:redis /var/log/redis/redis-server.log
 cat > /etc/redis/redis.conf << EOF
 # Network and Security
 bind 127.0.0.1 ::1
-protected-mode yes
-port 6379
 timeout 300
 tcp-keepalive 300
 
 # Authentication
-requirepass $REDIS_PASSWORD
+requirepass ${REDIS_PASSWORD}
 
 # Memory Management
 maxmemory 256mb
@@ -771,8 +774,8 @@ rename-command DEBUG ""
 rename-command CONFIG "CONFIG_b835_"
 EOF
 
-systemctl restart redis-server
-systemctl enable redis-server
+sudo systemctl enable redis-server
+sudo systemctl start redis-server
 print_success "Redis configured securely"
 
 # =============================================================================
@@ -781,7 +784,6 @@ print_success "Redis configured securely"
 print_header "Additional Security Tools Installation"
 
 # Fix ClamAV installation for Ubuntu 24.04
-apt-get update
 apt-get install -y clamav clamav-daemon clamav-freshclam || {
     print_error "ClamAV installation failed. Attempting to fix..."
     apt-get -f install -y
@@ -933,17 +935,36 @@ true
 # =============================================================================
 print_header "Project Directory Setup"
 
-# Set project directory to the directory containing this script
-PROJECT_DIR="$(dirname "$(realpath "$0")")"
+# Set project directory to /var/www/1000proxy (not the script location)
+PROJECT_DIR="/var/www/1000proxy"
+
+# Create project directory if it doesn't exist
+mkdir -p "$PROJECT_DIR"
+
+# Set ownership and permissions
 chown "$PROJECT_USER:www-data" "$PROJECT_DIR"
 chmod 755 "$PROJECT_DIR"
 
-# Create necessary directories
+# Move the downloaded 1000proxy project from GitHub to /var/www and set up as project directory
+
+# Assume the script is run from 1000proxy/scripts/secure-server-setup.sh
+# Move the parent 1000proxy directory to /var/www if not already there
+
+if [[ ! -d "/var/www/1000proxy" ]]; then
+    mv "$(dirname "$(dirname "$0")")" /var/www/
+    print_success "Moved 1000proxy project to /var/www"
+fi
+
+# Ensure ownership and permissions
+chown -R "$PROJECT_USER:www-data" "$PROJECT_DIR"
+chmod 755 "$PROJECT_DIR"
+
+# Create necessary Laravel directories if not present
 sudo -u "$PROJECT_USER" mkdir -p "$PROJECT_DIR"/{storage,bootstrap/cache}
 sudo -u "$PROJECT_USER" mkdir -p "$PROJECT_DIR"/storage/{app,framework,logs}
 sudo -u "$PROJECT_USER" mkdir -p "$PROJECT_DIR"/storage/framework/{cache,sessions,views}
 
-# Set proper permissions
+# Set proper permissions for Laravel
 find "$PROJECT_DIR" -type f -exec chmod 644 {} \;
 find "$PROJECT_DIR" -type d -exec chmod 755 {} \;
 chmod -R 775 "$PROJECT_DIR"/storage
