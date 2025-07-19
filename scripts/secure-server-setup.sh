@@ -977,7 +977,9 @@ print_header "Security Monitoring Setup"
 # Install and configure logwatch
 apt-get install -y logwatch
 
-cat > /etc/logwatch/conf/logwatch.conf << EOF
+# Ensure logwatch config directory exists before writing config
+if [ -d /etc/logwatch/conf ]; then
+    cat > /etc/logwatch/conf/logwatch.conf << EOF
 LogDir = /var/log
 MailTo = root
 MailFrom = logwatch@$DOMAIN
@@ -988,6 +990,7 @@ Detail = Med
 Service = All
 Format = html
 EOF
+fi
 
 # Setup log monitoring script
 cat > /usr/local/bin/security-monitor.sh << 'EOF'
@@ -996,14 +999,20 @@ cat > /usr/local/bin/security-monitor.sh << 'EOF'
 LOG_FILE="/var/log/security-monitor.log"
 DATE=$(date '+%Y-%m-%d %H:%M:%S')
 
+# Ensure log file exists
+touch "$LOG_FILE"
+
+# Use correct date format for log parsing
+LOG_DATE="$(date '+%b %e')"
+
 # Check for failed login attempts
-FAILED_LOGINS=$(grep "authentication failure" /var/log/auth.log | grep "$(date '+%b %d')" | wc -l)
+FAILED_LOGINS=$(grep "authentication failure" /var/log/auth.log | grep "$LOG_DATE" | wc -l)
 if [ "$FAILED_LOGINS" -gt 10 ]; then
     echo "[$DATE] WARNING: $FAILED_LOGINS failed login attempts detected today" >> "$LOG_FILE"
 fi
 
 # Check for privilege escalation attempts
-SUDO_ATTEMPTS=$(grep "sudo:" /var/log/auth.log | grep "$(date '+%b %d')" | grep -c "FAILED")
+SUDO_ATTEMPTS=$(grep "sudo:" /var/log/auth.log | grep "$LOG_DATE" | grep -c "FAILED")
 if [ "$SUDO_ATTEMPTS" -gt 5 ]; then
     echo "[$DATE] WARNING: $SUDO_ATTEMPTS failed sudo attempts detected today" >> "$LOG_FILE"
 fi
@@ -1031,8 +1040,9 @@ EOF
 
 chmod +x /usr/local/bin/security-monitor.sh
 
-# Add to crontab for hourly monitoring
-(crontab -l 2>/dev/null; echo "0 * * * * /usr/local/bin/security-monitor.sh") | crontab -
+# Add to crontab for hourly monitoring, avoiding duplicate entries
+CRON_JOB="0 * * * * /usr/local/bin/security-monitor.sh"
+(crontab -l 2>/dev/null | grep -v "/usr/local/bin/security-monitor.sh"; echo "$CRON_JOB") | crontab -
 
 print_success "Security monitoring configured"
 
@@ -1108,14 +1118,14 @@ apt-get install -y htop iotop nethogs
 # Configure process limits
 cat > /etc/security/limits.d/1000proxy.conf << EOF
 # 1000proxy process limits
-$PROJECT_USER soft nproc 65536
-$PROJECT_USER hard nproc 65536
-$PROJECT_USER soft nofile 65536
-$PROJECT_USER hard nofile 65536
-www-data soft nproc 65536
-www-data hard nproc 65536
-www-data soft nofile 65536
-www-data hard nofile 65536
+$PROJECT_USER soft nproc 4096
+$PROJECT_USER hard nproc 8192
+$PROJECT_USER soft nofile 4096
+$PROJECT_USER hard nofile 8192
+www-data soft nproc 4096
+www-data hard nproc 8192
+www-data soft nofile 4096
+www-data hard nofile 8192
 EOF
 
 print_success "Process monitoring configured"
