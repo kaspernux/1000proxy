@@ -915,14 +915,18 @@ ln -sf /snap/bin/certbot /usr/bin/certbot
 # If domain is not localhost, obtain SSL certificate
 if [[ "$DOMAIN" != "localhost" ]]; then
     print_info "Obtaining SSL certificate for $DOMAIN"
-    certbot --nginx -d "$DOMAIN" -d "www.$DOMAIN" --non-interactive --agree-tos --email "$EMAIL" --redirect
-
+    if certbot --nginx -d "$DOMAIN" -d "www.$DOMAIN" --non-interactive --agree-tos --email "$EMAIL" --redirect; then
+        print_success "SSL certificate obtained and auto-renewal configured"
+    else
+        print_warning "Certbot failed, continuing setup. Check /var/log/letsencrypt/letsencrypt.log for details."
+    fi
     # Setup auto-renewal
     (crontab -l 2>/dev/null; echo "0 12 * * * /usr/bin/certbot renew --quiet") | crontab -
-    print_success "SSL certificate obtained and auto-renewal configured"
 else
     print_warning "Skipping SSL for localhost domain"
 fi
+# Safety: ensure script continues regardless of previous errors
+true
 
 # =============================================================================
 # 14. Setup Project Directory and Permissions
