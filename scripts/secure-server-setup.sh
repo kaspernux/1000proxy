@@ -826,21 +826,28 @@ chmod +x /etc/cron.daily/aide-check
 
 # Install and configure rkhunter
 
-# Fix rkhunter WEB_CMD configuration error
+apt-get install -y rkhunter || {
+    print_error "rkhunter installation failed."; exit 1;
+}
+
 if grep -q '^WEB_CMD=' /etc/rkhunter.conf; then
     sed -i 's|^WEB_CMD=.*|WEB_CMD=/usr/bin/false|' /etc/rkhunter.conf
 else
     echo 'WEB_CMD=/usr/bin/false' >> /etc/rkhunter.conf
 fi
 
-apt-get install -y rkhunter || {
-    print_error "rkhunter installation failed."; exit 1;
+# Run rkhunter update and log output for troubleshooting
+print_info "Running rkhunter --update (output will be logged to /var/log/rkhunter-update.log)"
+rkhunter --update > /var/log/rkhunter-update.log 2>&1 || {
+    print_error "rkhunter update failed. See /var/log/rkhunter-update.log for details."
+    print_warning "Check WEB_CMD in /etc/rkhunter.conf is set to /usr/bin/false. If the error persists, review network connectivity and mirror availability."
+    print_warning "You may manually run: rkhunter --update --debug for more info."
+    # Do not exit; allow setup to continue
 }
-rkhunter --update || {
-    print_error "rkhunter update failed. Check WEB_CMD in /etc/rkhunter.conf is set to /usr/bin/false."; exit 1;
-}
-rkhunter --propupd || {
-    print_error "rkhunter propupd failed."; exit 1;
+
+rkhunter --propupd > /var/log/rkhunter-update.log 2>&1 || {
+    print_error "rkhunter propupd failed. See /var/log/rkhunter-update.log for details."
+    # Do not exit; allow setup to continue
 }
 
 # Create weekly rkhunter scan
