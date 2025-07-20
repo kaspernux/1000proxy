@@ -36,7 +36,7 @@ Route::get('/test', function () {
                 'ServerPlan' => class_exists('App\Models\ServerPlan'),
             ],
             'services' => [
-                'XuiService' => class_exists('App\Services\XuiService'),
+                'XUIService' => class_exists('App\Services\XUIService'),
                 'AdvancedProxyService' => class_exists('App\Services\AdvancedProxyService'),
             ]
         ]
