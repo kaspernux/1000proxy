@@ -22,7 +22,7 @@ return Application::configure(basePath: dirname(__DIR__))
     )
     ->withMiddleware(function (Middleware $middleware) {
         // Security Middleware (applied globally)
-        $middleware->append(SecurityHeaders::class);
+        // $middleware->append(SecurityHeaders::class); // Disabled to remove CSP header
         $middleware->append(SessionSecurity::class);
 
         // Existing middleware

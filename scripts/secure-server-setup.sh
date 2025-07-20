@@ -566,7 +566,7 @@ http {
     add_header X-Content-Type-Options nosniff;
     add_header X-XSS-Protection "1; mode=block";
     add_header Referrer-Policy "strict-origin-when-cross-origin";
-    add_header Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'self';";
+    # add_header Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'self';"; # Disabled to remove CSP
 
     # Rate Limiting
     limit_req_zone \$binary_remote_addr zone=login:10m rate=5r/m;
@@ -705,7 +705,7 @@ mysql --execute="DELETE FROM mysql.user WHERE User='root' AND Host NOT IN ('loca
 mysql --execute="DROP DATABASE IF EXISTS test;"
 mysql --execute="DELETE FROM mysql.db WHERE Db='test' OR Db='test\\_%';"
 mysql --execute="CREATE DATABASE IF NOT EXISTS \`1000proxy\` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
-mysql --execute="CREATE USER IF NOT EXISTS '1000proxy'@'localhost' IDENTIFIED WITH mysql_native_password BY '$DB_PASSWORD';"
+mysql --execute="CREATE USER IF NOT EXISTS '1000proxy'@'localhost' IDENTIFIED WITH caching_sha2_password BY '$DB_PASSWORD';"
 mysql --execute="GRANT ALL PRIVILEGES ON \`1000proxy\`.* TO '1000proxy'@'localhost';"
 mysql --execute="FLUSH PRIVILEGES;"
 

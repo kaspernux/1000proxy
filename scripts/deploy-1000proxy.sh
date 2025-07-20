@@ -791,7 +791,7 @@ print_header "Database Setup"
 mysql -u root -e "CREATE DATABASE IF NOT EXISTS \`1000proxy\` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;" 2>/dev/null || print_warning "Database may already exist"
 
 # Create or update database user
-mysql -u root -e "CREATE USER IF NOT EXISTS '1000proxy'@'localhost' IDENTIFIED WITH mysql_native_password BY '$DB_PASSWORD';" 2>/dev/null
+mysql -u root -e "CREATE USER IF NOT EXISTS '1000proxy'@'localhost' IDENTIFIED WITH caching_sha2_password BY '$DB_PASSWORD';" 2>/dev/null
 mysql -u root -e "GRANT ALL PRIVILEGES ON \`1000proxy\`.* TO '1000proxy'@'localhost';"
 mysql -u root -e "FLUSH PRIVILEGES;"
 
