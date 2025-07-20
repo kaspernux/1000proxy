@@ -26,8 +26,8 @@ NC='\033[0m' # No Color
 PROJECT_NAME="1000proxy"
 PROJECT_USER="proxy1000"
 PROJECT_DIR="/var/www/1000proxy"
-DOMAIN="${DOMAIN:-1000proxy.io}"
-EMAIL="${EMAIL:-admin@1000proxy.io}"
+DOMAIN="${DOMAIN:-test.1000proxy.io}"
+EMAIL="${EMAIL:-admin@test.1000proxy.io}"
 DB_PASSWORD="${DB_PASSWORD:-$(openssl rand -base64 32)}"
 REDIS_PASSWORD="${REDIS_PASSWORD:-$(openssl rand -base64 32)}"
 
