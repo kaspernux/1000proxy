@@ -33,6 +33,13 @@ print_warning() {
 
 print_error() {
     echo -e "${RED}✗ $1${NC}"
+    LOG_FILE="/var/log/1000proxy-setup.log"
+    if [ -w "$LOG_FILE" ] || [ ! -e "$LOG_FILE" ] && [ -w "$(dirname "$LOG_FILE")" ]; then
+        echo "$(date '+%Y-%m-%d %H:%M:%S') ERROR: $1" >> "$LOG_FILE"
+    else
+        USER_LOG="$HOME/1000proxy-setup.log"
+        echo "$(date '+%Y-%m-%d %H:%M:%S') ERROR: $1" >> "$USER_LOG"
+    fi
 }
 
 print_info() {
@@ -102,10 +109,17 @@ else
     last_step=""
 fi
 
-if [[ -z "$last_step" ]]; then
+if [[ "$last_step" == "" ]]; then
     read -p "Choose an option (1-5): " choice
+    sub_step=""
+elif [[ "$last_step" =~ ^[0-9](\.[0-9])?$ ]]; then
+    # If last_step is like "2.1", split into main and sub step
+    choice="${last_step%%.*}"
+    sub_step="${last_step#*.}"
+    [[ "$choice" == "$sub_step" ]] && sub_step=""
 else
     choice="$last_step"
+    sub_step=""
 fi
 
 case $choice in
@@ -121,25 +135,22 @@ case $choice in
         echo "2. Advanced Security Setup"
         echo "3. Both (Recommended)"
         echo
-        if [[ "$last_step" == "2" ]]; then
-            sec_choice=$(load_state)
+        if [[ -n "$sub_step" ]]; then
+            sec_choice="$sub_step"
         else
             read -p "Choose security option (1-3): " sec_choice
         fi
-        save_state "2"
+        save_state "2.$sec_choice"
         case $sec_choice in
             1)
-                save_state "2.1"
                 ./scripts/secure-server-setup.sh || { print_error "Core Security Setup failed."; exit 1; }
                 clear_state
                 ;;
             2)
-                save_state "2.2"
                 ./scripts/advanced-security-setup.sh || { print_error "Advanced Security Setup failed."; exit 1; }
                 clear_state
                 ;;
             3)
-                save_state "2.3"
                 ./scripts/secure-server-setup.sh || { print_error "Core Security Setup failed."; exit 1; }
                 ./scripts/advanced-security-setup.sh || { print_error "Advanced Security Setup failed."; exit 1; }
                 clear_state
@@ -153,6 +164,10 @@ case $choice in
     3)
         print_header "Starting Application Deployment"
         save_state "3"
+        if [[ ! -x ./scripts/deploy-1000proxy.sh ]]; then
+            print_error "deploy-1000proxy.sh not found or not executable."
+            exit 1
+        fi
         ./scripts/deploy-1000proxy.sh || { print_error "Application Deployment failed."; exit 1; }
         clear_state
         ;;

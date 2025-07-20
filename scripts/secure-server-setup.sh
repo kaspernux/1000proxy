@@ -908,83 +908,43 @@ nvm current # Should print "v22.17.1".
 # Verify npm version:
 npm -v # Should print "10.9.2".
 
-# Install Yarn
-npm install -g yarn
-
-print_success "Node.js and NPM installed"
-
-# =============================================================================
-# 13. SSL/TLS Configuration with Let's Encrypt
-# =============================================================================
-print_header "SSL/TLS Configuration"
-
-# Install Certbot
-apt-get install -y snapd
-snap install core; snap refresh core
-snap install --classic certbot
-ln -sf /snap/bin/certbot /usr/bin/certbot
-
-# If domain is not localhost, obtain SSL certificate
-if [[ "$DOMAIN" != "localhost" ]]; then
-    print_info "Obtaining SSL certificate for $DOMAIN"
-fi
-# Safety: ensure script continues regardless of previous errors
-true
-    if certbot --nginx -d "$DOMAIN" -d "www.$DOMAIN" --non-interactive --agree-tos --email "$EMAIL" --redirect; then
-        print_success "SSL certificate obtained and auto-renewal configured"
-    else
-        print_warning "Certbot failed, continuing setup. Check /var/log/letsencrypt/letsencrypt.log for details."
-        SETUP_ERRORS+=("SSL certificate setup failed for $DOMAIN")
-    fi
-    # Setup auto-renewal
-    (crontab -l 2>/dev/null; echo "0 12 * * * /usr/bin/certbot renew --quiet") | crontab - || true
-else
-    print_warning "Skipping SSL for localhost domain"
-fi
-# Safety: ensure script continues regardless of previous errors
-true
 
 # =============================================================================
 # 14. Setup Project Directory and Permissions
 # =============================================================================
 print_header "Project Directory Setup"
 
-# Set project directory to /var/www/1000proxy (not the script location)
-PROJECT_DIR="/var/www/1000proxy"
+# Assume the user cloned the repo to ~/1000proxy or /root/1000proxy
+# Copy the cloned repo to /var/www/1000proxy if not already there
 
-# Create project directory if it doesn't exist
-mkdir -p "$PROJECT_DIR"
-
-# Set ownership and permissions
-chown "$PROJECT_USER:www-data" "$PROJECT_DIR"
-chmod 755 "$PROJECT_DIR"
-
-# Move the downloaded 1000proxy project from GitHub to /var/www and set up as project directory
-
-# Assume the script is run from 1000proxy/scripts/secure-server-setup.sh
-# Move the parent 1000proxy directory to /var/www if not already there
-
-if [[ ! -d "/var/www/1000proxy" ]]; then
-    mv "$(dirname "$(dirname "$0")")" /var/www/
-    print_success "Moved 1000proxy project to /var/www"
+if [[ ! -d "$PROJECT_DIR" ]]; then
+    # Try to find the repo in ~/1000proxy or /root/1000proxy
+    if [[ -d "$HOME/1000proxy" ]]; then
+        cp -a "$HOME/1000proxy" "$PROJECT_DIR"
+        print_success "Copied 1000proxy project from $HOME/1000proxy to $PROJECT_DIR"
+    elif [[ -d "/root/1000proxy" ]]; then
+        cp -a "/root/1000proxy" "$PROJECT_DIR"
+        print_success "Copied 1000proxy project from /root/1000proxy to $PROJECT_DIR"
+    else
+        print_warning "1000proxy repository not found in home or root. Please clone it before running this script."
+    fi
 fi
 
 # Ensure ownership and permissions
 chown -R "$PROJECT_USER:www-data" "$PROJECT_DIR"
 chmod 755 "$PROJECT_DIR"
 
-# Create necessary Laravel directories if not present
+# Laravel required directories:
 sudo -u "$PROJECT_USER" mkdir -p "$PROJECT_DIR"/{storage,bootstrap/cache}
 sudo -u "$PROJECT_USER" mkdir -p "$PROJECT_DIR"/storage/{app,framework,logs}
 sudo -u "$PROJECT_USER" mkdir -p "$PROJECT_DIR"/storage/framework/{cache,sessions,views}
 
 # Set proper permissions for Laravel
-find "$PROJECT_DIR" -type f -exec chmod 644 {} \;
-find "$PROJECT_DIR" -type d -exec chmod 755 {} \;
+find "$PROJECT_DIR" -type f | xargs chmod 644
+find "$PROJECT_DIR" -type d | xargs chmod 755
 chmod -R 775 "$PROJECT_DIR"/storage
 chmod -R 775 "$PROJECT_DIR"/bootstrap/cache
 chown -R "$PROJECT_USER:www-data" "$PROJECT_DIR"
-
 print_success "Project directory configured"
 
 # =============================================================================
