@@ -140,9 +140,9 @@
                                 <span wire:loading wire:target="applyCoupon">Applying...</span>
                             </button>
                         </div>
-                        @if($appliedCoupon)
+                        @if($applied_coupon)
                         <div class="mt-3 p-2 bg-green-500/20 border border-green-500 rounded text-green-100 text-sm">
-                            Coupon "{{ $appliedCoupon['code'] }}" applied - {{ $appliedCoupon['discount'] }}% off
+                            Coupon "{{ $applied_coupon['code'] }}" applied - {{ $applied_coupon['discount'] }}% off
                         </div>
                         @endif
                     </div>
@@ -154,7 +154,7 @@
                             <span>{{ Number::currency($grand_amount) }}</span>
                         </div>
 
-                        @if($appliedCoupon)
+                        @if($applied_coupon)
                         <div class="flex justify-between text-green-400">
                             <span>Coupon Discount</span>
                             <span>-{{ Number::currency($couponDiscount ?? 0) }}</span>

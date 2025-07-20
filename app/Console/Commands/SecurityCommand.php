@@ -201,20 +201,25 @@ class SecurityCommand extends Command
     /**
      * Test security headers
      */
-    private function testSecurityHeaders(): bool
+    private function testContentSecurityPolicy(): bool
     {
         try {
-            // Check if security headers configuration exists
-            $headersConfig = config('security.headers', []);
-
-            if (empty($headersConfig)) {
-                $this->warn("  ⚠️  Security headers configuration not found");
+            $response = $this->call('GET', '/');
+            $cspHeader = $response->headers->get('Content-Security-Policy');
+            
+            if (empty($cspHeader)) {
+                $this->warn("  ⚠️  No CSP header found");
                 return false;
             }
-
+            
+            if (str_contains($cspHeader, "'unsafe-eval'")) {
+                $this->warn("  ⚠️  CSP contains unsafe-eval (consider using nonces)");
+                // Don't return false here as this might be intentional for Livewire
+            }
+            
             return true;
         } catch (\Exception $e) {
-            $this->warn("  ⚠️  Security headers test failed: " . $e->getMessage());
+            $this->warn("  ⚠️  CSP test failed: " . $e->getMessage());
             return false;
         }
     }

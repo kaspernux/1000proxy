@@ -120,11 +120,19 @@ class DatabaseSeeder extends Seeder
         $this->command->info('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
         $this->command->info('👑 Admin Account:');
         $this->command->info('   Email: admin@1000proxy.io');
-        $this->command->info('   Password: admin123');
+        $this->command->info('   Password: P@ssw0rd!Adm1n2024$');
         $this->command->info('');
-        $this->command->info('👤 Test Customer Account:');
-        $this->command->info('   Email: nook@1000proxy.io');
-        $this->command->info('   Password: Password');
+        $this->command->info('👑 Support Team:');
+        $this->command->info('   Email: support@1000proxy.io');
+        $this->command->info('   Password: Supp0rt#Mgr!2024&');
+        $this->command->info('');
+        $this->command->info('👑 Sales Team:');
+        $this->command->info('   Email: sales@1000proxy.io');
+        $this->command->info('   Password: S@les#Team!2024*');
+        $this->command->info('');
+        $this->command->info('👤 Demo Customer Account:');
+        $this->command->info('   Email: demo@1000proxy.io');
+        $this->command->info('   Password: D3m0#Cust0mer!2024$');
         $this->command->info('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
     }
 }
