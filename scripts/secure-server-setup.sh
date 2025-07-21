@@ -244,6 +244,17 @@ cat > /etc/ssh/banner << EOF
 ***************************************************************************
 EOF
 
+# Copy the generated private key to your local machine's home directory
+if [[ -f "/home/$PROJECT_USER/.ssh/id_rsa" ]]; then
+    LOCAL_KEY_PATH="$HOME/id_rsa_1000proxy_$(hostname -I | awk '{print $1}')"
+    cp "/home/$PROJECT_USER/.ssh/id_rsa" "$LOCAL_KEY_PATH"
+    chmod 600 "$LOCAL_KEY_PATH"
+    print_success "SSH private key copied to $LOCAL_KEY_PATH"
+    echo -e "${YELLOW}IMPORTANT: Copy this key to your local machine and use it to connect:${NC}"
+    echo "scp $PROJECT_USER@$(hostname -I | awk '{print $1}'):/home/$PROJECT_USER/.ssh/id_rsa $LOCAL_KEY_PATH"
+    echo "ssh -i $LOCAL_KEY_PATH -p 2222 $PROJECT_USER@<server-ip>"
+fi
+
 systemctl restart ssh
 systemctl enable ssh
 print_success "SSH hardened and configured"
