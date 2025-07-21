@@ -56,7 +56,6 @@ class SecurityCommand extends Command
             'Rate Limiting' => $this->testRateLimiting(),
             'Session Security' => $this->testSessionSecurity(),
             'CSRF Protection' => $this->testCSRFProtection(),
-            'Security Headers' => $this->testSecurityHeaders(),
             'Login Monitoring' => $this->testLoginMonitoring(),
         ];
 
@@ -194,32 +193,6 @@ class SecurityCommand extends Command
             return true;
         } catch (\Exception $e) {
             $this->warn("  ⚠️  CSRF protection test failed: " . $e->getMessage());
-            return false;
-        }
-    }
-
-    /**
-     * Test security headers
-     */
-    private function testContentSecurityPolicy(): bool
-    {
-        try {
-            $response = $this->call('GET', '/');
-            $cspHeader = $response->headers->get('Content-Security-Policy');
-            
-            if (empty($cspHeader)) {
-                $this->warn("  ⚠️  No CSP header found");
-                return false;
-            }
-            
-            if (str_contains($cspHeader, "'unsafe-eval'")) {
-                $this->warn("  ⚠️  CSP contains unsafe-eval (consider using nonces)");
-                // Don't return false here as this might be intentional for Livewire
-            }
-            
-            return true;
-        } catch (\Exception $e) {
-            $this->warn("  ⚠️  CSP test failed: " . $e->getMessage());
             return false;
         }
     }

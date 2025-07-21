@@ -344,9 +344,9 @@ BCRYPT_ROUNDS=12
 HASH_VERIFY=true
 
 # Security Headers
-SECURITY_HEADERS_ENABLED=true
-SECURITY_CSP_ENABLED=true
-SECURITY_HSTS_ENABLED=true
+#SECURITY_HEADERS_ENABLED=true
+#SECURITY_CSP_ENABLED=true
+#SECURITY_HSTS_ENABLED=true
 
 # Rate Limiting
 RATE_LIMIT_ENABLED=true
@@ -993,11 +993,11 @@ server {
     }
 
     # Security headers for all responses
-    add_header X-Frame-Options "SAMEORIGIN" always;
-    add_header X-XSS-Protection "1; mode=block" always;
-    add_header X-Content-Type-Options "nosniff" always;
-    add_header Referrer-Policy "no-referrer-when-downgrade" always;
-    add_header Content-Security-Policy "default-src 'self' http: https: data: blob: 'unsafe-inline'" always;
+    #add_header X-Frame-Options "SAMEORIGIN" always;
+    #add_header X-XSS-Protection "1; mode=block" always;
+    #add_header X-Content-Type-Options "nosniff" always;
+    #add_header Referrer-Policy "no-referrer-when-downgrade" always;
+    #add_header Content-Security-Policy "default-src 'self' http: https: data: blob: 'unsafe-inline'" always;
 }
 EOF
 
