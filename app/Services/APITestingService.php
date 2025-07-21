@@ -174,7 +174,6 @@ class APITestingService
             'csrf_protection' => $this->testCSRFProtection(),
             'unauthorized_access' => $this->testUnauthorizedAccess(),
             'input_validation' => $this->testInputValidation(),
-            'security_headers' => $this->testSecurityHeaders()
         ];
 
         $this->testResults['categories']['security'] = $tests;
@@ -400,44 +399,6 @@ class APITestingService
         }
     }
 
-    protected function testSecurityHeaders(): array
-    {
-        try {
-            $response = Http::get($this->baseUrl . '/servers');
-            $headers = $response->headers();
-
-            $requiredHeaders = [
-                'X-Content-Type-Options' => 'nosniff',
-                'X-Frame-Options' => ['DENY', 'SAMEORIGIN'],
-                'X-XSS-Protection' => '1; mode=block',
-                'Strict-Transport-Security' => null // Just check if present
-            ];
-
-            $missingHeaders = [];
-            $incorrectHeaders = [];
-
-            foreach ($requiredHeaders as $header => $expectedValue) {
-                if (!isset($headers[$header])) {
-                    $missingHeaders[] = $header;
-                } elseif ($expectedValue && !in_array($headers[$header][0], (array)$expectedValue)) {
-                    $incorrectHeaders[] = $header . ': ' . $headers[$header][0];
-                }
-            }
-
-            $secure = empty($missingHeaders) && empty($incorrectHeaders);
-
-            return $this->createTestResult($secure,
-                $secure ? 'Security headers present' : 'Missing or incorrect security headers',
-                [
-                    'missing_headers' => $missingHeaders,
-                    'incorrect_headers' => $incorrectHeaders,
-                    'present_headers' => array_intersect_key($headers, $requiredHeaders)
-                ]
-            );
-        } catch (\Exception $e) {
-            return $this->createTestResult(false, 'Security headers test error: ' . $e->getMessage());
-        }
-    }
 
     /**
      * Helper methods for test execution

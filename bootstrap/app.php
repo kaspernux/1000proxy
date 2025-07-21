@@ -3,7 +3,6 @@
 use Illuminate\Foundation\Application;
 use App\Http\Middleware\RedirectIfCustomer;
 use App\Http\Middleware\EnhancedErrorHandling;
-use App\Http\Middleware\SecurityHeaders;
 use App\Http\Middleware\RateLimitMiddleware;
 use App\Http\Middleware\LoginAttemptMonitoring;
 use App\Http\Middleware\SessionSecurity;
@@ -22,7 +21,6 @@ return Application::configure(basePath: dirname(__DIR__))
     )
     ->withMiddleware(function (Middleware $middleware) {
         // Security Middleware (applied globally)
-        $middleware->append(SecurityHeaders::class);
         $middleware->append(SessionSecurity::class);
 
         // Existing middleware

@@ -6,7 +6,7 @@ use App\Models\Server;
 use App\Models\ServerPlan;
 use App\Models\Order;
 use App\Models\User;
-use App\Services\XuiService;
+use App\Services\XUIService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
@@ -23,7 +23,7 @@ class AdvancedProxyService
 {
     protected $xuiService;
 
-    public function __construct(XuiService $xuiService)
+    public function __construct(XUIService $xuiService)
     {
         $this->xuiService = $xuiService;
     }

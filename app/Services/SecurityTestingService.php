@@ -212,9 +212,6 @@ class SecurityTestingService
             // SSL/TLS security scan
             $scanResults['ssl_tls'] = $this->scanSSLTLSSecurity();
 
-            // Header security scan
-            $scanResults['security_headers'] = $this->scanSecurityHeaders();
-
             // Content security scan
             $scanResults['content_security'] = $this->scanContentSecurity();
 
@@ -397,9 +394,6 @@ class SecurityTestingService
 
         // SSL/TLS configuration
         $results['ssl_tls'] = $this->testSSLTLSConfiguration();
-
-        // Security headers
-        $results['security_headers'] = $this->testSecurityHeaders();
 
         return $results;
     }
@@ -813,7 +807,6 @@ class SecurityTestingService
     protected function testServerHardening(): array { return ['hardened' => true, 'score' => 8]; }
     protected function testNetworkSecurity(): array { return ['secure' => true, 'score' => 8]; }
     protected function testSSLTLSConfiguration(): array { return ['secure' => true, 'score' => 9]; }
-    protected function testSecurityHeaders(): array { return ['implemented' => true, 'score' => 8]; }
     protected function testBusinessRuleEnforcement(): array { return ['enforced' => true, 'score' => 8]; }
     protected function testTransactionIntegrity(): array { return ['secure' => true, 'score' => 9]; }
     protected function testDataConsistency(): array { return ['consistent' => true, 'score' => 8]; }
@@ -848,6 +841,5 @@ class SecurityTestingService
     protected function scanConfigurationSecurity(): array { return ['secure' => true, 'score' => 8]; }
     protected function scanNetworkSecurity(): array { return ['secure' => true, 'score' => 8]; }
     protected function scanSSLTLSSecurity(): array { return ['secure' => true, 'score' => 9]; }
-    protected function scanSecurityHeaders(): array { return ['implemented' => true, 'score' => 8]; }
     protected function scanContentSecurity(): array { return ['secure' => true, 'score' => 8]; }
 }

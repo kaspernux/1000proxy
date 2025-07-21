@@ -344,9 +344,9 @@ BCRYPT_ROUNDS=12
 HASH_VERIFY=true
 
 # Security Headers
-SECURITY_HEADERS_ENABLED=true
-SECURITY_CSP_ENABLED=true
-SECURITY_HSTS_ENABLED=true
+#SECURITY_HEADERS_ENABLED=true
+#SECURITY_CSP_ENABLED=true
+#SECURITY_HSTS_ENABLED=true
 
 # Rate Limiting
 RATE_LIMIT_ENABLED=true
@@ -791,7 +791,7 @@ print_header "Database Setup"
 mysql -u root -e "CREATE DATABASE IF NOT EXISTS \`1000proxy\` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;" 2>/dev/null || print_warning "Database may already exist"
 
 # Create or update database user
-mysql -u root -e "CREATE USER IF NOT EXISTS '1000proxy'@'localhost' IDENTIFIED WITH mysql_native_password BY '$DB_PASSWORD';" 2>/dev/null
+mysql -u root -e "CREATE USER IF NOT EXISTS '1000proxy'@'localhost' IDENTIFIED WITH caching_sha2_password BY '$DB_PASSWORD';" 2>/dev/null
 mysql -u root -e "GRANT ALL PRIVILEGES ON \`1000proxy\`.* TO '1000proxy'@'localhost';"
 mysql -u root -e "FLUSH PRIVILEGES;"
 
@@ -993,11 +993,11 @@ server {
     }
 
     # Security headers for all responses
-    add_header X-Frame-Options "SAMEORIGIN" always;
-    add_header X-XSS-Protection "1; mode=block" always;
-    add_header X-Content-Type-Options "nosniff" always;
-    add_header Referrer-Policy "no-referrer-when-downgrade" always;
-    add_header Content-Security-Policy "default-src 'self' http: https: data: blob: 'unsafe-inline'" always;
+    #add_header X-Frame-Options "SAMEORIGIN" always;
+    #add_header X-XSS-Protection "1; mode=block" always;
+    #add_header X-Content-Type-Options "nosniff" always;
+    #add_header Referrer-Policy "no-referrer-when-downgrade" always;
+    #add_header Content-Security-Policy "default-src 'self' http: https: data: blob: 'unsafe-inline'" always;
 }
 EOF
 

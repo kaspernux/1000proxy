@@ -115,33 +115,6 @@ return [
         'validate_user_agent' => env('SESSION_VALIDATE_USER_AGENT', true),
     ],
 
-    /*
-    |--------------------------------------------------------------------------
-    | Security Headers
-    |--------------------------------------------------------------------------
-    |
-    | Configuration for HTTP security headers.
-    |
-    */
-    'headers' => [
-        'csp' => [
-            'enabled' => env('CSP_ENABLED', true),
-            'report_only' => env('CSP_REPORT_ONLY', false),
-            'report_uri' => env('CSP_REPORT_URI', null),
-        ],
-
-        'hsts' => [
-            'enabled' => env('HSTS_ENABLED', true),
-            'max_age' => env('HSTS_MAX_AGE', 31536000), // 1 year
-            'include_subdomains' => env('HSTS_INCLUDE_SUBDOMAINS', true),
-            'preload' => env('HSTS_PRELOAD', true),
-        ],
-
-        'referrer_policy' => env('REFERRER_POLICY', 'strict-origin-when-cross-origin'),
-        'x_frame_options' => env('X_FRAME_OPTIONS', 'DENY'),
-        'x_content_type_options' => env('X_CONTENT_TYPE_OPTIONS', 'nosniff'),
-        'x_xss_protection' => env('X_XSS_PROTECTION', '1; mode=block'),
-    ],
 
     /*
     |--------------------------------------------------------------------------

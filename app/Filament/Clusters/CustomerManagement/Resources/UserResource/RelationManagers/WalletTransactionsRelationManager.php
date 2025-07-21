@@ -220,7 +220,7 @@ class WalletTransactionsRelationManager extends RelationManager
                         
                         \Filament\Notifications\Notification::make()
                             ->title('Manual Deposit Added')
-                            ->body("${$data['amount']} deposited to user wallet")
+                            ->body("{$data['amount']} deposited to user wallet")
                             ->success()
                             ->send();
                     })

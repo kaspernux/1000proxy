@@ -22,36 +22,47 @@ class CartPage extends Component
 {
     use LivewireAlert;
 
-    public $order_items = [];
-    public $grand_amount = 0;
-    public $shipping_amount = 0;
-    public $tax_amount = 0;
-    public $discount_amount = 0;
-    public $coupon_code = '';
-    public $applied_coupon = null;
-    public $show_coupon_form = false;
+    /** @var array<int, mixed> */
+    public array $order_items = [];
+    public float $grand_amount = 0;
+    public float $shipping_amount = 0;
+    public float $tax_amount = 0;
+    public float $discount_amount = 0;
+    public string $coupon_code = '';
+    public ?string $applied_coupon = null;
+    
+    public bool $show_coupon_form = false;
 
     // Cart persistence
-    public $save_for_later = [];
-    public $recently_viewed = [];
+    /** @var array<int, mixed> */
+    public array $save_for_later = [];
+    /** @var array<int, mixed> */
+    public array $recently_viewed = [];
 
     protected $listeners = [
         'cartUpdated' => 'refreshCart',
-        'couponApplied' => 'applyCoupon'
     ];
-
+    /**
+     * Initialize the cart page by loading cart items, recently viewed products, and saved-for-later items from session.
+     */
     public function mount()
     {
         $this->refreshCart();
         $this->loadRecentlyViewed();
+        $this->loadSaveForLater();
+    }
+
+    private function loadSaveForLater()
+    {
+        $this->save_for_later = session()->get('save_for_later', []);
     }
 
     #[Computed]
     public function cartSummary()
     {
         $subtotal = $this->grand_amount;
-        $tax = $this->calculateTax($subtotal);
-        $shipping = $this->calculateShipping();
+        $tax = $this->tax_amount;
+        $shipping = $this->shipping_amount;
         $discount = $this->discount_amount;
 
         return [
@@ -64,19 +75,27 @@ class CartPage extends Component
         ];
     }
 
+    private ?Collection $cachedRecommendedPlans = null;
+
     #[Computed]
     public function recommendedPlans()
     {
+        if ($this->cachedRecommendedPlans !== null) {
+            return $this->cachedRecommendedPlans;
+        }
+
         // Get plans based on cart items categories
         $categoryIds = collect($this->order_items)->pluck('server_plan.server_category_id')->unique();
 
-        return ServerPlan::whereIn('server_category_id', $categoryIds)
+        $this->cachedRecommendedPlans = ServerPlan::whereIn('server_category_id', $categoryIds)
             ->where('is_active', true)
             ->where('is_featured', true)
             ->whereNotIn('id', collect($this->order_items)->pluck('server_plan_id'))
             ->with(['brand', 'category'])
             ->limit(3)
             ->get();
+
+        return $this->cachedRecommendedPlans;
     }
 
     public function refreshCart()
@@ -84,6 +103,7 @@ class CartPage extends Component
         $this->order_items = CartManagement::getCartItemsFromCookie();
         $this->grand_amount = CartManagement::calculateGrandTotal($this->order_items);
         $this->recalculateAmounts();
+        $this->cachedRecommendedPlans = null; // Invalidate cache when cart changes
     }
 
     private function recalculateAmounts()
@@ -151,20 +171,19 @@ class CartPage extends Component
         $this->order_items = CartManagement::updateItemQuantity($server_plan_id, $quantity);
         $this->grand_amount = CartManagement::calculateGrandTotal($this->order_items);
         $this->recalculateAmounts();
-        $this->dispatch('cartUpdated');
     }
-
     public function saveForLater($server_plan_id)
     {
         // Move item from cart to saved items
         $item = collect($this->order_items)->where('server_plan_id', $server_plan_id)->first();
 
         if ($item) {
-            $this->save_for_later[] = $item;
-            $this->removeItem($server_plan_id);
+            $saveForLater = session()->get('save_for_later', []);
+            $saveForLater[] = $item;
+            session()->put('save_for_later', $saveForLater);
+            $this->save_for_later = $saveForLater;
 
-            // Persist to session or cookie
-            session()->put('save_for_later', $this->save_for_later);
+            $this->removeItem($server_plan_id);
 
             $this->alert('info', 'Item saved for later!', [
                 'position' => 'bottom-end',
@@ -173,19 +192,23 @@ class CartPage extends Component
             ]);
         }
     }
-
+    /**
+     * Move item from saved for later back to cart
+     */
     public function moveToCart($index)
     {
-        if (isset($this->save_for_later[$index])) {
-            $item = $this->save_for_later[$index];
+        $saveForLater = session()->get('save_for_later', []);
+        if (isset($saveForLater[$index])) {
+            $item = $saveForLater[$index];
 
             // Add back to cart
             CartManagement::addItemToCartWithQty($item['server_plan_id'], $item['quantity']);
 
             // Remove from saved items
-            unset($this->save_for_later[$index]);
-            $this->save_for_later = array_values($this->save_for_later);
-            session()->put('save_for_later', $this->save_for_later);
+            unset($saveForLater[$index]);
+            $saveForLater = array_values($saveForLater);
+            session()->put('save_for_later', $saveForLater);
+            $this->save_for_later = $saveForLater;
 
             $this->refreshCart();
 
@@ -196,6 +219,10 @@ class CartPage extends Component
             ]);
         }
     }
+
+    /**
+     * Toggle visibility of the coupon code form
+     */
 
     public function toggleCouponForm()
     {
@@ -223,16 +250,13 @@ class CartPage extends Component
                 'toast' => true,
             ]);
         } else {
-            $this->alert('error', 'Invalid or expired coupon code', [
-                'position' => 'top-end',
-                'timer' => 3000,
-                'toast' => true,
-            ]);
+            $this->alert('error', 'Invalid coupon code');
         }
     }
 
     private function validateAndCalculateDiscount($code)
     {
+        // TODO: Replace this mock coupon validation with integration to a real coupon system.
         // Mock coupon validation - replace with real coupon system
         $coupons = [
             'SAVE10' => 0.10, // 10% discount
@@ -299,23 +323,30 @@ class CartPage extends Component
         ]);
     }
 
+    /**
+     * Loads the recently viewed items from the session into the component property.
+     */
     private function loadRecentlyViewed()
     {
         $this->recently_viewed = session()->get('recently_viewed', []);
     }
-
-    #[On('cartUpdated')]
-    public function handleCartUpdate()
-    {
-        $this->refreshCart();
-    }
-
+    /**
+     * Passes the following data to the view:
+     * - cartSummary: array containing subtotal, tax, shipping, discount, total, and items_count
+     * - recommendedPlans: collection of recommended server plans
+     * - saveForLater: array of items saved for later
+     *
+     * @return \Illuminate\View\View
+     */
     public function render()
     {
+        // Always load latest save_for_later from session before rendering
+        $this->loadSaveForLater();
+
         return view('livewire.cart-page', [
             'cartSummary' => $this->cartSummary,
             'recommendedPlans' => $this->recommendedPlans,
-            'saveForLater' => session()->get('save_for_later', []),
+            'saveForLater' => $this->save_for_later,
         ]);
     }
 }

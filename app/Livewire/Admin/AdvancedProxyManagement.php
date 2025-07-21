@@ -5,7 +5,7 @@ namespace App\Livewire\Admin;
 use Livewire\Component;
 use Livewire\WithPagination;
 use App\Services\AdvancedProxyService;
-use App\Services\XuiService;
+use App\Services\XUIService;
 use App\Models\User;
 use App\Models\Server;
 use App\Models\Order;
@@ -65,7 +65,7 @@ class AdvancedProxyManagement extends Component
     public function boot()
     {
         $this->advancedProxyService = app(AdvancedProxyService::class);
-        $this->xuiService = app(XuiService::class);
+        $this->xuiService = app(XUIService::class);
     }
 
     public function mount()

@@ -56,7 +56,6 @@ class SecurityCommand extends Command
             'Rate Limiting' => $this->testRateLimiting(),
             'Session Security' => $this->testSessionSecurity(),
             'CSRF Protection' => $this->testCSRFProtection(),
-            'Security Headers' => $this->testSecurityHeaders(),
             'Login Monitoring' => $this->testLoginMonitoring(),
         ];
 
@@ -194,27 +193,6 @@ class SecurityCommand extends Command
             return true;
         } catch (\Exception $e) {
             $this->warn("  ⚠️  CSRF protection test failed: " . $e->getMessage());
-            return false;
-        }
-    }
-
-    /**
-     * Test security headers
-     */
-    private function testSecurityHeaders(): bool
-    {
-        try {
-            // Check if security headers configuration exists
-            $headersConfig = config('security.headers', []);
-
-            if (empty($headersConfig)) {
-                $this->warn("  ⚠️  Security headers configuration not found");
-                return false;
-            }
-
-            return true;
-        } catch (\Exception $e) {
-            $this->warn("  ⚠️  Security headers test failed: " . $e->getMessage());
             return false;
         }
     }

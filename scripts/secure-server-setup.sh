@@ -561,12 +561,11 @@ http {
     client_max_body_size 64M;
 
     # Security Headers
-    server_tokens off;
-    add_header X-Frame-Options DENY;
-    add_header X-Content-Type-Options nosniff;
-    add_header X-XSS-Protection "1; mode=block";
-    add_header Referrer-Policy "strict-origin-when-cross-origin";
-    add_header Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'self';";
+    #server_tokens off;
+    #add_header X-Frame-Options DENY;
+    #add_header X-Content-Type-Options nosniff;
+    #add_header X-XSS-Protection "1; mode=block";
+    #add_header Referrer-Policy "strict-origin-when-cross-origin";
 
     # Rate Limiting
     limit_req_zone \$binary_remote_addr zone=login:10m rate=5r/m;
@@ -692,9 +691,9 @@ nginx -t && systemctl restart nginx
 print_success "Nginx configured securely"
 
 # =============================================================================
-# 8. Install and Configure MySQL 8.0
+# 8. Install and Configure MySQL 8.3
 # =============================================================================
-print_header "MySQL 8.0 Installation and Configuration"
+print_header "MySQL 8.3 Installation and Configuration"
 
 # Install MySQL
 DEBIAN_FRONTEND=noninteractive apt-get install -y mysql-server mysql-client
@@ -704,85 +703,29 @@ mysql --execute="DELETE FROM mysql.user WHERE User='';"
 mysql --execute="DELETE FROM mysql.user WHERE User='root' AND Host NOT IN ('localhost', '127.0.0.1', '::1');"
 mysql --execute="DROP DATABASE IF EXISTS test;"
 mysql --execute="DELETE FROM mysql.db WHERE Db='test' OR Db='test\\_%';"
-mysql --execute="CREATE DATABASE IF NOT EXISTS \`1000proxy\` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
-mysql --execute="CREATE USER IF NOT EXISTS '1000proxy'@'localhost' IDENTIFIED WITH mysql_native_password BY '$DB_PASSWORD';"
-mysql --execute="GRANT ALL PRIVILEGES ON \`1000proxy\`.* TO '1000proxy'@'localhost';"
+mysql --execute="CREATE DATABASE IF NOT EXISTS `1000proxy` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
+mysql --execute="CREATE USER IF NOT EXISTS '1000proxy'@'localhost' IDENTIFIED WITH caching_sha2_password BY '$DB_PASSWORD';"
+mysql --execute="GRANT ALL PRIVILEGES ON `1000proxy`.* TO '1000proxy'@'localhost';"
 mysql --execute="FLUSH PRIVILEGES;"
-
-# MySQL security configuration
-cat > /etc/mysql/mysql.conf.d/security.cnf << EOF
-[mysqld]
-# Security Settings
-local-infile=0
-skip-show-database
-bind-address=127.0.0.1
-mysqlx-bind-address=127.0.0.1
-
-# Logging
-log-error=/var/log/mysql/error.log
-slow-query-log=1
-slow-query-log-file=/var/log/mysql/slow.log
-long-query-time=2
-
-# Performance
-innodb_buffer_pool_size=256M
-innodb_log_file_size=64M
-max_connections=200
-EOF
-
-systemctl restart mysql
-systemctl enable mysql
-print_success "MySQL 8.0 configured securely"
 
 # =============================================================================
 # 9. Install and Configure Redis
 # =============================================================================
 print_header "Redis Installation and Configuration"
 
-sudo apt-get install -y lsb-release curl gpg
+sudo apt-get install lsb-release curl gpg
 curl -fsSL https://packages.redis.io/gpg | sudo gpg --dearmor -o /usr/share/keyrings/redis-archive-keyring.gpg
 sudo chmod 644 /usr/share/keyrings/redis-archive-keyring.gpg
 echo "deb [signed-by=/usr/share/keyrings/redis-archive-keyring.gpg] https://packages.redis.io/deb $(lsb_release -cs) main" | sudo tee /etc/apt/sources.list.d/redis.list
 sudo apt-get update
-sudo apt-get install -y redis-server
+sudo apt-get install redis -y
 
-sudo mkdir -p /var/log/redis
-sudo chown redis:redis /var/log/redis
-sudo touch /var/log/redis/redis-server.log
-sudo chown redis:redis /var/log/redis/redis-server.log
-
-# Redis security configuration
-cat > /etc/redis/redis.conf << EOF
-# Network and Security
-bind 127.0.0.1 ::1
-timeout 300
-tcp-keepalive 300
-
-# Authentication
-requirepass ${REDIS_PASSWORD}
-
-# Memory Management
-maxmemory 256mb
-maxmemory-policy allkeys-lru
-
-# Persistence
-save 900 1
-save 300 10
-save 60 10000
-rdbcompression yes
-rdbchecksum yes
-
-# Logging
-loglevel notice
-logfile /var/log/redis/redis-server.log
-
-# Security
-rename-command FLUSHDB ""
-rename-command FLUSHALL ""
-rename-command EVAL ""
-rename-command DEBUG ""
-rename-command CONFIG "CONFIG_b835_"
-EOF
+# Set Redis password securely in redis.conf (replace or add requirepass)
+if grep -q "^requirepass " /etc/redis/redis.conf; then
+    sudo sed -i "s/^requirepass .*/requirepass ${REDIS_PASSWORD}/" /etc/redis/redis.conf
+else
+    echo "requirepass ${REDIS_PASSWORD}" | sudo tee -a /etc/redis/redis.conf > /dev/null
+fi
 
 sudo systemctl enable redis-server
 sudo systemctl start redis-server
@@ -829,6 +772,9 @@ aideinit || {
 }
 cp /var/lib/aide/aide.db.new /var/lib/aide/aide.db
 
+# Ensure mail utility is installed for cron notifications
+apt-get install -y mailutils
+
 # Create daily AIDE check
 cat > /etc/cron.daily/aide-check << 'EOF'
 #!/bin/bash
@@ -857,14 +803,17 @@ rkhunter --update > /var/log/rkhunter-update.log 2>&1 || {
     # Do not exit; allow setup to continue
 }
 
-rkhunter --propupd > /var/log/rkhunter-update.log 2>&1 || {
-    print_error "rkhunter propupd failed. See /var/log/rkhunter-update.log for details."
+print_info "Running rkhunter --propupd (output will be logged to /var/log/rkhunter-propupd.log)"
+rkhunter --propupd > /var/log/rkhunter-propupd.log 2>&1 || {
+    print_error "rkhunter propupd failed. See /var/log/rkhunter-propupd.log for details."
     # Do not exit; allow setup to continue
 }
 
 # Create weekly rkhunter scan
 cat > /etc/cron.weekly/rkhunter-scan << 'EOF'
-#!/bin/bash
+# To change the recipient of the RKHunter report, replace 'root' with your desired email address below.
+# You can also customize the subject or mail command as needed.
+/usr/bin/rkhunter --check --skip-keypress --report-warnings-only | /usr/bin/mail -s "RKHunter Report $(hostname)" root
 /usr/bin/rkhunter --check --skip-keypress --report-warnings-only | /usr/bin/mail -s "RKHunter Report $(hostname)" root
 EOF
 chmod +x /etc/cron.weekly/rkhunter-scan
@@ -914,23 +863,28 @@ npm -v # Should print "10.9.2".
 # =============================================================================
 print_header "Project Directory Setup"
 
-# Assume the user cloned the repo to ~/1000proxy or /root/1000proxy
-# Copy the cloned repo to /var/www/1000proxy if not already there
-
+# Find the 1000proxy repo anywhere on the server (cloned by root)
+REPO_SRC=""
 if [[ ! -d "$PROJECT_DIR" ]]; then
-    # Try to find the repo in ~/1000proxy or /root/1000proxy
-    if [[ -d "$HOME/1000proxy" ]]; then
-        cp -a "$HOME/1000proxy" "$PROJECT_DIR"
-        print_success "Copied 1000proxy project from $HOME/1000proxy to $PROJECT_DIR"
-    elif [[ -d "/root/1000proxy" ]]; then
-        cp -a "/root/1000proxy" "$PROJECT_DIR"
-        print_success "Copied 1000proxy project from /root/1000proxy to $PROJECT_DIR"
+    # Try common locations first
+    if [[ -d "/root/1000proxy" ]]; then
+        REPO_SRC="/root/1000proxy"
+    elif [[ -d "$HOME/1000proxy" ]]; then
+        REPO_SRC="$HOME/1000proxy"
     else
-        print_warning "1000proxy repository not found in home or root. Please clone it before running this script."
+        # Search for the repo anywhere on the system (first match)
+        REPO_SRC=$(find / -type d -name "1000proxy" -print -quit 2>/dev/null)
+    fi
+
+    if [[ -n "$REPO_SRC" && -d "$REPO_SRC" ]]; then
+        mv "$REPO_SRC" "$PROJECT_DIR"
+        print_success "Moved 1000proxy project from $REPO_SRC to $PROJECT_DIR"
+    else
+        print_warning "1000proxy repository not found. Please clone it before running this script."
     fi
 fi
 
-# Ensure ownership and permissions
+# Ensure ownership and permissions for Laravel
 chown -R "$PROJECT_USER:www-data" "$PROJECT_DIR"
 chmod 755 "$PROJECT_DIR"
 
@@ -940,10 +894,9 @@ sudo -u "$PROJECT_USER" mkdir -p "$PROJECT_DIR"/storage/{app,framework,logs}
 sudo -u "$PROJECT_USER" mkdir -p "$PROJECT_DIR"/storage/framework/{cache,sessions,views}
 
 # Set proper permissions for Laravel
-find "$PROJECT_DIR" -type f | xargs chmod 644
-find "$PROJECT_DIR" -type d | xargs chmod 755
-chmod -R 775 "$PROJECT_DIR"/storage
-chmod -R 775 "$PROJECT_DIR"/bootstrap/cache
+find "$PROJECT_DIR" -type f -exec chmod 644 {} +
+find "$PROJECT_DIR" -type d -exec chmod 755 {} +
+chmod -R 775 "$PROJECT_DIR"/storage "$PROJECT_DIR"/bootstrap/cache
 chown -R "$PROJECT_USER:www-data" "$PROJECT_DIR"
 print_success "Project directory configured"
 
@@ -954,7 +907,7 @@ print_header "Environment Configuration"
 
 # Copy .env.production to .env
 if [[ -f "$PROJECT_DIR/.env.production" ]]; then
-    cp "$PROJECT_DIR/.env.production" "$PROJECT_DIR/.env"
+    cp --preserve=mode,ownership "$PROJECT_DIR/.env.production" "$PROJECT_DIR/.env"
     print_success ".env.production copied to .env"
 else
     print_warning ".env.production not found, skipping copy"
@@ -962,8 +915,13 @@ fi
 
 if [[ -f "$PROJECT_DIR/.env" ]]; then
     chown "$PROJECT_USER:www-data" "$PROJECT_DIR/.env"
+    # Set .env permissions to 640 for security: readable only by owner and group (no world access)
     chmod 640 "$PROJECT_DIR/.env"
     print_success "Environment file created"
+        print_warning "User $PROJECT_USER or group www-data does not exist, skipping chown for .env"
+    chmod 640 "$PROJECT_DIR/.env"
+    print_success "Environment file permissions set"
+else
 else
     print_warning "Environment file $PROJECT_DIR/.env does not exist, skipping permission change"
 fi

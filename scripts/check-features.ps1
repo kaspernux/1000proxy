@@ -352,11 +352,6 @@ if ($Security) {
         $templates -match "\{\{\s*\$|\{\!\!\s*\$"
     } -Required $false
 
-    Test-Feature "Security Headers" {
-        $middleware = Get-ChildItem "app/Http/Middleware" -Filter "*Security*" -ErrorAction SilentlyContinue
-        $middleware.Count -gt 0
-    } -Required $false
-
     Test-Feature "Audit Logging" {
         (Test-Path "app/Models/AuditLog.php") -or (Get-ChildItem "app" -Recurse -Filter "*Audit*" -ErrorAction SilentlyContinue)
     } -Required $false

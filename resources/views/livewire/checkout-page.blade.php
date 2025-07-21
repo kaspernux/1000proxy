@@ -71,9 +71,9 @@
                                 <span wire:loading wire:target="applyCoupon">Applying...</span>
                             </button>
                         </div>
-                        @if($appliedCoupon)
+                        @if($applied_coupon)
                         <div class="mt-2 flex items-center justify-between">
-                            <span class="text-green-400">Coupon Applied: {{ $appliedCoupon['code'] }}</span>
+                            <span class="text-green-400">Coupon Applied: {{ $applied_coupon['code'] }}</span>
                             <button wire:click="removeCoupon" class="text-red-400 hover:text-red-300">Remove</button>
                         </div>
                         @endif
