@@ -699,14 +699,23 @@ print_header "MySQL 8.3 Installation and Configuration"
 DEBIAN_FRONTEND=noninteractive apt-get install -y mysql-server mysql-client
 
 # Secure MySQL installation
-mysql --execute="DELETE FROM mysql.user WHERE User='';"
-mysql --execute="DELETE FROM mysql.user WHERE User='root' AND Host NOT IN ('localhost', '127.0.0.1', '::1');"
-mysql --execute="DROP DATABASE IF EXISTS test;"
-mysql --execute="DELETE FROM mysql.db WHERE Db='test' OR Db='test\\_%';"
-mysql --execute="CREATE DATABASE IF NOT EXISTS `1000proxy` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
-mysql --execute="CREATE USER IF NOT EXISTS '1000proxy'@'localhost' IDENTIFIED WITH caching_sha2_password BY '$DB_PASSWORD';"
-mysql --execute="GRANT ALL PRIVILEGES ON `1000proxy`.* TO '1000proxy'@'localhost';"
-mysql --execute="FLUSH PRIVILEGES;"
+if systemctl is-active --quiet mysql; then
+    # Remove remote root access except for localhost, 127.0.0.1, and ::1 for security
+    mysql --execute="DELETE FROM mysql.user WHERE User='root' AND Host NOT IN ('localhost', '127.0.0.1', '::1');"
+    # Drop the default test database to prevent unauthorized access
+    mysql --execute="DROP DATABASE IF EXISTS test;"
+    # Create the 1000proxy user with a strong password and restrict access to localhost
+    ESCAPED_DB_PASSWORD=$(printf '%s' "$DB_PASSWORD" | sed "s/'/''/g")
+    mysql --execute="CREATE USER IF NOT EXISTS '1000proxy'@'localhost' IDENTIFIED WITH 'caching_sha2_password' BY '$ESCAPED_DB_PASSWORD';"
+    # Create the 1000proxy database with secure character set and collation
+    mysql --execute="CREATE DATABASE IF NOT EXISTS \`1000proxy\` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
+    # Grant only necessary privileges to the 1000proxy user
+    mysql --execute="GRANT SELECT,INSERT,UPDATE,DELETE,CREATE,DROP,INDEX,ALTER ON \`1000proxy\`.* TO '1000proxy'@'localhost';"
+    # Flush privileges to apply changes
+    mysql --execute="FLUSH PRIVILEGES;"
+else
+    print_error "MySQL service is not running. Please start MySQL before running this command."
+fi
 
 # =============================================================================
 # 9. Install and Configure Redis
