@@ -138,7 +138,7 @@ case $choice in
         print_header "Starting Complete Setup"
         print_warning "This will take 15-30 minutes depending on your server speed"
         read -p "Continue? (y/N): " confirm
-        if [ "$confirm" = "y" ] || [ "$confirm" = "Y" ]; then
+        if [[ "$confirm" =~ ^[Yy]$ ]]; then
             print_info "Step 1/3: Basic Security Setup"
             ./scripts/secure-server-setup.sh
 
@@ -160,7 +160,7 @@ case $choice in
     2)
         print_header "Starting Security-Only Setup"
         read -p "Continue? (y/N): " confirm
-        if [ "$confirm" = "y" ] || [ "$confirm" = "Y" ]; then
+        if [[ "$confirm" =~ ^[Yy]$ ]]; then
             print_info "Step 1/2: Basic Security Setup"
             ./scripts/secure-server-setup.sh
 
@@ -187,7 +187,7 @@ case $choice in
             exit 1
         fi
         ;;
-        echo "2. ./scripts/advanced-security-setup.sh  - Advanced Security Setup"
+    4)
         print_header "Custom Setup Instructions"
         echo -e "${CYAN}Available scripts:${NC}"
         echo "1. ./scripts/secure-server-setup.sh      - Basic security and server setup"
@@ -232,6 +232,7 @@ print_warning "3. Save the security reports - they contain important passwords"
 print_warning "4. Configure your .env file with actual API keys"
 print_warning "5. Create an admin user for the application"
 echo
+
 if [[ "$DOMAIN_TYPE" == "public" ]]; then
     print_info "Your application should be available at: http://$DOMAIN"
     print_info "Admin panel: http://$DOMAIN/admin"
@@ -239,7 +240,6 @@ if [[ "$DOMAIN_TYPE" == "public" ]]; then
 else
     print_info "Your application should be available at: http://localhost"
     print_info "Admin panel: http://localhost/admin"
-fi
 fi
 
 print_success "Thank you for using 1000proxy secure setup!"
