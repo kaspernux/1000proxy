@@ -80,6 +80,19 @@ if [[ ! -d "/var/www" ]]; then
     print_success "/var/www directory created"
 fi
 
+echo -e "${YELLOW}Press 1 to retrieve and display default configuration values...${NC}"
+read -r USER_INPUT
+if [[ "$USER_INPUT" == "1" ]]; then
+    echo -e "${CYAN}Default Configuration Values:${NC}"
+    echo "PROJECT_NAME: $PROJECT_NAME"
+    echo "PROJECT_USER: $PROJECT_USER"
+    echo "PROJECT_DIR: $PROJECT_DIR"
+    echo "DOMAIN: $DOMAIN"
+    echo "EMAIL: $EMAIL"
+    echo "DB_PASSWORD: $DB_PASSWORD"
+    echo "REDIS_PASSWORD: $REDIS_PASSWORD"
+fi
+
 # =============================================================================
 # 1. System Update and Basic Hardening
 # =============================================================================
@@ -125,7 +138,7 @@ ESSENTIAL_PACKAGES=(
 )
 FAILED_PACKAGES=()
 for pkg in "${ESSENTIAL_PACKAGES[@]}"; do
-    if ! apt-get install -y "$pkg"; then
+    if ! DEBIAN_FRONTEND=noninteractive apt-get install -y "$pkg"; then
         print_warning "Package $pkg failed to install. Please install it manually."
         FAILED_PACKAGES+=("$pkg")
     fi
@@ -465,7 +478,7 @@ add-apt-repository ppa:ondrej/php -y
 apt-get update
 
 # Install PHP 8.3 and extensions
-apt-get install -y \
+DEBIAN_FRONTEND=noninteractive apt-get install -y \
     php8.3 \
     php8.3-fpm \
     php8.3-cli \
@@ -716,7 +729,7 @@ if systemctl is-active --quiet mysql; then
     # Drop the default test database to prevent unauthorized access
     mysql --execute="DROP DATABASE IF EXISTS test;"
     # Create the 1000proxy user with a strong password and restrict access to localhost
-    ESCAPED_DB_PASSWORD=$(printf '%s' "$DB_PASSWORD" | sed "s/'/''/g")
+    ESCAPED_DB_PASSWORD=$(printf '%s' "$DB_PASSWORD" | sed "s|'|''|g")
     mysql --execute="CREATE USER IF NOT EXISTS '1000proxy'@'localhost' IDENTIFIED WITH 'caching_sha2_password' BY '$ESCAPED_DB_PASSWORD';"
     # Create the 1000proxy database with secure character set and collation
     mysql --execute="CREATE DATABASE IF NOT EXISTS \`1000proxy\` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
@@ -757,7 +770,7 @@ print_success "Redis configured securely"
 print_header "Additional Security Tools Installation"
 
 # Fix ClamAV installation for Ubuntu 24.04
-apt-get install -y clamav clamav-daemon clamav-freshclam || {
+DEBIAN_FRONTEND=noninteractive apt-get install -y clamav clamav-daemon clamav-freshclam || {
     print_error "ClamAV installation failed. Attempting to fix..."
     apt-get -f install -y
     apt-get install -y clamav clamav-daemon clamav-freshclam || exit 1
@@ -784,7 +797,7 @@ systemctl enable clamav-daemon
 systemctl start clamav-daemon
 
 # Install and configure AIDE (Advanced Intrusion Detection Environment)
-apt-get install -y aide || {
+DEBIAN_FRONTEND=noninteractive apt-get install -y aide || {
     print_error "AIDE installation failed."; exit 1;
 }
 aideinit || {
@@ -793,7 +806,7 @@ aideinit || {
 cp /var/lib/aide/aide.db.new /var/lib/aide/aide.db
 
 # Ensure mail utility is installed for cron notifications
-apt-get install -y mailutils
+DEBIAN_FRONTEND=noninteractive apt-get install -y mailutils
 
 # Create daily AIDE check
 cat > /etc/cron.daily/aide-check << 'EOF'
@@ -804,7 +817,7 @@ chmod +x /etc/cron.daily/aide-check
 
 # Install and configure rkhunter
 
-apt-get install -y rkhunter || {
+DEBIAN_FRONTEND=noninteractive apt-get install -y rkhunter || {
     print_error "rkhunter installation failed."; exit 1;
 }
 
@@ -925,12 +938,12 @@ print_success "Project directory configured"
 # =============================================================================
 print_header "Environment Configuration"
 
-# Copy .env.production to .env
-if [[ -f "$PROJECT_DIR/.env.production" ]]; then
-    cp --preserve=mode,ownership "$PROJECT_DIR/.env.production" "$PROJECT_DIR/.env"
-    print_success ".env.production copied to .env"
+# Copy .env.example to .env
+if [[ -f "$PROJECT_DIR/.env.example" ]]; then
+    cp --preserve=mode,ownership "$PROJECT_DIR/.env.example" "$PROJECT_DIR/.env"
+    print_success ".env.example copied to .env"
 else
-    print_warning ".env.production not found, skipping copy"
+    print_warning ".env.example not found, skipping copy"
 fi
 
 if [[ -f "$PROJECT_DIR/.env" ]]; then
@@ -951,7 +964,7 @@ fi
 print_header "Security Monitoring Setup"
 
 # Install logwatch
-apt-get install -y logwatch
+DEBIAN_FRONTEND=noninteractive apt-get install -y logwatch
 
 # Ensure logwatch config directory exists
 mkdir -p /etc/logwatch/conf
@@ -1101,7 +1114,6 @@ chmod 700 /usr/local/bin/backup-1000proxy.sh
 # Schedule daily backups at 2 AM, avoiding duplicate entries
 CRON_BACKUP_JOB="0 2 * * * /usr/local/bin/backup-1000proxy.sh"
 ( crontab -l 2>/dev/null | grep -v "/usr/local/bin/backup-1000proxy.sh"; echo "$CRON_BACKUP_JOB" ) | crontab -
-
 print_success "Backup system configured"
 
 # =============================================================================
@@ -1110,7 +1122,7 @@ print_success "Backup system configured"
 print_header "Process Monitoring Setup"
 
 # Install htop, iotop, nethogs for monitoring (ignore errors if already installed)
-apt-get install -y htop iotop nethogs || print_warning "Some monitoring tools failed to install"
+DEBIAN_FRONTEND=noninteractive apt-get install -y htop iotop nethogs || print_warning "Some monitoring tools failed to install"
 
 # Configure process limits
 cat > /etc/security/limits.d/1000proxy.conf << EOF
@@ -1190,10 +1202,10 @@ systemctl disable --now cups 2>/dev/null || true
 systemctl disable --now avahi-daemon 2>/dev/null || true
 
 # Set secure permissions on sensitive files
-chmod 600 /etc/shadow || true
-chmod 600 /etc/gshadow || true
-chmod 644 /etc/passwd || true
-chmod 644 /etc/group || true
+chmod 600 /etc/shadow 2>/dev/null || true
+chmod 600 /etc/gshadow 2>/dev/null || true
+chmod 644 /etc/passwd 2>/dev/null || true
+chmod 644 /etc/group 2>/dev/null || true
 
 # Disable core dumps
 echo "* hard core 0" >> /etc/security/limits.conf
