@@ -1097,13 +1097,19 @@ print_success "Security monitoring configured"
 # =============================================================================
 print_header "Backup System Setup"
 
-# Create backup directory
-mkdir -p /var/backups/1000proxy
-chown root:root /var/backups/1000proxy
-chmod 700 /var/backups/1000proxy
+
+# Create backup directory with error handling
+if ! mkdir -p /var/backups/1000proxy; then
+    print_error "Failed to create /var/backups/1000proxy directory."; exit 1;
+fi
+if ! chown root:root /var/backups/1000proxy; then
+    print_error "Failed to set ownership on /var/backups/1000proxy."; exit 1;
+fi
+if ! chmod 700 /var/backups/1000proxy; then
+    print_error "Failed to set permissions on /var/backups/1000proxy."; exit 1;
+fi
 
 # Create backup script (use bash strict mode, error handling, and logging)
-
 cat > /usr/local/bin/backup-1000proxy.sh << 'EOF'
 #!/bin/bash
 set -euo pipefail
@@ -1113,7 +1119,7 @@ DATE="$(date +%Y%m%d_%H%M%S)"
 PROJECT_DIR="/var/www/1000proxy"
 LOG_FILE="/var/log/backup-1000proxy.log"
 
-mkdir -p "$BACKUP_DIR/$DATE"
+mkdir -p "$BACKUP_DIR/$DATE" || { echo "Failed to create backup subdirectory at $(date)" >>"$LOG_FILE"; exit 1; }
 
 # Backup database (MySQL)
 if command -v mysqldump &>/dev/null; then
@@ -1158,11 +1164,13 @@ chown -R root:root "$BACKUP_DIR/$DATE"/* || true
 echo "Backup completed: $BACKUP_DIR/$DATE at $(date)" >>"$LOG_FILE"
 EOF
 
-chmod 700 /usr/local/bin/backup-1000proxy.sh
+chmod 700 /usr/local/bin/backup-1000proxy.sh || { print_error "Failed to set permissions on backup script."; exit 1; }
 
 # Schedule daily backups at 2 AM, avoiding duplicate entries
 CRON_BACKUP_JOB="0 2 * * * /usr/local/bin/backup-1000proxy.sh"
-( crontab -l 2>/dev/null | grep -v "/usr/local/bin/backup-1000proxy.sh"; echo "$CRON_BACKUP_JOB" ) | crontab -
+if ! ( crontab -l 2>/dev/null | grep -v "/usr/local/bin/backup-1000proxy.sh"; echo "$CRON_BACKUP_JOB" ) | crontab -; then
+    print_error "Failed to schedule backup cron job."; exit 1;
+fi
 print_success "Backup system configured"
 
 # =============================================================================
