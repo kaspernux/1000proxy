@@ -59,7 +59,7 @@ fi
 if [[ -n "$ENV_FILE" ]]; then
     set -a
     # Only source lines that are valid KEY=VALUE assignments, no quotes, no $, no spaces, not JSON blocks
-    grep -E "^[A-Za-z_][A-Za-z0-9_]*=[^\"'[:space:]\$]+$" "$ENV_FILE" | grep -v '^#' | grep -v '^$' > /tmp/1000proxy_env.tmp
+    grep -E "^[A-Za-z_][A-Za-z0-9_]*=[^'\"$[:space:]]+$" "$ENV_FILE" | grep -v '^#' | grep -v '^$' > /tmp/1000proxy_env.tmp
     source /tmp/1000proxy_env.tmp
     rm /tmp/1000proxy_env.tmp
     set +a
