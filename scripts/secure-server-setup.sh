@@ -24,11 +24,17 @@ NC='\033[0m' # No Color
 
 # Configuration
 
-# Load .env values if .env exists
-if [[ -f "/var/www/1000proxy/.env" ]]; then
+# Load environment variables from .env.example or .env.production only
+if [[ -f "/var/www/1000proxy/.env.production" ]]; then
     set -a
-    source /var/www/1000proxy/.env
+    source /var/www/1000proxy/.env.production
     set +a
+elif [[ -f "/var/www/1000proxy/.env.example" ]]; then
+    set -a
+    source /var/www/1000proxy/.env.example
+    set +a
+else
+    print_warning "No .env.production or .env.example found in /var/www/1000proxy. Using script defaults."
 fi
 
 PROJECT_NAME="${APP_NAME:-1000proxy}"
@@ -88,18 +94,16 @@ if [[ ! -d "/var/www" ]]; then
     print_success "/var/www directory created"
 fi
 
-echo -e "${YELLOW}Press 1 to retrieve and display default configuration values...${NC}"
-read -r USER_INPUT
-if [[ "$USER_INPUT" == "1" ]]; then
-    echo -e "${CYAN}Default Configuration Values:${NC}"
-    echo "PROJECT_NAME: $PROJECT_NAME"
-    echo "PROJECT_USER: $PROJECT_USER"
-    echo "PROJECT_DIR: $PROJECT_DIR"
-    echo "DOMAIN: $DOMAIN"
-    echo "EMAIL: $EMAIL"
-    echo "DB_PASSWORD: $DB_PASSWORD"
-    echo "REDIS_PASSWORD: $REDIS_PASSWORD"
-fi
+
+# Always print loaded environment domain name and email by default
+echo -e "${CYAN}Loaded Environment Configuration:${NC}"
+echo "DOMAIN: $DOMAIN"
+echo "EMAIL: $EMAIL"
+echo "PROJECT_NAME: $PROJECT_NAME"
+echo "PROJECT_USER: $PROJECT_USER"
+echo "PROJECT_DIR: $PROJECT_DIR"
+echo "DB_PASSWORD: $DB_PASSWORD"
+echo "REDIS_PASSWORD: $REDIS_PASSWORD"
 
 # =============================================================================
 # 1. System Update and Basic Hardening
