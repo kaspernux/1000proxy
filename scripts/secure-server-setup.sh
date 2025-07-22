@@ -198,12 +198,16 @@ print_success "Automatic security updates configured"
 print_header "User Management and SSH Hardening"
 
 # Create project user
-useradd -m -s /bin/bash -G sudo "$PROJECT_USER" 2>/dev/null || print_warning "User $PROJECT_USER already exists"
+if id "$PROJECT_USER" &>/dev/null; then
+    print_warning "User $PROJECT_USER already exists"
+else
+    useradd -m -s /bin/bash -G sudo "$PROJECT_USER"
+fi
 usermod -aG www-data "$PROJECT_USER"
 
-# Assign password to the user @Lysianne7
-echo "@Lysianne7:$(openssl rand -base64 16)" | chpasswd
-print_success "Password assigned to user @Lysianne7"
+# Assign password to the project user (do not use '@' in username)
+echo "$PROJECT_USER:Pass1000" | chpasswd
+print_success "Password assigned to user $PROJECT_USER"
 
 # Generate SSH key for project user
 if [[ ! -f "/home/$PROJECT_USER/.ssh/id_rsa" ]]; then
