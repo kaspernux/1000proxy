@@ -221,7 +221,6 @@ else
     print_warning "$PROJECT_DIR/scripts directory not found"
 fi
 
-
 # Assign password to the project user (do not use '@' in username)
 echo "$PROJECT_USER:Pass1000" | chpasswd
 print_success "Password assigned to user $PROJECT_USER"
@@ -889,19 +888,30 @@ for key in "${!RKHUNTER_OPTS[@]}"; do
 done
 
 # Run rkhunter update and log output for troubleshooting
+# Check rkhunter config for WEB_CMD and log update issues
+if grep -q '^WEB_CMD=/usr/bin/false' "$RKHUNTER_CONF"; then
+    print_success "rkhunter WEB_CMD is set to /usr/bin/false (recommended)"
+else
+    print_warning "rkhunter WEB_CMD is not set to /usr/bin/false. Please update $RKHUNTER_CONF."
+fi
+
 print_info "Running rkhunter --update (output will be logged to /var/log/rkhunter-update.log)"
-rkhunter --update > /var/log/rkhunter-update.log 2>&1 || {
-    print_error "rkhunter update failed. See /var/log/rkhunter-update.log for details."
+rkhunter --update > /var/log/rkhunter-update.log 2>&1
+if grep -i 'error\|warning' /var/log/rkhunter-update.log; then
+    print_error "rkhunter update encountered issues. See /var/log/rkhunter-update.log for details."
     print_warning "Check WEB_CMD in /etc/rkhunter.conf is set to /usr/bin/false. If the error persists, review network connectivity and mirror availability."
     print_warning "You may manually run: rkhunter --update --debug for more info."
-    # Do not exit; allow setup to continue
-}
+else
+    print_success "rkhunter updated successfully."
+fi
 
 print_info "Running rkhunter --propupd (output will be logged to /var/log/rkhunter-propupd.log)"
-rkhunter --propupd > /var/log/rkhunter-propupd.log 2>&1 || {
-    print_error "rkhunter propupd failed. See /var/log/rkhunter-propupd.log for details."
-    # Do not exit; allow setup to continue
-}
+rkhunter --propupd > /var/log/rkhunter-propupd.log 2>&1
+if grep -i 'error\|warning' /var/log/rkhunter-propupd.log; then
+    print_error "rkhunter propupd encountered issues. See /var/log/rkhunter-propupd.log for details."
+else
+    print_success "rkhunter propupd completed successfully."
+fi
 
 # Create daily rkhunter scan cron job
 cat > /etc/cron.daily/rkhunter-scan << 'EOF'
@@ -985,7 +995,12 @@ if [[ ! -d "$PROJECT_DIR" ]]; then
 fi
 
 # Ensure ownership and permissions for Laravel
-chown -R "$PROJECT_USER:www-data" "$PROJECT_DIR"
+if id "$PROJECT_USER" &>/dev/null && getent group www-data &>/dev/null; then
+    chown -R "$PROJECT_USER:www-data" "$PROJECT_DIR"
+    print_success "Ownership set to $PROJECT_USER:www-data for $PROJECT_DIR"
+else
+    print_warning "User $PROJECT_USER or group www-data does not exist, skipping chown for $PROJECT_DIR"
+fi
 chmod 755 "$PROJECT_DIR"
 
 # Laravel required directories:
@@ -997,7 +1012,12 @@ sudo -u "$PROJECT_USER" mkdir -p "$PROJECT_DIR"/storage/framework/{cache,session
 find "$PROJECT_DIR" -type f -exec chmod 644 {} +
 find "$PROJECT_DIR" -type d -exec chmod 755 {} +
 chmod -R 775 "$PROJECT_DIR"/storage "$PROJECT_DIR"/bootstrap/cache
-chown -R "$PROJECT_USER:www-data" "$PROJECT_DIR"
+if id "$PROJECT_USER" &>/dev/null && getent group www-data &>/dev/null; then
+    chown -R "$PROJECT_USER:www-data" "$PROJECT_DIR"
+    print_success "Ownership set to $PROJECT_USER:www-data for $PROJECT_DIR"
+else
+    print_warning "User $PROJECT_USER or group www-data does not exist, skipping chown for $PROJECT_DIR"
+fi
 print_success "Project directory configured"
 
 # =============================================================================
@@ -1014,11 +1034,12 @@ else
 fi
 
 if [[ -f "$PROJECT_DIR/.env" ]]; then
-    chown "$PROJECT_USER:www-data" "$PROJECT_DIR/.env"
-    # Set .env permissions to 640 for security: readable only by owner and group (no world access)
-    chmod 640 "$PROJECT_DIR/.env"
-    print_success "Environment file created"
+    if id "$PROJECT_USER" &>/dev/null && getent group www-data &>/dev/null; then
+        chown "$PROJECT_USER:www-data" "$PROJECT_DIR/.env"
+        print_success "Ownership set to $PROJECT_USER:www-data for .env"
+    else
         print_warning "User $PROJECT_USER or group www-data does not exist, skipping chown for .env"
+    fi
     chmod 640 "$PROJECT_DIR/.env"
     print_success "Environment file permissions set"
 else
