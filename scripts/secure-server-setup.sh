@@ -861,7 +861,7 @@ EOF
 chmod +x /etc/cron.daily/aide-check
 
 # Install rkhunter prerequisites
-DEBIAN_FRONTEND=noninteractive apt-get install -y binutils libreadline5 libruby ruby ssl-cert unhide.rb mailutils wget || {
+DEBIAN_FRONTEND=noninteractive apt-get install -y binutils readline-common libruby ruby ssl-cert unhide.rb mailutils wget || {
     print_error "rkhunter prerequisites installation failed."; exit 1;
 }
 
