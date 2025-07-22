@@ -175,6 +175,8 @@ print_success "ModSecurity WAF configured"
 # =============================================================================
 print_header "Advanced DDoS Protection"
 
+# Ensure /etc/iptables directory exists before writing rules
+mkdir -p /etc/iptables
 # Create iptables rules for DDoS protection
 cat > /etc/iptables/ddos-protection.rules << 'EOF'
 # DDoS Protection Rules

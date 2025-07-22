@@ -96,14 +96,14 @@ fi
 # Configuration options
 print_header "Configuration Options"
 
-read -p "Enter your domain name (or press Enter for localhost): " DOMAIN
-DOMAIN=${DOMAIN:-localhost}
+read -p "Enter your domain name (or press Enter for default): " DOMAIN
+DOMAIN="${DOMAIN:-1000proxy.io}"
 
-read -p "Enter your email address: " EMAIL
-EMAIL=${EMAIL:-admin@${DOMAIN}}
+read -p "Enter your email address (or press Enter for default): " EMAIL
+EMAIL="${EMAIL:-admin@1000proxy.io}"
 
 read -p "Enter repository URL (or press Enter for default): " REPO_URL
-REPO_URL=${REPO_URL:-https://github.com/kaspernux/1000proxy.git}
+REPO_URL="${REPO_URL:-https://github.com/kaspernux/1000proxy.git}"
 
 # Export variables
 export DOMAIN="$DOMAIN"
@@ -137,7 +137,11 @@ case $choice in
             ./scripts/secure-server-setup.sh
 
             print_info "Step 2/3: Advanced Security Setup"
-            ./scripts/advanced-security-setup.sh
+            if [[ -x "./scripts/advanced-security-setup.sh" ]]; then
+                ./scripts/advanced-security-setup.sh
+            else
+                print_warning "scripts/advanced-security-setup.sh not found or not executable, skipping advanced security setup."
+            fi
 
             print_info "Step 3/3: Application Deployment"
             ./scripts/deploy-1000proxy.sh
@@ -163,8 +167,13 @@ case $choice in
             print_info "Setup cancelled"
         fi
         ;;
-    3)
-        print_header "Starting Application Deployment"
+            if [[ -x "./scripts/deploy-1000proxy.sh" ]]; then
+                ./scripts/deploy-1000proxy.sh
+                print_success "Application deployment finished!"
+            else
+                print_error "./scripts/deploy-1000proxy.sh not found or not executable!"
+                exit 1
+            fi
         read -p "Continue? (y/N): " confirm
         if [[ $confirm =~ ^[Yy]$ ]]; then
             ./scripts/deploy-1000proxy.sh
@@ -212,13 +221,15 @@ echo
 print_warning "IMPORTANT REMINDERS:"
 print_warning "1. SSH is now on port 2222 (not 22)"
 print_warning "2. Root login is disabled - use 'proxy1000' user with sudo"
+print_warning "   - The initial password for 'proxy1000' is saved in /root/1000proxy-security-report.txt"
+print_warning "   - If you lose the password, reset it with: sudo passwd proxy1000"
 print_warning "3. Save the security reports - they contain important passwords"
 print_warning "4. Configure your .env file with actual API keys"
 print_warning "5. Create an admin user for the application"
 echo
-
-if [[ "$DOMAIN" != "localhost" ]]; then
-    print_info "Your application should be available at: https://$DOMAIN"
+    print_info "Your application should be available at: http://$DOMAIN"
+    print_info "Admin panel: http://$DOMAIN/admin"
+fi
     print_info "Admin panel: https://$DOMAIN/admin"
 else
     print_info "Your application should be available at: http://localhost"

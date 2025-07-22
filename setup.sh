@@ -68,7 +68,7 @@ if [[ -d "scripts" ]]; then
     if ! find scripts -type f -name "*.sh" ! -executable | grep -q .; then
         print_info "Scripts already executable. Skipping chmod."
     else
-        chmod +x scripts/*.sh
+        sudo chmod +x ./scripts/*.sh
         print_success "Made all scripts executable"
     fi
 else
