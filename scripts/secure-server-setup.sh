@@ -59,8 +59,8 @@ fi
 
 if [[ -n "$ENV_FILE" ]]; then
     set -a
-    # Only source lines that are valid KEY=VALUE assignments
-    grep -E '^[A-Za-z_][A-Za-z0-9_]*=.*' "$ENV_FILE" > /tmp/1000proxy_env.tmp
+    # Only source lines that are valid KEY=VALUE assignments, no spaces, no shell expansions, no comments
+    awk -F= 'NF==2 && $1 ~ /^[A-Za-z_][A-Za-z0-9_]*$/ && $2 !~ /\$/ && $2 !~ /^$/ {print $0}' "$ENV_FILE" | grep -v '^#' | grep -v '^$' > /tmp/1000proxy_env.tmp
     source /tmp/1000proxy_env.tmp
     rm /tmp/1000proxy_env.tmp
     set +a
