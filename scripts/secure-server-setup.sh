@@ -22,8 +22,32 @@ PURPLE='\033[0;35m'
 CYAN='\033[0;36m'
 NC='\033[0m' # No Color
 
-# Configuration
 
+# Output functions (must be defined before any usage)
+print_header() {
+    echo -e "${BLUE}============================================================${NC}"
+    echo -e "${BLUE} $1 ${NC}"
+    echo -e "${BLUE}============================================================${NC}"
+}
+
+print_success() {
+    echo -e "${GREEN}✓ $1${NC}"
+}
+
+print_warning() {
+    echo -e "${YELLOW}⚠ $1${NC}"
+}
+
+print_error() {
+    echo -e "${RED}✗ $1${NC}"
+    SETUP_ERRORS+=("$1")
+}
+
+print_info() {
+    echo -e "${CYAN}ℹ $1${NC}"
+}
+
+# Configuration
 
 # Load environment variables from .env.example or .env.production only (safe parsing)
 ENV_FILE=""
