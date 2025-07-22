@@ -98,6 +98,12 @@ print_header "Configuration Options"
 
 read -p "Enter your domain name (or press Enter for default): " DOMAIN
 DOMAIN="${DOMAIN:-1000proxy.io}"
+if [[ "$DOMAIN" == "localhost" || "$DOMAIN" == "127.0.0.1" || "$DOMAIN" == "::1" ]]; then
+    DOMAIN_TYPE="local"
+else
+    DOMAIN_TYPE="public"
+fi
+print_info "Note: For local setups, use 'localhost', '127.0.0.1', or '::1' as your domain."
 
 read -p "Enter your email address (or press Enter for default): " EMAIL
 EMAIL="${EMAIL:-admin@1000proxy.io}"
@@ -159,7 +165,11 @@ case $choice in
             ./scripts/secure-server-setup.sh
 
             print_info "Step 2/2: Advanced Security Setup"
-            ./scripts/advanced-security-setup.sh
+            if [[ -x "./scripts/advanced-security-setup.sh" ]]; then
+                ./scripts/advanced-security-setup.sh
+            else
+                print_warning "scripts/advanced-security-setup.sh not found or not executable, skipping advanced security setup."
+            fi
 
             print_success "Security setup finished!"
             print_info "Run './scripts/deploy-1000proxy.sh' later to deploy the application"
@@ -177,7 +187,7 @@ case $choice in
             exit 1
         fi
         ;;
-    4)
+        echo "2. ./scripts/advanced-security-setup.sh  - Advanced Security Setup"
         print_header "Custom Setup Instructions"
         echo -e "${CYAN}Available scripts:${NC}"
         echo "1. ./scripts/secure-server-setup.sh      - Basic security and server setup"
@@ -222,13 +232,14 @@ print_warning "3. Save the security reports - they contain important passwords"
 print_warning "4. Configure your .env file with actual API keys"
 print_warning "5. Create an admin user for the application"
 echo
-if [[ "$DOMAIN" != "localhost" ]]; then
+if [[ "$DOMAIN_TYPE" == "public" ]]; then
     print_info "Your application should be available at: http://$DOMAIN"
     print_info "Admin panel: http://$DOMAIN/admin"
     print_info "Admin panel: https://$DOMAIN/admin"
 else
     print_info "Your application should be available at: http://localhost"
     print_info "Admin panel: http://localhost/admin"
+fi
 fi
 
 print_success "Thank you for using 1000proxy secure setup!"
