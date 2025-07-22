@@ -23,13 +23,21 @@ CYAN='\033[0;36m'
 NC='\033[0m' # No Color
 
 # Configuration
-PROJECT_NAME="1000proxy"
+
+# Load .env values if .env exists
+if [[ -f "/var/www/1000proxy/.env" ]]; then
+    set -a
+    source /var/www/1000proxy/.env
+    set +a
+fi
+
+PROJECT_NAME="${APP_NAME:-1000proxy}"
 PROJECT_USER="proxy1000"
 PROJECT_DIR="/var/www/1000proxy"
-DOMAIN="${DOMAIN:-test.1000proxy.io}"
-EMAIL="${EMAIL:-admin@test.1000proxy.io}"
-DB_PASSWORD="${DB_PASSWORD:-$(openssl rand -base64 32)}"
-REDIS_PASSWORD="${REDIS_PASSWORD:-$(openssl rand -base64 32)}"
+DOMAIN="${APP_URL:-test.1000proxy.io}"
+EMAIL="${MAIL_FROM_ADDRESS:-admin@test.1000proxy.io}"
+DB_PASSWORD="${DB_PASSWORD:-Dat@1000proxy}"
+REDIS_PASSWORD="${REDIS_PASSWORD:-red@1000proxy}"
 
 # Logging
 LOG_FILE="/var/log/1000proxy-setup.log"
@@ -754,8 +762,10 @@ sudo apt-get update
 sudo apt-get install redis -y
 
 # Set Redis password securely in redis.conf (replace or add requirepass)
+
+# Always override Redis password from .env, even if already installed
 if grep -q "^requirepass " /etc/redis/redis.conf; then
-    sudo sed -i "s/^requirepass .*/requirepass ${REDIS_PASSWORD}/" /etc/redis/redis.conf
+    sudo sed -i "s|^requirepass .*|requirepass ${REDIS_PASSWORD}|" /etc/redis/redis.conf
 else
     echo "requirepass ${REDIS_PASSWORD}" | sudo tee -a /etc/redis/redis.conf > /dev/null
 fi
