@@ -816,44 +816,52 @@ systemctl enable clamav-freshclam
 systemctl enable clamav-daemon
 systemctl start clamav-daemon
 
-# Install and configure AIDE (Advanced Intrusion Detection Environment)
 
-# Install rkhunter and configure fallback mirror
+# Install and configure AIDE (Advanced Intrusion Detection Environment)
+DEBIAN_FRONTEND=noninteractive apt-get install -y aide || {
+    print_error "AIDE installation failed."; exit 1;
+}
+aideinit || {
+    print_error "AIDE initialization failed."; exit 1;
+}
+cp /var/lib/aide/aide.db.new /var/lib/aide/aide.db
+
+# Ensure mail utility is installed for cron notifications
+DEBIAN_FRONTEND=noninteractive apt-get install -y mailutils
+
+# Create daily AIDE check
+cat > /etc/cron.daily/aide-check << 'EOF'
+#!/bin/bash
+/usr/bin/aide --check | /usr/bin/mail -s "AIDE Report $(hostname)" root
+EOF
+chmod +x /etc/cron.daily/aide-check
+
+# Install and configure rkhunter
+
 DEBIAN_FRONTEND=noninteractive apt-get install -y rkhunter || {
     print_error "rkhunter installation failed."; exit 1;
 }
 
-# Set WEB_CMD to /usr/bin/false for security
-if grep -q '^WEB_CMD=' /etc/rkhunter.conf; then
-    sed -i 's|^WEB_CMD=.*|WEB_CMD=/usr/bin/false|' /etc/rkhunter.conf
-else
-    echo 'WEB_CMD=/usr/bin/false' >> /etc/rkhunter.conf
-fi
-
-# Use fallback mirror if update fails
-print_info "Running rkhunter --update (output will be logged to /var/log/rkhunter-update.log)"
-rkhunter --update > /var/log/rkhunter-update.log 2>&1 || {
-    print_warning "rkhunter update failed. Trying fallback mirror..."
-    sed -i 's|^MIRRORS_MODE=.*|MIRRORS_MODE=0|' /etc/rkhunter.conf
-    sed -i 's|^UPDATE_MIRRORS=.*|UPDATE_MIRRORS=1|' /etc/rkhunter.conf
-    rkhunter --update --debug >> /var/log/rkhunter-update.log 2>&1 || {
-        print_error "rkhunter update failed after fallback. See /var/log/rkhunter-update.log for details."
-    }
-}
-
-print_info "Running rkhunter --propupd (output will be logged to /var/log/rkhunter-propupd.log)"
-rkhunter --propupd > /var/log/rkhunter-propupd.log 2>&1 || {
-    print_error "rkhunter propupd failed. See /var/log/rkhunter-propupd.log for details."
-    # Do not exit; allow setup to continue
-}
-    print_error "rkhunter installation failed."; exit 1;
-}
-
-if grep -q '^WEB_CMD=' /etc/rkhunter.conf; then
-    sed -i 's|^WEB_CMD=.*|WEB_CMD=/usr/bin/false|' /etc/rkhunter.conf
-else
-    echo 'WEB_CMD=/usr/bin/false' >> /etc/rkhunter.conf
-fi
+# Update rkhunter configuration with recommended options
+RKHUNTER_CONF="/etc/rkhunter.conf"
+declare -A RKHUNTER_OPTS=(
+    ["UPDATE_MIRRORS"]="1"
+    ["CRON_DAILY_RUN"]="true"
+    ["REPORT_EMAIL"]="$EMAIL"
+    ["ALLOW_SSH_ROOT_USER"]="no"
+    ["ALLOW_SSH_PROT_V1"]="2"
+    ["ALLOW_SYSLOG_REMOTE"]="no"
+    ["USE_SYSLOG"]="authpriv.notice"
+    ["WEB_CMD"]="/usr/bin/false"
+)
+for key in "${!RKHUNTER_OPTS[@]}"; do
+    value="${RKHUNTER_OPTS[$key]}"
+    if grep -q "^$key=" "$RKHUNTER_CONF"; then
+        sed -i "s|^$key=.*|$key=$value|" "$RKHUNTER_CONF"
+    else
+        echo "$key=$value" >> "$RKHUNTER_CONF"
+    fi
+done
 
 # Run rkhunter update and log output for troubleshooting
 print_info "Running rkhunter --update (output will be logged to /var/log/rkhunter-update.log)"
@@ -870,14 +878,20 @@ rkhunter --propupd > /var/log/rkhunter-propupd.log 2>&1 || {
     # Do not exit; allow setup to continue
 }
 
-# Create weekly rkhunter scan
-cat > /etc/cron.weekly/rkhunter-scan << 'EOF'
-# To change the recipient of the RKHunter report, replace 'root' with your desired email address below.
-# You can also customize the subject or mail command as needed.
-/usr/bin/rkhunter --check --skip-keypress --report-warnings-only | /usr/bin/mail -s "RKHunter Report $(hostname)" root
-/usr/bin/rkhunter --check --skip-keypress --report-warnings-only | /usr/bin/mail -s "RKHunter Report $(hostname)" root
+# Create daily rkhunter scan cron job
+cat > /etc/cron.daily/rkhunter-scan << 'EOF'
+#!/bin/bash
+/usr/bin/rkhunter --cronjob --update --quiet
 EOF
-chmod +x /etc/cron.weekly/rkhunter-scan
+chmod +x /etc/cron.daily/rkhunter-scan
+
+# Create weekly rkhunter scan report to email
+cat > /etc/cron.weekly/rkhunter-report << EOF
+#!/bin/bash
+/usr/bin/rkhunter --check --skip-keypress --report-warnings-only | /usr/bin/mail -s "RKHunter Report $(hostname)" $EMAIL
+EOF
+chmod +x /etc/cron.weekly/rkhunter-report
+
 
 print_success "Additional security tools installed"
 
