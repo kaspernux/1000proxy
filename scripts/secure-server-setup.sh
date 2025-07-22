@@ -861,53 +861,44 @@ EOF
 chmod +x /etc/cron.daily/aide-check
 
 # Install rkhunter prerequisites
-RKHUNTER_PREREQS=(binutils readline-common libruby ruby ssl-cert unhide.rb mailutils wget)
-for pkg in "${RKHUNTER_PREREQS[@]}"; do
-    if ! dpkg -s "$pkg" &>/dev/null; then
-        if ! DEBIAN_FRONTEND=noninteractive apt-get install -y "$pkg"; then
-            print_error "rkhunter prerequisite $pkg installation failed."; exit 1;
-        fi
-    fi
-done
+# Install rkhunter from Ubuntu repository (recommended for Ubuntu 24.04)
+DEBIAN_FRONTEND=noninteractive apt-get install -y rkhunter || {
+    print_error "rkhunter installation failed."; exit 1;
+}
 
-# Download and install rkhunter from sourceforge (latest stable version)
-
-# Use latest available rkhunter version (1.4.6)
-cd /tmp
-RKHUNTER_VERSION="1.4.6"
-RKHUNTER_TARBALL="rkhunter-${RKHUNTER_VERSION}.tar.gz"
-RKHUNTER_URL="https://netix.dl.sourceforge.net/project/rkhunter/rkhunter/${RKHUNTER_VERSION}/${RKHUNTER_TARBALL}?viasf=1"
-if wget "$RKHUNTER_URL"; then
-    tar xzvf "$RKHUNTER_TARBALL"
-    cd "rkhunter-${RKHUNTER_VERSION}"
-    ./installer.sh --layout /usr --install
-    print_success "rkhunter ${RKHUNTER_VERSION} installed from source"
-else
-    print_error "Failed to download rkhunter from $RKHUNTER_URL. Please check the URL or download manually."
-    exit 1
-fi
-
-print_success "rkhunter installed from source"
-
-# Update rkhunter configuration for email notifications and security
-RKHUNTER_CONF="/etc/rkhunter.conf"
-if grep -q "^MAIL-ON-WARNING=" "$RKHUNTER_CONF"; then
-    sed -i "s|^MAIL-ON-WARNING=.*|MAIL-ON-WARNING=$EMAIL|" "$RKHUNTER_CONF"
-else
-    echo "MAIL-ON-WARNING=$EMAIL" >> "$RKHUNTER_CONF"
-fi
-if grep -q "^WEB_CMD=" "$RKHUNTER_CONF"; then
-    sed -i "s|^WEB_CMD=.*|WEB_CMD=/usr/bin/false|" "$RKHUNTER_CONF"
-else
-    echo "WEB_CMD=/usr/bin/false" >> "$RKHUNTER_CONF"
-fi
-
-print_info "Running rkhunter --update (output will be logged to /var/log/rkhunter-update.log)"
+# Update rkhunter definitions
 rkhunter --update > /var/log/rkhunter-update.log 2>&1
 if grep -i 'error\|warning' /var/log/rkhunter-update.log; then
     print_error "rkhunter update encountered issues. See /var/log/rkhunter-update.log for details."
 else
     print_success "rkhunter updated successfully."
+fi
+
+# Fix WEB_CMD configuration if needed (set to empty string for Ubuntu)
+RKHUNTER_CONF="/etc/rkhunter.conf"
+if grep -q '^WEB_CMD=' "$RKHUNTER_CONF"; then
+    sed -i 's|^WEB_CMD=.*|WEB_CMD=""|' "$RKHUNTER_CONF"
+else
+    echo 'WEB_CMD=""' >> "$RKHUNTER_CONF"
+fi
+
+# Set email notification for warnings
+if grep -q "^MAIL-ON-WARNING=" "$RKHUNTER_CONF"; then
+    sed -i "s|^MAIL-ON-WARNING=.*|MAIL-ON-WARNING=$EMAIL|" "$RKHUNTER_CONF"
+else
+    echo "MAIL-ON-WARNING=$EMAIL" >> "$RKHUNTER_CONF"
+fi
+
+# Recommended mirror settings for updates
+if grep -q "^UPDATE_MIRRORS=" "$RKHUNTER_CONF"; then
+    sed -i "s|^UPDATE_MIRRORS=.*|UPDATE_MIRRORS=1|" "$RKHUNTER_CONF"
+else
+    echo "UPDATE_MIRRORS=1" >> "$RKHUNTER_CONF"
+fi
+if grep -q "^MIRRORS_MODE=" "$RKHUNTER_CONF"; then
+    sed -i "s|^MIRRORS_MODE=.*|MIRRORS_MODE=0|" "$RKHUNTER_CONF"
+else
+    echo "MIRRORS_MODE=0" >> "$RKHUNTER_CONF"
 fi
 
 print_info "Running rkhunter --propupd (output will be logged to /var/log/rkhunter-propupd.log)"
@@ -921,7 +912,7 @@ fi
 # Create daily rkhunter scan cron job
 cat > /etc/cron.daily/rkhunter-scan << 'EOF'
 #!/bin/bash
-/usr/bin/rkhunter --cronjob --update --quiet
+/usr/bin/rkhunter --cronjob --report-warnings-only --append-log
 EOF
 chmod +x /etc/cron.daily/rkhunter-scan
 
