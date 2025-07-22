@@ -28,13 +28,13 @@ This guide provides **comprehensive, enterprise-grade Ubuntu 24.04 server setup*
 
 ### 🎯 **Security Implementation**
 
-| Security Layer | Protection Level | Implementation |
-|:---------------|:---------------:|:---------------|
-| 🔥 **System Hardening** | ⭐⭐⭐⭐⭐ | Kernel tuning, service lockdown |
-| 🚪 **SSH Security** | ⭐⭐⭐⭐⭐ | Custom port, key-only auth |
-| 🛡️ **Firewall** | ⭐⭐⭐⭐⭐ | UFW + rate limiting |
-| 🚨 **Intrusion Detection** | ⭐⭐⭐⭐⭐ | Fail2Ban + OSSEC IDS |
-| 🔒 **Web Application** | ⭐⭐⭐⭐⭐ | ModSecurity + OWASP |
+| Security Layer             | Protection Level | Implementation                  |
+| :------------------------- | :--------------: | :------------------------------ |
+| 🔥 **System Hardening**    |    ⭐⭐⭐⭐⭐    | Kernel tuning, service lockdown |
+| 🚪 **SSH Security**        |    ⭐⭐⭐⭐⭐    | Custom port, key-only auth      |
+| 🛡️ **Firewall**            |    ⭐⭐⭐⭐⭐    | UFW + rate limiting             |
+| 🚨 **Intrusion Detection** |    ⭐⭐⭐⭐⭐    | Fail2Ban + OSSEC IDS            |
+| 🔒 **Web Application**     |    ⭐⭐⭐⭐⭐    | ModSecurity + OWASP             |
 
 </div>
 
@@ -45,21 +45,23 @@ This guide provides **comprehensive, enterprise-grade Ubuntu 24.04 server setup*
 <td width="50%">
 
 ### 🖥️ **System Requirements**
-- ✅ Fresh Ubuntu 24.04 LTS Server
-- ✅ Minimum 2GB RAM (4GB+ recommended)
-- ✅ 20GB+ storage space
-- ✅ Root or sudo access
-- ✅ Internet connectivity
+
+-   ✅ Fresh Ubuntu 24.04 LTS Server
+-   ✅ Minimum 2GB RAM (4GB+ recommended)
+-   ✅ 20GB+ storage space
+-   ✅ Root or sudo access
+-   ✅ Internet connectivity
 
 </td>
 <td width="50%">
 
 ### 📝 **Preparation Checklist**
-- 📧 Email address for notifications
-- 🌐 Domain name (optional)
-- 🔑 SSH keys (will be generated if needed)
-- 📱 Phone for 2FA setup (optional)
-- 🗒️ Notepad for credentials
+
+-   📧 Email address for notifications
+-   🌐 Domain name (optional)
+-   🔑 SSH keys (will be generated if needed)
+-   📱 Phone for 2FA setup (optional)
+-   🗒️ Notepad for credentials
 
 </td>
 </tr>
@@ -68,24 +70,26 @@ This guide provides **comprehensive, enterprise-grade Ubuntu 24.04 server setup*
 ## 🛡️ Security Features
 
 ### Multi-Layer Security Protection
-- **System Hardening**: Kernel parameter tuning, disabled unused services
-- **SSH Hardening**: Custom port (2222), key-only authentication, fail2ban protection
-- **Firewall**: UFW with rate limiting and connection controls
-- **Intrusion Detection**: Fail2Ban, OSSEC IDS, real-time monitoring
-- **Web Application Firewall**: ModSecurity with OWASP Core Rule Set
-- **DDoS Protection**: Advanced iptables rules and rate limiting
-- **Malware Protection**: ClamAV antivirus, rkhunter rootkit detection
-- **File Integrity**: AIDE monitoring for unauthorized changes
-- **Audit Logging**: Comprehensive system activity logging
-- **Automated Security**: Unattended security updates
+
+-   **System Hardening**: Kernel parameter tuning, disabled unused services
+-   **SSH Hardening**: Custom port (2222), key-only authentication, fail2ban protection
+-   **Firewall**: UFW with rate limiting and connection controls
+-   **Intrusion Detection**: Fail2Ban, OSSEC IDS, real-time monitoring
+-   **Web Application Firewall**: ModSecurity with OWASP Core Rule Set
+-   **DDoS Protection**: Advanced iptables rules and rate limiting
+-   **Malware Protection**: ClamAV antivirus, rkhunter rootkit detection
+-   **File Integrity**: AIDE monitoring for unauthorized changes
+-   **Audit Logging**: Comprehensive system activity logging
+-   **Automated Security**: Unattended security updates
 
 ### Application Security
-- **PHP Security**: Disabled dangerous functions, secure configuration
-- **Database Security**: MySQL hardening, encrypted connections
-- **Cache Security**: Redis authentication and secure configuration
-- **Session Security**: Secure cookie settings, encrypted sessions
-- **Input Validation**: CSRF protection, XSS prevention, SQL injection protection
-- **File Upload Security**: Type validation, size limits, secure storage
+
+-   **PHP Security**: Disabled dangerous functions, secure configuration
+-   **Database Security**: MySQL hardening, encrypted connections
+-   **Cache Security**: Redis authentication and secure configuration
+-   **Session Security**: Secure cookie settings, encrypted sessions
+-   **Input Validation**: CSRF protection, XSS prevention, SQL injection protection
+-   **File Upload Security**: Type validation, size limits, secure storage
 
 ## 🚀 Quick Setup
 
@@ -96,8 +100,8 @@ This guide provides **comprehensive, enterprise-grade Ubuntu 24.04 server setup*
 git clone https://github.com/kaspernux/1000proxy.git
 cd 1000proxy
 
-# Make main launcher executable
-chmod +x setup.sh
+# Make main launcher executable and other scripts
+chmod +x setup.sh scripts/*
 
 # Run the main setup launcher with interactive menu
 sudo ./setup.sh
@@ -123,12 +127,13 @@ sudo ./scripts/secure-server-setup.sh
 ```
 
 **What this does:**
-- Configures SSH security (port 2222, key-only auth)
-- Sets up UFW firewall with minimal required ports
-- Installs and configures Fail2Ban
-- Hardens system security settings
-- Creates non-root user 'proxy1000'
-- Sets up automatic security updates
+
+-   Configures SSH security (port 2222, key-only auth)
+-   Sets up UFW firewall with minimal required ports
+-   Installs and configures Fail2Ban
+-   Hardens system security settings
+-   Creates non-root user 'proxy1000'
+-   Sets up automatic security updates
 
 ### Step 2: Advanced Security Setup
 
@@ -138,11 +143,12 @@ sudo ./scripts/advanced-security-setup.sh
 ```
 
 **What this does:**
-- Configures advanced DDoS protection
-- Sets up OSSEC Intrusion Detection System
-- Implements real-time security monitoring
-- Configures database security hardening
-- Sets up application-level security scanning
+
+-   Configures advanced DDoS protection
+-   Sets up OSSEC Intrusion Detection System
+-   Implements real-time security monitoring
+-   Configures database security hardening
+-   Sets up application-level security scanning
 
 ### Step 3: Deploy 1000proxy Application
 
@@ -155,14 +161,15 @@ sudo ./scripts/deploy-1000proxy.sh
 ```
 
 **What this does:**
-- Clones/updates the 1000proxy repository
-- Installs Composer and NPM dependencies
-- Configures environment and database
-- Sets up queue workers and scheduler
-- Configures web server and SSL
-- Interactive payment gateway configuration
-- Application security monitoring
-- Automated backup system
+
+-   Clones/updates the 1000proxy repository
+-   Installs Composer and NPM dependencies
+-   Configures environment and database
+-   Sets up queue workers and scheduler
+-   Configures web server and SSL
+-   Interactive payment gateway configuration
+-   Application security monitoring
+-   Automated backup system
 
 ### Step 4: Quick Setup Alternative
 
@@ -172,14 +179,15 @@ sudo ./scripts/quick-setup.sh
 ```
 
 **What this does:**
-- Updates system and installs security packages
-- Hardens SSH (moves to port 2222, disables root login)
-- Configures UFW firewall with rate limiting
-- Sets up Fail2Ban intrusion detection
-- Installs and configures: PHP 8.3, Nginx, MySQL 8.0, Redis
-- Configures SSL with Let's Encrypt (if domain provided)
-- Sets up automated backups and monitoring
-- Creates comprehensive audit logging
+
+-   Updates system and installs security packages
+-   Hardens SSH (moves to port 2222, disables root login)
+-   Configures UFW firewall with rate limiting
+-   Sets up Fail2Ban intrusion detection
+-   Installs and configures: PHP 8.3, Nginx, MySQL 8.0, Redis
+-   Configures SSL with Let's Encrypt (if domain provided)
+-   Sets up automated backups and monitoring
+-   Creates comprehensive audit logging
 
 ### Step 3: Advanced Security Layer
 
@@ -189,12 +197,13 @@ sudo ./advanced-security-setup.sh
 ```
 
 **What this does:**
-- Installs ModSecurity Web Application Firewall
-- Configures advanced DDoS protection
-- Sets up OSSEC Intrusion Detection System
-- Implements real-time security monitoring
-- Configures database security hardening
-- Sets up application-level security scanning
+
+-   Installs ModSecurity Web Application Firewall
+-   Configures advanced DDoS protection
+-   Sets up OSSEC Intrusion Detection System
+-   Implements real-time security monitoring
+-   Configures database security hardening
+-   Sets up application-level security scanning
 
 ### Step 4: Deploy 1000proxy Application
 
@@ -207,18 +216,20 @@ sudo ./deploy-1000proxy.sh
 ```
 
 **What this does:**
-- Clones/updates the 1000proxy repository
-- Installs Composer and NPM dependencies
-- Configures environment and database
-- Sets up queue workers and scheduler
-- Optimizes for production performance
-- Configures application monitoring and backups
+
+-   Clones/updates the 1000proxy repository
+-   Installs Composer and NPM dependencies
+-   Configures environment and database
+-   Sets up queue workers and scheduler
+-   Optimizes for production performance
+-   Configures application monitoring and backups
 
 ## � Payment Gateway Configuration
 
 The deployment script supports interactive configuration for multiple payment gateways:
 
 ### Stripe Configuration
+
 ```bash
 STRIPE_KEY=pk_live_your_stripe_key
 STRIPE_SECRET=sk_live_your_stripe_secret
@@ -226,6 +237,7 @@ STRIPE_WEBHOOK_SECRET=whsec_your_webhook_secret
 ```
 
 ### PayPal Configuration
+
 ```bash
 PAYPAL_CLIENT_ID=your_paypal_client_id
 PAYPAL_CLIENT_SECRET=your_paypal_client_secret
@@ -234,12 +246,14 @@ PAYPAL_MODE=sandbox  # or 'live' for production
 ```
 
 ### NowPayments Configuration
+
 ```bash
 NOWPAYMENTS_API_KEY=your_nowpayments_api_key
 NOWPAYMENTS_WEBHOOK_SECRET=your_webhook_secret
 ```
 
 ### Telegram Bot Configuration
+
 ```bash
 TELEGRAM_BOT_TOKEN=your_bot_token
 TELEGRAM_WEBHOOK_URL=https://your-domain.com/telegram/webhook
@@ -266,22 +280,25 @@ export REPO_URL="your_repo_url"           # Custom repository URL
 ### Security Customization
 
 #### SSH Configuration
-- **Default Port**: 2222 (customizable in script)
-- **Authentication**: Key-only (password disabled)
-- **Root Login**: Disabled
-- **Connection Limits**: Max 2 sessions per user
+
+-   **Default Port**: 2222 (customizable in script)
+-   **Authentication**: Key-only (password disabled)
+-   **Root Login**: Disabled
+-   **Connection Limits**: Max 2 sessions per user
 
 #### Firewall Rules
-- **SSH**: Port 2222 with rate limiting
-- **HTTP**: Port 80 (redirects to HTTPS)
-- **HTTPS**: Port 443 with rate limiting
-- **Custom**: Add your application ports in the script
+
+-   **SSH**: Port 2222 with rate limiting
+-   **HTTP**: Port 80 (redirects to HTTPS)
+-   **HTTPS**: Port 443 with rate limiting
+-   **Custom**: Add your application ports in the script
 
 #### Rate Limiting
-- **Login endpoints**: 5 requests per minute
-- **API endpoints**: 100 requests per minute
-- **General requests**: 10 requests per second
-- **Admin panel**: 20 requests per minute
+
+-   **Login endpoints**: 5 requests per minute
+-   **API endpoints**: 100 requests per minute
+-   **General requests**: 10 requests per second
+-   **Admin panel**: 20 requests per minute
 
 ## 📊 Monitoring and Maintenance
 
@@ -360,7 +377,7 @@ sudo mysql 1000proxy < /var/backups/1000proxy/YYYYMMDD_HHMMSS/database.sql
 
 1. **Monitor Logs**: Regularly check security and application logs
 2. **Update System**: Security updates are automated, but check manually monthly
-3. **Review Access**: Regularly review user accounts and access logs  
+3. **Review Access**: Regularly review user accounts and access logs
 4. **Backup Verification**: Test backups monthly
 5. **Security Scans**: Run weekly security scans with Lynis
 6. **Certificate Renewal**: SSL certificates auto-renew, but monitor status
@@ -418,12 +435,12 @@ sudo clamscan -r /var/www/1000proxy
 
 ### Log Locations
 
-- **System Logs**: `/var/log/syslog`, `/var/log/auth.log`
-- **Security Logs**: `/var/log/security-monitor.log`, `/var/log/realtime-security.log`
-- **Web Server**: `/var/log/nginx/1000proxy.*.log`
-- **Application**: `/var/www/1000proxy/storage/logs/laravel.log`
-- **Database**: `/var/log/mysql/error.log`
-- **PHP**: `/var/log/php8.3-fpm.log`
+-   **System Logs**: `/var/log/syslog`, `/var/log/auth.log`
+-   **Security Logs**: `/var/log/security-monitor.log`, `/var/log/realtime-security.log`
+-   **Web Server**: `/var/log/nginx/1000proxy.*.log`
+-   **Application**: `/var/www/1000proxy/storage/logs/laravel.log`
+-   **Database**: `/var/log/mysql/error.log`
+-   **PHP**: `/var/log/php8.3-fpm.log`
 
 ### Getting Help
 
@@ -437,9 +454,9 @@ sudo clamscan -r /var/www/1000proxy
 
 After setup completion, check these reports:
 
-- `/root/1000proxy-security-report.txt` - Complete security configuration
-- `/root/advanced-security-report.txt` - Advanced security features  
-- `/root/1000proxy-deployment-report.txt` - Application deployment details
+-   `/root/1000proxy-security-report.txt` - Complete security configuration
+-   `/root/advanced-security-report.txt` - Advanced security features
+-   `/root/1000proxy-deployment-report.txt` - Application deployment details
 
 These files contain passwords and sensitive information - secure them properly!
 
