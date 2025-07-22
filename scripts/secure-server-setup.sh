@@ -205,6 +205,15 @@ else
 fi
 usermod -aG www-data "$PROJECT_USER"
 
+# Ensure all .sh scripts in /root/1000proxy/scripts are executable
+if [[ -d "/root/1000proxy/scripts" ]]; then
+    find "/root/1000proxy/scripts" -type f -name "*.sh" -exec chmod +x {} \;
+    print_success "All .sh scripts in /root/1000proxy/scripts made executable"
+else
+    print_warning "/root/1000proxy/scripts directory not found"
+fi
+
+
 # Assign password to the project user (do not use '@' in username)
 echo "$PROJECT_USER:Pass1000" | chpasswd
 print_success "Password assigned to user $PROJECT_USER"
