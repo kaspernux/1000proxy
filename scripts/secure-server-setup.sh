@@ -901,6 +901,38 @@ if grep -i 'error\|warning' /var/log/rkhunter-update.log; then
     print_error "rkhunter update encountered issues. See /var/log/rkhunter-update.log for details."
     print_warning "Check WEB_CMD in /etc/rkhunter.conf is set to /usr/bin/false. If the error persists, review network connectivity and mirror availability."
     print_warning "You may manually run: rkhunter --update --debug for more info."
+
+    # Automated recovery for missing rkhunter data files
+    print_info "Attempting automated recovery of rkhunter data files..."
+    RKHUNTER_DATA_DIR="/var/lib/rkhunter/db"
+    declare -a RKHUNTER_DATA_FILES=(
+        "mirrors.dat"
+        "programs_bad.dat"
+        "backdoorports.dat"
+        "suspscan.dat"
+        "i18n.ver"
+    )
+    for file in "${RKHUNTER_DATA_FILES[@]}"; do
+        if [[ ! -f "$RKHUNTER_DATA_DIR/$file" ]]; then
+            print_warning "$file missing, attempting to download..."
+            # Try to download from official rkhunter sourceforge mirror
+            URL="https://sourceforge.net/projects/rkhunter/files/rkhunter/1.4.6/$file/download"
+            TMP_FILE="/tmp/$file"
+            if curl -fsSL "$URL" -o "$TMP_FILE"; then
+                mv "$TMP_FILE" "$RKHUNTER_DATA_DIR/$file"
+                print_success "$file downloaded and restored."
+            else
+                print_error "Failed to download $file from $URL. Please check network or download manually."
+            fi
+        fi
+    done
+    print_info "Re-running rkhunter --update after recovery..."
+    rkhunter --update > /var/log/rkhunter-update.log 2>&1
+    if grep -i 'error\|warning' /var/log/rkhunter-update.log; then
+        print_error "rkhunter update still encountered issues after recovery. See /var/log/rkhunter-update.log."
+    else
+        print_success "rkhunter updated successfully after recovery."
+    fi
 else
     print_success "rkhunter updated successfully."
 fi
