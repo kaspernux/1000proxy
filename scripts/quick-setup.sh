@@ -132,7 +132,7 @@ case $choice in
         print_header "Starting Complete Setup"
         print_warning "This will take 15-30 minutes depending on your server speed"
         read -p "Continue? (y/N): " confirm
-        if [[ $confirm =~ ^[Yy]$ ]]; then
+        if [ "$confirm" = "y" ] || [ "$confirm" = "Y" ]; then
             print_info "Step 1/3: Basic Security Setup"
             ./scripts/secure-server-setup.sh
 
@@ -154,7 +154,7 @@ case $choice in
     2)
         print_header "Starting Security-Only Setup"
         read -p "Continue? (y/N): " confirm
-        if [[ $confirm =~ ^[Yy]$ ]]; then
+        if [ "$confirm" = "y" ] || [ "$confirm" = "Y" ]; then
             print_info "Step 1/2: Basic Security Setup"
             ./scripts/secure-server-setup.sh
 

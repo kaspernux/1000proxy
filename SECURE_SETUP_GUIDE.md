@@ -100,8 +100,10 @@ This guide provides **comprehensive, enterprise-grade Ubuntu 24.04 server setup*
 git clone https://github.com/kaspernux/1000proxy.git
 cd 1000proxy
 
-# Make main launcher executable and other scripts
-chmod +x setup.sh scripts/*
+
+# Make main launcher and all scripts executable (Linux only)
+chmod +x setup.sh
+chmod +x scripts/*.sh
 
 # Run the main setup launcher with interactive menu
 sudo ./setup.sh
