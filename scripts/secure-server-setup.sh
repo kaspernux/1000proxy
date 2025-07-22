@@ -861,10 +861,16 @@ EOF
 chmod +x /etc/cron.daily/aide-check
 
 # Install rkhunter prerequisites
-# Install rkhunter from Ubuntu repository (recommended for Ubuntu 24.04)
-DEBIAN_FRONTEND=noninteractive apt-get install -y rkhunter || {
-    print_error "rkhunter installation failed."; exit 1;
-}
+
+# Install rkhunter only if not already installed
+if ! command -v rkhunter &>/dev/null; then
+    DEBIAN_FRONTEND=noninteractive apt-get install -y rkhunter || {
+        print_error "rkhunter installation failed."; exit 1;
+    }
+    print_success "rkhunter installed."
+else
+    print_info "rkhunter is already installed. Skipping installation."
+fi
 
 # Update rkhunter definitions
 rkhunter --update > /var/log/rkhunter-update.log 2>&1
