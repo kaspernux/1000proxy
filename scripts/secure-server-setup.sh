@@ -860,79 +860,37 @@ cat > /etc/cron.daily/aide-check << 'EOF'
 EOF
 chmod +x /etc/cron.daily/aide-check
 
-# Install and configure rkhunter
-
-DEBIAN_FRONTEND=noninteractive apt-get install -y rkhunter || {
-    print_error "rkhunter installation failed."; exit 1;
+# Install rkhunter prerequisites
+DEBIAN_FRONTEND=noninteractive apt-get install -y binutils libreadline5 libruby ruby ssl-cert unhide.rb mailutils wget || {
+    print_error "rkhunter prerequisites installation failed."; exit 1;
 }
 
-# Update rkhunter configuration with recommended options
-RKHUNTER_CONF="/etc/rkhunter.conf"
-declare -A RKHUNTER_OPTS=(
-    ["UPDATE_MIRRORS"]="1"
-    ["CRON_DAILY_RUN"]="true"
-    ["REPORT_EMAIL"]="$EMAIL"
-    ["ALLOW_SSH_ROOT_USER"]="no"
-    ["ALLOW_SSH_PROT_V1"]="2"
-    ["ALLOW_SYSLOG_REMOTE"]="no"
-    ["USE_SYSLOG"]="authpriv.notice"
-    ["WEB_CMD"]="/usr/bin/false"
-)
-for key in "${!RKHUNTER_OPTS[@]}"; do
-    value="${RKHUNTER_OPTS[$key]}"
-    if grep -q "^$key=" "$RKHUNTER_CONF"; then
-        sed -i "s|^$key=.*|$key=$value|" "$RKHUNTER_CONF"
-    else
-        echo "$key=$value" >> "$RKHUNTER_CONF"
-    fi
-done
+# Download and install rkhunter from sourceforge (latest stable version)
+cd /tmp
+wget http://downloads.sourceforge.net/project/rkhunter/rkhunter/1.4.2/rkhunter-1.4.2.tar.gz
+tar xzvf rkhunter-1.4.2.tar.gz
+cd rkhunter-1.4.2
+./installer.sh --layout /usr --install
 
-# Run rkhunter update and log output for troubleshooting
-# Check rkhunter config for WEB_CMD and log update issues
-if grep -q '^WEB_CMD=/usr/bin/false' "$RKHUNTER_CONF"; then
-    print_success "rkhunter WEB_CMD is set to /usr/bin/false (recommended)"
+print_success "rkhunter installed from source"
+
+# Update rkhunter configuration for email notifications and security
+RKHUNTER_CONF="/etc/rkhunter.conf"
+if grep -q "^MAIL-ON-WARNING=" "$RKHUNTER_CONF"; then
+    sed -i "s|^MAIL-ON-WARNING=.*|MAIL-ON-WARNING=$EMAIL|" "$RKHUNTER_CONF"
 else
-    print_warning "rkhunter WEB_CMD is not set to /usr/bin/false. Please update $RKHUNTER_CONF."
+    echo "MAIL-ON-WARNING=$EMAIL" >> "$RKHUNTER_CONF"
+fi
+if grep -q "^WEB_CMD=" "$RKHUNTER_CONF"; then
+    sed -i "s|^WEB_CMD=.*|WEB_CMD=/usr/bin/false|" "$RKHUNTER_CONF"
+else
+    echo "WEB_CMD=/usr/bin/false" >> "$RKHUNTER_CONF"
 fi
 
 print_info "Running rkhunter --update (output will be logged to /var/log/rkhunter-update.log)"
 rkhunter --update > /var/log/rkhunter-update.log 2>&1
 if grep -i 'error\|warning' /var/log/rkhunter-update.log; then
     print_error "rkhunter update encountered issues. See /var/log/rkhunter-update.log for details."
-    print_warning "Check WEB_CMD in /etc/rkhunter.conf is set to /usr/bin/false. If the error persists, review network connectivity and mirror availability."
-    print_warning "You may manually run: rkhunter --update --debug for more info."
-
-    # Automated recovery for missing rkhunter data files
-    print_info "Attempting automated recovery of rkhunter data files..."
-    RKHUNTER_DATA_DIR="/var/lib/rkhunter/db"
-    declare -a RKHUNTER_DATA_FILES=(
-        "mirrors.dat"
-        "programs_bad.dat"
-        "backdoorports.dat"
-        "suspscan.dat"
-        "i18n.ver"
-    )
-    for file in "${RKHUNTER_DATA_FILES[@]}"; do
-        if [[ ! -f "$RKHUNTER_DATA_DIR/$file" ]]; then
-            print_warning "$file missing, attempting to download..."
-            # Try to download from official rkhunter sourceforge mirror
-            URL="https://sourceforge.net/projects/rkhunter/files/rkhunter/1.4.6/$file/download"
-            TMP_FILE="/tmp/$file"
-            if curl -fsSL "$URL" -o "$TMP_FILE"; then
-                mv "$TMP_FILE" "$RKHUNTER_DATA_DIR/$file"
-                print_success "$file downloaded and restored."
-            else
-                print_error "Failed to download $file from $URL. Please check network or download manually."
-            fi
-        fi
-    done
-    print_info "Re-running rkhunter --update after recovery..."
-    rkhunter --update > /var/log/rkhunter-update.log 2>&1
-    if grep -i 'error\|warning' /var/log/rkhunter-update.log; then
-        print_error "rkhunter update still encountered issues after recovery. See /var/log/rkhunter-update.log."
-    else
-        print_success "rkhunter updated successfully after recovery."
-    fi
 else
     print_success "rkhunter updated successfully."
 fi
@@ -958,7 +916,6 @@ cat > /etc/cron.weekly/rkhunter-report << EOF
 /usr/bin/rkhunter --check --skip-keypress --report-warnings-only | /usr/bin/mail -s "RKHunter Report $(hostname)" $EMAIL
 EOF
 chmod +x /etc/cron.weekly/rkhunter-report
-
 
 print_success "Additional security tools installed"
 
