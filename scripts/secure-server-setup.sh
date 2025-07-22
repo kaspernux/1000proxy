@@ -842,27 +842,35 @@ systemctl enable clamav-daemon
 systemctl start clamav-daemon
 
 # Install and configure AIDE (Advanced Intrusion Detection Environment)
-DEBIAN_FRONTEND=noninteractive apt-get install -y aide || {
-    print_error "AIDE installation failed."; exit 1;
-}
-aideinit || {
-    print_error "AIDE initialization failed."; exit 1;
-}
-cp /var/lib/aide/aide.db.new /var/lib/aide/aide.db
 
-# Ensure mail utility is installed for cron notifications
-DEBIAN_FRONTEND=noninteractive apt-get install -y mailutils
-
-# Create daily AIDE check
-cat > /etc/cron.daily/aide-check << 'EOF'
-#!/bin/bash
-/usr/bin/aide --check | /usr/bin/mail -s "AIDE Report $(hostname)" root
-EOF
-chmod +x /etc/cron.daily/aide-check
-
-# Install and configure rkhunter
-
+# Install rkhunter and configure fallback mirror
 DEBIAN_FRONTEND=noninteractive apt-get install -y rkhunter || {
+    print_error "rkhunter installation failed."; exit 1;
+}
+
+# Set WEB_CMD to /usr/bin/false for security
+if grep -q '^WEB_CMD=' /etc/rkhunter.conf; then
+    sed -i 's|^WEB_CMD=.*|WEB_CMD=/usr/bin/false|' /etc/rkhunter.conf
+else
+    echo 'WEB_CMD=/usr/bin/false' >> /etc/rkhunter.conf
+fi
+
+# Use fallback mirror if update fails
+print_info "Running rkhunter --update (output will be logged to /var/log/rkhunter-update.log)"
+rkhunter --update > /var/log/rkhunter-update.log 2>&1 || {
+    print_warning "rkhunter update failed. Trying fallback mirror..."
+    sed -i 's|^MIRRORS_MODE=.*|MIRRORS_MODE=0|' /etc/rkhunter.conf
+    sed -i 's|^UPDATE_MIRRORS=.*|UPDATE_MIRRORS=1|' /etc/rkhunter.conf
+    rkhunter --update --debug >> /var/log/rkhunter-update.log 2>&1 || {
+        print_error "rkhunter update failed after fallback. See /var/log/rkhunter-update.log for details."
+    }
+}
+
+print_info "Running rkhunter --propupd (output will be logged to /var/log/rkhunter-propupd.log)"
+rkhunter --propupd > /var/log/rkhunter-propupd.log 2>&1 || {
+    print_error "rkhunter propupd failed. See /var/log/rkhunter-propupd.log for details."
+    # Do not exit; allow setup to continue
+}
     print_error "rkhunter installation failed."; exit 1;
 }
 
@@ -1106,6 +1114,7 @@ chown root:root /var/backups/1000proxy
 chmod 700 /var/backups/1000proxy
 
 # Create backup script (use bash strict mode, error handling, and logging)
+
 cat > /usr/local/bin/backup-1000proxy.sh << 'EOF'
 #!/bin/bash
 set -euo pipefail
@@ -1119,30 +1128,36 @@ mkdir -p "$BACKUP_DIR/$DATE"
 
 # Backup database (MySQL)
 if command -v mysqldump &>/dev/null; then
-    mysqldump --single-transaction --routines --triggers 1000proxy > "$BACKUP_DIR/$DATE/database.sql" 2>>"$LOG_FILE" || echo "Database backup failed" >>"$LOG_FILE"
+    if ! mysqldump --single-transaction --routines --triggers 1000proxy > "$BACKUP_DIR/$DATE/database.sql" 2>>"$LOG_FILE"; then
+        echo "Database backup failed at $(date)" >>"$LOG_FILE"
+    fi
 else
-    echo "mysqldump not found, skipping database backup" >>"$LOG_FILE"
+    echo "mysqldump not found, skipping database backup at $(date)" >>"$LOG_FILE"
 fi
 
 # Backup project files (excluding storage logs/cache/sessions/views, vendor, node_modules)
-tar -czf "$BACKUP_DIR/$DATE/project.tar.gz" \
+if ! tar -czf "$BACKUP_DIR/$DATE/project.tar.gz" \
     --exclude="$PROJECT_DIR/storage/logs/*" \
     --exclude="$PROJECT_DIR/storage/framework/cache/*" \
     --exclude="$PROJECT_DIR/storage/framework/sessions/*" \
     --exclude="$PROJECT_DIR/storage/framework/views/*" \
     --exclude="$PROJECT_DIR/vendor" \
     --exclude="$PROJECT_DIR/node_modules" \
-    "$PROJECT_DIR" 2>>"$LOG_FILE" || echo "Project files backup failed" >>"$LOG_FILE"
+    "$PROJECT_DIR" 2>>"$LOG_FILE"; then
+    echo "Project files backup failed at $(date)" >>"$LOG_FILE"
+fi
 
 # Backup important system configurations
-tar -czf "$BACKUP_DIR/$DATE/system-config.tar.gz" \
+if ! tar -czf "$BACKUP_DIR/$DATE/system-config.tar.gz" \
     /etc/nginx/ \
     /etc/php/ \
     /etc/mysql/ \
     /etc/redis/ \
     /etc/ssh/ \
     /etc/fail2ban/ \
-    /etc/ufw/ 2>>"$LOG_FILE" || echo "System config backup failed" >>"$LOG_FILE"
+    /etc/ufw/ 2>>"$LOG_FILE"; then
+    echo "System config backup failed at $(date)" >>"$LOG_FILE"
+fi
 
 # Remove backups older than 30 days (ignore errors if none found)
 find "$BACKUP_DIR" -mindepth 1 -maxdepth 1 -type d -mtime +30 -exec rm -rf {} + 2>/dev/null || true
@@ -1151,7 +1166,7 @@ find "$BACKUP_DIR" -mindepth 1 -maxdepth 1 -type d -mtime +30 -exec rm -rf {} + 
 chmod -R 600 "$BACKUP_DIR/$DATE"/* || true
 chown -R root:root "$BACKUP_DIR/$DATE"/* || true
 
-echo "Backup completed: $BACKUP_DIR/$DATE" >>"$LOG_FILE"
+echo "Backup completed: $BACKUP_DIR/$DATE at $(date)" >>"$LOG_FILE"
 EOF
 
 chmod 700 /usr/local/bin/backup-1000proxy.sh
