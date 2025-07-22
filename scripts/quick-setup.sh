@@ -167,19 +167,14 @@ case $choice in
             print_info "Setup cancelled"
         fi
         ;;
-            if [[ -x "./scripts/deploy-1000proxy.sh" ]]; then
-                ./scripts/deploy-1000proxy.sh
-                print_success "Application deployment finished!"
-            else
-                print_error "./scripts/deploy-1000proxy.sh not found or not executable!"
-                exit 1
-            fi
-        read -p "Continue? (y/N): " confirm
-        if [[ $confirm =~ ^[Yy]$ ]]; then
+    3)
+        print_header "Starting Application Deployment"
+        if [[ -x "./scripts/deploy-1000proxy.sh" ]]; then
             ./scripts/deploy-1000proxy.sh
             print_success "Application deployment finished!"
         else
-            print_info "Deployment cancelled"
+            print_error "./scripts/deploy-1000proxy.sh not found or not executable!"
+            exit 1
         fi
         ;;
     4)
@@ -227,9 +222,9 @@ print_warning "3. Save the security reports - they contain important passwords"
 print_warning "4. Configure your .env file with actual API keys"
 print_warning "5. Create an admin user for the application"
 echo
+if [[ "$DOMAIN" != "localhost" ]]; then
     print_info "Your application should be available at: http://$DOMAIN"
     print_info "Admin panel: http://$DOMAIN/admin"
-fi
     print_info "Admin panel: https://$DOMAIN/admin"
 else
     print_info "Your application should be available at: http://localhost"

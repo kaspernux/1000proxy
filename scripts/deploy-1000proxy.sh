@@ -769,18 +769,22 @@ sudo -u "$PROJECT_USER" mkdir -p storage/app/{public,uploads}
 # Create bootstrap cache directory
 sudo -u "$PROJECT_USER" mkdir -p bootstrap/cache
 
-# Set proper permissions
-find "$PROJECT_DIR" -type f -exec chmod 644 {} \;
-find "$PROJECT_DIR" -type d -exec chmod 755 {} \;
-chmod -R 775 "$PROJECT_DIR"/storage
-chmod -R 775 "$PROJECT_DIR"/bootstrap/cache
-chown -R "$PROJECT_USER:www-data" "$PROJECT_DIR"
+    # Set proper permissions
+    find "$PROJECT_DIR" -type f -exec chmod 644 {} \;
+    find "$PROJECT_DIR" -type d -exec chmod 755 {} \;
+    chmod -R 775 "$PROJECT_DIR"/storage
+    chmod -R 775 "$PROJECT_DIR"/bootstrap/cache
+    chown -R "$PROJECT_USER:www-data" "$PROJECT_DIR"
 
-print_success "Directory structure created"
+    print_success "Directory structure created"
 
-# Create storage symlink
-sudo -u "$PROJECT_USER" php artisan storage:link
-print_success "Storage symlink created"
+    # Create storage symlink
+    if command -v sudo &>/dev/null; then
+        sudo -u "$PROJECT_USER" php artisan storage:link
+    else
+        su - "$PROJECT_USER" -c "php artisan storage:link"
+    fi
+    print_success "Storage symlink created"
 
 # =============================================================================
 # 5. Database Setup
