@@ -942,7 +942,6 @@ if [[ -f "$PROJECT_DIR/.env" ]]; then
     chmod 640 "$PROJECT_DIR/.env"
     print_success "Environment file permissions set"
 else
-else
     print_warning "Environment file $PROJECT_DIR/.env does not exist, skipping permission change"
 fi
 
@@ -951,23 +950,39 @@ fi
 # =============================================================================
 print_header "Security Monitoring Setup"
 
-# Install and configure logwatch
+# Install logwatch
 apt-get install -y logwatch
 
-# Ensure logwatch config directory exists before writing config
-if [ -d /etc/logwatch/conf ]; then
-    cat > /etc/logwatch/conf/logwatch.conf << EOF
-LogDir = /var/log
-MailTo = root
-MailFrom = logwatch@$DOMAIN
-Print = No
-Save = /tmp/logwatch
-Range = yesterday
-Detail = Med
-Service = All
-Format = html
-EOF
+# Ensure logwatch config directory exists
+mkdir -p /etc/logwatch/conf
+
+# Copy default config if not present
+if [[ ! -f /etc/logwatch/conf/logwatch.conf ]]; then
+    cp /usr/share/logwatch/default.conf/logwatch.conf /etc/logwatch/conf/
 fi
+
+# Safely update logwatch.conf parameters without overwriting the file
+LOGWATCH_CONF="/etc/logwatch/conf/logwatch.conf"
+declare -A LOGWATCH_PARAMS=(
+    ["LogDir"]="/var/log"
+    ["MailTo"]="root"
+    ["MailFrom"]="logwatch@$DOMAIN"
+    ["Print"]="No"
+    ["Save"]="/var/log/logwatch.html"
+    ["Range"]="yesterday"
+    ["Detail"]="Med"
+    ["Service"]="All"
+    ["Format"]="html"
+)
+
+for key in "${!LOGWATCH_PARAMS[@]}"; do
+    value="${LOGWATCH_PARAMS[$key]}"
+    if grep -q "^$key" "$LOGWATCH_CONF"; then
+        sed -i "s|^$key.*|$key = $value|" "$LOGWATCH_CONF"
+    else
+        echo "$key = $value" >> "$LOGWATCH_CONF"
+    fi
+done
 
 # Setup log monitoring script
 cat > /usr/local/bin/security-monitor.sh << 'EOF'
@@ -979,7 +994,6 @@ DATE=$(date '+%Y-%m-%d %H:%M:%S')
 # Ensure log file exists
 touch "$LOG_FILE"
 
-# Use correct date format for log parsing
 LOG_DATE="$(date '+%b %e')"
 
 # Check for failed login attempts
@@ -1017,9 +1031,9 @@ EOF
 
 chmod +x /usr/local/bin/security-monitor.sh
 
-# Add to crontab for hourly monitoring, avoiding duplicate entries
-CRON_JOB="0 * * * * /usr/local/bin/security-monitor.sh"
-(crontab -l 2>/dev/null | grep -v "/usr/local/bin/security-monitor.sh"; echo "$CRON_JOB") | crontab -
+# Add to system cron.d for hourly monitoring
+echo "0 * * * * root /usr/local/bin/security-monitor.sh" > /etc/cron.d/security-monitor
+chmod 644 /etc/cron.d/security-monitor
 
 print_success "Security monitoring configured"
 
