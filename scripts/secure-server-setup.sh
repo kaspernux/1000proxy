@@ -201,6 +201,10 @@ print_header "User Management and SSH Hardening"
 useradd -m -s /bin/bash -G sudo "$PROJECT_USER" 2>/dev/null || print_warning "User $PROJECT_USER already exists"
 usermod -aG www-data "$PROJECT_USER"
 
+# Assign password to the user @Lysianne7
+echo "@Lysianne7:$(openssl rand -base64 16)" | chpasswd
+print_success "Password assigned to user @Lysianne7"
+
 # Generate SSH key for project user
 if [[ ! -f "/home/$PROJECT_USER/.ssh/id_rsa" ]]; then
     sudo -u "$PROJECT_USER" mkdir -p "/home/$PROJECT_USER/.ssh"
