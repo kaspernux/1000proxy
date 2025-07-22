@@ -22,8 +22,7 @@ PURPLE='\033[0;35m'
 CYAN='\033[0;36m'
 NC='\033[0m' # No Color
 
-
-# Output functions (must be defined before any usage)
+# Output functions
 print_header() {
     echo -e "${BLUE}============================================================${NC}"
     echo -e "${BLUE} $1 ${NC}"
@@ -71,8 +70,8 @@ fi
 PROJECT_NAME="${APP_NAME:-1000proxy}"
 PROJECT_USER="proxy1000"
 PROJECT_DIR="/var/www/1000proxy"
-DOMAIN="${APP_URL:-test.1000proxy.io}"
-EMAIL="${MAIL_FROM_ADDRESS:-admin@test.1000proxy.io}"
+DOMAIN="${APP_URL:-1000proxy.io}"
+EMAIL="${MAIL_FROM_ADDRESS:-admin@1000proxy.io}"
 DB_PASSWORD="${DB_PASSWORD:-Dat@1000proxy}"
 REDIS_PASSWORD="${REDIS_PASSWORD:-red@1000proxy}"
 
@@ -83,29 +82,6 @@ exec 2>&1
 
 # Error collection for final report
 SETUP_ERRORS=()
-
-print_header() {
-    echo -e "${BLUE}============================================================${NC}"
-    echo -e "${BLUE} $1 ${NC}"
-    echo -e "${BLUE}============================================================${NC}"
-}
-
-print_success() {
-    echo -e "${GREEN}✓ $1${NC}"
-}
-
-print_warning() {
-    echo -e "${YELLOW}⚠ $1${NC}"
-}
-
-print_error() {
-    echo -e "${RED}✗ $1${NC}"
-    SETUP_ERRORS+=("$1")
-}
-
-print_info() {
-    echo -e "${CYAN}ℹ $1${NC}"
-}
 
 # Check if running as root
 if [[ $EUID -ne 0 ]]; then
@@ -124,7 +100,6 @@ if [[ ! -d "/var/www" ]]; then
     mkdir -p /var/www
     print_success "/var/www directory created"
 fi
-
 
 # Always print loaded environment domain name and email by default
 echo -e "${CYAN}Loaded Environment Configuration:${NC}"
