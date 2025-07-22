@@ -1047,58 +1047,60 @@ mkdir -p /var/backups/1000proxy
 chown root:root /var/backups/1000proxy
 chmod 700 /var/backups/1000proxy
 
-# Export PROJECT_DIR for use in backup script heredoc
-export PROJECT_DIR
-
-# Create backup script
-cat > /usr/local/bin/backup-1000proxy.sh << EOF
+# Create backup script (use bash strict mode, error handling, and logging)
+cat > /usr/local/bin/backup-1000proxy.sh << 'EOF'
 #!/bin/bash
+set -euo pipefail
 
 BACKUP_DIR="/var/backups/1000proxy"
-DATE=\$(date +%Y%m%d_%H%M%S)
-PROJECT_DIR="${PROJECT_DIR}"
+DATE="$(date +%Y%m%d_%H%M%S)"
+PROJECT_DIR="/var/www/1000proxy"
+LOG_FILE="/var/log/backup-1000proxy.log"
 
-# Create backup directory for today
-mkdir -p "\$BACKUP_DIR/\$DATE"
+mkdir -p "$BACKUP_DIR/$DATE"
 
-# Backup database
-mysqldump --single-transaction --routines --triggers 1000proxy > "\$BACKUP_DIR/\$DATE/database.sql"
+# Backup database (MySQL)
+if command -v mysqldump &>/dev/null; then
+    mysqldump --single-transaction --routines --triggers 1000proxy > "$BACKUP_DIR/$DATE/database.sql" 2>>"$LOG_FILE" || echo "Database backup failed" >>"$LOG_FILE"
+else
+    echo "mysqldump not found, skipping database backup" >>"$LOG_FILE"
+fi
 
-# Backup project files (excluding storage and cache)
-tar -czf "\$BACKUP_DIR/\$DATE/project.tar.gz" \\
-    --exclude="\$PROJECT_DIR/storage/logs/*" \\
-    --exclude="\$PROJECT_DIR/storage/framework/cache/*" \\
-    --exclude="\$PROJECT_DIR/storage/framework/sessions/*" \\
-    --exclude="\$PROJECT_DIR/storage/framework/views/*" \\
-    --exclude="\$PROJECT_DIR/vendor" \\
-    --exclude="\$PROJECT_DIR/node_modules" \\
-    "\$PROJECT_DIR"
+# Backup project files (excluding storage logs/cache/sessions/views, vendor, node_modules)
+tar -czf "$BACKUP_DIR/$DATE/project.tar.gz" \
+    --exclude="$PROJECT_DIR/storage/logs/*" \
+    --exclude="$PROJECT_DIR/storage/framework/cache/*" \
+    --exclude="$PROJECT_DIR/storage/framework/sessions/*" \
+    --exclude="$PROJECT_DIR/storage/framework/views/*" \
+    --exclude="$PROJECT_DIR/vendor" \
+    --exclude="$PROJECT_DIR/node_modules" \
+    "$PROJECT_DIR" 2>>"$LOG_FILE" || echo "Project files backup failed" >>"$LOG_FILE"
 
 # Backup important system configurations
-tar -czf "\$BACKUP_DIR/\$DATE/system-config.tar.gz" \\
-    /etc/nginx/ \\
-    /etc/php/ \\
-    /etc/mysql/ \\
-    /etc/redis/ \\
-    /etc/ssh/ \\
-    /etc/fail2ban/ \\
-    /etc/ufw/
+tar -czf "$BACKUP_DIR/$DATE/system-config.tar.gz" \
+    /etc/nginx/ \
+    /etc/php/ \
+    /etc/mysql/ \
+    /etc/redis/ \
+    /etc/ssh/ \
+    /etc/fail2ban/ \
+    /etc/ufw/ 2>>"$LOG_FILE" || echo "System config backup failed" >>"$LOG_FILE"
 
-# Remove backups older than 30 days
-find "\$BACKUP_DIR" -type d -mtime +30 -exec rm -rf {} + 2>/dev/null
+# Remove backups older than 30 days (ignore errors if none found)
+find "$BACKUP_DIR" -mindepth 1 -maxdepth 1 -type d -mtime +30 -exec rm -rf {} + 2>/dev/null || true
 
 # Set proper permissions
-chmod 600 "\$BACKUP_DIR/\$DATE"/*
-chown root:root "\$BACKUP_DIR/\$DATE"/*
+chmod -R 600 "$BACKUP_DIR/$DATE"/* || true
+chown -R root:root "$BACKUP_DIR/$DATE"/* || true
 
-echo "Backup completed: \$BACKUP_DIR/\$DATE"
+echo "Backup completed: $BACKUP_DIR/$DATE" >>"$LOG_FILE"
 EOF
+
+chmod 700 /usr/local/bin/backup-1000proxy.sh
+
 # Schedule daily backups at 2 AM, avoiding duplicate entries
 CRON_BACKUP_JOB="0 2 * * * /usr/local/bin/backup-1000proxy.sh"
-(crontab -l 2>/dev/null | grep -v "/usr/local/bin/backup-1000proxy.sh"; echo "$CRON_BACKUP_JOB") | crontab -
-
-# Schedule daily backups at 2 AM
-(crontab -l 2>/dev/null; echo "0 2 * * * /usr/local/bin/backup-1000proxy.sh") | crontab -
+( crontab -l 2>/dev/null | grep -v "/usr/local/bin/backup-1000proxy.sh"; echo "$CRON_BACKUP_JOB" ) | crontab -
 
 print_success "Backup system configured"
 
@@ -1107,8 +1109,8 @@ print_success "Backup system configured"
 # =============================================================================
 print_header "Process Monitoring Setup"
 
-# Install htop and iotop for monitoring
-apt-get install -y htop iotop nethogs
+# Install htop, iotop, nethogs for monitoring (ignore errors if already installed)
+apt-get install -y htop iotop nethogs || print_warning "Some monitoring tools failed to install"
 
 # Configure process limits
 cat > /etc/security/limits.d/1000proxy.conf << EOF
@@ -1134,71 +1136,47 @@ print_header "Network Security Configuration"
 cat > /etc/sysctl.d/99-1000proxy-security.conf << EOF
 # Network Security Settings
 
-# IP Spoofing protection
 net.ipv4.conf.default.rp_filter = 1
 net.ipv4.conf.all.rp_filter = 1
-
-# Ignore ICMP redirects
 net.ipv4.conf.all.accept_redirects = 0
 net.ipv6.conf.all.accept_redirects = 0
 net.ipv4.conf.default.accept_redirects = 0
 net.ipv6.conf.default.accept_redirects = 0
-
-# Ignore send redirects
 net.ipv4.conf.all.send_redirects = 0
 net.ipv4.conf.default.send_redirects = 0
-
-# Disable source packet routing
 net.ipv4.conf.all.accept_source_route = 0
 net.ipv6.conf.all.accept_source_route = 0
 net.ipv4.conf.default.accept_source_route = 0
 net.ipv6.conf.default.accept_source_route = 0
-
-# Log Martians
 net.ipv4.conf.all.log_martians = 1
 net.ipv4.conf.default.log_martians = 1
-
-# Ignore ICMP ping requests
 net.ipv4.icmp_echo_ignore_all = 1
-
-# Ignore Directed pings
 net.ipv4.icmp_echo_ignore_broadcasts = 1
-
-# Disable IPv6 if not needed
 net.ipv6.conf.all.disable_ipv6 = 1
 net.ipv6.conf.default.disable_ipv6 = 1
 net.ipv6.conf.lo.disable_ipv6 = 1
-
-# SYN flood protection
 net.ipv4.tcp_syncookies = 1
 net.ipv4.tcp_max_syn_backlog = 2048
 net.ipv4.tcp_synack_retries = 2
 net.ipv4.tcp_syn_retries = 5
-
-# Connection tracking
 net.netfilter.nf_conntrack_max = 2000000
 net.netfilter.nf_conntrack_tcp_timeout_established = 7440
 net.netfilter.nf_conntrack_tcp_timeout_time_wait = 120
-
-# Memory and CPU protection
 kernel.panic = 10
 kernel.panic_on_oops = 1
 vm.swappiness = 10
 vm.dirty_ratio = 60
 vm.dirty_background_ratio = 2
-
-# File system security
 fs.suid_dumpable = 0
 fs.protected_hardlinks = 1
 fs.protected_symlinks = 1
-
-# Process security
 kernel.dmesg_restrict = 1
 kernel.kptr_restrict = 2
 kernel.yama.ptrace_scope = 1
 EOF
 
-sysctl -p /etc/sysctl.d/99-1000proxy-security.conf
+sysctl --system
+
 print_success "Network security parameters configured"
 
 # =============================================================================
@@ -1206,16 +1184,16 @@ print_success "Network security parameters configured"
 # =============================================================================
 print_header "Final Security Configuration"
 
-# Disable unused services
+# Disable unused services (ignore errors if not present)
 systemctl disable --now bluetooth 2>/dev/null || true
 systemctl disable --now cups 2>/dev/null || true
 systemctl disable --now avahi-daemon 2>/dev/null || true
 
 # Set secure permissions on sensitive files
-chmod 600 /etc/shadow
-chmod 600 /etc/gshadow
-chmod 644 /etc/passwd
-chmod 644 /etc/group
+chmod 600 /etc/shadow || true
+chmod 600 /etc/gshadow || true
+chmod 644 /etc/passwd || true
+chmod 644 /etc/group || true
 
 # Disable core dumps
 echo "* hard core 0" >> /etc/security/limits.conf
