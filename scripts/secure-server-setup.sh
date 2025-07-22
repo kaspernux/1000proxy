@@ -871,11 +871,21 @@ for pkg in "${RKHUNTER_PREREQS[@]}"; do
 done
 
 # Download and install rkhunter from sourceforge (latest stable version)
+
+# Use latest available rkhunter version (1.4.6)
 cd /tmp
-wget http://downloads.sourceforge.net/project/rkhunter/rkhunter/1.4.2/rkhunter-1.4.2.tar.gz
-tar xzvf rkhunter-1.4.2.tar.gz
-cd rkhunter-1.4.2
-./installer.sh --layout /usr --install
+RKHUNTER_VERSION="1.4.6"
+RKHUNTER_TARBALL="rkhunter-${RKHUNTER_VERSION}.tar.gz"
+RKHUNTER_URL="https://netix.dl.sourceforge.net/project/rkhunter/rkhunter/${RKHUNTER_VERSION}/${RKHUNTER_TARBALL}?viasf=1"
+if wget "$RKHUNTER_URL"; then
+    tar xzvf "$RKHUNTER_TARBALL"
+    cd "rkhunter-${RKHUNTER_VERSION}"
+    ./installer.sh --layout /usr --install
+    print_success "rkhunter ${RKHUNTER_VERSION} installed from source"
+else
+    print_error "Failed to download rkhunter from $RKHUNTER_URL. Please check the URL or download manually."
+    exit 1
+fi
 
 print_success "rkhunter installed from source"
 
