@@ -24,14 +24,21 @@ NC='\033[0m' # No Color
 
 # Configuration
 
-# Load environment variables from .env.example or .env.production only
+
+# Load environment variables from .env.example or .env.production only (safe parsing)
+ENV_FILE=""
 if [[ -f "/var/www/1000proxy/.env.production" ]]; then
-    set -a
-    source /var/www/1000proxy/.env.production
-    set +a
+    ENV_FILE="/var/www/1000proxy/.env.production"
 elif [[ -f "/var/www/1000proxy/.env.example" ]]; then
+    ENV_FILE="/var/www/1000proxy/.env.example"
+fi
+
+if [[ -n "$ENV_FILE" ]]; then
     set -a
-    source /var/www/1000proxy/.env.example
+    # Only source lines that are valid KEY=VALUE assignments
+    grep -E '^[A-Za-z_][A-Za-z0-9_]*=.*' "$ENV_FILE" > /tmp/1000proxy_env.tmp
+    source /tmp/1000proxy_env.tmp
+    rm /tmp/1000proxy_env.tmp
     set +a
 else
     print_warning "No .env.production or .env.example found in /var/www/1000proxy. Using script defaults."
