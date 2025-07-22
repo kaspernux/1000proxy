@@ -213,6 +213,14 @@ else
     print_warning "/root/1000proxy/scripts directory not found"
 fi
 
+# Ensure all .sh scripts in /var/www/1000proxy/scripts are executable (after move)
+if [[ -d "$PROJECT_DIR/scripts" ]]; then
+    find "$PROJECT_DIR/scripts" -type f -name "*.sh" -exec chmod +x {} \;
+    print_success "All .sh scripts in $PROJECT_DIR/scripts made executable"
+else
+    print_warning "$PROJECT_DIR/scripts directory not found"
+fi
+
 
 # Assign password to the project user (do not use '@' in username)
 echo "$PROJECT_USER:Pass1000" | chpasswd
