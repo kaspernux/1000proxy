@@ -94,7 +94,7 @@ class AdminStatsOverview extends BaseWidget
 
     private function getTotalRevenue(): float
     {
-        return Order::where('status', 'completed')->sum('total') ?? 0;
+        return Order::where('status', 'completed')->sum('grand_amount') ?? 0;
     }
 
     private function getMonthlyRevenue(): float
@@ -102,7 +102,7 @@ class AdminStatsOverview extends BaseWidget
         return Order::where('status', 'completed')
             ->whereMonth('created_at', Carbon::now()->month)
             ->whereYear('created_at', Carbon::now()->year)
-            ->sum('total') ?? 0;
+            ->sum('grand_amount') ?? 0;
     }
 
     private function getRevenueGrowth(): float
@@ -111,7 +111,7 @@ class AdminStatsOverview extends BaseWidget
         $lastMonth = Order::where('status', 'completed')
             ->whereMonth('created_at', Carbon::now()->subMonth()->month)
             ->whereYear('created_at', Carbon::now()->subMonth()->year)
-            ->sum('total') ?? 0;
+            ->sum('grand_amount') ?? 0;
 
         if ($lastMonth == 0) return $currentMonth > 0 ? 100 : 0;
         return round((($currentMonth - $lastMonth) / $lastMonth) * 100, 1);
@@ -119,7 +119,7 @@ class AdminStatsOverview extends BaseWidget
 
     private function getPendingPayments(): float
     {
-        return Order::where('status', 'pending')->sum('total') ?? 0;
+        return Order::where('status', 'pending')->sum('grand_amount') ?? 0;
     }
 
     private function getNewCustomersCount(): int
@@ -211,7 +211,7 @@ class AdminStatsOverview extends BaseWidget
         return Order::where('status', 'completed')
             ->selectRaw('DATE(created_at) as date, SUM(total) as revenue')
             ->where('created_at', '>=', Carbon::now()->subDays(7))
-            ->groupBy('date')
+            ->groupBy(DB::raw('DATE(created_at)'))
             ->orderBy('date')
             ->pluck('revenue')
             ->toArray();
@@ -222,7 +222,7 @@ class AdminStatsOverview extends BaseWidget
         return Order::where('status', 'completed')
             ->selectRaw('DATE(created_at) as date, SUM(total) as revenue')
             ->where('created_at', '>=', Carbon::now()->subDays(30))
-            ->groupBy('date')
+            ->groupBy(DB::raw('DATE(created_at)'))
             ->orderBy('date')
             ->pluck('revenue')
             ->toArray();
@@ -232,7 +232,7 @@ class AdminStatsOverview extends BaseWidget
     {
         return Customer::selectRaw('DATE(created_at) as date, COUNT(*) as customers')
             ->where('created_at', '>=', Carbon::now()->subDays(7))
-            ->groupBy('date')
+            ->groupBy(DB::raw('DATE(created_at)'))
             ->orderBy('date')
             ->pluck('customers')
             ->toArray();
@@ -243,7 +243,7 @@ class AdminStatsOverview extends BaseWidget
         return Server::selectRaw('DATE(updated_at) as date, COUNT(*) as servers')
             ->where('status', 'up')
             ->where('updated_at', '>=', Carbon::now()->subDays(7))
-            ->groupBy('date')
+            ->groupBy(DB::raw('DATE(created_at)'))
             ->orderBy('date')
             ->pluck('servers')
             ->toArray();
@@ -254,7 +254,7 @@ class AdminStatsOverview extends BaseWidget
         return ServerClient::selectRaw('DATE(created_at) as date, COUNT(*) as clients')
             ->where('is_active', true)
             ->where('created_at', '>=', Carbon::now()->subDays(7))
-            ->groupBy('date')
+            ->groupBy(DB::raw('DATE(created_at)'))
             ->orderBy('date')
             ->pluck('clients')
             ->toArray();

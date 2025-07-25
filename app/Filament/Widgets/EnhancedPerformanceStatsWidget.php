@@ -96,7 +96,7 @@ class EnhancedPerformanceStatsWidget extends BaseWidget
         });
 
         $color = $this->getPerformanceColor($data['efficiency']);
-        $icon = 'heroicon-o-lightning-bolt';
+        $icon = 'heroicon-o-bolt-slash';
 
         return Stat::make('Cache Efficiency', $data['hit_ratio'] . '%')
             ->description("Memory: {$data['memory_usage']}MB | Keys: {$data['key_count']}")

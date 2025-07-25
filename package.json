@@ -144,7 +144,9 @@
         "dev": "vite",
         "build": "vite build",
         "scss:watch": "sass --watch resources/scss:public/css",
-        "scss:build": "sass resources/scss:public/css --style compressed"
+        "scss:build": "sass resources/scss:public/css --style compressed",
+        "clean": "rm -rf public/build/* public/js/* public/css/*"
+
     },
     "babel": {
         "presets": [

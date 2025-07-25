@@ -363,7 +363,7 @@ class AdvancedAnalyticsService
         return Order::where('payment_status', 'paid')
             ->where('created_at', '>=', $startDate)
             ->selectRaw('DATE(created_at) as date, SUM(grand_amount) as revenue')
-            ->groupBy('date')
+            ->groupBy(DB::raw('DATE(created_at)'))
             ->orderBy('date')
             ->get()
             ->toArray();

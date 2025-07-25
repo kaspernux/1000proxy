@@ -421,7 +421,7 @@ class AnalyticsDashboard extends Page
                 $timeRange['end']
             ])
             ->selectRaw('DATE(created_at) as date, SUM(total_amount) as revenue')
-            ->groupBy('date')
+            ->groupBy(DB::raw('DATE(created_at)'))
             ->orderBy('date')
             ->get();
 

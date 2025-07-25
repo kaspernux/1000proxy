@@ -211,7 +211,7 @@ class AdminDashboardStatsWidget extends BaseWidget
         return Order::where('status', 'completed')
             ->selectRaw('DATE(created_at) as date, SUM(total) as revenue')
             ->where('created_at', '>=', Carbon::now()->subDays(7))
-            ->groupBy('date')
+            ->groupBy(DB::raw('DATE(created_at)'))
             ->orderBy('date')
             ->pluck('revenue')
             ->toArray();
@@ -222,7 +222,7 @@ class AdminDashboardStatsWidget extends BaseWidget
         return Order::where('status', 'completed')
             ->selectRaw('DATE(created_at) as date, SUM(total) as revenue')
             ->where('created_at', '>=', Carbon::now()->subDays(30))
-            ->groupBy('date')
+            ->groupBy(DB::raw('DATE(created_at)'))
             ->orderBy('date')
             ->pluck('revenue')
             ->toArray();
@@ -232,7 +232,7 @@ class AdminDashboardStatsWidget extends BaseWidget
     {
         return Customer::selectRaw('DATE(created_at) as date, COUNT(*) as customers')
             ->where('created_at', '>=', Carbon::now()->subDays(7))
-            ->groupBy('date')
+            ->groupBy(DB::raw('DATE(created_at)'))
             ->orderBy('date')
             ->pluck('customers')
             ->toArray();
@@ -243,7 +243,7 @@ class AdminDashboardStatsWidget extends BaseWidget
         return Server::selectRaw('DATE(updated_at) as date, COUNT(*) as servers')
             ->where('status', 'up')
             ->where('updated_at', '>=', Carbon::now()->subDays(7))
-            ->groupBy('date')
+            ->groupBy(DB::raw('DATE(created_at)'))
             ->orderBy('date')
             ->pluck('servers')
             ->toArray();
@@ -254,7 +254,7 @@ class AdminDashboardStatsWidget extends BaseWidget
         return ServerClient::selectRaw('DATE(created_at) as date, COUNT(*) as clients')
             ->where('is_active', true)
             ->where('created_at', '>=', Carbon::now()->subDays(7))
-            ->groupBy('date')
+            ->groupBy(DB::raw('DATE(created_at)'))
             ->orderBy('date')
             ->pluck('clients')
             ->toArray();

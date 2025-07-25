@@ -1,13 +1,8 @@
 import { defineConfig } from 'vite';
 import laravel from 'laravel-vite-plugin';
-import tailwindcss from 'tailwindcss';
 
 export default defineConfig( {
-    server: {
-        host: '0.0.0.0',  // Permet d'accéder au serveur depuis d'autres machines ou adresses
-        port: 5173,
-        cors: true,       // Active les en-têtes CORS pour toutes les requêtes
-    },
+
     plugins: [
         laravel( {
             input: [
@@ -24,7 +19,6 @@ export default defineConfig( {
                 'resources/scss/**',  // Watch SCSS files for changes
             ],
         } ),
-        tailwindcss(),
     ],
     css: {
         preprocessorOptions: {

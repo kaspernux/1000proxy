@@ -83,7 +83,7 @@ class BusinessIntelligenceService
 
             // Daily revenue breakdown
             $dailyRevenue = $query->selectRaw('DATE(created_at) as date, SUM(grand_amount) as revenue')
-                ->groupBy('date')
+                ->groupBy(DB::raw('DATE(created_at)'))
                 ->orderBy('date')
                 ->get()
                 ->keyBy('date')
@@ -143,7 +143,7 @@ class BusinessIntelligenceService
             // Daily user registrations
             $dailyRegistrations = User::whereBetween('created_at', [$period['start'], $period['end']])
                 ->selectRaw('DATE(created_at) as date, COUNT(*) as registrations')
-                ->groupBy('date')
+                ->groupBy(DB::raw('DATE(created_at)'))
                 ->orderBy('date')
                 ->get()
                 ->keyBy('date');
@@ -688,7 +688,7 @@ class BusinessIntelligenceService
     {
         $dailyOrders = Order::whereBetween('created_at', [$period['start'], $period['end']])
             ->selectRaw('DATE(created_at) as date, COUNT(*) as orders, SUM(grand_amount) as revenue')
-            ->groupBy('date')
+            ->groupBy(DB::raw('DATE(created_at)'))
             ->orderBy('date')
             ->get();
 
@@ -854,7 +854,7 @@ class BusinessIntelligenceService
         $data = Order::where('payment_status', 'paid')
             ->whereBetween('created_at', [$period['start'], $period['end']])
             ->selectRaw('DATE(created_at) as date, SUM(grand_amount) as revenue')
-            ->groupBy('date')
+            ->groupBy(DB::raw('DATE(created_at)'))
             ->orderBy('date')
             ->get();
 
@@ -900,7 +900,7 @@ class BusinessIntelligenceService
     {
         $data = User::whereBetween('created_at', [$period['start'], $period['end']])
             ->selectRaw('DATE(created_at) as date, COUNT(*) as new_users')
-            ->groupBy('date')
+            ->groupBy(DB::raw('DATE(created_at)'))
             ->orderBy('date')
             ->get();
 
@@ -1054,7 +1054,7 @@ class BusinessIntelligenceService
         return Order::where('payment_status', 'paid')
             ->whereBetween('created_at', [$period['start'], $period['end']])
             ->selectRaw('DATE(created_at) as date, SUM(grand_amount) as revenue')
-            ->groupBy('date')
+            ->groupBy(DB::raw('DATE(created_at)'))
             ->orderBy('date')
             ->get()
             ->toArray();
@@ -1067,7 +1067,7 @@ class BusinessIntelligenceService
     {
         return User::whereBetween('created_at', [$period['start'], $period['end']])
             ->selectRaw('DATE(created_at) as date, COUNT(*) as new_users')
-            ->groupBy('date')
+            ->groupBy(DB::raw('DATE(created_at)'))
             ->orderBy('date')
             ->get()
             ->toArray();
