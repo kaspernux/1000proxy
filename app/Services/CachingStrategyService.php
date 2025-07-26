@@ -260,7 +260,7 @@ class CachingStrategyService
                 return Customer::select('customers.*')
                     ->join('orders', 'customers.id', '=', 'orders.customer_id')
                     ->groupBy('customers.id')
-                    ->orderByRaw('SUM(orders.total_amount) DESC')
+                    ->orderByRaw('SUM(orders.grand_amount) DESC')
                     ->limit(50)
                     ->get();
             });
@@ -312,7 +312,7 @@ class CachingStrategyService
                 return DB::table('order_items')
                     ->join('orders', 'order_items.order_id', '=', 'orders.id')
                     ->join('server_plans', 'order_items.server_plan_id', '=', 'server_plans.id')
-                    ->select('order_items.*', 'orders.status as order_status', 'server_plans.name as plan_name')
+                    ->select('order_items.*', 'orders.payment_status as order_status', 'server_plans.name as plan_name')
                     ->where('orders.created_at', '>=', now()->subDays(30))
                     ->get();
             });
@@ -322,7 +322,7 @@ class CachingStrategyService
             Cache::remember($customerOrdersKey, 1800, function () { // 30 minutes
                 return DB::table('orders')
                     ->join('customers', 'orders.customer_id', '=', 'customers.id')
-                    ->select('orders.id', 'orders.status', 'orders.total_amount', 'orders.created_at',
+                    ->select('orders.id', 'orders.payment_status', 'orders.grand_amount', 'orders.created_at',
                              'customers.id as customer_id', 'customers.name as customer_name', 'customers.email')
                     ->where('orders.created_at', '>=', now()->subDays(7))
                     ->orderBy('orders.created_at', 'desc')

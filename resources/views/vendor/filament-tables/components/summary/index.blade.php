@@ -45,8 +45,9 @@
             </x-filament-tables::summary.header-cell>
         @endif
 
+
         @foreach ($columns as $column)
-            @if ($placeholderColumns || $column->hasSummary(true))
+            @if ($placeholderColumns || $column->hasSummary())
                 @php
                     $alignment = $column->getAlignment() ?? Alignment::Start;
 
@@ -54,7 +55,7 @@
                         $alignment = filled($alignment) ? (Alignment::tryFrom($alignment) ?? $alignment) : null;
                     }
 
-                    $hasColumnHeaderLabel = (! $placeholderColumns) || $column->hasSummary(true);
+                    $hasColumnHeaderLabel = (! $placeholderColumns) || $column->hasSummary();
                 @endphp
 
                 <x-filament-tables::summary.header-cell

@@ -245,7 +245,7 @@ class XUIOrderProcessingTest extends TestCase
         $job = new ProcessXuiOrder($this->order);
         $job->handle();
 
-        $serverClient = $this->order->serverClients()->first();
+        $serverClient = $this->order->clients()->first();
         
         $this->assertNotNull($serverClient);
         $this->assertNotEmpty($serverClient->subscription_link);
@@ -287,7 +287,7 @@ class XUIOrderProcessingTest extends TestCase
         $job = new ProcessXuiOrder($this->order);
         $job->handle();
 
-        $serverClient = $this->order->serverClients()->first();
+        $serverClient = $this->order->clients()->first();
         
         $this->assertNotNull($serverClient);
         $this->assertNotEmpty($serverClient->qr_code);

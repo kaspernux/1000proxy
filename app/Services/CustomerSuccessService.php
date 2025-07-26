@@ -232,7 +232,7 @@ class CustomerSuccessService
         // Check various feature usage
         if ($user->orders()->exists()) $features++;
         if ($user->walletTransactions()->exists()) $features++;
-        if ($user->serverClients()->exists()) $features++;
+        if ($user->clients()->exists()) $features++;
         if ($user->telegram_chat_id) $features++;
         if ($user->email_verified_at) $features++;
 

@@ -116,7 +116,7 @@ class ServerPlan extends Model
         return $this->hasMany(Invoice::class);
     }
 
-    public function serverClients(): HasMany
+    public function clients(): HasMany
     {
         return $this->hasMany(ServerClient::class, 'plan_id');
     }

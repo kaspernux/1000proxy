@@ -102,7 +102,7 @@ class ServerResource extends Resource
                     ->color('success')
                     ->getStateUsing(function ($record) {
                         $customerId = auth('customer')->id();
-                        return $record->serverClients()
+                        return $record->clients()
                             ->where('email', 'LIKE', "%#ID {$customerId}")
                             ->count();
                     }),
@@ -234,7 +234,7 @@ class ServerResource extends Resource
                                                     ->label('Summary')
                                                     ->getStateUsing(function ($record) {
                                                         $customerId = auth('customer')->id();
-                                                        $clients = $record->serverClients()
+                                                        $clients = $record->clients()
                                                             ->where('email', 'LIKE', "%#ID {$customerId}")
                                                             ->get();
 
@@ -257,7 +257,7 @@ class ServerResource extends Resource
                                     ->schema([
                                         TextEntry::make('total_clients_count')
                                             ->label('Total Clients')
-                                            ->getStateUsing(fn ($record) => $record->serverClients()->count()),
+                                            ->getStateUsing(fn ($record) => $record->clients()->count()),
 
                                         TextEntry::make('active_inbounds_count')
                                             ->label('Active Inbounds')

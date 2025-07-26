@@ -451,7 +451,7 @@ class ServerMetrics extends Page implements HasTable, HasForms
 
     private function calculateMetrics(): void
     {
-        $serverClients = $this->user->serverClients()
+        $serverClients = $this->user->clients()
             ->with(['server', 'orderItem.order'])
             ->get();
 

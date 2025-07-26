@@ -48,10 +48,10 @@ class ServerHealthMonitoringWidget extends BaseWidget
     private function getActiveConnectionsStat(): Stat
     {
         $activeConnections = Cache::remember('active_connections_count', 300, function () {
-            return Server::with('serverClients')
+            return Server::with('clients')
                 ->get()
                 ->sum(function ($server) {
-                    return $server->serverClients()->where('status', 'active')->count();
+                    return $server->clients()->where('status', 'active')->count();
                 });
         });
 
@@ -194,7 +194,7 @@ class ServerHealthMonitoringWidget extends BaseWidget
             return Server::with('serverClients')
                 ->get()
                 ->sum(function ($server) {
-                    return $server->serverClients()
+                    return $server->clients()
                         ->where('status', 'active')
                         ->where('updated_at', '>=', now()->subHour())
                         ->count();
@@ -205,7 +205,7 @@ class ServerHealthMonitoringWidget extends BaseWidget
             return Server::with('serverClients')
                 ->get()
                 ->sum(function ($server) {
-                    return $server->serverClients()
+                    return $server->clients()
                         ->where('status', 'active')
                         ->whereBetween('updated_at', [now()->subHours(2), now()->subHour()])
                         ->count();
@@ -248,7 +248,7 @@ class ServerHealthMonitoringWidget extends BaseWidget
                 $connections = Server::with('serverClients')
                     ->get()
                     ->sum(function ($server) use ($hour) {
-                        return $server->serverClients()
+                        return $server->clients()
                             ->where('status', 'active')
                             ->whereBetween('updated_at', [$hour, $hour->copy()->addHour()])
                             ->count();
@@ -303,7 +303,7 @@ class ServerHealthMonitoringWidget extends BaseWidget
         }
 
         // Client count impact
-        $clientCount = $server->serverClients()->where('status', 'active')->count();
+        $clientCount = $server->clients()->where('status', 'active')->count();
         $maxClients = 100; // Assume max 100 clients per server
         if ($clientCount > $maxClients * 0.9) {
             $score -= 20;

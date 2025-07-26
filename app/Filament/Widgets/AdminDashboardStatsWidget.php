@@ -35,7 +35,7 @@ class AdminDashboardStatsWidget extends BaseWidget
                 ->color($this->getRevenueGrowth() > 0 ? 'success' : 'danger'),
 
             Stat::make('Pending Payments', '$' . number_format($this->getPendingPayments(), 2))
-                ->description(Order::where('status', 'pending')->count() . ' pending orders')
+                ->description(Order::where('payment_status', 'pending')->count() . ' pending orders')
                 ->descriptionIcon('heroicon-m-clock')
                 ->color('warning'),
 
@@ -94,24 +94,24 @@ class AdminDashboardStatsWidget extends BaseWidget
 
     private function getTotalRevenue(): float
     {
-        return Order::where('status', 'completed')->sum('total') ?? 0;
+        return Order::where('payment_status', 'completed')->sum('grand_amount') ?? 0;
     }
 
     private function getMonthlyRevenue(): float
     {
-        return Order::where('status', 'completed')
+        return Order::where('payment_status', 'completed')
             ->whereMonth('created_at', Carbon::now()->month)
             ->whereYear('created_at', Carbon::now()->year)
-            ->sum('total') ?? 0;
+            ->sum('grand_amount') ?? 0;
     }
 
     private function getRevenueGrowth(): float
     {
         $currentMonth = $this->getMonthlyRevenue();
-        $lastMonth = Order::where('status', 'completed')
+        $lastMonth = Order::where('payment_status', 'completed')
             ->whereMonth('created_at', Carbon::now()->subMonth()->month)
             ->whereYear('created_at', Carbon::now()->subMonth()->year)
-            ->sum('total') ?? 0;
+            ->sum('grand_amount') ?? 0;
 
         if ($lastMonth == 0) return $currentMonth > 0 ? 100 : 0;
         return round((($currentMonth - $lastMonth) / $lastMonth) * 100, 1);
@@ -119,7 +119,7 @@ class AdminDashboardStatsWidget extends BaseWidget
 
     private function getPendingPayments(): float
     {
-        return Order::where('status', 'pending')->sum('total') ?? 0;
+        return Order::where('payment_status', 'pending')->sum('grand_amount') ?? 0;
     }
 
     private function getNewCustomersCount(): int
@@ -208,8 +208,8 @@ class AdminDashboardStatsWidget extends BaseWidget
 
     private function getRevenueChart(): array
     {
-        return Order::where('status', 'completed')
-            ->selectRaw('DATE(created_at) as date, SUM(total) as revenue')
+        return Order::where('payment_status', 'completed')
+            ->selectRaw('DATE(created_at) as date, SUM(grand_amount) as revenue')
             ->where('created_at', '>=', Carbon::now()->subDays(7))
             ->groupBy(DB::raw('DATE(created_at)'))
             ->orderBy('date')
@@ -219,8 +219,8 @@ class AdminDashboardStatsWidget extends BaseWidget
 
     private function getMonthlyRevenueChart(): array
     {
-        return Order::where('status', 'completed')
-            ->selectRaw('DATE(created_at) as date, SUM(total) as revenue')
+        return Order::where('payment_status', 'completed')
+            ->selectRaw('DATE(created_at) as date, SUM(grand_amount) as revenue')
             ->where('created_at', '>=', Carbon::now()->subDays(30))
             ->groupBy(DB::raw('DATE(created_at)'))
             ->orderBy('date')

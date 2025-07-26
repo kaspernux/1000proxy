@@ -98,7 +98,7 @@ class ViewUser extends ViewRecord
                                 
                                 TextEntry::make('active_services')
                                     ->label('Active Services')
-                                    ->state(fn ($record) => $record->serverClients()->where('status', 'active')->count())
+                                    ->state(fn ($record) => $record->clients()->where('status', 'active')->count())
                                     ->badge()
                                     ->color('success'),
                                 

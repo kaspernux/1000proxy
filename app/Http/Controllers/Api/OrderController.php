@@ -251,7 +251,7 @@ class OrderController extends Controller
             'pending_orders' => $user->orders()->where('status', 'pending')->count(),
             'cancelled_orders' => $user->orders()->where('status', 'cancelled')->count(),
             'total_spent' => $user->orders()->where('payment_status', 'completed')->sum('total_amount'),
-            'active_subscriptions' => $user->serverClients()->where('is_active', true)->count(),
+            'active_subscriptions' => $user->clients()->clients()->where('status', 'active')->count(),
         ];
 
         return response()->json([

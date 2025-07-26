@@ -28,7 +28,7 @@
                     <div class="ml-4">
                         <p class="text-sm font-medium text-gray-500">Active Services</p>
                         <p class="text-2xl font-semibold text-gray-900">
-                            {{ auth()->guard('customer')->user()->serverClients()->where('enable', true)->count() }}
+                            {{ auth()->guard('customer')->user()->clients()->where('enable', true)->count() }}
                         </p>
                     </div>
                 </div>
@@ -44,7 +44,7 @@
                     <div class="ml-4">
                         <p class="text-sm font-medium text-gray-500">Expiring Soon</p>
                         <p class="text-2xl font-semibold text-gray-900">
-                            {{ auth()->guard('customer')->user()->serverClients()
+                            {{ auth()->guard('customer')->user()->clients()
                                 ->where('enable', true)
                                 ->where('expiry_time', '<=', now()->addDays(7))
                                 ->count() }}

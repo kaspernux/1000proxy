@@ -191,7 +191,7 @@ class UserActivityMonitoringWidget extends BaseWidget
 
         // Get the user's most recent activity
         $recentOrder = $user->orders()->latest()->first();
-        $activeProxies = $user->serverClients()->where('status', 'active')->count();
+        $activeProxies = $user->clients()->where('status', 'active')->count();
 
         if ($recentOrder && $recentOrder->created_at >= now()->subDays(7)) {
             return "Last order: {$recentOrder->created_at->diffForHumans()}";
@@ -205,7 +205,7 @@ class UserActivityMonitoringWidget extends BaseWidget
     private function getActiveConnections(User $user): int
     {
         return Cache::remember("user_active_connections_{$user->id}", 300, function () use ($user) {
-            return $user->serverClients()
+            return $user->clients()
                 ->where('status', 'active')
                 ->count();
         });

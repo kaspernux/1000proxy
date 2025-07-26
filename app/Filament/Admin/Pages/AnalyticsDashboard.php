@@ -122,19 +122,19 @@ class AnalyticsDashboard extends Page
     {
         // Calculate period metrics
         $currentPeriodOrders = Order::whereBetween('created_at', [$timeRange['start'], $timeRange['end']])
-            ->where('status', 'completed')
+            ->where('payment_status', 'completed')
             ->get();
 
         $previousStart = $timeRange['start']->copy()->sub($timeRange['end']->diffInDays($timeRange['start']), 'days');
         $previousEnd = $timeRange['start']->copy();
 
         $previousPeriodOrders = Order::whereBetween('created_at', [$previousStart, $previousEnd])
-            ->where('status', 'completed')
+            ->where('payment_status', 'completed')
             ->get();
 
         // Revenue calculations
-        $currentRevenue = $currentPeriodOrders->sum('total_amount');
-        $previousRevenue = $previousPeriodOrders->sum('total_amount');
+        $currentRevenue = $currentPeriodOrders->sum('grand_amount');
+        $previousRevenue = $previousPeriodOrders->sum('grand_amount');
         $revenueGrowth = $previousRevenue > 0 ? (($currentRevenue - $previousRevenue) / $previousRevenue) * 100 : 0;
 
         // User metrics
@@ -192,8 +192,8 @@ class AnalyticsDashboard extends Page
 
         while ($current <= $timeRange['end']) {
             $dayRevenue = Order::where(DB::raw('DATE(created_at)'), $current->format('Y-m-d'))
-                ->where('status', 'completed')
-                ->sum('total_amount');
+                ->where('payment_status', 'completed')
+                ->sum('grand_amount');
 
             $dailyRevenue[] = [
                 'date' => $current->format('Y-m-d'),
@@ -225,8 +225,8 @@ class AnalyticsDashboard extends Page
             ->join('servers', 'server_plans.server_id', '=', 'servers.id')
             ->join('server_categories', 'servers.server_category_id', '=', 'server_categories.id')
             ->whereBetween('orders.created_at', [$timeRange['start'], $timeRange['end']])
-            ->where('orders.status', 'completed')
-            ->select('server_categories.name', DB::raw('SUM(orders.total_amount) as total'))
+            ->where('orders.payment_status', 'completed')
+            ->select('server_categories.name', DB::raw('SUM(orders.grand_amount) as total'))
             ->groupBy('server_categories.name')
             ->get()
             ->map(function ($item) {
@@ -305,7 +305,8 @@ class AnalyticsDashboard extends Page
 
         // Most popular servers
         $popularServers = DB::table('server_clients')
-            ->join('servers', 'server_clients.server_id', '=', 'servers.id')
+            ->join('server_inbounds', 'server_clients.server_inbound_id', '=', 'server_inbounds.id')
+            ->join('servers', 'server_inbounds.server_id', '=', 'servers.id')
             ->select('servers.name', 'servers.location', DB::raw('COUNT(*) as client_count'))
             ->groupBy('servers.id', 'servers.name', 'servers.location')
             ->orderByDesc('client_count')
@@ -371,7 +372,7 @@ class AnalyticsDashboard extends Page
         // Purchase patterns
         $purchasePatterns = DB::table('orders')
             ->whereBetween('created_at', [$timeRange['start'], $timeRange['end']])
-            ->where('status', 'completed')
+            ->where('payment_status', 'completed')
             ->select(DB::raw('HOUR(created_at) as hour'), DB::raw('COUNT(*) as count'))
             ->groupBy(DB::raw('HOUR(created_at)'))
             ->get()
@@ -388,16 +389,16 @@ class AnalyticsDashboard extends Page
 
         // Customer lifetime value calculation
         $avgCustomerLifetimeValue = Customer::whereHas('orders', function ($query) {
-            $query->where('status', 'completed');
+            $query->where('payment_status', 'completed');
         })->withSum('orders', 'total_amount')->avg('orders_sum_total_amount') ?? 0;
 
         // Repeat purchase rate
         $customersWithMultiplePurchases = Customer::whereHas('orders', function ($query) {
-            $query->where('status', 'completed');
+            $query->where('payment_status', 'completed');
         }, '>', 1)->count();
 
         $totalCustomersWithPurchases = Customer::whereHas('orders', function ($query) {
-            $query->where('status', 'completed');
+            $query->where('payment_status', 'completed');
         })->count();
 
         $repeatPurchaseRate = $totalCustomersWithPurchases > 0
@@ -415,7 +416,7 @@ class AnalyticsDashboard extends Page
     protected function getRevenueForecast(array $timeRange): array
     {
         // Simple linear regression forecast based on historical data
-        $historicalRevenue = Order::where('status', 'completed')
+        $historicalRevenue = Order::where('payment_status', 'completed')
             ->whereBetween('created_at', [
                 $timeRange['start']->copy()->subDays(30),
                 $timeRange['end']
@@ -470,7 +471,7 @@ class AnalyticsDashboard extends Page
         $segments = [];
 
         foreach ($customers as $customer) {
-            $orders = $customer->orders->where('status', 'completed');
+            $orders = $customer->orders->where('payment_status', 'completed');
 
             if ($orders->isEmpty()) continue;
 
@@ -538,8 +539,8 @@ class AnalyticsDashboard extends Page
             ->join('server_plans', 'order_items.server_plan_id', '=', 'server_plans.id')
             ->join('servers', 'server_plans.server_id', '=', 'servers.id')
             ->whereBetween('orders.created_at', [$timeRange['start'], $timeRange['end']])
-            ->where('orders.status', 'completed')
-            ->select('servers.location', DB::raw('SUM(orders.total_amount) as revenue'), DB::raw('COUNT(orders.id) as order_count'))
+            ->where('orders.payment_status', 'completed')
+            ->select('servers.location', DB::raw('SUM(orders.grand_amount) as revenue'), DB::raw('COUNT(orders.id) as order_count'))
             ->groupBy('servers.location')
             ->orderByDesc('revenue')
             ->get();
@@ -556,7 +557,7 @@ class AnalyticsDashboard extends Page
         // Simple conversion rate calculation
         $visitors = rand(1000, 5000); // Replace with actual visitor tracking
         $orders = Order::whereBetween('created_at', [$timeRange['start'], $timeRange['end']])
-            ->where('status', 'completed')
+            ->where('payment_status', 'completed')
             ->count();
 
         return $visitors > 0 ? ($orders / $visitors) * 100 : 0;

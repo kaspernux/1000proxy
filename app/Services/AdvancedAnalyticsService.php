@@ -159,8 +159,10 @@ class AdvancedAnalyticsService
 
         $averageTrafficPerClient = $activeClients > 0 ? $totalTraffic / $activeClients : 0;
 
+        // Top servers by client count (no direct server_clients.server_id reference)
         $topServers = DB::table('server_clients')
-            ->join('servers', 'server_clients.server_id', '=', 'servers.id')
+            ->join('server_inbounds', 'server_clients.server_inbound_id', '=', 'server_inbounds.id')
+            ->join('servers', 'server_inbounds.server_id', '=', 'servers.id')
             ->where('server_clients.created_at', '>=', $startDate)
             ->select('servers.name', DB::raw('COUNT(*) as client_count'))
             ->groupBy('servers.id', 'servers.name')

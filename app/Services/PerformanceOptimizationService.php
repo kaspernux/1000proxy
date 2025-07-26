@@ -1230,7 +1230,7 @@ class PerformanceOptimizationService
                 'recommendations' => [
                     'Add index on customers.email',
                     'Add index on orders.customer_id',
-                    'Add index on orders.status',
+                    'Add index on orders.payment_status',
                     'Add composite index on (status, created_at)'
                 ]
             ];

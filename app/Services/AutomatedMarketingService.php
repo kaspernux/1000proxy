@@ -296,7 +296,7 @@ class AutomatedMarketingService
     protected function sendRenewalReminderEmails(): int
     {
         // Find orders that will expire soon
-        $expiringOrders = Order::where('status', 'completed')
+        $expiringOrders = Order::where('payment_status', 'completed')
             ->whereDate('expires_at', '=', now()->addDays(7)->toDateString())
             ->with('customer')
             ->get();
@@ -709,7 +709,7 @@ class AutomatedMarketingService
         return [
             'period' => $period,
             'customer_acquisition' => Customer::where('created_at', '>=', $startDate)->count(),
-            'revenue_generated' => Order::where('status', 'completed')
+            'revenue_generated' => Order::where('payment_status', 'completed')
                 ->where('created_at', '>=', $startDate)
                 ->sum('total_amount'),
             'email_campaign_stats' => $this->getEmailCampaignStats($startDate),

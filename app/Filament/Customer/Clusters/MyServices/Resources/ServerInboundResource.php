@@ -43,7 +43,7 @@ class ServerInboundResource extends Resource
         $customerId = auth('customer')->id();
 
         return parent::getEloquentQuery()
-            ->whereHas('server.serverClients', function (Builder $query) use ($customerId) {
+            ->whereHas('server.clients', function (Builder $query) use ($customerId) {
                 $query->where('email', 'LIKE', "%#ID {$customerId}");
             })
             ->where('enable', true);
@@ -102,7 +102,7 @@ class ServerInboundResource extends Resource
                     ->color('success')
                     ->getStateUsing(function ($record) {
                         $customerId = auth('customer')->id();
-                        return $record->serverClients()
+                        return $record->clients()
                             ->where('email', 'LIKE', "%#ID {$customerId}")
                             ->count();
                     }),
@@ -233,7 +233,7 @@ class ServerInboundResource extends Resource
                                                     ->label('Summary')
                                                     ->getStateUsing(function ($record) {
                                                         $customerId = auth('customer')->id();
-                                                        $clients = $record->serverClients()
+                                                        $clients = $record->clients()
                                                             ->where('email', 'LIKE', "%#ID {$customerId}")
                                                             ->get();
 
@@ -256,7 +256,7 @@ class ServerInboundResource extends Resource
                                     ->schema([
                                         TextEntry::make('total_clients_count')
                                             ->label('Total Clients')
-                                            ->getStateUsing(fn ($record) => $record->serverClients()->count()),
+                                            ->getStateUsing(fn ($record) => $record->clients()->count()),
 
                                         TextEntry::make('total_up')
                                             ->label('Total Upload')

@@ -158,9 +158,20 @@ class Server extends Model
         return $this->hasMany(DownloadableItem::class, 'server_id');
     }
 
-    public function clients(): HasMany
+
+    /**
+     * Get all clients for the server via inbounds (hasManyThrough)
+     */
+    public function clients()
     {
-        return $this->hasMany(ServerClient::class, 'server_id');
+        return $this->hasManyThrough(
+            \App\Models\ServerClient::class,
+            \App\Models\ServerInbound::class,
+            'server_id', // Foreign key on server_inbounds table...
+            'server_inbound_id', // Foreign key on server_clients table...
+            'id', // Local key on servers table...
+            'id'  // Local key on server_inbounds table...
+        );
     }
 
     // Enhanced server management methods

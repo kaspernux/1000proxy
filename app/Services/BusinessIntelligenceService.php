@@ -183,7 +183,7 @@ class BusinessIntelligenceService
     {
         try {
             $totalOrders = Order::whereBetween('created_at', [$period['start'], $period['end']])->count();
-            $completedOrders = Order::where('status', 'completed')
+            $completedOrders = Order::where('payment_status', 'completed')
                 ->whereBetween('created_at', [$period['start'], $period['end']])
                 ->count();
 

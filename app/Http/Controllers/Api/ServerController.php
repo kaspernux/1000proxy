@@ -221,8 +221,8 @@ class ServerController extends Controller
         }
 
         $stats = [
-            'total_clients' => $server->serverClients()->count(),
-            'active_clients' => $server->serverClients()->where('is_active', true)->count(),
+            'total_clients' => $server->clients()->count(),
+            'active_clients' => $server->clients()->where('status', 'active')->count(),
             'total_orders' => $server->orders()->count(),
             'average_rating' => $server->ratings()->avg('rating') ?? 0,
             'total_reviews' => $server->reviews()->count(),

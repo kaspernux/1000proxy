@@ -649,7 +649,7 @@ class PerformanceReport extends Command
         $this->line("New services: {$newServices}");
 
         // Revenue
-        $revenue = Order::where('status', 'completed')
+        $revenue = Order::where('payment_status', 'completed')
             ->where('created_at', '>=', $startDate)
             ->sum('total_amount');
         $this->line("Revenue: $" . number_format($revenue, 2));

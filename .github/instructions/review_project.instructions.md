@@ -60,7 +60,7 @@ public function __construct(XUIService $xuiService) {}
 $xuiService = new XUIService();
 
 // ✅ Good: Eloquent relationships
-public function serverClients() {
+public function clients() {
     return $this->hasMany(ServerClient::class);
 }
 
@@ -155,7 +155,7 @@ php artisan db:monitor
 // Check for these optimization patterns:
 
 // ✅ Eager loading to prevent N+1 queries
-$users = User::with('serverClients.server')->get();
+$users = User::with('clients.server')->get();
 
 // ✅ Database indexing
 Schema::table('server_clients', function (Blueprint $table) {

@@ -61,9 +61,9 @@ class AdminChartsWidget extends ChartWidget
         }
 
         // Get revenue data
-        $revenueData = Order::where('status', 'completed')
+        $revenueData = Order::where('payment_status', 'completed')
             ->where('created_at', '>=', $startDate)
-            ->selectRaw($groupBy . ' as period, SUM(total) as revenue, COUNT(*) as orders')
+            ->selectRaw($groupBy . ' as period, SUM(grand_amount) as revenue, COUNT(*) as orders')
             ->groupBy(DB::raw($groupBy))
             ->orderBy('period')
             ->get();

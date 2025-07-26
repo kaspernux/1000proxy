@@ -1019,10 +1019,10 @@ class TelegramBotService
         // System statistics
         $totalUsers = User::count();
         $totalOrders = Order::count();
-        $completedOrders = Order::where('status', 'completed')->count();
+        $completedOrders = Order::where('payment_status', 'completed')->count();
         $pendingOrders = Order::where('status', 'pending')->count();
-        $totalRevenue = Order::where('status', 'completed')->sum('amount');
-        $todayRevenue = Order::where('status', 'completed')
+        $totalRevenue = Order::where('payment_status', 'completed')->sum('amount');
+        $todayRevenue = Order::where('payment_status', 'completed')
             ->whereDate('created_at', today())
             ->sum('amount');
         $todayOrders = Order::whereDate('created_at', today())->count();
