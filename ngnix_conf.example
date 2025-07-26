@@ -1,55 +1,109 @@
 server {
-    server_name YOUR_DOMAIN www.YOUR_DOMAIN;
-
-    root /var/www/1000proxy/public;
-    index index.php index.html index.htm;
-
-    location / {
-        try_files $uri $uri/ /index.php?$query_string;
-    }
-
-    location ~ \.php$ {
-        include snippets/fastcgi-php.conf;
-        fastcgi_pass unix:/var/run/php/php8.3-fpm.sock;
-    }
-
-    location ~ /\.ht {
-        deny all;
-    }
-
-    listen 443 ssl; # managed by Certbot
-    ssl_certificate /etc/letsencrypt/live/YOUR_DOMAIN/fullchain.pem; # managed by Certbot
-    ssl_certificate_key /etc/letsencrypt/live/YOUR_DOMAIN/privkey.pem; # managed by Certbot
-    include /etc/letsencrypt/options-ssl-nginx.conf; # managed by Certbot
-    ssl_dhparam /etc/letsencrypt/ssl-dhparams.pem; # managed by Certbot
-
-    location /phpmyadmin {
-    alias /usr/share/phpmyadmin/;
-    index index.php index.html index.htm;
-
-    location ~ ^/phpmyadmin/(.+\.php)$ {
-        alias /usr/share/phpmyadmin/$1;
-        fastcgi_pass unix:/var/run/php/php8.3-fpm.sock; # adjust PHP version if needed
-        fastcgi_index index.php;
-        include fastcgi_params;
-        fastcgi_param SCRIPT_FILENAME /usr/share/phpmyadmin/$1;
-    }
-
-    location ~* ^/phpmyadmin/(.+\.(jpg|jpeg|gif|css|png|js|ico|html|xml|txt))$ {
-        alias /usr/share/phpmyadmin/$1;
-    }
-}
-
-}
-server {
-    if ($host = YOUR_DOMAIN) {
+    if ($host = www.1000proxy.io) {
         return 301 https://$host$request_uri;
     } # managed by Certbot
 
 
-    listen 80;
-    server_name YOUR_DOMAIN www.YOUR_DOMAIN;
-    return 404; # managed by Certbot
+    listen 80 default_server;
+    server_name 1000proxy.io www.1000proxy.io;
+    return 301 https://$server_name$request_uri;
 
+
+}
+
+server {
+    listen 443 ssl http2 default_server;
+    server_name 1000proxy.io www.1000proxy.io;
+    root /var/www/1000proxy/public;
+    index index.php index.html;
+    ssl_certificate /etc/letsencrypt/live/www.1000proxy.io/fullchain.pem; # managed by Certbot
+    ssl_certificate_key /etc/letsencrypt/live/www.1000proxy.io/privkey.pem; # managed by Certbot
+
+    access_log /var/log/nginx/1000proxy.access.log;
+    error_log /var/log/nginx/1000proxy.error.log;
+
+    location ~ /\. {
+        deny all;
+        access_log off;
+        log_not_found off;
+    }
+
+    location ~ ~$ {
+        deny all;
+        access_log off;
+        log_not_found off;
+    }
+
+    location ~* \.(env|config|sql|log|htaccess|htpasswd|ini|bak|old|tmp)$ {
+        deny all;
+        return 404;
+    }
+
+    location ~* ^/(login|register|api/auth) {
+        limit_req zone=login burst=5 nodelay;
+        limit_conn perip 5;
+        try_files $uri $uri/ /index.php?$query_string;
+    }
+
+    location ~* ^/api/ {
+        limit_req zone=api burst=20 nodelay;
+        limit_conn perip 10;
+        try_files $uri $uri/ /index.php?$query_string;
+    }
+
+    location ~* ^/(admin|filament) {
+        limit_req zone=admin burst=10 nodelay;
+        limit_conn perip 3;
+        try_files $uri $uri/ /index.php?$query_string;
+        allow 127.0.0.1;
+        # allow YOUR_ADMIN_IP_HERE;
+        # deny all;
+    }
+
+    location / {
+        limit_req zone=general burst=10 nodelay;
+        limit_conn perip 10;
+        try_files $uri $uri/ /index.php?$query_string;
+    }
+
+    location ~ \.php$ {
+        fastcgi_split_path_info ^(.+\.php)(/.+)$;
+        fastcgi_pass unix:/run/php/php8.3-1000proxy.sock;
+        fastcgi_index index.php;
+        include fastcgi_params;
+        fastcgi_param SCRIPT_FILENAME $realpath_root$fastcgi_script_name;
+        fastcgi_param DOCUMENT_ROOT $realpath_root;
+        fastcgi_param PATH_INFO $fastcgi_path_info;
+        fastcgi_hide_header X-Powered-By;
+        fastcgi_read_timeout 300;
+        fastcgi_buffer_size 128k;
+        fastcgi_buffers 256 16k;
+        fastcgi_busy_buffers_size 256k;
+        fastcgi_temp_file_write_size 256k;
+    }
+
+    location ~* \.(jpg|jpeg|png|gif|ico|css|js|svg|webp|woff|woff2|ttf|eot)$ {
+        expires 1y;
+        add_header Cache-Control "public, immutable";
+        add_header Vary "Accept-Encoding";
+        access_log off;
+        log_not_found off;
+    }
+
+    location = /favicon.ico {
+        log_not_found off;
+        access_log off;
+    }
+
+    location = /robots.txt {
+        allow all;
+        log_not_found off;
+        access_log off;
+    }
+
+    location ~ ^/(storage|bootstrap|config|database|resources|routes|tests|vendor)/ {
+        deny all;
+        return 404;
+    }
 
 }

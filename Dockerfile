@@ -1,21 +1,20 @@
 # Multi-stage build for production
-FROM node:20-alpine AS frontend-build
 
-WORKDIR /app
+FROM node:20.12.2-alpine3.19 AS frontend-build
+WORKDIR /var/www/1000proxy
 COPY package*.json ./
-RUN npm ci --only=production
-
+RUN if [ -f package-lock.json ]; then npm ci --only=production; else npm install; fi
 COPY . .
 RUN npm run build
 
-FROM php:8.3-fpm AS backend
 
+FROM php:8.3.7-fpm-alpine3.19 AS backend
 # Install system dependencies
-RUN apt-get update && apt-get install -y \
+RUN apk add --no-cache \
     git \
     curl \
     libpng-dev \
-    libonig-dev \
+    oniguruma-dev \
     libxml2-dev \
     zip \
     unzip \
@@ -25,8 +24,7 @@ RUN apt-get update && apt-get install -y \
     g++ \
     make \
     mysql-client \
-    && rm -rf /var/lib/apt/lists/*
-
+    linux-headers
 # Install PHP extensions
 RUN docker-php-ext-install \
     pdo_mysql \
@@ -39,44 +37,31 @@ RUN docker-php-ext-install \
     intl \
     opcache \
     sockets
-
 # Install Redis PHP extension
 RUN pecl install redis && docker-php-ext-enable redis
-
 # Install Composer
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
-
 # Set working directory
-WORKDIR /var/www/html
-
+WORKDIR /var/www/1000proxy
 # Copy composer files
 COPY composer.json composer.lock ./
-
-# Install composer dependencies
-RUN composer install --no-dev --no-scripts --no-autoloader --prefer-dist
-
 # Copy application files
 COPY . .
-COPY --from=frontend-build /app/public/build ./public/build
-
-# Complete composer installation
+COPY --from=frontend-build /var/www/1000proxy/public/build ./public/build
+# Install composer dependencies (optimized) after all source files are in place
 RUN composer install --no-dev --optimize-autoloader
-
-# Set permissions
-RUN chown -R www-data:www-data /var/www/html \
-    && chmod -R 755 /var/www/html/storage \
-    && chmod -R 755 /var/www/html/bootstrap/cache
-
+# Set permissions and create storage symlink
+RUN chown -R www-data:www-data /var/www/1000proxy \
+    && chmod -R 775 /var/www/1000proxy/storage \
+    && chmod -R 775 /var/www/1000proxy/bootstrap/cache \
+    && php artisan storage:link || true
 # Copy PHP configuration
 COPY docker/php/php.ini /usr/local/etc/php/php.ini
 COPY docker/php/opcache.ini /usr/local/etc/php/conf.d/opcache.ini
-
 # Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
     CMD curl -f http://localhost:9000/health || exit 1
-
 # Expose port
 EXPOSE 9000
-
 # Start command
 CMD ["php-fpm"]
