@@ -1,3 +1,8 @@
+@extends('layouts.app')
+
+@section('content')
+// ...existing code...
+@endsection
 <div class="min-h-screen bg-gradient-to-r from-green-900 to-green-600 py-8">
     <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
         {{-- Header --}}

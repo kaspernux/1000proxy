@@ -93,25 +93,23 @@ class RevenueAnalyticsWidget extends ChartWidget
 
             $labels[] = $startTime->format('H:00');
 
-            // Calculate revenue for this hour
-            $revenue = WalletTransaction::where('type', 'deposit')
-                ->where('status', 'completed')
+            // Calculate revenue for this hour (sum grand_amount of paid orders)
+            $revenue = Order::where('payment_status', 'paid')
                 ->whereBetween('created_at', [$startTime, $endTime])
-                ->sum('amount');
-
+                ->sum('grand_amount');
             $revenueData[] = round($revenue, 2);
 
-            // Count orders for this hour
-            $orders = Order::whereBetween('created_at', [$startTime, $endTime])
+            // Count paid orders for this hour
+            $orders = Order::where('payment_status', 'paid')
+                ->whereBetween('created_at', [$startTime, $endTime])
                 ->count();
-
             $ordersData[] = $orders;
         }
 
         return [
             'datasets' => [
                 [
-                    'label' => 'Revenue ($)',
+                    'label' => 'Revenue (Paid Orders)',
                     'data' => $revenueData,
                     'borderColor' => 'rgb(59, 130, 246)',
                     'backgroundColor' => 'rgba(59, 130, 246, 0.1)',
@@ -119,7 +117,7 @@ class RevenueAnalyticsWidget extends ChartWidget
                     'yAxisID' => 'y',
                 ],
                 [
-                    'label' => 'Orders',
+                    'label' => 'Paid Orders',
                     'data' => $ordersData,
                     'borderColor' => 'rgb(16, 185, 129)',
                     'backgroundColor' => 'rgba(16, 185, 129, 0.1)',
@@ -142,30 +140,30 @@ class RevenueAnalyticsWidget extends ChartWidget
             $date = now()->subDays($day);
             $labels[] = $date->format('M j');
 
-            // Calculate revenue for this day
-            $revenue = WalletTransaction::where('type', 'deposit')
-                ->where('status', 'completed')
+            // Calculate revenue for this day (sum grand_amount of paid orders)
+            $revenue = Order::where('payment_status', 'paid')
                 ->whereDate('created_at', $date)
-                ->sum('amount');
-
+                ->sum('grand_amount');
             $revenueData[] = round($revenue, 2);
 
-            // Count orders for this day
-            $orders = Order::whereDate('created_at', $date)->count();
+            // Count paid orders for this day
+            $orders = Order::where('payment_status', 'paid')
+                ->whereDate('created_at', $date)
+                ->count();
             $ordersData[] = $orders;
         }
 
         return [
             'datasets' => [
                 [
-                    'label' => 'Revenue ($)',
+                    'label' => 'Revenue (Paid Orders)',
                     'data' => $revenueData,
                     'borderColor' => 'rgb(59, 130, 246)',
                     'backgroundColor' => 'rgba(59, 130, 246, 0.1)',
                     'tension' => 0.4,
                 ],
                 [
-                    'label' => 'Orders',
+                    'label' => 'Paid Orders',
                     'data' => $ordersData,
                     'borderColor' => 'rgb(16, 185, 129)',
                     'backgroundColor' => 'rgba(16, 185, 129, 0.1)',
@@ -196,34 +194,32 @@ class RevenueAnalyticsWidget extends ChartWidget
 
             $labels[] = $currentDate->format('M j') . ' - ' . $weekEnd->format('j');
 
-            // Calculate revenue for this week
-            $revenue = WalletTransaction::where('type', 'deposit')
-                ->where('status', 'completed')
-                ->whereBetween('created_at', [$currentDate, $weekEnd->endOfDay()])
-                ->sum('amount');
-
+            // Calculate revenue for this week (sum grand_amount of paid orders)
+            $revenue = Order::where('payment_status', 'paid')
+                ->whereBetween('created_at', [$currentDate, $weekEnd])
+                ->sum('grand_amount');
             $revenueData[] = round($revenue, 2);
 
-            // Count orders for this week
-            $orders = Order::whereBetween('created_at', [$currentDate, $weekEnd->endOfDay()])
+            // Count paid orders for this week
+            $orders = Order::where('payment_status', 'paid')
+                ->whereBetween('created_at', [$currentDate, $weekEnd])
                 ->count();
-
             $ordersData[] = $orders;
 
-            $currentDate->addWeek();
+            $currentDate = $weekEnd->addDay();
         }
 
         return [
             'datasets' => [
                 [
-                    'label' => 'Revenue ($)',
+                    'label' => 'Revenue (Paid Orders)',
                     'data' => $revenueData,
                     'borderColor' => 'rgb(59, 130, 246)',
                     'backgroundColor' => 'rgba(59, 130, 246, 0.1)',
                     'tension' => 0.4,
                 ],
                 [
-                    'label' => 'Orders',
+                    'label' => 'Paid Orders',
                     'data' => $ordersData,
                     'borderColor' => 'rgb(16, 185, 129)',
                     'backgroundColor' => 'rgba(16, 185, 129, 0.1)',

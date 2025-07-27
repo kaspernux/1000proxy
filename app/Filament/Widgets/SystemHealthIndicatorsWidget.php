@@ -27,7 +27,86 @@ class SystemHealthIndicatorsWidget extends BaseWidget
             $this->getStorageHealth(),
             $this->getApplicationHealth(),
             $this->getSecurityHealth(),
+            $this->getServerFleetHealth(),
+            $this->getXUIPanelHealth(),
+            $this->getSystemTrafficStat(),
         ];
+    }
+
+    // New: Server fleet health (up/down/paused)
+    private function getServerFleetHealth(): Stat
+    {
+        $total = \App\Models\Server::count();
+        $up = \App\Models\Server::where('status', 'up')->count();
+        $down = \App\Models\Server::where('status', 'down')->count();
+        $paused = \App\Models\Server::where('status', 'paused')->count();
+
+        $desc = "$up up, $down down, $paused paused of $total";
+        $color = $up === $total ? 'success' : ($up >= ($total * 0.7) ? 'warning' : 'danger');
+
+        return Stat::make('Server Fleet', "$up/$total Up")
+            ->description($desc)
+            ->descriptionIcon($color === 'success' ? 'heroicon-m-check-circle' : ($color === 'warning' ? 'heroicon-m-exclamation-triangle' : 'heroicon-m-x-circle'))
+            ->color($color);
+    }
+
+    // New: XUI panel health (panels reachable)
+    private function getXUIPanelHealth(): Stat
+    {
+        $servers = \App\Models\Server::where('status', 'up')->get();
+        $connected = 0;
+        $failed = 0;
+        foreach ($servers as $server) {
+            try {
+                $xui = new \App\Services\XUIService($server);
+                if ($xui->testConnection()) {
+                    $connected++;
+                } else {
+                    $failed++;
+                }
+            } catch (\Exception $e) {
+                $failed++;
+            }
+        }
+        $total = $servers->count();
+        $percent = $total > 0 ? round(($connected / $total) * 100, 1) : 0;
+        $desc = "$connected of $total panels connected";
+        $color = $percent >= 90 ? 'success' : ($percent >= 70 ? 'warning' : 'danger');
+        return Stat::make('XUI Panels', "$percent% Connected")
+            ->description($desc)
+            ->descriptionIcon($color === 'success' ? 'heroicon-m-globe-alt' : ($color === 'warning' ? 'heroicon-m-exclamation-triangle' : 'heroicon-m-x-circle'))
+            ->color($color);
+    }
+
+    // New: System-wide traffic stat (sum up/down from all servers)
+    private function getSystemTrafficStat(): Stat
+    {
+        $totalUp = 0;
+        $totalDown = 0;
+        \App\Models\Server::with('serverClients')->get()->each(function ($server) use (&$totalUp, &$totalDown) {
+            $server->serverClients->each(function ($client) use (&$totalUp, &$totalDown) {
+                $totalUp += $client->up ?? 0;
+                $totalDown += $client->down ?? 0;
+            });
+        });
+        // Add global_traffic_stats if available
+        \App\Models\Server::all()->each(function ($server) use (&$totalUp, &$totalDown) {
+            $stats = $server->global_traffic_stats;
+            if (is_array($stats)) {
+                $totalUp += $stats['up'] ?? 0;
+                $totalDown += $stats['down'] ?? 0;
+            } elseif (is_string($stats)) {
+                $decoded = json_decode($stats, true);
+                $totalUp += $decoded['up'] ?? 0;
+                $totalDown += $decoded['down'] ?? 0;
+            }
+        });
+        $desc = "↑ " . $this->formatBytes($totalUp) . " ↓ " . $this->formatBytes($totalDown);
+        $total = $this->formatBytes($totalUp + $totalDown);
+        return Stat::make('System Traffic', $total)
+            ->description($desc)
+            ->descriptionIcon('heroicon-m-signal')
+            ->color('info');
     }
 
     private function getDatabaseHealth(): Stat

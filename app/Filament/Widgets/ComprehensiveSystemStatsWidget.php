@@ -19,23 +19,23 @@ class ComprehensiveSystemStatsWidget extends BaseWidget
     protected function getStats(): array
     {
         $totalCustomers = Customer::count();
-        $newCustomersToday = Customer::where('created_at', '>=', Carbon::today())->count();
+        $newCustomersToday = Customer::whereDate('created_at', Carbon::today())->count();
         $activeCustomers = Customer::where('is_active', true)->count();
 
         $totalOrders = Order::count();
-        $ordersToday = Order::where('created_at', '>=', Carbon::today())->count();
+        $ordersToday = Order::whereDate('created_at', Carbon::today())->count();
         $pendingOrders = Order::where('order_status', 'new')->count();
         $totalRevenue = Order::where('payment_status', 'paid')->sum('grand_amount');
         $revenueToday = Order::where('payment_status', 'paid')
-            ->where('created_at', '>=', Carbon::today())
+            ->whereDate('created_at', Carbon::today())
             ->sum('grand_amount');
 
         $totalServers = Server::count();
-        $healthyServers = Server::where('status', 'healthy')->count();
-        $offlineServers = Server::where('status', 'offline')->count();
+        $healthyServers = Server::where('status', 'up')->count();
+        $offlineServers = Server::where('status', 'down')->count();
 
         $totalClients = ServerClient::count();
-        $activeClients = ServerClient::where('enable', true)->count();
+        $activeClients = ServerClient::where('is_active', true)->count();
 
         $totalStaff = User::count();
         $activeStaff = User::where('is_active', true)->count();
@@ -47,12 +47,12 @@ class ComprehensiveSystemStatsWidget extends BaseWidget
                 ->descriptionIcon($newCustomersToday > 0 ? 'heroicon-m-arrow-trending-up' : 'heroicon-m-minus')
                 ->color($newCustomersToday > 0 ? 'success' : 'gray')
                 ->chart([
-                    Customer::whereBetween('created_at', [Carbon::today()->subDays(6), Carbon::today()->subDays(5)])->count(),
-                    Customer::whereBetween('created_at', [Carbon::today()->subDays(5), Carbon::today()->subDays(4)])->count(),
-                    Customer::whereBetween('created_at', [Carbon::today()->subDays(4), Carbon::today()->subDays(3)])->count(),
-                    Customer::whereBetween('created_at', [Carbon::today()->subDays(3), Carbon::today()->subDays(2)])->count(),
-                    Customer::whereBetween('created_at', [Carbon::today()->subDays(2), Carbon::today()->subDays(1)])->count(),
-                    Customer::whereBetween('created_at', [Carbon::today()->subDays(1), Carbon::today()])->count(),
+                    Customer::whereDate('created_at', Carbon::today()->subDays(6))->count(),
+                    Customer::whereDate('created_at', Carbon::today()->subDays(5))->count(),
+                    Customer::whereDate('created_at', Carbon::today()->subDays(4))->count(),
+                    Customer::whereDate('created_at', Carbon::today()->subDays(3))->count(),
+                    Customer::whereDate('created_at', Carbon::today()->subDays(2))->count(),
+                    Customer::whereDate('created_at', Carbon::today()->subDays(1))->count(),
                     $newCustomersToday,
                 ]),
 
@@ -62,12 +62,12 @@ class ComprehensiveSystemStatsWidget extends BaseWidget
                 ->descriptionIcon($revenueToday > 0 ? 'heroicon-m-arrow-trending-up' : 'heroicon-m-minus')
                 ->color($revenueToday > 0 ? 'success' : 'gray')
                 ->chart([
-                    Order::where('payment_status', 'paid')->whereBetween('created_at', [Carbon::today()->subDays(6), Carbon::today()->subDays(5)])->sum('grand_amount'),
-                    Order::where('payment_status', 'paid')->whereBetween('created_at', [Carbon::today()->subDays(5), Carbon::today()->subDays(4)])->sum('grand_amount'),
-                    Order::where('payment_status', 'paid')->whereBetween('created_at', [Carbon::today()->subDays(4), Carbon::today()->subDays(3)])->sum('grand_amount'),
-                    Order::where('payment_status', 'paid')->whereBetween('created_at', [Carbon::today()->subDays(3), Carbon::today()->subDays(2)])->sum('grand_amount'),
-                    Order::where('payment_status', 'paid')->whereBetween('created_at', [Carbon::today()->subDays(2), Carbon::today()->subDays(1)])->sum('grand_amount'),
-                    Order::where('payment_status', 'paid')->whereBetween('created_at', [Carbon::today()->subDays(1), Carbon::today()])->sum('grand_amount'),
+                    Order::where('payment_status', 'paid')->whereDate('created_at', Carbon::today()->subDays(6))->sum('grand_amount'),
+                    Order::where('payment_status', 'paid')->whereDate('created_at', Carbon::today()->subDays(5))->sum('grand_amount'),
+                    Order::where('payment_status', 'paid')->whereDate('created_at', Carbon::today()->subDays(4))->sum('grand_amount'),
+                    Order::where('payment_status', 'paid')->whereDate('created_at', Carbon::today()->subDays(3))->sum('grand_amount'),
+                    Order::where('payment_status', 'paid')->whereDate('created_at', Carbon::today()->subDays(2))->sum('grand_amount'),
+                    Order::where('payment_status', 'paid')->whereDate('created_at', Carbon::today()->subDays(1))->sum('grand_amount'),
                     $revenueToday,
                 ]),
 
@@ -77,25 +77,24 @@ class ComprehensiveSystemStatsWidget extends BaseWidget
                 ->descriptionIcon($pendingOrders > 0 ? 'heroicon-m-clock' : 'heroicon-m-check-circle')
                 ->color($pendingOrders > 0 ? 'warning' : 'success')
                 ->chart([
-                    Order::whereBetween('created_at', [Carbon::today()->subDays(6), Carbon::today()->subDays(5)])->count(),
-                    Order::whereBetween('created_at', [Carbon::today()->subDays(5), Carbon::today()->subDays(4)])->count(),
-                    Order::whereBetween('created_at', [Carbon::today()->subDays(4), Carbon::today()->subDays(3)])->count(),
-                    Order::whereBetween('created_at', [Carbon::today()->subDays(3), Carbon::today()->subDays(2)])->count(),
-                    Order::whereBetween('created_at', [Carbon::today()->subDays(2), Carbon::today()->subDays(1)])->count(),
-                    Order::whereBetween('created_at', [Carbon::today()->subDays(1), Carbon::today()])->count(),
+                    Order::whereDate('created_at', Carbon::today()->subDays(6))->count(),
+                    Order::whereDate('created_at', Carbon::today()->subDays(5))->count(),
+                    Order::whereDate('created_at', Carbon::today()->subDays(4))->count(),
+                    Order::whereDate('created_at', Carbon::today()->subDays(3))->count(),
+                    Order::whereDate('created_at', Carbon::today()->subDays(2))->count(),
+                    Order::whereDate('created_at', Carbon::today()->subDays(1))->count(),
                     $ordersToday,
                 ]),
 
             // Server Health Stats
-            Stat::make('🖥️ Server Health', "{$healthyServers}/{$totalServers} Healthy")
+            Stat::make('🖥️ Server Health', "{$healthyServers}/{$totalServers} Online")
                 ->description($offlineServers > 0 ? "{$offlineServers} servers offline" : 'All servers online')
                 ->descriptionIcon($offlineServers > 0 ? 'heroicon-m-exclamation-triangle' : 'heroicon-m-check-circle')
                 ->color($offlineServers > 0 ? 'danger' : 'success')
                 ->chart([
                     $healthyServers,
                     $offlineServers,
-                    Server::where('status', 'warning')->count(),
-                    Server::where('status', 'maintenance')->count(),
+                    Server::where('status', 'paused')->count(),
                 ]),
 
             // Active Clients Stats
@@ -104,13 +103,13 @@ class ComprehensiveSystemStatsWidget extends BaseWidget
                 ->descriptionIcon('heroicon-m-users')
                 ->color($activeClients > ($totalClients * 0.7) ? 'success' : 'warning')
                 ->chart([
-                    ServerClient::whereBetween('created_at', [Carbon::today()->subDays(6), Carbon::today()->subDays(5)])->count(),
-                    ServerClient::whereBetween('created_at', [Carbon::today()->subDays(5), Carbon::today()->subDays(4)])->count(),
-                    ServerClient::whereBetween('created_at', [Carbon::today()->subDays(4), Carbon::today()->subDays(3)])->count(),
-                    ServerClient::whereBetween('created_at', [Carbon::today()->subDays(3), Carbon::today()->subDays(2)])->count(),
-                    ServerClient::whereBetween('created_at', [Carbon::today()->subDays(2), Carbon::today()->subDays(1)])->count(),
-                    ServerClient::whereBetween('created_at', [Carbon::today()->subDays(1), Carbon::today()])->count(),
-                    ServerClient::whereBetween('created_at', [Carbon::today(), Carbon::today()->addDay()])->count(),
+                    ServerClient::whereDate('created_at', Carbon::today()->subDays(6))->count(),
+                    ServerClient::whereDate('created_at', Carbon::today()->subDays(5))->count(),
+                    ServerClient::whereDate('created_at', Carbon::today()->subDays(4))->count(),
+                    ServerClient::whereDate('created_at', Carbon::today()->subDays(3))->count(),
+                    ServerClient::whereDate('created_at', Carbon::today()->subDays(2))->count(),
+                    ServerClient::whereDate('created_at', Carbon::today()->subDays(1))->count(),
+                    $activeClients,
                 ]),
 
             // Staff Stats

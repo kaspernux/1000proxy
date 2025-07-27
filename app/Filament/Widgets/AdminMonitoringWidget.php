@@ -21,31 +21,38 @@ class AdminMonitoringWidget extends BaseWidget
         return $table
             ->query(
                 Order::query()
-                    ->with(['customer', 'orderItems.serverPlan'])
+                    ->with(['customer'])
                     ->latest()
             )
             ->columns([
-                Tables\Columns\BadgeColumn::make('status')
-                    ->label('Type')
-                    ->getStateUsing(fn ($record) => 'Order ' . ucfirst($record->status))
+                Tables\Columns\BadgeColumn::make('order_status')
+                    ->label('Order Status')
                     ->colors([
-                        'success' => fn ($state) => str_contains($state, 'completed'),
-                        'warning' => fn ($state) => str_contains($state, 'pending'),
-                        'danger' => fn ($state) => str_contains($state, 'failed'),
-                        'info' => fn ($state) => str_contains($state, 'processing'),
+                        'success' => fn ($state) => $state === 'completed',
+                        'warning' => fn ($state) => $state === 'processing' || $state === 'new',
+                        'danger' => fn ($state) => $state === 'dispute',
+                    ]),
+                Tables\Columns\BadgeColumn::make('payment_status')
+                    ->label('Payment Status')
+                    ->colors([
+                        'success' => fn ($state) => $state === 'paid',
+                        'warning' => fn ($state) => $state === 'pending',
+                        'danger' => fn ($state) => $state === 'failed',
                     ]),
                 Tables\Columns\TextColumn::make('customer.email')
                     ->label('Customer')
                     ->searchable()
                     ->sortable(),
-                Tables\Columns\TextColumn::make('description')
-                    ->label('Activity Description')
-                    ->getStateUsing(fn ($record) => "Order #{$record->id} - " . $record->orderItems->pluck('serverPlan.name')->join(', '))
-                    ->limit(60),
-                Tables\Columns\TextColumn::make('total')
+                Tables\Columns\TextColumn::make('grand_amount')
                     ->label('Value')
                     ->money('USD')
                     ->sortable(),
+                Tables\Columns\TextColumn::make('currency')
+                    ->label('Currency')
+                    ->sortable(),
+                Tables\Columns\TextColumn::make('notes')
+                    ->label('Notes')
+                    ->limit(60),
                 Tables\Columns\TextColumn::make('created_at')
                     ->label('Time')
                     ->dateTime()

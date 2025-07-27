@@ -326,7 +326,7 @@ class EnhancedUserManagement extends Page implements HasTable, HasForms
                 ->send();
 
             // Trigger download
-            return response()->download($filepath)->deleteFileAfterSend();
+            response()->download($filepath)->deleteFileAfterSend();
         } catch (\Exception $e) {
             Notification::make()
                 ->title('Export Failed')

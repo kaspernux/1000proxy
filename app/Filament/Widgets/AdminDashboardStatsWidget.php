@@ -94,12 +94,13 @@ class AdminDashboardStatsWidget extends BaseWidget
 
     private function getTotalRevenue(): float
     {
-        return Order::where('payment_status', 'completed')->sum('grand_amount') ?? 0;
+        // Use payment_status 'paid' (per migration), sum grand_amount
+        return Order::where('payment_status', 'paid')->sum('grand_amount') ?? 0;
     }
 
     private function getMonthlyRevenue(): float
     {
-        return Order::where('payment_status', 'completed')
+        return Order::where('payment_status', 'paid')
             ->whereMonth('created_at', Carbon::now()->month)
             ->whereYear('created_at', Carbon::now()->year)
             ->sum('grand_amount') ?? 0;
@@ -108,7 +109,7 @@ class AdminDashboardStatsWidget extends BaseWidget
     private function getRevenueGrowth(): float
     {
         $currentMonth = $this->getMonthlyRevenue();
-        $lastMonth = Order::where('payment_status', 'completed')
+        $lastMonth = Order::where('payment_status', 'paid')
             ->whereMonth('created_at', Carbon::now()->subMonth()->month)
             ->whereYear('created_at', Carbon::now()->subMonth()->year)
             ->sum('grand_amount') ?? 0;
@@ -131,133 +132,111 @@ class AdminDashboardStatsWidget extends BaseWidget
 
     private function getActiveSubscriptions(): int
     {
-        return ServerClient::where('is_active', true)
-            ->where('expires_at', '>', Carbon::now())
-            ->count();
+        // If you have a subscriptions table, count active ones. Otherwise, fallback to active customers.
+        // Example: return Subscription::where('status', 'active')->count();
+        // Fallback:
+        return Customer::where('is_active', true)->count();
     }
 
     private function getSubscriptionGrowth(): float
     {
-        $current = $this->getActiveSubscriptions();
-        $lastMonth = ServerClient::where('is_active', true)
-            ->where('expires_at', '>', Carbon::now()->subMonth())
-            ->whereDate('created_at', '<=', Carbon::now()->subMonth()->endOfMonth())
+        $current = Customer::where('is_active', true)
+            ->whereYear('created_at', Carbon::now()->year)
+            ->whereMonth('created_at', Carbon::now()->month)
             ->count();
-
-        if ($lastMonth == 0) return $current > 0 ? 100 : 0;
-        return round((($current - $lastMonth) / $lastMonth) * 100, 1);
+        $last = Customer::where('is_active', true)
+            ->whereYear('created_at', Carbon::now()->subMonth()->year)
+            ->whereMonth('created_at', Carbon::now()->subMonth()->month)
+            ->count();
+        if ($last == 0) return $current > 0 ? 100 : 0;
+        return round((($current - $last) / $last) * 100, 1);
     }
 
     private function getCustomerRetention(): float
     {
-        $totalCustomers = Customer::where('created_at', '<=', Carbon::now()->subDays(90))->count();
-        if ($totalCustomers == 0) return 0;
-
-        $retainedCustomers = Customer::where('created_at', '<=', Carbon::now()->subDays(90))
-            ->whereHas('orders', function ($query) {
-                $query->where('created_at', '>=', Carbon::now()->subDays(90));
-            })->count();
-
-        return ($retainedCustomers / $totalCustomers) * 100;
+        $total = Customer::count();
+        if ($total == 0) return 0;
+        $retained = Customer::where('last_login_at', '>=', Carbon::now()->subDays(90))->count();
+        return round(($retained / $total) * 100, 1);
     }
 
     private function getServerUtilization(): float
     {
         $servers = Server::where('status', 'up')->get();
-        if ($servers->isEmpty()) return 0;
-
-        $totalUtilization = $servers->sum(function ($server) {
-            $maxClients = $server->max_clients ?? 100;
-            $currentClients = $server->total_clients ?? 0;
-            return ($currentClients / $maxClients) * 100;
-        });
-
-        return $totalUtilization / $servers->count();
+        $total = $servers->sum('total_clients');
+        $max = $servers->sum('max_clients_per_inbound');
+        if ($max == 0) return 0;
+        return round(($total / $max) * 100, 1);
     }
 
     private function getConversionRate(): float
     {
-        // Simplified conversion rate calculation
-        $totalCustomers = Customer::count();
-        $totalOrders = Order::count();
-
-        if ($totalCustomers == 0) return 0;
-        return ($totalOrders / $totalCustomers) * 100;
+        $orders = Order::where('payment_status', 'paid')->count();
+        $customers = Customer::count();
+        if ($customers == 0) return 0;
+        return round(($orders / $customers) * 100, 1);
     }
 
-    private function getSystemHealth(): int
+    private function getSystemHealth(): float
     {
-        $healthScore = 100;
-
-        // Check server status
-        $totalServers = Server::count();
-        $onlineServers = Server::where('status', 'up')->count();
-        if ($totalServers > 0) {
-            $serverHealth = ($onlineServers / $totalServers) * 100;
-            $healthScore = min($healthScore, $serverHealth);
-        }
-
-        // Check if any servers are overloaded
-        $overloadedServers = Server::whereRaw('total_clients > max_clients * 0.9')->count();
-        if ($overloadedServers > 0) {
-            $healthScore -= ($overloadedServers * 5); // -5% per overloaded server
-        }
-
-        return max(0, min(100, round($healthScore)));
+        $total = Server::count();
+        if ($total == 0) return 0;
+        $online = Server::where('status', 'up')->count();
+        return round(($online / $total) * 100, 1);
     }
 
     private function getRevenueChart(): array
     {
-        return Order::where('payment_status', 'completed')
-            ->selectRaw('DATE(created_at) as date, SUM(grand_amount) as revenue')
-            ->where('created_at', '>=', Carbon::now()->subDays(7))
-            ->groupBy(DB::raw('DATE(created_at)'))
-            ->orderBy('date')
-            ->pluck('revenue')
-            ->toArray();
+        $data = [];
+        for ($i = 6; $i >= 0; $i--) {
+            $date = Carbon::now()->subDays($i)->toDateString();
+            $data[] = Order::where('payment_status', 'paid')
+                ->whereDate('created_at', $date)
+                ->sum('grand_amount');
+        }
+        return $data;
     }
 
     private function getMonthlyRevenueChart(): array
     {
-        return Order::where('payment_status', 'completed')
-            ->selectRaw('DATE(created_at) as date, SUM(grand_amount) as revenue')
-            ->where('created_at', '>=', Carbon::now()->subDays(30))
-            ->groupBy(DB::raw('DATE(created_at)'))
-            ->orderBy('date')
-            ->pluck('revenue')
-            ->toArray();
+        $data = [];
+        $days = Carbon::now()->daysInMonth;
+        for ($i = 1; $i <= $days; $i++) {
+            $date = Carbon::now()->startOfMonth()->addDays($i - 1)->toDateString();
+            $data[] = Order::where('payment_status', 'paid')
+                ->whereDate('created_at', $date)
+                ->sum('grand_amount');
+        }
+        return $data;
     }
 
     private function getCustomerChart(): array
     {
-        return Customer::selectRaw('DATE(created_at) as date, COUNT(*) as customers')
-            ->where('created_at', '>=', Carbon::now()->subDays(7))
-            ->groupBy(DB::raw('DATE(created_at)'))
-            ->orderBy('date')
-            ->pluck('customers')
-            ->toArray();
+        $data = [];
+        for ($i = 6; $i >= 0; $i--) {
+            $date = Carbon::now()->subDays($i)->toDateString();
+            $data[] = Customer::whereDate('created_at', $date)->count();
+        }
+        return $data;
     }
 
     private function getServerStatusChart(): array
     {
-        return Server::selectRaw('DATE(updated_at) as date, COUNT(*) as servers')
-            ->where('status', 'up')
-            ->where('updated_at', '>=', Carbon::now()->subDays(7))
-            ->groupBy(DB::raw('DATE(created_at)'))
-            ->orderBy('date')
-            ->pluck('servers')
-            ->toArray();
+        $statuses = Server::select('status', DB::raw('count(*) as count'))
+            ->groupBy('status')->pluck('count', 'status')->toArray();
+        return array_values($statuses);
     }
 
     private function getClientChart(): array
     {
-        return ServerClient::selectRaw('DATE(created_at) as date, COUNT(*) as clients')
-            ->where('is_active', true)
-            ->where('created_at', '>=', Carbon::now()->subDays(7))
-            ->groupBy(DB::raw('DATE(created_at)'))
-            ->orderBy('date')
-            ->pluck('clients')
-            ->toArray();
+        $data = [];
+        for ($i = 6; $i >= 0; $i--) {
+            $date = Carbon::now()->subDays($i)->toDateString();
+            $data[] = ServerClient::where('is_active', true)
+                ->whereDate('created_at', $date)
+                ->count();
+        }
+        return $data;
     }
 
     protected function getColumns(): int

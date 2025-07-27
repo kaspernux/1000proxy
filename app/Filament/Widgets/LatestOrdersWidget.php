@@ -4,6 +4,9 @@ namespace App\Filament\Widgets;
 
 use App\Filament\Clusters\ProxyShop\Resources\OrderResource;
 use App\Models\Order;
+use App\Models\Customer;
+use App\Models\PaymentMethod;
+use App\Models\Invoice;
 use Filament\Tables;
 use Filament\Tables\Table;
 use Filament\Widgets\TableWidget as BaseWidget;
@@ -21,46 +24,52 @@ class LatestOrdersWidget extends BaseWidget
     public function table(Table $table): Table
     {
         return $table
-            // Use the same base query as your OrderResource
             ->query(OrderResource::getEloquentQuery())
-            // Show only 5 per page in this widget
             ->defaultPaginationPageOption(5)
-            // Newest first
             ->defaultSort('created_at', 'desc')
-            // Polished styling
             ->striped()
-            // Columns
             ->columns([
                 Tables\Columns\TextColumn::make('customer.name')
                     ->label('Customer')
                     ->sortable(),
 
                 Tables\Columns\TextColumn::make('grand_amount')
-                    ->label('Amount (USD)')
-                    ->money('usd')
+                    ->label('Amount')
+                    ->money(fn ($record) => $record->currency ?? 'usd')
                     ->sortable(),
 
+                Tables\Columns\TextColumn::make('currency')
+                    ->label('Currency')
+                    ->sortable()
+                    ->toggleable(isToggledHiddenByDefault: true),
+
+                Tables\Columns\TextColumn::make('payment_method')
+                    ->label('Payment Method')
+                    ->formatStateUsing(fn ($state) => $state ? (string) $state : '-')
+                    ->sortable()
+                    ->toggleable(isToggledHiddenByDefault: true),
+
                 Tables\Columns\TextColumn::make('order_status')
-                    ->label('Status')
+                    ->label('Order Status')
                     ->badge()
                     ->color(fn (string $state): string => match ($state) {
                         'new' => 'info',
                         'processing' => 'warning',
                         'completed' => 'success',
-                        'failed' => 'danger',
+                        'dispute' => 'danger',
                         default => 'gray',
                     })
                     ->icon(fn (string $state): string => match ($state) {
                         'new' => 'heroicon-o-sparkles',
                         'processing' => 'heroicon-o-arrow-path',
                         'completed' => 'heroicon-o-check-badge',
-                        'failed' => 'heroicon-o-x-circle',
+                        'dispute' => 'heroicon-o-exclamation-triangle',
                         default => 'heroicon-o-question-mark-circle',
                     })
                     ->sortable(),
 
                 Tables\Columns\TextColumn::make('payment_status')
-                    ->label('Payment')
+                    ->label('Payment Status')
                     ->badge()
                     ->color(fn (string $state): string => match ($state) {
                         'pending' => 'warning',
@@ -71,16 +80,27 @@ class LatestOrdersWidget extends BaseWidget
                     ->icon(fn (string $state): string => match ($state) {
                         'pending' => 'heroicon-o-clock',
                         'paid'    => 'heroicon-o-banknotes',
-                        'failed'  => 'heroicon-o-exclamation-triangle',
+                        'failed'  => 'heroicon-o-x-circle',
                         default   => 'heroicon-o-question-mark-circle',
                     })
                     ->sortable(),
 
+                Tables\Columns\TextColumn::make('payment_invoice_url')
+                    ->label('Invoice')
+                    ->url(fn ($record) => $record->payment_invoice_url)
+                    ->openUrlInNewTab()
+                    ->icon('heroicon-o-link')
+                    ->toggleable(isToggledHiddenByDefault: true),
+
+                Tables\Columns\TextColumn::make('notes')
+                    ->label('Notes')
+                    ->limit(30)
+                    ->toggleable(isToggledHiddenByDefault: true),
+
                 Tables\Columns\TextColumn::make('created_at')
                     ->label('Placed')
                     ->dateTime()
-                    ->sortable()
-                    ->toggleable(isToggledHiddenByDefault: true),
+                    ->sortable(),
 
                 Tables\Columns\TextColumn::make('updated_at')
                     ->label('Updated')
@@ -88,14 +108,12 @@ class LatestOrdersWidget extends BaseWidget
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),
             ])
-            // Single “View Order” button per row
             ->actions([
                 Tables\Actions\Action::make('view')
                     ->label('View')
                     ->icon('heroicon-o-eye')
                     ->url(fn (Order $record): string => OrderResource::getUrl('view', ['record' => $record])),
             ])
-            // Header action to go to full list
             ->headerActions([
                 Tables\Actions\Action::make('all')
                     ->label('View All Orders')
@@ -104,7 +122,6 @@ class LatestOrdersWidget extends BaseWidget
                     ->color('primary')
                     ->outlined(),
             ])
-            // Empty state
             ->emptyStateHeading('No orders yet')
             ->emptyStateDescription('As soon as customers place orders, they’ll appear here.')
             ->emptyStateActions([

@@ -16,7 +16,7 @@ return new class extends Migration
             $table->string('name')->nullable();
             $table->string('username');
             $table->string('password');
-            $table->string('is_active');
+            $table->boolean('is_active')->default(true);
             $table->foreignId('server_category_id')->constrained()->onDelete('cascade')->nullable();
             $table->foreignId('server_brand_id')->constrained()->onDelete('cascade')->nullable();
             $table->string('country')->nullable();
@@ -58,7 +58,21 @@ return new class extends Migration
             $table->timestamp('last_global_sync_at')->nullable();
             // 3X-UI operational settings
             $table->boolean('auto_sync_enabled')->default(true);
-            $table->integer('sync_interval_minutes')->default(5);
+            $table->json('xui_config')->nullable();
+            $table->json('connection_settings')->nullable();
+            $table->timestamp('last_connected_at')->nullable();
+            $table->string('health_status')->nullable();
+            $table->json('performance_metrics')->nullable();
+            $table->integer('total_clients')->default(0);
+            $table->integer('active_clients')->default(0);
+            $table->bigInteger('total_traffic_mb')->default(0);
+            $table->boolean('auto_provisioning')->default(false);
+            $table->integer('max_clients_per_inbound')->nullable();
+            $table->json('provisioning_rules')->nullable();
+            $table->timestamp('last_health_check_at')->nullable();
+            $table->string('health_message')->nullable();
+            $table->json('alert_settings')->nullable();
+            $table->integer('sync_interval_minutes')->nullable();
             $table->boolean('auto_cleanup_depleted')->default(false);
             $table->boolean('backup_notifications_enabled')->default(false);
             $table->json('monitoring_thresholds')->nullable();

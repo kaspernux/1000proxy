@@ -22,11 +22,43 @@ class EnhancedPerformanceStatsWidget extends BaseWidget
 
     protected function getStats(): array
     {
+        // Example: add real-time stats from your actual models
+        $activeUsers = User::where('is_active', true)->count();
+        $totalUsers = User::count();
+        $paidOrders = Order::where('payment_status', 'paid')->count();
+        $pendingOrders = Order::where('payment_status', 'pending')->count();
+        $totalRevenue = Order::where('payment_status', 'paid')->sum('grand_amount');
+        $serversUp = Server::where('status', 'up')->count();
+        $serversDown = Server::where('status', 'down')->count();
+        $activeClients = ServerClient::where('is_active', true)->count();
+        $totalClients = ServerClient::count();
+
         return [
             $this->getSystemPerformanceStat(),
             $this->getDatabasePerformanceStat(),
             $this->getCachePerformanceStat(),
             $this->getApiPerformanceStat(),
+            Stat::make('Active Users', $activeUsers . '/' . $totalUsers)
+                ->description('Users with is_active = true')
+                ->color($activeUsers > ($totalUsers * 0.7) ? 'success' : 'warning'),
+            Stat::make('Paid Orders', $paidOrders)
+                ->description('Orders with payment_status = paid')
+                ->color('success'),
+            Stat::make('Pending Orders', $pendingOrders)
+                ->description('Orders with payment_status = pending')
+                ->color('warning'),
+            Stat::make('Total Revenue', '$' . number_format($totalRevenue, 2))
+                ->description('Sum of grand_amount for paid orders')
+                ->color('emerald'),
+            Stat::make('Servers Up', $serversUp)
+                ->description('Servers with status = up')
+                ->color('success'),
+            Stat::make('Servers Down', $serversDown)
+                ->description('Servers with status = down')
+                ->color('danger'),
+            Stat::make('Active Clients', $activeClients . '/' . $totalClients)
+                ->description('Clients with is_active = true')
+                ->color($activeClients > ($totalClients * 0.7) ? 'success' : 'warning'),
         ];
     }
 

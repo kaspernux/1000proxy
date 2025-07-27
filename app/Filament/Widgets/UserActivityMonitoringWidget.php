@@ -36,13 +36,11 @@ class UserActivityMonitoringWidget extends BaseWidget
                     ->circular()
                     ->defaultImageUrl(fn ($record) => 'https://ui-avatars.com/api/?name=' . urlencode($record->name) . '&color=7F9CF5&background=EBF4FF')
                     ->size(40),
-
                 TextColumn::make('name')
                     ->label('User')
                     ->searchable()
                     ->sortable()
                     ->description(fn ($record) => $record->email),
-
                 BadgeColumn::make('status')
                     ->label('Status')
                     ->getStateUsing(fn ($record) => $this->getUserStatus($record))
@@ -50,21 +48,19 @@ class UserActivityMonitoringWidget extends BaseWidget
                         'success' => 'Online',
                         'warning' => 'Away',
                         'danger' => 'Offline',
-                        'gray' => 'Never logged in'
+                        'gray' => 'Never logged in',
                     ])
                     ->icons([
                         'heroicon-m-check-circle' => 'Online',
                         'heroicon-m-clock' => 'Away',
                         'heroicon-m-x-circle' => 'Offline',
-                        'heroicon-m-question-mark-circle' => 'Never logged in'
+                        'heroicon-m-question-mark-circle' => 'Never logged in',
                     ]),
-
                 TextColumn::make('last_activity')
                     ->label('Last Activity')
                     ->getStateUsing(fn ($record) => $this->getLastActivity($record))
                     ->description(fn ($record) => $this->getActivityDescription($record))
                     ->sortable(),
-
                 BadgeColumn::make('active_connections')
                     ->label('Active Proxies')
                     ->getStateUsing(fn ($record) => $this->getActiveConnections($record))
@@ -76,13 +72,11 @@ class UserActivityMonitoringWidget extends BaseWidget
                         'heroicon-m-signal' => fn ($state) => $state > 0,
                         'heroicon-m-minus-circle' => fn ($state) => $state === 0,
                     ]),
-
                 TextColumn::make('total_orders')
                     ->label('Orders')
                     ->getStateUsing(fn ($record) => $record->orders()->count())
-                    ->description(fn ($record) => '$' . number_format($record->orders()->sum('total_amount'), 2))
+                    ->description(fn ($record) => '$' . number_format($record->orders()->sum('grand_amount'), 2))
                     ->alignCenter(),
-
                 TextColumn::make('join_date')
                     ->label('Member Since')
                     ->getStateUsing(fn ($record) => $record->created_at->diffForHumans())
@@ -96,22 +90,18 @@ class UserActivityMonitoringWidget extends BaseWidget
                     ->color('info')
                     ->url(fn ($record) => route('filament.admin.resources.users.view', $record))
                     ->openUrlInNewTab(),
-
                 Action::make('send_message')
                     ->label('Message')
                     ->icon('heroicon-m-chat-bubble-left')
                     ->color('success')
                     ->action(function ($record) {
-                        // This would integrate with a messaging system
                         $this->notify('success', "Message interface would open for {$record->name}");
                     }),
-
                 Action::make('view_activity')
                     ->label('Activity')
                     ->icon('heroicon-m-chart-bar')
                     ->color('warning')
                     ->action(function ($record) {
-                        // This would show detailed activity
                         $this->notify('info', "Activity details for {$record->name}");
                     }),
             ])
@@ -121,53 +111,37 @@ class UserActivityMonitoringWidget extends BaseWidget
                         'online' => 'Online',
                         'away' => 'Away',
                         'offline' => 'Offline',
+                        'never' => 'Never logged in',
                     ])
-                    ->query(function (Builder $query, array $data): Builder {
-                        if (!$data['value']) {
-                            return $query;
-                        }
-
-                        $now = now();
-                        return match ($data['value']) {
-                            'online' => $query->where('last_login_at', '>=', $now->subMinutes(15)),
-                            'away' => $query->whereBetween('last_login_at', [$now->subHours(2), $now->subMinutes(15)]),
-                            'offline' => $query->where('last_login_at', '<', $now->subHours(2))->orWhereNull('last_login_at'),
-                            default => $query,
-                        };
+                    ->query(fn (Builder $query, $value) => match ($value) {
+                        'online' => $query->where('last_login_at', '>=', now()->subMinutes(15)),
+                        'away' => $query->whereBetween('last_login_at', [now()->subHours(2), now()->subMinutes(15)]),
+                        'offline' => $query->where('last_login_at', '<', now()->subHours(2)),
+                        'never' => $query->whereNull('last_login_at'),
+                        default => $query,
                     }),
-
                 Tables\Filters\Filter::make('has_active_proxies')
                     ->label('Has Active Proxies')
-                    ->query(fn (Builder $query): Builder => $query->whereHas('serverClients', fn ($q) => $q->where('status', 'active'))),
-
+                    ->query(fn (Builder $query) => $query->whereHas('serverClients', fn ($q) => $q->where('status', 'active'))),
                 Tables\Filters\Filter::make('recent_orders')
-                    ->label('Recent Orders (7 days)')
+                    ->label('Recent Orders')
                     ->query(fn (Builder $query): Builder => $query->whereHas('orders', fn ($q) => $q->where('created_at', '>=', now()->subDays(7)))),
             ])
             ->defaultSort('last_login_at', 'desc')
             ->poll('30s');
     }
 
-    protected function getTableQuery(): Builder
-    {
-        return User::query()
-            ->with(['orders', 'serverClients'])
-            ->where('role', '!=', 'admin') // Exclude admin users
-            ->limit(50); // Limit for performance
-    }
+
 
     private function getUserStatus(User $user): string
     {
         if (!$user->last_login_at) {
             return 'Never logged in';
         }
-
-        $lastActivity = $user->last_login_at;
-        $now = now();
-
-        if ($lastActivity >= $now->subMinutes(15)) {
+        $lastLogin = Carbon::parse($user->last_login_at);
+        if ($lastLogin->greaterThanOrEqualTo(now()->subMinutes(15))) {
             return 'Online';
-        } elseif ($lastActivity >= $now->subHours(2)) {
+        } elseif ($lastLogin->greaterThanOrEqualTo(now()->subHours(2))) {
             return 'Away';
         } else {
             return 'Offline';
@@ -179,7 +153,6 @@ class UserActivityMonitoringWidget extends BaseWidget
         if (!$user->last_login_at) {
             return 'Never';
         }
-
         return Carbon::parse($user->last_login_at)->diffForHumans();
     }
 
@@ -188,11 +161,8 @@ class UserActivityMonitoringWidget extends BaseWidget
         if (!$user->last_login_at) {
             return 'User has never logged in';
         }
-
-        // Get the user's most recent activity
         $recentOrder = $user->orders()->latest()->first();
         $activeProxies = $user->clients()->where('status', 'active')->count();
-
         if ($recentOrder && $recentOrder->created_at >= now()->subDays(7)) {
             return "Last order: {$recentOrder->created_at->diffForHumans()}";
         } elseif ($activeProxies > 0) {

@@ -60,15 +60,15 @@ class AdminChartsWidget extends ChartWidget
                 break;
         }
 
-        // Get revenue data
-        $revenueData = Order::where('payment_status', 'completed')
+        // Get revenue data (align with migration: payment_status = 'paid', grand_amount, etc.)
+        $revenueData = Order::where('payment_status', 'paid')
             ->where('created_at', '>=', $startDate)
             ->selectRaw($groupBy . ' as period, SUM(grand_amount) as revenue, COUNT(*) as orders')
             ->groupBy(DB::raw($groupBy))
             ->orderBy('period')
             ->get();
 
-        // Get customer registration data
+        // Get customer registration data (align with migration: no changes needed)
         $customerData = Customer::where('created_at', '>=', $startDate)
             ->selectRaw($groupBy . ' as period, COUNT(*) as customers')
             ->groupBy(DB::raw($groupBy))
@@ -76,7 +76,7 @@ class AdminChartsWidget extends ChartWidget
             ->get()
             ->keyBy('period');
 
-        // Get server client data
+        // Get server client data (align with migration: no changes needed)
         $clientData = ServerClient::where('created_at', '>=', $startDate)
             ->selectRaw($groupBy . ' as period, COUNT(*) as clients')
             ->groupBy(DB::raw($groupBy))
@@ -94,7 +94,7 @@ class AdminChartsWidget extends ChartWidget
         // Fill data arrays
         foreach ($revenueData as $item) {
             $date = $filter === 'year'
-                ? Carbon::createFromDate(null, $item->period, 1)->format($dateFormat)
+                ? Carbon::parse($item->period.'-01')->format($dateFormat)
                 : Carbon::parse($item->period)->format($dateFormat);
 
             $labels[] = $date;

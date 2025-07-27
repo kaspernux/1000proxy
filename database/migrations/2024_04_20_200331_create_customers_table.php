@@ -40,6 +40,9 @@ return new class extends Migration
             $table->boolean('email_notifications')->default(true);
             $table->timestamp('email_verified_at')->nullable();
             $table->string('timezone')->nullable();
+            $table->timestamp('suspended_at')->nullable();
+            $table->string('suspension_reason')->nullable();
+            $table->timestamp('last_login_at')->nullable();
             $table->rememberToken();
             $table->timestamps();
             });

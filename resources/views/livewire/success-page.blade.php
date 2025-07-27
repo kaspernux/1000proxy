@@ -1,3 +1,6 @@
+@extends('layouts.app')
+
+@section('content')
 @php
     use App\Models\ServerClient;
     use Illuminate\Support\Str;
@@ -406,4 +409,4 @@
         </div>
     </div>
     @endif
-</div>
+@endsection

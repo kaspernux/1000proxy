@@ -32,15 +32,21 @@ class ServerHealthMonitoringWidget extends BaseWidget
     private function getServerStatusStat(): Stat
     {
         $totalServers = Server::count();
-        $activeServers = Cache::remember('active_servers_count', 300, function () {
-            return Server::where('status', 'active')->count();
+        $upServers = Cache::remember('up_servers_count', 300, function () {
+            return Server::where('status', 'up')->count();
+        });
+        $downServers = Cache::remember('down_servers_count', 300, function () {
+            return Server::where('status', 'down')->count();
+        });
+        $pausedServers = Cache::remember('paused_servers_count', 300, function () {
+            return Server::where('status', 'paused')->count();
         });
 
-        $healthPercentage = $totalServers > 0 ? round(($activeServers / $totalServers) * 100, 1) : 0;
+        $healthPercentage = $totalServers > 0 ? round(($upServers / $totalServers) * 100, 1) : 0;
 
         return Stat::make('Server Health', $healthPercentage . '%')
-            ->description("$activeServers of $totalServers servers online")
-            ->descriptionIcon($healthPercentage >= 90 ? 'heroicon-m-check-circle' : 'heroicon-m-exclamation-triangle')
+            ->description("$upServers up, $downServers down, $pausedServers paused out of $totalServers servers")
+            ->descriptionIcon($healthPercentage >= 90 ? 'heroicon-m-check-circle' : ($healthPercentage >= 70 ? 'heroicon-m-exclamation-triangle' : 'heroicon-m-x-circle'))
             ->color($healthPercentage >= 90 ? 'success' : ($healthPercentage >= 70 ? 'warning' : 'danger'))
             ->chart($this->getServerHealthChart());
     }
@@ -48,10 +54,10 @@ class ServerHealthMonitoringWidget extends BaseWidget
     private function getActiveConnectionsStat(): Stat
     {
         $activeConnections = Cache::remember('active_connections_count', 300, function () {
-            return Server::with('clients')
+            return Server::with('serverClients')
                 ->get()
                 ->sum(function ($server) {
-                    return $server->clients()->where('status', 'active')->count();
+                    return $server->serverClients()->where('status', 'active')->count();
                 });
         });
 
@@ -67,12 +73,20 @@ class ServerHealthMonitoringWidget extends BaseWidget
     private function getServerLoadStat(): Stat
     {
         $averageLoad = Cache::remember('average_server_load', 300, function () {
-            $servers = Server::where('status', 'active')->get();
+            $servers = Server::where('status', 'up')->get();
             if ($servers->isEmpty()) {
                 return 0;
             }
 
             $totalLoad = $servers->sum(function ($server) {
+                // Use performance_metrics->cpu_load if available, else simulate
+                $metrics = $server->performance_metrics;
+                if (is_array($metrics) && isset($metrics['cpu_load'])) {
+                    return (float) $metrics['cpu_load'];
+                } elseif (is_string($metrics)) {
+                    $decoded = json_decode($metrics, true);
+                    return isset($decoded['cpu_load']) ? (float) $decoded['cpu_load'] : $this->getServerCpuUsage($server);
+                }
                 return $this->getServerCpuUsage($server);
             });
 
@@ -89,7 +103,7 @@ class ServerHealthMonitoringWidget extends BaseWidget
     private function getXUIConnectionsStat(): Stat
     {
         $xuiStatus = Cache::remember('xui_connections_status', 300, function () {
-            $servers = Server::where('status', 'active')->get();
+            $servers = Server::where('status', 'up')->get();
             $connected = 0;
             $failed = 0;
 
@@ -137,6 +151,19 @@ class ServerHealthMonitoringWidget extends BaseWidget
                 });
             });
 
+            // Add global_traffic_stats from server if available
+            Server::all()->each(function ($server) use (&$totalUp, &$totalDown) {
+                $stats = $server->global_traffic_stats;
+                if (is_array($stats)) {
+                    $totalUp += $stats['up'] ?? 0;
+                    $totalDown += $stats['down'] ?? 0;
+                } elseif (is_string($stats)) {
+                    $decoded = json_decode($stats, true);
+                    $totalUp += $decoded['up'] ?? 0;
+                    $totalDown += $decoded['down'] ?? 0;
+                }
+            });
+
             return [
                 'up' => $totalUp,
                 'down' => $totalDown,
@@ -154,12 +181,20 @@ class ServerHealthMonitoringWidget extends BaseWidget
     private function getServerPerformanceStat(): Stat
     {
         $performanceScore = Cache::remember('server_performance_score', 300, function () {
-            $servers = Server::where('status', 'active')->get();
+            $servers = Server::where('status', 'up')->get();
             if ($servers->isEmpty()) {
                 return 0;
             }
 
             $totalScore = $servers->sum(function ($server) {
+                // Use performance_metrics->score if available, else calculate
+                $metrics = $server->performance_metrics;
+                if (is_array($metrics) && isset($metrics['score'])) {
+                    return (float) $metrics['score'];
+                } elseif (is_string($metrics)) {
+                    $decoded = json_decode($metrics, true);
+                    return isset($decoded['score']) ? (float) $decoded['score'] : $this->calculatePerformanceScore($server);
+                }
                 return $this->calculatePerformanceScore($server);
             });
 
