@@ -119,7 +119,7 @@ class ServerCategoryResource extends Resource
 
                         Forms\Components\Placeholder::make('plans_count')
                             ->label('Plans in Category')
-                            ->content(fn ($record) => $record ? $record->serverPlans()->count() : '0'),
+                            ->content(fn ($record) => $record ? $record->plans()->count() : '0'),
                     ])->hidden(fn ($context) => $context === 'create'),
                 ])->columnSpan(1),
             ])->columns(3);
@@ -161,7 +161,7 @@ class ServerCategoryResource extends Resource
 
                 TextColumn::make('plans_count')
                     ->label('Plans')
-                    ->getStateUsing(fn ($record) => $record->serverPlans()->count())
+                    ->getStateUsing(fn ($record) => $record->plans()->count())
                     ->numeric()
                     ->sortable()
                     ->badge()
@@ -206,7 +206,7 @@ class ServerCategoryResource extends Resource
                 Tables\Filters\Filter::make('has_plans')
                     ->toggle()
                     ->label('Has Plans')
-                    ->query(fn (Builder $query): Builder => $query->whereHas('serverPlans')),
+                    ->query(fn (Builder $query): Builder => $query->whereHas('plans')),
             ])
             ->actions([
                 ActionGroup::make([
@@ -220,7 +220,7 @@ class ServerCategoryResource extends Resource
                         ->label('View Servers')
                         ->icon('heroicon-o-server')
                         ->color('primary')
-                        ->url(fn ($record) => route('filament.admin.clusters.server-management.resources.servers.index', [
+                        ->url(fn ($record) => route('filament.admin.server-management.resources.servers.index', [
                             'tableFilters[server_category_id][value]' => $record->id
                         ]))
                         ->tooltip('View servers in this category'),
@@ -229,7 +229,7 @@ class ServerCategoryResource extends Resource
                         ->label('View Plans')
                         ->icon('heroicon-o-fire')
                         ->color('info')
-                        ->url(fn ($record) => route('filament.admin.clusters.server-management.resources.server-plans.index', [
+                        ->url(fn ($record) => route('filament.admin.server-management.resources.server-plans.index', [
                             'tableFilters[server_category_id][value]' => $record->id
                         ]))
                         ->tooltip('View plans in this category'),

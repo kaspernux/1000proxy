@@ -57,7 +57,7 @@
                     continue;
                 }
 
-                if ($column->hasSummary(true)) {
+                if ($column->hasSummary(null)) {
                     break;
                 }
 
@@ -67,7 +67,7 @@
     @endif
 
     @foreach ($columns as $column)
-        @if (($loop->first || $extraHeadingColumn || $groupsOnly || ($loop->iteration > $headingColumnSpan)) && ($placeholderColumns || $column->hasSummary(true)))
+        @if (($loop->first || $extraHeadingColumn || $groupsOnly || ($loop->iteration > $headingColumnSpan)) && ($placeholderColumns || $column->hasSummary(null)))
             @php
                 $alignment = $column->getAlignment() ?? Alignment::Start;
 
@@ -96,7 +96,7 @@
                     >
                         {{ $heading }}
                     </span>
-                @elseif ((! $placeholderColumns) || $column->hasSummary(true))
+                @elseif ((! $placeholderColumns) || $column->hasSummary(null))
                     @foreach ($column->getSummarizers() as $summarizer)
                         {{ $summarizer->query($query)->selectedState($selectedState) }}
                     @endforeach

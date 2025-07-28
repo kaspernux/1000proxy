@@ -52,7 +52,7 @@ class ListOrderItems extends ListRecords
             $query->where('customer_id', $customer->id)
                   ->where('order_status', 'completed')
                   ->where('payment_status', 'paid');
-        })->with(['orderServerClients.serverClient'])->get();
+        })->with(['orderServerClients.client'])->get();
 
         if ($orderItems->isEmpty()) {
             Notification::make()
@@ -121,10 +121,10 @@ class ListOrderItems extends ListRecords
                   ->where('order_status', 'completed')
                   ->where('payment_status', 'paid');
         })
-        ->whereHas('orderServerClients.serverClient', function ($query) {
+        ->whereHas('orderServerClients.client', function ($query) {
             $query->where('status', 'active');
         })
-        ->with(['order', 'serverPlan', 'orderServerClients.serverClient'])
+        ->with(['order', 'serverPlan', 'orderServerClients.client'])
         ->get();
 
         if ($activeItems->isEmpty()) {
@@ -179,7 +179,7 @@ class ListOrderItems extends ListRecords
         $customer = Auth::guard('customer')->user();
         $items = OrderItem::whereHas('order', function ($query) use ($customer) {
             $query->where('customer_id', $customer->id);
-        })->with(['orderServerClients.serverClient'])->get();
+        })->with(['orderServerClients.client'])->get();
 
         $updatedCount = 0;
         foreach ($items as $item) {

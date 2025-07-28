@@ -17,7 +17,6 @@ return new class extends Migration
             $table->boolean('is_reseller')->default(false);
             $table->string('affiliate_code')->nullable()->unique();
             $table->decimal('health_score', 5, 2)->default(100.00);
-            $table->timestamp('last_login_at')->nullable();
             $table->json('partnership_data')->nullable();
         });
         

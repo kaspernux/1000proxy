@@ -35,7 +35,7 @@ class EnhancedUserManagement extends Page implements HasTable, HasForms
     protected static ?string $navigationLabel = 'Enhanced User Management';
     protected static ?string $title = 'Enhanced User Management';
     protected static string $view = 'filament.staff-management.pages.enhanced-user-management';
-    protected static ?string $cluster = \App\Filament\StaffManagement\StaffManagementCluster::class;
+protected static ?string $cluster = \App\Filament\Clusters\StaffManagement::class;
     protected static ?int $navigationSort = 1;
 
     public array $filters = [];

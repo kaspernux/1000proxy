@@ -573,7 +573,7 @@ class OrderResource extends Resource
     public static function getEloquentQuery(): Builder
     {
         return parent::getEloquentQuery()
-            ->with(['invoice', 'customer', 'items.serverPlan.server', 'paymentMethod', 'orderServerClients.serverClient'])
+            ->with(['invoice', 'customer', 'items.serverPlan.server', 'paymentMethod', 'orderServerClients.client'])
             ->where('customer_id', Auth::guard('customer')->id());
     }
 

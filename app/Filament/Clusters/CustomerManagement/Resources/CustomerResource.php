@@ -428,7 +428,7 @@ class CustomerResource extends Resource
                 TextColumn::make('active_clients_count')
                     ->label('🖥️ Active Services')
                     ->getStateUsing(fn (Customer $record): int =>
-                        $record->clients()->where('is_active', true)->count())
+                        $record->clients()->where('enable', true)->count())
                     ->badge()
                     ->color('info')
                     ->sortable()
@@ -600,14 +600,14 @@ class CustomerResource extends Resource
                     ->icon('heroicon-o-shopping-cart')
                     ->color('info')
                     ->url(fn (Customer $record): string =>
-                        route('filament.admin.resources.orders.index', ['customer' => $record->id])),
+                        route('filament.admin.proxy-shop.resources.orders.index', ['tableFilters[customer_id][value]' => $record->id])),
 
                 Action::make('view_wallet')
                     ->label('Wallet')
                     ->icon('heroicon-o-wallet')
                     ->color('warning')
                     ->url(fn (Customer $record): string =>
-                        route('filament.admin.resources.wallets.view', ['record' => $record->wallet?->id ?? 0]))
+                        route('filament.admin.customer-management.resources.wallets.index', ['tableFilters[customer_id][value]' => $record->id]))
                     ->visible(fn (Customer $record): bool => $record->wallet !== null),
 
                 Action::make('send_message')

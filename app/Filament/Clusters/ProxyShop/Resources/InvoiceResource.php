@@ -649,30 +649,30 @@ class InvoiceResource extends Resource
     {
         return $infolist
             ->schema([
-                Tabs::make('Invoice Details')->tabs([
-                    Tabs\Tab::make('Overview')
+                \Filament\Infolists\Components\Tabs::make('Invoice Details')->tabs([
+                    \Filament\Infolists\Components\Tabs\Tab::make('Overview')
                         ->icon('heroicon-o-document-text')
                         ->schema([
-                            Section::make('Invoice Information')
+                            \Filament\Infolists\Components\Section::make('Invoice Information')
                                 ->columns(2)
                                 ->schema([
-                                    TextEntry::make('id')
+                                    \Filament\Infolists\Components\TextEntry::make('id')
                                         ->label('ID'),
-                                    TextEntry::make('iid')
+                                    \Filament\Infolists\Components\TextEntry::make('iid')
                                         ->label('Invoice #')
                                         ->copyable(),
-                                    TextEntry::make('order.id')
+                                    \Filament\Infolists\Components\TextEntry::make('order.id')
                                         ->label('Order #')
                                         ->url(fn (Invoice $record): string =>
                                             \App\Filament\Clusters\ProxyShop\Resources\OrderResource\Pages\ViewOrder::getUrl([$record->order])
                                         ),
-                                    TextEntry::make('customer.name')
+                                    \Filament\Infolists\Components\TextEntry::make('customer.name')
                                         ->label('Customer'),
-                                    TextEntry::make('paymentMethod.name')
+                                    \Filament\Infolists\Components\TextEntry::make('paymentMethod.name')
                                         ->label('Payment Method')
                                         ->badge()
                                         ->color('info'),
-                                    TextEntry::make('payment_status')
+                                    \Filament\Infolists\Components\TextEntry::make('payment_status')
                                         ->label('Payment Status')
                                         ->badge()
                                         ->color(fn (string $state): string => match ($state) {
@@ -683,46 +683,46 @@ class InvoiceResource extends Resource
                                             'refunded' => 'gray',
                                             default => 'gray',
                                         }),
-                                    TextEntry::make('created_at')
+                                    \Filament\Infolists\Components\TextEntry::make('created_at')
                                         ->label('Created')
                                         ->since(),
-                                    TextEntry::make('updated_at')
+                                    \Filament\Infolists\Components\TextEntry::make('updated_at')
                                         ->label('Last Updated')
                                         ->since(),
                                 ]),
                         ]),
 
-                    Tabs\Tab::make('Pricing')
+                    \Filament\Infolists\Components\Tabs\Tab::make('Pricing')
                         ->icon('heroicon-o-currency-dollar')
                         ->schema([
-                            Section::make('Price & Payment Details')
+                            \Filament\Infolists\Components\Section::make('Price & Payment Details')
                                 ->columns(2)
                                 ->schema([
-                                    TextEntry::make('price_amount')
+                                    \Filament\Infolists\Components\TextEntry::make('price_amount')
                                         ->label('Price Amount')
                                         ->formatStateUsing(fn (Invoice $record): string =>
                                             number_format($record->price_amount, 2) . ' ' . $record->price_currency
                                         ),
-                                    TextEntry::make('pay_amount')
+                                    \Filament\Infolists\Components\TextEntry::make('pay_amount')
                                         ->label('Pay Amount')
                                         ->formatStateUsing(fn (Invoice $record): string =>
                                             $record->pay_amount ? number_format($record->pay_amount, 8) . ' ' . $record->pay_currency : 'N/A'
                                         ),
-                                    TextEntry::make('amount_received')
+                                    \Filament\Infolists\Components\TextEntry::make('amount_received')
                                         ->label('Amount Received')
                                         ->formatStateUsing(fn (Invoice $record): string =>
                                             $record->amount_received ? number_format($record->amount_received, 8) : '0'
                                         ),
-                                    TextEntry::make('pay_address')
+                                    \Filament\Infolists\Components\TextEntry::make('pay_address')
                                         ->label('Payment Address')
                                         ->copyable()
                                         ->placeholder('Not set'),
-                                    TextEntry::make('is_fixed_rate')
+                                    \Filament\Infolists\Components\TextEntry::make('is_fixed_rate')
                                         ->label('Fixed Rate')
                                         ->badge()
                                         ->color(fn (bool $state): string => $state ? 'success' : 'warning')
                                         ->formatStateUsing(fn (bool $state): string => $state ? 'Yes' : 'No'),
-                                    TextEntry::make('is_fee_paid_by_user')
+                                    \Filament\Infolists\Components\TextEntry::make('is_fee_paid_by_user')
                                         ->label('Fee Paid by User')
                                         ->badge()
                                         ->color(fn (bool $state): string => $state ? 'info' : 'gray')
@@ -730,48 +730,48 @@ class InvoiceResource extends Resource
                                 ]),
                         ]),
 
-                    Tabs\Tab::make('URLs & References')
+                    \Filament\Infolists\Components\Tabs\Tab::make('URLs & References')
                         ->icon('heroicon-o-link')
                         ->schema([
-                            Section::make('Payment URLs')
+                            \Filament\Infolists\Components\Section::make('Payment URLs')
                                 ->columns(1)
                                 ->schema([
-                                    TextEntry::make('invoice_url')
+                                    \Filament\Infolists\Components\TextEntry::make('invoice_url')
                                         ->label('Invoice URL')
                                         ->url(fn (Invoice $record): string => $record->invoice_url ?? '#')
                                         ->openUrlInNewTab()
                                         ->copyable()
                                         ->placeholder('Not set'),
-                                    TextEntry::make('success_url')
+                                    \Filament\Infolists\Components\TextEntry::make('success_url')
                                         ->label('Success URL')
                                         ->copyable()
                                         ->placeholder('Not set'),
-                                    TextEntry::make('cancel_url')
+                                    \Filament\Infolists\Components\TextEntry::make('cancel_url')
                                         ->label('Cancel URL')
                                         ->copyable()
                                         ->placeholder('Not set'),
-                                    TextEntry::make('ipn_callback_url')
+                                    \Filament\Infolists\Components\TextEntry::make('ipn_callback_url')
                                         ->label('IPN Callback URL')
                                         ->copyable()
                                         ->placeholder('Not set'),
                                 ]),
 
-                            Section::make('References')
+                            \Filament\Infolists\Components\Section::make('References')
                                 ->columns(2)
                                 ->schema([
-                                    TextEntry::make('payment_id')
+                                    \Filament\Infolists\Components\TextEntry::make('payment_id')
                                         ->label('Payment ID')
                                         ->copyable()
                                         ->placeholder('Not set'),
-                                    TextEntry::make('purchase_id')
+                                    \Filament\Infolists\Components\TextEntry::make('purchase_id')
                                         ->label('Purchase ID')
                                         ->copyable()
                                         ->placeholder('Not set'),
-                                    TextEntry::make('payin_extra_id')
+                                    \Filament\Infolists\Components\TextEntry::make('payin_extra_id')
                                         ->label('Payment Extra ID')
                                         ->copyable()
                                         ->placeholder('Not set'),
-                                    TextEntry::make('walletTransaction.id')
+                                    \Filament\Infolists\Components\TextEntry::make('walletTransaction.id')
                                         ->label('Wallet Transaction')
                                         ->placeholder('Not linked'),
                                 ]),

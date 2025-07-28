@@ -54,10 +54,10 @@ class ServerHealthMonitoringWidget extends BaseWidget
     private function getActiveConnectionsStat(): Stat
     {
         $activeConnections = Cache::remember('active_connections_count', 300, function () {
-            return Server::with('serverClients')
+            return Server::with('clients')
                 ->get()
                 ->sum(function ($server) {
-                    return $server->serverClients()->where('status', 'active')->count();
+                    return $server->clients()->where('status', 'active')->count();
                 });
         });
 
@@ -144,8 +144,8 @@ class ServerHealthMonitoringWidget extends BaseWidget
             $totalUp = 0;
             $totalDown = 0;
 
-            Server::with('serverClients')->get()->each(function ($server) use (&$totalUp, &$totalDown) {
-                $server->serverClients->each(function ($client) use (&$totalUp, &$totalDown) {
+            Server::with('clients')->get()->each(function ($server) use (&$totalUp, &$totalDown) {
+                $server->clients->each(function ($client) use (&$totalUp, &$totalDown) {
                     $totalUp += $client->up ?? 0;
                     $totalDown += $client->down ?? 0;
                 });
@@ -226,23 +226,23 @@ class ServerHealthMonitoringWidget extends BaseWidget
     private function getConnectionTrend(): array
     {
         $currentHour = Cache::remember('connections_current_hour', 60, function () {
-            return Server::with('serverClients')
+            return Server::with('clients')
                 ->get()
                 ->sum(function ($server) {
                     return $server->clients()
                         ->where('status', 'active')
-                        ->where('updated_at', '>=', now()->subHour())
+                        ->where('server_clients.updated_at', '>=', now()->subHour())
                         ->count();
                 });
         });
 
         $previousHour = Cache::remember('connections_previous_hour', 300, function () {
-            return Server::with('serverClients')
+            return Server::with('clients')
                 ->get()
                 ->sum(function ($server) {
                     return $server->clients()
                         ->where('status', 'active')
-                        ->whereBetween('updated_at', [now()->subHours(2), now()->subHour()])
+                        ->whereBetween('server_clients.updated_at', [now()->subHours(2), now()->subHour()])
                         ->count();
                 });
         });
@@ -280,12 +280,12 @@ class ServerHealthMonitoringWidget extends BaseWidget
             $data = [];
             for ($i = 11; $i >= 0; $i--) {
                 $hour = now()->subHours($i);
-                $connections = Server::with('serverClients')
+                $connections = Server::with('clients')
                     ->get()
                     ->sum(function ($server) use ($hour) {
                         return $server->clients()
                             ->where('status', 'active')
-                            ->whereBetween('updated_at', [$hour, $hour->copy()->addHour()])
+                            ->whereBetween('server_clients.updated_at', [$hour, $hour->copy()->addHour()])
                             ->count();
                     });
                 $data[] = $connections;

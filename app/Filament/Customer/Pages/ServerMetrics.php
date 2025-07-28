@@ -92,7 +92,7 @@ class ServerMetrics extends Page implements HasTable, HasForms
         $timeRange = $this->getTimeRange();
 
         // Get user's active server clients with enhanced metrics
-        $serverClients = ServerClient::whereHas('orderItem.order', function (Builder $query) use ($customer) {
+        $clients = ServerClient::whereHas('orderItem.order', function (Builder $query) use ($customer) {
             $query->where('customer_id', $customer->id);
         })
         ->with(['server.brand', 'server.category', 'orderItem.order'])
@@ -102,11 +102,11 @@ class ServerMetrics extends Page implements HasTable, HasForms
 
         // Enhanced metrics calculation
         $this->metricsData = [
-            'overview' => $this->calculateOverviewMetrics($serverClients),
-            'performance' => $this->calculatePerformanceMetrics($serverClients),
-            'usage' => $this->calculateUsageMetrics($serverClients, $timeRange),
-            'reliability' => $this->calculateReliabilityMetrics($serverClients),
-            'geographic' => $this->calculateGeographicMetrics($serverClients),
+            'overview' => $this->calculateOverviewMetrics($clients),
+            'performance' => $this->calculatePerformanceMetrics($clients),
+            'usage' => $this->calculateUsageMetrics($clients, $timeRange),
+            'reliability' => $this->calculateReliabilityMetrics($clients),
+            'geographic' => $this->calculateGeographicMetrics($clients),
             'trends' => $this->calculateTrendMetrics($serverClients, $timeRange),
             'alerts' => $this->calculateAlerts($serverClients),
             'recommendations' => $this->generateRecommendations($serverClients),

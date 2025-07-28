@@ -388,7 +388,7 @@ class CustomerSuccessService
                 });
 
             case 'days_until_expiry':
-                return $query->whereHas('serverClients', function ($q) use ($value) {
+                return $query->whereHas('clients', function ($q) use ($value) {
                     $q->where('expires_at', '<=', now()->addDays($value));
                 });
 

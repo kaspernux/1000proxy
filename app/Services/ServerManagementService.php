@@ -246,7 +246,7 @@ class ServerManagementService
             }
 
             // Create default server plans for this server
-            $this->createDefaultServerPlans($server, $provisioningData);
+            $this->createDefaultPlans($server, $provisioningData);
 
             // Perform initial health check
             $healthCheck = $this->checkServerHealth($server);
@@ -473,7 +473,7 @@ class ServerManagementService
      */
     public function getManagementDashboardData(): array
     {
-        $servers = Server::with(['serverPlans', 'serverInbounds'])->get();
+        $servers = Server::with(['plans', 'serverInbounds'])->get();
 
         return [
             'summary' => [
@@ -595,7 +595,7 @@ class ServerManagementService
         return false;
     }
 
-    protected function createDefaultServerPlans(Server $server, array $provisioningData): void
+    protected function createDefaultPlans(Server $server, array $provisioningData): void
     {
         $categories = ServerCategory::all();
 

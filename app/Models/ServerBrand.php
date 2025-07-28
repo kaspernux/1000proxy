@@ -49,7 +49,7 @@ class ServerBrand extends Model
         return $this->hasMany(ServerCategory::class);
     }
 
-    public function serverPlans(): HasMany
+    public function plans(): HasMany
     {
         return $this->hasMany(ServerPlan::class, 'server_brand_id');
     }

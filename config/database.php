@@ -147,6 +147,7 @@ return [
             'prefix' => env('REDIS_PREFIX', Str::slug(env('APP_NAME', 'laravel'), '_').'_database_'),
         ],
 
+
         'default' => [
             'url' => env('REDIS_URL'),
             'host' => env('REDIS_HOST', '127.0.0.1'),
@@ -158,28 +159,28 @@ return [
 
         'cache' => [
             'url' => env('REDIS_URL'),
-            'host' => env('REDIS_HOST', '127.0.0.1'),
+            'host' => env('REDIS_CACHE_HOST', env('REDIS_HOST', '127.0.0.1')),
             'username' => env('REDIS_USERNAME'),
-            'password' => env('REDIS_PASSWORD'),
-            'port' => env('REDIS_PORT', '6379'),
-            'database' => env('REDIS_CACHE_DB', '1'),
+            'password' => env('REDIS_CACHE_PASSWORD'),
+            'port' => env('REDIS_CACHE_PORT', env('REDIS_PORT', '6379')),
+            'database' => env('REDIS_CACHE_DB', '2'),
         ],
 
         'sessions' => [
             'url' => env('REDIS_URL'),
-            'host' => env('REDIS_HOST', '127.0.0.1'),
+            'host' => env('REDIS_SESSION_HOST', env('REDIS_HOST', '127.0.0.1')),
             'username' => env('REDIS_USERNAME'),
-            'password' => env('REDIS_PASSWORD'),
-            'port' => env('REDIS_PORT', '6379'),
-            'database' => env('REDIS_SESSION_DB', '2'),
+            'password' => env('REDIS_SESSION_PASSWORD'),
+            'port' => env('REDIS_SESSION_PORT', env('REDIS_PORT', '6379')),
+            'database' => env('REDIS_SESSION_DB', '1'),
         ],
 
         'queue' => [
             'url' => env('REDIS_URL'),
-            'host' => env('REDIS_HOST', '127.0.0.1'),
+            'host' => env('REDIS_QUEUE_HOST', env('REDIS_HOST', '127.0.0.1')),
             'username' => env('REDIS_USERNAME'),
-            'password' => env('REDIS_PASSWORD'),
-            'port' => env('REDIS_PORT', '6379'),
+            'password' => env('REDIS_QUEUE_PASSWORD'),
+            'port' => env('REDIS_QUEUE_PORT', env('REDIS_PORT', '6379')),
             'database' => env('REDIS_QUEUE_DB', '3'),
         ],
 

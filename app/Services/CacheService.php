@@ -35,7 +35,7 @@ class CacheService
     /**
      * Get server plans with caching
      */
-    public function getServerPlans(): \Illuminate\Support\Collection
+    public function getPlans(): \Illuminate\Support\Collection
     {
         return Cache::remember('server_plans', self::CACHE_DURATION_MEDIUM, function () {
             return ServerPlan::where('is_active', true)
@@ -237,7 +237,7 @@ class CacheService
             $this->getActiveServers();
 
             // Warm up server plans
-            $this->getServerPlans();
+            $this->getPlans();
 
             // Warm up dashboard stats
             $this->getDashboardStats();

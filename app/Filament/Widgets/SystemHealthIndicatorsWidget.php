@@ -83,8 +83,8 @@ class SystemHealthIndicatorsWidget extends BaseWidget
     {
         $totalUp = 0;
         $totalDown = 0;
-        \App\Models\Server::with('serverClients')->get()->each(function ($server) use (&$totalUp, &$totalDown) {
-            $server->serverClients->each(function ($client) use (&$totalUp, &$totalDown) {
+        \App\Models\Server::with('clients')->get()->each(function ($server) use (&$totalUp, &$totalDown) {
+            $server->clients->each(function ($client) use (&$totalUp, &$totalDown) {
                 $totalUp += $client->up ?? 0;
                 $totalDown += $client->down ?? 0;
             });

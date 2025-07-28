@@ -43,9 +43,12 @@ trait HasPerformanceOptimizations
      */
     protected function configureLazyLoading(Table $table): Table
     {
+        // Use deferLoading() for async loading; loadingIndicatorPosition is not available in Filament Table.
+        // If you want to customize the loading indicator, use loadingIndicator() if supported by your Filament version.
+        // Example: ->loadingIndicator('Loading users...')
         return $table
             ->deferLoading()
-            ->loadingIndicatorPosition('bottom')
+            // ->loadingIndicator('Loading users...') // Uncomment if your Filament version supports it
             ->emptyStateHeading('No records found')
             ->emptyStateDescription('Try adjusting your filters or search criteria.')
             ->emptyStateIcon('heroicon-o-magnifying-glass');
@@ -73,7 +76,7 @@ trait HasPerformanceOptimizations
                 // Bulk actions will be added in implementing classes
             ])
             ->selectCurrentPageOnly()
-            ->deselectRecordsAfterCompletion();
+            ->deselectAllRecordsWhenFiltered();
     }
 
     /**
@@ -102,10 +105,12 @@ trait HasPerformanceOptimizations
      */
     protected function applyAllPerformanceOptimizations(Table $table): Table
     {
-        return $this->applyPerformancePagination($table)
-            ->let(fn($table) => $this->configureLazyLoading($table))
-            ->let(fn($table) => $this->addPerformanceFilters($table))
-            ->let(fn($table) => $this->configureBulkActions($table))
-            ->let(fn($table) => $this->optimizeSearch($table));
+        // Refactored to remove ->let() calls, which do not exist in Filament Table.
+        $table = $this->applyPerformancePagination($table);
+        $table = $this->configureLazyLoading($table);
+        $table = $this->addPerformanceFilters($table);
+        $table = $this->configureBulkActions($table);
+        $table = $this->optimizeSearch($table);
+        return $table;
     }
 }

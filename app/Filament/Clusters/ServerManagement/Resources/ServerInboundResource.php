@@ -452,7 +452,7 @@ class ServerInboundResource extends Resource
                         ->label('👥 View Clients')
                         ->icon('heroicon-o-users')
                         ->color('success')
-                        ->url(fn ($record) => route('filament.admin.clusters.server-management.resources.server-clients.index', [
+                        ->url(fn ($record) => route('filament.admin.server-management.resources.server-clients.index', [
                             'tableFilters[server_inbound_id][value]' => $record->id,
                         ]))
                         ->openUrlInNewTab(),

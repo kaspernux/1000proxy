@@ -471,56 +471,56 @@ class OrderItemResource extends Resource
     {
         return $infolist
             ->schema([
-                Tabs::make('Order Item Details')->tabs([
-                    Tabs\Tab::make('Overview')
+                \Filament\Infolists\Components\Tabs::make('Order Item Details')->tabs([
+                    \Filament\Infolists\Components\Tabs\Tab::make('Overview')
                         ->icon('heroicon-o-document-text')
                         ->schema([
-                            Section::make('Item Information')
+                            \Filament\Infolists\Components\Section::make('Item Information')
                                 ->columns(2)
                                 ->schema([
-                                    TextEntry::make('id')
+                                    \Filament\Infolists\Components\TextEntry::make('id')
                                         ->label('Item ID'),
-                                    TextEntry::make('order.id')
+                                    \Filament\Infolists\Components\TextEntry::make('order.id')
                                         ->label('Order #')
                                         ->url(fn (OrderItem $record): string =>
                                             \App\Filament\Clusters\ProxyShop\Resources\OrderResource\Pages\ViewOrder::getUrl([$record->order])
                                         ),
-                                    TextEntry::make('order.customer.name')
+                                    \Filament\Infolists\Components\TextEntry::make('order.customer.name')
                                         ->label('Customer'),
-                                    TextEntry::make('serverPlan.name')
+                                    \Filament\Infolists\Components\TextEntry::make('serverPlan.name')
                                         ->label('Server Plan'),
-                                    TextEntry::make('serverPlan.server.name')
+                                    \Filament\Infolists\Components\TextEntry::make('serverPlan.server.name')
                                         ->label('Server')
                                         ->badge()
                                         ->color('info'),
-                                    TextEntry::make('quantity')
+                                    \Filament\Infolists\Components\TextEntry::make('quantity')
                                         ->label('Quantity')
                                         ->badge()
                                         ->color('primary'),
-                                    TextEntry::make('unit_amount')
+                                    \Filament\Infolists\Components\TextEntry::make('unit_amount')
                                         ->label('Unit Price')
                                         ->money('USD'),
-                                    TextEntry::make('total_amount')
+                                    \Filament\Infolists\Components\TextEntry::make('total_amount')
                                         ->label('Total Amount')
                                         ->money('USD'),
-                                    TextEntry::make('agent_bought')
+                                    \Filament\Infolists\Components\TextEntry::make('agent_bought')
                                         ->label('Agent Purchase')
                                         ->badge()
                                         ->color(fn (bool $state): string => $state ? 'warning' : 'gray')
                                         ->formatStateUsing(fn (bool $state): string => $state ? 'Yes' : 'No'),
-                                    TextEntry::make('created_at')
+                                    \Filament\Infolists\Components\TextEntry::make('created_at')
                                         ->label('Created')
                                         ->since(),
                                 ]),
                         ]),
 
-                    Tabs\Tab::make('Provisioning')
+                    \Filament\Infolists\Components\Tabs\Tab::make('Provisioning')
                         ->icon('heroicon-o-cog-6-tooth')
                         ->schema([
-                            Section::make('Provisioning Status')
+                            \Filament\Infolists\Components\Section::make('Provisioning Status')
                                 ->columns(2)
                                 ->schema([
-                                    TextEntry::make('provisioning_summary')
+                                    \Filament\Infolists\Components\TextEntry::make('provisioning_summary')
                                         ->label('Status Summary')
                                         ->formatStateUsing(function (OrderItem $record): string {
                                             $status = $record->getProvisioningStatus();
@@ -531,7 +531,7 @@ class OrderItemResource extends Resource
                                         })
                                         ->columnSpanFull(),
 
-                                    TextEntry::make('is_fully_provisioned')
+                                    \Filament\Infolists\Components\TextEntry::make('is_fully_provisioned')
                                         ->label('Fully Provisioned')
                                         ->formatStateUsing(fn (OrderItem $record): string =>
                                             $record->isFullyProvisioned() ? 'Yes' : 'No'
@@ -541,7 +541,7 @@ class OrderItemResource extends Resource
                                             $record->isFullyProvisioned() ? 'success' : 'warning'
                                         ),
 
-                                    TextEntry::make('total_with_fees')
+                                    \Filament\Infolists\Components\TextEntry::make('total_with_fees')
                                         ->label('Total with Setup Fees')
                                         ->formatStateUsing(fn (OrderItem $record): string =>
                                             '$' . number_format($record->getTotalAmountWithFees(), 2)
@@ -549,13 +549,13 @@ class OrderItemResource extends Resource
                                 ]),
                         ]),
 
-                    Tabs\Tab::make('QR Codes')
+                    \Filament\Infolists\Components\Tabs\Tab::make('QR Codes')
                         ->icon('heroicon-o-qr-code')
                         ->schema([
-                            Section::make('Available QR Codes')
+                            \Filament\Infolists\Components\Section::make('Available QR Codes')
                                 ->columns(1)
                                 ->schema([
-                                    TextEntry::make('qr_codes_summary')
+                                    \Filament\Infolists\Components\TextEntry::make('qr_codes_summary')
                                         ->label('QR Codes Status')
                                         ->formatStateUsing(function (OrderItem $record): string {
                                             $qrCodes = $record->getQrCodes();

@@ -23,14 +23,13 @@ class EnhancedPerformanceStatsWidget extends BaseWidget
     protected function getStats(): array
     {
         // Example: add real-time stats from your actual models
-        $activeUsers = User::where('is_active', true)->count();
+        $activeUsers = User::count();
         $totalUsers = User::count();
         $paidOrders = Order::where('payment_status', 'paid')->count();
         $pendingOrders = Order::where('payment_status', 'pending')->count();
         $totalRevenue = Order::where('payment_status', 'paid')->sum('grand_amount');
         $serversUp = Server::where('status', 'up')->count();
         $serversDown = Server::where('status', 'down')->count();
-        $activeClients = ServerClient::where('is_active', true)->count();
         $totalClients = ServerClient::count();
 
         return [
@@ -38,8 +37,8 @@ class EnhancedPerformanceStatsWidget extends BaseWidget
             $this->getDatabasePerformanceStat(),
             $this->getCachePerformanceStat(),
             $this->getApiPerformanceStat(),
-            Stat::make('Active Users', $activeUsers . '/' . $totalUsers)
-                ->description('Users with is_active = true')
+            Stat::make('Users', $activeUsers . '/' . $totalUsers)
+                ->description('Total users')
                 ->color($activeUsers > ($totalUsers * 0.7) ? 'success' : 'warning'),
             Stat::make('Paid Orders', $paidOrders)
                 ->description('Orders with payment_status = paid')
@@ -56,9 +55,9 @@ class EnhancedPerformanceStatsWidget extends BaseWidget
             Stat::make('Servers Down', $serversDown)
                 ->description('Servers with status = down')
                 ->color('danger'),
-            Stat::make('Active Clients', $activeClients . '/' . $totalClients)
-                ->description('Clients with is_active = true')
-                ->color($activeClients > ($totalClients * 0.7) ? 'success' : 'warning'),
+            Stat::make('Clients', $totalClients)
+                ->description('Total server clients')
+                ->color('primary'),
         ];
     }
 

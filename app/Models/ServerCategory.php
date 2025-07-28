@@ -37,7 +37,7 @@ class ServerCategory extends Model
         });
     }
 
-    public function serverPlans(): HasMany
+    public function plans(): HasMany
     {
         return $this->hasMany(ServerPlan::class, 'server_category_id');
     }

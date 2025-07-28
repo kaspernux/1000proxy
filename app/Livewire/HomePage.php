@@ -52,10 +52,10 @@ class HomePage extends Component
     {
         return Cache::remember('homepage.brands', 3600, function() {
             return ServerBrand::where('is_active', 1)
-                ->withCount(['serverPlans' => function($query) {
+                ->withCount(['plans' => function($query) {
                     $query->where('is_active', true);
                 }])
-                ->having('server_plans_count', '>', 0)
+                ->having('plans_count', '>', 0)
                 ->orderBy('name')
                 ->get();
         });
@@ -65,10 +65,10 @@ class HomePage extends Component
     {
         return Cache::remember('homepage.categories', 3600, function() {
             return ServerCategory::where('is_active', true)
-                ->withCount(['serverPlans' => function($query) {
+                ->withCount(['plans' => function($query) {
                     $query->where('is_active', true);
                 }])
-                ->having('server_plans_count', '>', 0)
+                ->having('plans_count', '>', 0)
                 ->orderBy('name')
                 ->get();
         });

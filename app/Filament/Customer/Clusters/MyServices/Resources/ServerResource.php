@@ -45,7 +45,7 @@ class ServerResource extends Resource
         $customerId = auth('customer')->id();
 
         return parent::getEloquentQuery()
-            ->whereHas('serverClients', function (Builder $query) use ($customerId) {
+            ->whereHas('clients', function (Builder $query) use ($customerId) {
                 $query->where('email', 'LIKE', "%#ID {$customerId}");
             })
             ->where('is_active', true);

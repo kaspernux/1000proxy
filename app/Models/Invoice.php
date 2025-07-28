@@ -93,5 +93,13 @@ class Invoice extends Model
     {
         return $this->belongsTo(WalletTransaction::class);
     }
+
+    /**
+     * Get the customer associated with the invoice.
+     */
+    public function customer(): BelongsTo
+    {
+        return $this->belongsTo(Customer::class, 'customer_id');
+    }
    
 }

@@ -127,11 +127,6 @@ class ServerBrandResource extends Resource
                                     ->label('Featured Brand')
                                     ->default(false)
                                     ->helperText('Show as featured on customer-facing pages'),
-                                Forms\Components\TextInput::make('sort_order')
-                                    ->label('Sort Order')
-                                    ->numeric()
-                                    ->default(0)
-                                    ->helperText('Display order (lower numbers first)'),
                             ])->columns(3),
                         ]),
 
@@ -196,12 +191,6 @@ class ServerBrandResource extends Resource
                     ->url(fn($record) => $record->website_url)
                     ->openUrlInNewTab()
                     ->icon('heroicon-o-link')
-                    ->toggleable(isToggledHiddenByDefault: true),
-                Tables\Columns\TextColumn::make('sort_order')
-                    ->label('Order')
-                    ->numeric()
-                    ->sortable()
-                    ->alignCenter()
                     ->toggleable(isToggledHiddenByDefault: true),
                 Tables\Columns\TextColumn::make('created_at')
                     ->label('Created')
@@ -284,7 +273,7 @@ class ServerBrandResource extends Resource
                     Tables\Actions\Action::make('view_servers')
                         ->label('View Servers')
                         ->icon('heroicon-o-server')
-                        ->url(fn($record) => route('filament.admin.clusters.server-management.resources.servers.index', ['tableFilters[server_brand_id][values][]' => $record->id]))
+                        ->url(fn($record) => route('filament.admin.server-management.resources.servers.index', ['tableFilters[server_brand_id][values][]' => $record->id]))
                         ->openUrlInNewTab(),
                     Tables\Actions\EditAction::make(),
                     Tables\Actions\ViewAction::make(),
@@ -310,8 +299,8 @@ class ServerBrandResource extends Resource
                         ->action(fn(Collection $records) => $records->each(fn($record) => $record->update(['is_active' => false]))),
                 ]),
             ])
-            ->defaultSort('sort_order');
-        }
+        ;
+    }
 
     public static function getRelations(): array
     {

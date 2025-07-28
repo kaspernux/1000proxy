@@ -137,7 +137,7 @@ class ServerTagResource extends Resource
                         ->label('View Server')
                         ->icon('heroicon-o-server')
                         ->color('primary')
-                        ->url(fn ($record) => route('filament.admin.clusters.server-management.resources.servers.view', $record->server))
+                        ->url(fn ($record) => route('filament.admin.server-management.resources.servers.view', $record->server))
                         ->tooltip('View associated server'),
 
                     DeleteAction::make()

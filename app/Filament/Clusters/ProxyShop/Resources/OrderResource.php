@@ -476,7 +476,7 @@ class OrderResource extends Resource
                     ->icon('heroicon-o-list-bullet')
                     ->color('info')
                     ->url(fn (Order $record): string =>
-                        route('filament.admin.resources.order-items.index', ['order' => $record->id])),
+                        route('filament.admin.proxy-shop.resources.order-items.index', ['order' => $record->id])),
             ])
             ->bulkActions([
                 BulkActionGroup::make([

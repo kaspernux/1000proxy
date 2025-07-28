@@ -153,7 +153,7 @@ class CachingStrategyService
             $serverListKey = $this->cachePrefix . 'servers:active';
             $servers = Cache::remember($serverListKey, $this->defaultTtl, function () {
                 return Server::where('is_active', true)
-                    ->with(['serverPlans', 'brand', 'category'])
+                    ->with(['plans', 'brand', 'category'])
                     ->get();
             });
 
@@ -294,8 +294,8 @@ class CachingStrategyService
     {
         try {
             // Cache server-plan relationships
-            $serverPlansKey = $this->cachePrefix . 'relationships:server_plans';
-            Cache::remember($serverPlansKey, 3600, function () { // 1 hour
+            $plansKey = $this->cachePrefix . 'relationships:plans';
+            Cache::remember($plansKey, 3600, function () { // 1 hour
                 return DB::table('server_plans')
                     ->join('servers', 'server_plans.server_id', '=', 'servers.id')
                     ->join('server_categories', 'server_plans.category_id', '=', 'server_categories.id')
@@ -333,7 +333,7 @@ class CachingStrategyService
                 'server_plans_relationships_cached' => true,
                 'order_items_relationships_cached' => true,
                 'customer_orders_relationships_cached' => true,
-                'cache_keys' => [$serverPlansKey, $orderItemsKey, $customerOrdersKey]
+                'cache_keys' => [$plansKey, $orderItemsKey, $customerOrdersKey]
             ];
 
         } catch (\Exception $e) {

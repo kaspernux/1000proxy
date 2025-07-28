@@ -12,7 +12,8 @@ class UserPolicy
      */
     public function viewAny(User $user): bool
     {
-        return $user->hasStaffPermission('manage_staff') || $user->hasStaffPermission('view_staff');
+        // All staff roles can view the UserResource
+        return in_array($user->role, ['admin', 'support_manager', 'sales_support']);
     }
 
     /**
@@ -20,8 +21,8 @@ class UserPolicy
      */
     public function view(User $user, User $model): bool
     {
-        // Admin can view all, others can only view themselves unless they have manage_staff permission
-        return $user->isAdmin() || $user->id === $model->id || $user->hasStaffPermission('manage_staff');
+        // All staff roles can view all staff users
+        return in_array($user->role, ['admin', 'support_manager', 'sales_support']);
     }
 
     /**
@@ -29,7 +30,8 @@ class UserPolicy
      */
     public function create(User $user): bool
     {
-        return $user->hasStaffPermission('manage_staff');
+        // Only admin can create staff users
+        return $user->isAdmin();
     }
 
     /**
@@ -37,17 +39,8 @@ class UserPolicy
      */
     public function update(User $user, User $model): bool
     {
-        // Admin can update all, others can only update themselves (except role changes)
-        if ($user->isAdmin()) {
-            return true;
-        }
-
-        if ($user->id === $model->id) {
-            // Users can update their own profile but not their role
-            return true;
-        }
-
-        return $user->hasStaffPermission('manage_staff');
+        // Only admin can update staff users
+        return $user->isAdmin();
     }
 
     /**

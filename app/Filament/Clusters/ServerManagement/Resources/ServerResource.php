@@ -326,7 +326,7 @@ class ServerResource extends Resource
                                 ->label('Health Status')
                                 ->maxLength(50)
                                 ->default('unknown')
-                                ->prefixIcon('heroicon-o-pulse')
+                                ->prefixIcon('heroicon-o-heart')
                                 ->placeholder('healthy, warning, error')
                                 ->helperText('Detailed health status'),
 
@@ -438,7 +438,7 @@ class ServerResource extends Resource
 
                     Section::make('🔌 API Configuration')
                         ->description('X-UI API settings and session management')
-                        ->icon('heroicon-o-api')
+                        ->icon('heroicon-o-rss')
                         ->collapsible()
                         ->schema([
                             TextInput::make('api_version')
@@ -569,7 +569,7 @@ class ServerResource extends Resource
 
                     Section::make('🔧 API Configuration')
                         ->description('X-UI API settings and rate limiting')
-                        ->icon('heroicon-o-api')
+                        ->icon('heroicon-o-rss')
                         ->collapsible()
                         ->schema([
                             Forms\Components\Grid::make(2)->schema([
@@ -995,7 +995,7 @@ class ServerResource extends Resource
                     ->color('info')
                     ->tooltip('View all inbounds on this server')
                     ->url(fn (Server $record): string =>
-                        route('filament.admin.clusters.server-management.resources.server-inbounds.index', [
+                        route('filament.admin.server-management.resources.server-inbounds.index', [
                             'tableFilters[server_id][value]' => $record->id,
                         ])
                     ),
@@ -1006,7 +1006,7 @@ class ServerResource extends Resource
                     ->color('success')
                     ->tooltip('View all clients on this server')
                     ->url(fn (Server $record): string =>
-                        route('filament.admin.clusters.server-management.resources.server-clients.index', [
+                        route('filament.admin.server-management.resources.server-clients.index', [
                             'tableFilters[server_id][value]' => $record->id,
                         ])
                     ),

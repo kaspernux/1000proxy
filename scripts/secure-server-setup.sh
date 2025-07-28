@@ -723,11 +723,9 @@ server {
         fastcgi_pass unix:/run/php/php8.3-1000proxy.sock;
         fastcgi_index index.php;
         include fastcgi_params;
-        fastcgi_param SCRIPT_FILENAME \$realpath_root\$fastcgi_script_name;
-        fastcgi_param DOCUMENT_ROOT \$realpath_root;
-        fastcgi_param PATH_INFO \$fastcgi_path_info;
-
-        # Security headers for PHP
+        fastcgi_param SCRIPT_FILENAME $realpath_root$fastcgi_script_name;
+        fastcgi_param DOCUMENT_ROOT $realpath_root;
+        fastcgi_param PATH_INFO $fastcgi_path_info;
         fastcgi_hide_header X-Powered-By;
         fastcgi_read_timeout 300;
         fastcgi_buffer_size 128k;

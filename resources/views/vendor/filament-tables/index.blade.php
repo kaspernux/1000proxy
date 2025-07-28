@@ -23,7 +23,7 @@
     $filterIndicators = $getFilterIndicators();
     $hasColumnGroups = $hasColumnGroups();
     $hasColumnsLayout = $hasColumnsLayout();
-    $hasSummary = $hasSummary(true);
+    $hasSummary = $hasSummary(null);
     $header = $getHeader();
     $headerActions = array_filter(
         $getHeaderActions(),

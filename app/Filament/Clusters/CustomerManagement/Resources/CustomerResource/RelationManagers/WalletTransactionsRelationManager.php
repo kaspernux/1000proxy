@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Filament\Clusters\CustomerManagement\Resources\UserResource\RelationManagers;
+namespace App\Filament\Clusters\CustomerManagement\Resources\CustomerResource\RelationManagers;
 
 use Filament\Forms;
 use Filament\Forms\Form;

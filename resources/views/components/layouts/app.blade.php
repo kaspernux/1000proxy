@@ -1,18 +1,6 @@
 <!DOCTYPE html>
 <html
     lang="{{ str_replace('_', '-', app()->getLocale()) }}"
-    x-data
-    x-init="
-        const theme = localStorage.getItem('theme') ?? '{{ session('theme_mode', 'system') }}';
-        const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-
-        if (theme === 'dark' || (theme === 'system' && prefersDark)) {
-            document.documentElement.classList.add('dark');
-        } else {
-            document.documentElement.classList.remove('dark');
-        }
-    "
-    class="antialiased"
 >
 <head>
     <meta charset="utf-8">
@@ -20,7 +8,6 @@
 
     @vite(['resources/css/app.css', 'resources/js/app.js'])
     @livewireStyles
-    <script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
 
     <title>{{ $title ?? '1000 PROXIES' }}</title>
 </head>

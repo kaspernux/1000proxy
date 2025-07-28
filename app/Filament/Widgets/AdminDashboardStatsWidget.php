@@ -46,7 +46,7 @@ class AdminDashboardStatsWidget extends BaseWidget
                 ->chart($this->getCustomerChart())
                 ->color('info'),
 
-            Stat::make('Active Subscriptions', number_format($this->getActiveSubscriptions()))
+            Stat::make('Active Subscriptions', number_format(Customer::count()))
                 ->description($this->getSubscriptionGrowth() . '% vs last month')
                 ->descriptionIcon($this->getSubscriptionGrowth() > 0 ? 'heroicon-m-arrow-trending-up' : 'heroicon-m-arrow-trending-down')
                 ->color($this->getSubscriptionGrowth() > 0 ? 'success' : 'danger'),
@@ -68,7 +68,7 @@ class AdminDashboardStatsWidget extends BaseWidget
                 ->descriptionIcon($this->getServerUtilization() > 80 ? 'heroicon-m-exclamation-triangle' : 'heroicon-m-check-circle')
                 ->color($this->getServerUtilization() > 80 ? 'danger' : 'success'),
 
-            Stat::make('Active Clients', number_format(ServerClient::where('is_active', true)->count()))
+            Stat::make('Clients', number_format(ServerClient::count()))
                 ->description('Total proxy connections')
                 ->descriptionIcon('heroicon-m-link')
                 ->chart($this->getClientChart())
@@ -76,7 +76,7 @@ class AdminDashboardStatsWidget extends BaseWidget
 
             // Performance & System Stats
             Stat::make('Total Plans', number_format(ServerPlan::count()))
-                ->description(ServerPlan::where('is_active', true)->count() . ' active plans')
+                ->description('All plans')
                 ->descriptionIcon('heroicon-m-squares-2x2')
                 ->color('emerald'),
 
@@ -132,20 +132,18 @@ class AdminDashboardStatsWidget extends BaseWidget
 
     private function getActiveSubscriptions(): int
     {
-        // If you have a subscriptions table, count active ones. Otherwise, fallback to active customers.
+        // If you have a subscriptions table, count active ones. Otherwise, fallback to total customers.
         // Example: return Subscription::where('status', 'active')->count();
         // Fallback:
-        return Customer::where('is_active', true)->count();
+        return Customer::count();
     }
 
     private function getSubscriptionGrowth(): float
     {
-        $current = Customer::where('is_active', true)
-            ->whereYear('created_at', Carbon::now()->year)
+        $current = Customer::whereYear('created_at', Carbon::now()->year)
             ->whereMonth('created_at', Carbon::now()->month)
             ->count();
-        $last = Customer::where('is_active', true)
-            ->whereYear('created_at', Carbon::now()->subMonth()->year)
+        $last = Customer::whereYear('created_at', Carbon::now()->subMonth()->year)
             ->whereMonth('created_at', Carbon::now()->subMonth()->month)
             ->count();
         if ($last == 0) return $current > 0 ? 100 : 0;
@@ -232,9 +230,7 @@ class AdminDashboardStatsWidget extends BaseWidget
         $data = [];
         for ($i = 6; $i >= 0; $i--) {
             $date = Carbon::now()->subDays($i)->toDateString();
-            $data[] = ServerClient::where('is_active', true)
-                ->whereDate('created_at', $date)
-                ->count();
+            $data[] = ServerClient::whereDate('created_at', $date)->count();
         }
         return $data;
     }

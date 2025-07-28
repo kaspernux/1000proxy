@@ -149,7 +149,7 @@ class AnalyticsDashboard extends Page
 
         // Active servers
         $activeServers = Server::where('status', 'active')->count();
-        $totalServerClients = ServerClient::where('status', 'active')->count();
+        $totalClients = ServerClient::where('status', 'active')->count();
 
         return [
             'total_revenue' => [
@@ -170,8 +170,8 @@ class AnalyticsDashboard extends Page
             ],
             'active_servers' => [
                 'value' => $activeServers,
-                'clients' => $totalServerClients,
-                'utilization' => $activeServers > 0 ? round(($totalServerClients / ($activeServers * 100)) * 100, 1) : 0,
+                'clients' => $totalClients,
+                'utilization' => $activeServers > 0 ? round(($totalClients / ($activeServers * 100)) * 100, 1) : 0,
             ],
             'avg_order_value' => [
                 'value' => $currentOrderCount > 0 ? $currentRevenue / $currentOrderCount : 0,

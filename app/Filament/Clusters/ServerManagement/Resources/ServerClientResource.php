@@ -637,7 +637,7 @@ class ServerClientResource extends Resource
                 Tabs\Tab::make('Profile')
                     ->icon('heroicon-m-user')
                     ->schema([
-                        Section::make('🔐 Client Information')
+                        InfolistSection::make('🔐 Client Information')
                             ->description('Details about this proxy client’s identity and usage limits.')
                             ->columns([
                                 'sm' => 1,
@@ -661,7 +661,7 @@ class ServerClientResource extends Resource
                 Tabs\Tab::make('Server')
                     ->icon('heroicon-m-server')
                     ->schema([
-                        Section::make('📡 Server Configuration')
+                        InfolistSection::make('📡 Server Configuration')
                             ->description('Details about the proxy server and plan used.')
                             ->columns(2)
                             ->schema([
@@ -673,7 +673,7 @@ class ServerClientResource extends Resource
                 Tabs\Tab::make('QR Codes')
                     ->icon('heroicon-m-qr-code')
                     ->schema([
-                        Section::make('📲 Client QR Codes')
+                        InfolistSection::make('📲 Client QR Codes')
                             ->description('Scan or download QR codes to quickly configure supported proxy clients.')
                             ->columns([
                                 'default' => 1,

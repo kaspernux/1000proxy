@@ -20,7 +20,7 @@ class ComprehensiveSystemStatsWidget extends BaseWidget
     {
         $totalCustomers = Customer::count();
         $newCustomersToday = Customer::whereDate('created_at', Carbon::today())->count();
-        $activeCustomers = Customer::where('is_active', true)->count();
+        $activeCustomers = Customer::count();
 
         $totalOrders = Order::count();
         $ordersToday = Order::whereDate('created_at', Carbon::today())->count();
@@ -35,10 +35,10 @@ class ComprehensiveSystemStatsWidget extends BaseWidget
         $offlineServers = Server::where('status', 'down')->count();
 
         $totalClients = ServerClient::count();
-        $activeClients = ServerClient::where('is_active', true)->count();
+        $activeClients = ServerClient::count();
 
         $totalStaff = User::count();
-        $activeStaff = User::where('is_active', true)->count();
+        $activeStaff = User::count();
 
         return [
             // Customer Stats
@@ -98,10 +98,10 @@ class ComprehensiveSystemStatsWidget extends BaseWidget
                 ]),
 
             // Active Clients Stats
-            Stat::make('👤 Active Clients', number_format($activeClients) . '/' . number_format($totalClients))
-                ->description(round(($activeClients / max($totalClients, 1)) * 100, 1) . '% active')
+            Stat::make('👤 Clients', number_format($totalClients))
+                ->description('Total clients')
                 ->descriptionIcon('heroicon-m-users')
-                ->color($activeClients > ($totalClients * 0.7) ? 'success' : 'warning')
+                ->color('primary')
                 ->chart([
                     ServerClient::whereDate('created_at', Carbon::today()->subDays(6))->count(),
                     ServerClient::whereDate('created_at', Carbon::today()->subDays(5))->count(),
@@ -109,14 +109,14 @@ class ComprehensiveSystemStatsWidget extends BaseWidget
                     ServerClient::whereDate('created_at', Carbon::today()->subDays(3))->count(),
                     ServerClient::whereDate('created_at', Carbon::today()->subDays(2))->count(),
                     ServerClient::whereDate('created_at', Carbon::today()->subDays(1))->count(),
-                    $activeClients,
+                    $totalClients,
                 ]),
 
             // Staff Stats
-            Stat::make('👨‍💼 Active Staff', "{$activeStaff}/{$totalStaff}")
-                ->description($activeStaff === $totalStaff ? 'All staff active' : ($totalStaff - $activeStaff) . ' inactive')
-                ->descriptionIcon($activeStaff === $totalStaff ? 'heroicon-m-check-circle' : 'heroicon-m-exclamation-triangle')
-                ->color($activeStaff === $totalStaff ? 'success' : 'warning'),
+            Stat::make('👨‍💼 Staff', number_format($totalStaff))
+                ->description('Total staff')
+                ->descriptionIcon('heroicon-m-check-circle')
+                ->color('primary'),
         ];
     }
 

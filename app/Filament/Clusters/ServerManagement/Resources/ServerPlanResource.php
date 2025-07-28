@@ -469,7 +469,9 @@ class ServerPlanResource extends Resource
                         ->action(fn (Collection $records) => $records->each(fn ($record) => $record->update(['is_featured' => !$record->is_featured]))),
                 ])
             ])
-            ->defaultSort('sort_order');
+            // Removed defaultSort('sort_order') due to missing column
+
+        ;
     }
 
     public static function getRelations(): array

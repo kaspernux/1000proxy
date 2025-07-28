@@ -50,7 +50,7 @@ class OrderController extends Controller
      */
     public function show(int $id, Request $request): JsonResponse
     {
-        $order = Order::with(['server', 'orderItems.server', 'serverClients'])
+        $order = Order::with(['server', 'orderItems.server', 'clients'])
             ->where('user_id', $request->user()->id)
             ->findOrFail($id);
 
@@ -265,7 +265,7 @@ class OrderController extends Controller
      */
     public function configuration(int $id, Request $request): JsonResponse
     {
-        $order = Order::with(['serverClients'])
+        $order = Order::with(['clients'])
             ->where('user_id', $request->user()->id)
             ->findOrFail($id);
 
@@ -276,7 +276,7 @@ class OrderController extends Controller
             ], 400);
         }
 
-        $configurations = $order->serverClients->map(function ($client) {
+        $configurations = $order->clients->map(function ($client) {
             return [
                 'id' => $client->id,
                 'name' => $client->name,

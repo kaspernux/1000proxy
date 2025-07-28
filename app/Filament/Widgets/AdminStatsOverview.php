@@ -68,7 +68,7 @@ class AdminStatsOverview extends BaseWidget
                 ->descriptionIcon($this->getServerUtilization() > 80 ? 'heroicon-m-exclamation-triangle' : 'heroicon-m-check-circle')
                 ->color($this->getServerUtilization() > 80 ? 'danger' : 'success'),
 
-            Stat::make('Active Clients', number_format(ServerClient::where('status', 'active')->count()))
+            Stat::make('Clients', number_format(ServerClient::count()))
                 ->description('Total proxy connections')
                 ->descriptionIcon('heroicon-m-link')
                 ->chart($this->getClientChart())
@@ -76,7 +76,7 @@ class AdminStatsOverview extends BaseWidget
 
             // Performance & System Stats
             Stat::make('Total Plans', number_format(ServerPlan::count()))
-                ->description(ServerPlan::where('is_active', true)->count() . ' active plans')
+                ->description('All plans')
                 ->descriptionIcon('heroicon-m-squares-2x2')
                 ->color('emerald'),
 
@@ -130,19 +130,17 @@ class AdminStatsOverview extends BaseWidget
 
     private function getActiveSubscriptions(): int
     {
-        return ServerClient::where('status', 'active')
-            ->where('expires_at', '>', Carbon::now())
-            ->count();
+        return ServerClient::count();
     }
 
     private function getSubscriptionGrowth(): float
     {
-        $current = $this->getActiveSubscriptions();
-        $lastMonth = ServerClient::where('status', 'active')
-            ->where('expires_at', '>', Carbon::now()->subMonth())
-            ->whereDate('created_at', '<=', Carbon::now()->subMonth()->endOfMonth())
+        $current = ServerClient::whereYear('created_at', Carbon::now()->year)
+            ->whereMonth('created_at', Carbon::now()->month)
             ->count();
-
+        $lastMonth = ServerClient::whereYear('created_at', Carbon::now()->subMonth()->year)
+            ->whereMonth('created_at', Carbon::now()->subMonth()->month)
+            ->count();
         if ($lastMonth == 0) return $current > 0 ? 100 : 0;
         return round((($current - $lastMonth) / $lastMonth) * 100, 1);
     }
@@ -226,7 +224,6 @@ class AdminStatsOverview extends BaseWidget
     private function getClientChart(): array
     {
         return ServerClient::selectRaw('DATE(created_at) as date, COUNT(*) as clients')
-            ->where('status', 'active')
             ->where('created_at', '>=', Carbon::now()->subDays(7))
             ->groupBy(DB::raw('DATE(created_at)'))
             ->orderBy('date')

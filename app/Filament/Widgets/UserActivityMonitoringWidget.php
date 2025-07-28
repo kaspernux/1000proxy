@@ -18,6 +18,11 @@ use Filament\Tables\Actions\Action;
 
 class UserActivityMonitoringWidget extends BaseWidget
 {
+    protected function getTableQuery(): Builder
+    {
+        // You can customize this query as needed. Here, we return all users ordered by last login.
+        return User::query()->orderByDesc('last_login_at');
+    }
     protected static ?string $heading = 'Recent User Activity';
 
     protected static ?int $sort = 3;
@@ -61,22 +66,6 @@ class UserActivityMonitoringWidget extends BaseWidget
                     ->getStateUsing(fn ($record) => $this->getLastActivity($record))
                     ->description(fn ($record) => $this->getActivityDescription($record))
                     ->sortable(),
-                BadgeColumn::make('active_connections')
-                    ->label('Active Proxies')
-                    ->getStateUsing(fn ($record) => $this->getActiveConnections($record))
-                    ->colors([
-                        'success' => fn ($state) => $state > 0,
-                        'gray' => fn ($state) => $state === 0,
-                    ])
-                    ->icons([
-                        'heroicon-m-signal' => fn ($state) => $state > 0,
-                        'heroicon-m-minus-circle' => fn ($state) => $state === 0,
-                    ]),
-                TextColumn::make('total_orders')
-                    ->label('Orders')
-                    ->getStateUsing(fn ($record) => $record->orders()->count())
-                    ->description(fn ($record) => '$' . number_format($record->orders()->sum('grand_amount'), 2))
-                    ->alignCenter(),
                 TextColumn::make('join_date')
                     ->label('Member Since')
                     ->getStateUsing(fn ($record) => $record->created_at->diffForHumans())
@@ -84,12 +73,6 @@ class UserActivityMonitoringWidget extends BaseWidget
                     ->sortable(),
             ])
             ->actions([
-                Action::make('view_profile')
-                    ->label('View')
-                    ->icon('heroicon-m-eye')
-                    ->color('info')
-                    ->url(fn ($record) => route('filament.admin.resources.users.view', $record))
-                    ->openUrlInNewTab(),
                 Action::make('send_message')
                     ->label('Message')
                     ->icon('heroicon-m-chat-bubble-left')
@@ -113,19 +96,18 @@ class UserActivityMonitoringWidget extends BaseWidget
                         'offline' => 'Offline',
                         'never' => 'Never logged in',
                     ])
-                    ->query(fn (Builder $query, $value) => match ($value) {
-                        'online' => $query->where('last_login_at', '>=', now()->subMinutes(15)),
-                        'away' => $query->whereBetween('last_login_at', [now()->subHours(2), now()->subMinutes(15)]),
-                        'offline' => $query->where('last_login_at', '<', now()->subHours(2)),
-                        'never' => $query->whereNull('last_login_at'),
-                        default => $query,
+                    ->query(function (Builder $query, array $data) {
+                        $value = $data['value'] ?? null;
+                        return match ($value) {
+                            'online' => $query->where('last_login_at', '>=', now()->subMinutes(15)),
+                            'away' => $query->whereBetween('last_login_at', [now()->subHours(2), now()->subMinutes(15)]),
+                            'offline' => $query->where('last_login_at', '<', now()->subHours(2)),
+                            'never' => $query->whereNull('last_login_at'),
+                            default => $query,
+                        };
                     }),
-                Tables\Filters\Filter::make('has_active_proxies')
-                    ->label('Has Active Proxies')
-                    ->query(fn (Builder $query) => $query->whereHas('serverClients', fn ($q) => $q->where('status', 'active'))),
-                Tables\Filters\Filter::make('recent_orders')
-                    ->label('Recent Orders')
-                    ->query(fn (Builder $query): Builder => $query->whereHas('orders', fn ($q) => $q->where('created_at', '>=', now()->subDays(7)))),
+                // Removed 'Has Active Proxies' filter: users do not have servers
+                // Removed 'Recent Orders' filter: only customers have orders
             ])
             ->defaultSort('last_login_at', 'desc')
             ->poll('30s');
@@ -161,25 +143,10 @@ class UserActivityMonitoringWidget extends BaseWidget
         if (!$user->last_login_at) {
             return 'User has never logged in';
         }
-        $recentOrder = $user->orders()->latest()->first();
-        $activeProxies = $user->clients()->where('status', 'active')->count();
-        if ($recentOrder && $recentOrder->created_at >= now()->subDays(7)) {
-            return "Last order: {$recentOrder->created_at->diffForHumans()}";
-        } elseif ($activeProxies > 0) {
-            return "Managing {$activeProxies} active " . str('proxy')->plural($activeProxies);
-        } else {
-            return 'Browsing dashboard';
-        }
+        return 'Browsing dashboard';
     }
 
-    private function getActiveConnections(User $user): int
-    {
-        return Cache::remember("user_active_connections_{$user->id}", 300, function () use ($user) {
-            return $user->clients()
-                ->where('status', 'active')
-                ->count();
-        });
-    }
+    // Removed getActiveConnections: users do not have servers
 
     protected function getTableRecordsPerPageSelectOptions(): array
     {

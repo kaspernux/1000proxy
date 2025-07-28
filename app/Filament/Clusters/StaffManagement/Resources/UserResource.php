@@ -215,7 +215,6 @@ class UserResource extends Resource
                     ->toggleable(isToggledHiddenByDefault: true),
             ])
             ->filters([
-                // Staff-specific filters
                 Tables\Filters\SelectFilter::make('role')
                     ->options([
                         'admin' => 'Administrators',
@@ -236,11 +235,9 @@ class UserResource extends Resource
                     ->trueLabel('Telegram linked')
                     ->falseLabel('No Telegram')
                     ->query(fn (Builder $query, array $data): Builder =>
-                        match ($data['value']) {
-                            '1' => $query->whereNotNull('telegram_chat_id'),
-                            '0' => $query->whereNull('telegram_chat_id'),
-                            default => $query,
-                        }
+                        isset($data['value'])
+                            ? ($data['value'] ? $query->whereNotNull('telegram_chat_id') : $query->whereNull('telegram_chat_id'))
+                            : $query
                     ),
 
                 Tables\Filters\Filter::make('recent_login')
@@ -264,13 +261,6 @@ class UserResource extends Resource
                     ->toggle(),
             ])
             ->actions([
-                Tables\Actions\Action::make('view_customers')
-                    ->label('View Customers')
-                    ->icon('heroicon-o-users')
-                    ->color('info')
-                    ->url(fn (): string => route('filament.admin.clusters.customer-management.resources.customers.index'))
-                    ->tooltip('Switch to Customer Management'),
-
                 Tables\Actions\Action::make('reset_password')
                     ->label('Reset Password')
                     ->icon('heroicon-o-key')
@@ -301,8 +291,6 @@ class UserResource extends Resource
                     ->color('info')
                     ->visible(fn (User $record): bool => $record->hasTelegramLinked())
                     ->action(function (User $record) {
-                        // In a real implementation, you would send a test message via Telegram bot
-
                         Notification::make()
                             ->title('Test Message Sent')
                             ->body("Test notification sent to {$record->getTelegramDisplayName()}")
@@ -317,14 +305,7 @@ class UserResource extends Resource
             ])
             ->bulkActions([
                 Tables\Actions\BulkActionGroup::make([
-                    // Basic bulk actions
                     Tables\Actions\DeleteBulkAction::make()
-                        ->requiresConfirmation(),
-
-                    Tables\Actions\BulkAction::make('activate')
-                        ->label('Activate Selected')
-                        ->icon('heroicon-o-check-circle')
-                        ->color('success')
                         ->action(function ($records) {
                             $count = $records->count();
                             $records->each(fn ($record) => $record->update(['is_active' => true]));
@@ -353,7 +334,6 @@ class UserResource extends Resource
                         })
                         ->requiresConfirmation(),
 
-                    // Role management bulk actions
                     Tables\Actions\BulkAction::make('promote_to_admin')
                         ->label('Promote to Admin')
                         ->icon('heroicon-o-shield-check')
@@ -402,7 +382,6 @@ class UserResource extends Resource
                         })
                         ->requiresConfirmation(),
 
-                    // Staff management bulk actions
                     Tables\Actions\BulkAction::make('reset_passwords')
                         ->label('Reset Passwords')
                         ->icon('heroicon-o-key')
@@ -459,11 +438,6 @@ class UserResource extends Resource
                         ->action(function ($records, array $data) {
                             $count = $records->count();
 
-                            // In a real implementation, you would send notifications via:
-                            // - In-app notifications
-                            // - Email
-                            // - Telegram (for linked accounts)
-
                             Notification::make()
                                 ->title('Admin Notifications Sent')
                                 ->body("Successfully sent {$data['priority']} priority notifications to {$count} staff members")
@@ -498,8 +472,6 @@ class UserResource extends Resource
                                 ->required(),
                         ])
                         ->action(function ($records, array $data) {
-                            // In a real implementation, you would trigger an export job
-
                             Notification::make()
                                 ->title('Staff Data Export Started')
                                 ->body('Your staff data export is being processed. You will receive a download link shortly.')
