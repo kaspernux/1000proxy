@@ -1,3 +1,6 @@
+@extends('layouts.app')
+
+@section('content')
 <div class="bg-white shadow rounded-lg p-6">
     <div class="flex items-center justify-between mb-4">
         <h3 class="text-lg font-medium text-gray-900">Telegram Integration</h3>
@@ -122,3 +125,4 @@ document.addEventListener('livewire:init', () => {
     });
 });
 </script>
+@endsection

@@ -1,3 +1,6 @@
+@extends('layouts.app')
+
+@section('content')
 @php
 use Illuminate\Support\Str;
 @endphp
@@ -37,8 +40,8 @@ use Illuminate\Support\Str;
         <div class="flex flex-col lg:flex-row gap-6 lg:gap-10">
                 <!-- Filters - Mobile Collapsible, Desktop Always Visible -->
                 <div class="w-full lg:w-1/4 space-y-4 lg:space-y-6"
-                     :class="{'hidden': !showFilters}"
-                     x-show="showFilters || window.innerWidth >= 1024"
+                     :class="{'hidden': !showFilters, 'block': showFilters}"
+                     class="lg:block"
                      x-transition:enter="transition-all duration-300 ease-in-out"
                      x-transition:enter-start="-translate-y-4 opacity-0"
                      x-transition:enter-end="translate-y-0 opacity-100">
@@ -323,3 +326,4 @@ use Illuminate\Support\Str;
         </div>
     </section>
 </div>
+@endsection

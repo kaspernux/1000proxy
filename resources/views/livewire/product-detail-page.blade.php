@@ -1,3 +1,6 @@
+@extends('layouts.app')
+
+@section('content')
 <div class="w-full font-mono bg-gradient-to-r from-green-900 to-green-600 max-w-auto py-10 px-4 sm:px-6 lg:px-8 mx-auto">
     {{-- Enhanced Product Detail Section --}}
     <section class="overflow-hidden container mx-auto px-4 max-w-7xl border-2 rounded-lg border-double border-yellow-600 py-11 font-mono dark:bg-green-400">
@@ -188,3 +191,4 @@
         </div>
     </section>
 </div>
+@endsection

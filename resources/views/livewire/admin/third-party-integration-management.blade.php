@@ -1,3 +1,6 @@
+@extends('layouts.app')
+
+@section('content')
 <div class="space-y-6">
     {{-- Header --}}
     <div class="bg-white shadow rounded-lg p-6">
@@ -515,3 +518,4 @@
         });
     });
 </script>
+@endsection

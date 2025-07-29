@@ -1,3 +1,6 @@
+@extends('layouts.app')
+
+@section('content')
 <div>
     {{-- Hero Section Start  --}}
     <div class="w-full max-h-auto pt-3 py-auto font-mono bg-gradient-to-r from-green-900 to-green-600 px-4 sm:px-6 lg:px-8 mx-auto relative">
@@ -729,3 +732,4 @@
     {{-- Customer Reviews End  --}}
 
 </div>
+@endsection

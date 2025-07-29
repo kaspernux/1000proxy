@@ -1,4 +1,6 @@
-<x-layouts.app>
+@extends('layouts.app')
+
+@section('content')
 <div class="w-full font-mono bg-gradient-to-r from-green-900 to-green-600 py-10 px-4 sm:px-6 lg:px-8">
     <section class="bg-gradient-to-r from-green-900 to-green-600 font-mono rounded-lg py-8 px-4 sm:px-6">
         <div class="mx-auto max-w-3xl">
@@ -186,4 +188,4 @@ function topupForm() {
     }
 }
 </script>
-</x-layouts.app>
+@endsection

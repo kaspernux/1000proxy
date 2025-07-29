@@ -1,3 +1,6 @@
+@extends('layouts.app')
+
+@section('content')
 @if(isset($transaction))
     {{-- SINGLE TRANSACTION VIEW --}}
     <div class="w-full py-10 bg-gradient-to-r from-green-900 to-green-600 min-h-screen">
@@ -10,7 +13,7 @@
                 <p><strong>Status:</strong> {{ ucfirst($transaction->status) }}</p>
                 <p><strong>Amount:</strong> {{ Number::currency($transaction->amount) }}</p>
                 <p><strong>Date:</strong> {{ $transaction->created_at->format('d M Y, H:i') }}</p>
-                <p><strong>Description:</strong> {{ $transaction->description ?? '—' }}</p>
+                <p><strong>Description:</strong> {{ $transaction->description ?? '\u2014' }}</p>
 
                 @if($transaction->qr_code_path)
                     <div class="mt-4">
@@ -20,7 +23,7 @@
                     </div>
                 @endif
 
-                <a href="{{ route('wallet.transactions.index') }}" class="inline-block mt-6 text-sm font-bold text-yellow-400 hover:underline">← Back to Transactions</a>
+                <a href="{{ route('wallet.transactions.index') }}" class="inline-block mt-6 text-sm font-bold text-yellow-400 hover:underline">\u2190 Back to Transactions</a>
             </div>
         </div>
     </div>
@@ -79,27 +82,28 @@
                                 <td class="px-4 py-3">
                                     @if($transaction->qr_code_path)
                                         <img src="{{ asset('storage/' . $transaction->qr_code_path) }}" class="w-10 h-10 sm:w-12 sm:h-12 rounded border" alt="QR">
-                                    @else
-                                        <span class="text-gray-400 italic">N/A</span>
-                                    @endif
-                                </td>
-                                <td class="px-4 py-3">
-                                @hasSection('wallet.transactions.show')
-                                <a href="{{ route('wallet.transactions.show', $transaction->id) }}"
-                                class="text-sm text-yellow-500 hover:underline font-semibold">
-                                    Details →
-                                </a>
-                                @endif
-
-                                </td>
-                            </tr>
-                        @empty
+                    </thead>
+                    <tbody>
+                        @foreach($transactions as $transaction)
                             <tr>
-                                <td colspan="7" class="text-center px-4 py-6 text-white font-semibold">No transactions found.</td>
+                                <td class="px-4 py-3">{{ $transaction->reference }}</td>
+                                <td class="px-4 py-3">{{ ucfirst($transaction->type) }}</td>
+                                <td class="px-4 py-3">{{ ucfirst($transaction->status) }}</td>
+                                <td class="px-4 py-3">{{ Number::currency($transaction->amount) }}</td>
+                                <td class="px-4 py-3">{{ $transaction->created_at->format('d M Y, H:i') }}</td>
+                                <td class="px-4 py-3">
+                                    <a href="{{ route('wallet.transactions.show', $transaction->id) }}" class="text-yellow-500 hover:underline">View</a>
+                                </td>
                             </tr>
-                        @endforelse
+                        @endforeach
                     </tbody>
                 </table>
+            </div>
+        </div>
+    </div>
+
+@endif
+@endsection
 
                 @if(method_exists($transactions, 'links'))
                     <div class="p-4 bg-white dark:bg-gray-900">

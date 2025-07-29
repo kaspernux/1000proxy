@@ -1,3 +1,6 @@
+@extends('layouts.app')
+
+@section('content')
 <div class="min-h-screen bg-gray-50/50 backdrop-blur-sm">
     <!-- Account Header with Statistics -->
     <div class="bg-white border-b border-gray-200 mb-8">
@@ -609,7 +612,6 @@
         @endif
     </div>
 </div>
-
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-12">
         <!-- Tab Navigation -->
         <div class="bg-white rounded-lg shadow-sm mb-8">
@@ -654,3 +656,6 @@
                 </nav>
             </div>
         </div>
+
+@endsection
+

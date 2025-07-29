@@ -12,13 +12,13 @@
     <title>{{ $title ?? '1000 PROXIES' }}</title>
 </head>
 <body class="bg-slate-200 text-gray-900 dark:bg-gray-800 dark:text-gray-200">
-    @livewire('partials.navbar')
+    @include('partials.navbar')
 
     <main>
-        {{ $slot }}
+        @yield('content')
     </main>
 
-    @livewire('partials.footer')
+    @include('partials.footer')
 
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <x-livewire-alert::scripts />

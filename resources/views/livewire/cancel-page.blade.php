@@ -1,3 +1,6 @@
+@extends('layouts.app')
+
+@section('content')
 <div class="w-full bg-gradient-to-r from-green-900 to-green-600 py-12 px-6 sm:px-6 lg:px-10 mx-auto max-w-[auto] flex justify-center">
     <section class="flex items-center font-mono ">
         <div
@@ -11,3 +14,4 @@
         </div>
     </section>
 </div>
+@endsection

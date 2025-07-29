@@ -1,3 +1,6 @@
+@extends('layouts.app')
+
+@section('content')
 <div x-data="{ countdown: 5 }"
      x-init="
         let timer = setInterval(() => {
@@ -30,3 +33,4 @@
         </div>
     </div>
 </div>
+@endsection

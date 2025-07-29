@@ -1,38 +1,12 @@
+@extends('layouts.app')
+
+@section('content')
 <div class="w-full bg-gradient-to-r from-green-900 to-green-600 py-12 px-6 sm:px-6 lg:px-10 mx-auto max-w-[auto] flex justify-center">
     <div class="max-w-7xl">
         <h1 class="text-4xl font-bold text-white text-center">Order Details</h1>
 
         <!-- Grid -->
         <div class="grid sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 mt-5">
-            <!-- Card -->
-            <div class="flex flex-col bg-white border shadow-sm rounded-xl dark:bg-green-900 dark:border-green-800">
-                <div class="p-4 md:p-5 flex gap-x-4">
-                    <div
-                        class="flex-shrink-0 flex justify-center items-center size-[46px] bg-yellow-600 rounded-lg dark:bg-green-800">
-                        <svg class="flex-shrink-0 size-5 text-green-600 dark:text-green-400"
-                            xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none"
-                            stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                            <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
-                            <circle cx="9" cy="7" r="4" />
-                            <path d="M22 21v-2a4 4 0 0 0-3-3.87" />
-                            <path d="M16 3.13a4 4 0 0 1 0 7.75" />
-                        </svg>
-                    </div>
-
-                    <div class="grow">
-                        <div class="flex items-center gap-x-2">
-                            <p class="text-xs uppercase tracking-wide text-green-600">
-                                Customer
-                            </p>
-                        </div>
-                        <div class="mt-1 flex items-center gap-x-2">
-                            <div>{{$order->customer->name}}</div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            <!-- End Card -->
-
             <!-- Card -->
             <div class="flex flex-col bg-white border shadow-sm rounded-xl dark:bg-green-900 dark:border-green-800">
                 <div class="p-4 md:p-5 flex gap-x-4">
@@ -99,9 +73,17 @@
                             if ($order->order_status == 'dispute') {
                             $order_status = '<span class="bg-red-700 py-1 px-3 rounded text-white shadow">Dispute</span>';
                             }
-                            @endphp
+                        </svg>
+                    </div>
 
-                            {!!$order_status!!}
+                    <div class="grow">
+                        <div class="flex items-center gap-x-2">
+                            <p class="text-xs uppercase tracking-wide text-green-600">
+                                Customer
+                            </p>
+                        </div>
+                        <div class="mt-1 flex items-center gap-x-2">
+                            <div>{{$order->customer->name}}</div>
                         </div>
                     </div>
                 </div>
@@ -113,14 +95,6 @@
                 <div class="p-4 md:p-5 flex gap-x-4">
                     <div
                         class="flex-shrink-0 flex justify-center items-center size-[46px] bg-yellow-600 rounded-lg dark:bg-green-800">
-                        <svg class="flex-shrink-0 size-5 text-green-600 dark:text-green-400"
-                            xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none"
-                            stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                            <path d="M5 12s2.545-5 7-5c4.454 0 7 5 7 5s-2.546 5-7 5c-4.455 0-7-5-7-5z" />
-                            <path d="M12 13a1 1 0 1 0 0-2 1 1 0 0 0 0 2z" />
-                            <path d="M21 17v2a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-2" />
-                            <path d="M21 7V5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v2" />
-                        </svg>
                     </div>
 
                     <div class="grow">
@@ -142,28 +116,28 @@
                                 if ($order->payment_status == 'failed') {
                                 $payment_status = '<span class="bg-red-700 py-1 px-3 rounded text-white shadow">Failed</span>';
                                 }
-                            @endphp
+                        </svg>
+                    </div>
 
-                            {!!$payment_status!!}
+                    <div class="grow">
+                        <div class="flex items-center gap-x-2">
+                            <p class="text-xs uppercase tracking-wide text-green-600">
+                                Product
+                            </p>
+                        </div>
+                        <div class="mt-1 flex items-center gap-x-2">
+                            <div>{{$order->product->name}}</div>
                         </div>
                     </div>
                 </div>
             </div>
             <!-- End Card -->
-             <!-- Transaction Summary Card -->
-                <!-- Transaction Summary Card -->
-                @if($order->invoice && $order->invoice->walletTransaction)
-                <div class="flex flex-col bg-white border shadow-sm rounded-xl dark:bg-green-900 dark:border-green-800">
-                    <div class="p-4 md:p-5 flex gap-x-4">
-                        <div class="flex-shrink-0 flex justify-center items-center size-[46px] bg-yellow-600 rounded-lg dark:bg-green-800">
-                            <svg class="flex-shrink-0 size-5 text-green-600 dark:text-green-400" xmlns="http://www.w3.org/2000/svg" fill="none"
-                                viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                                <path d="M3 3h18v4H3z" />
-                                <path d="M3 10h18v11H3z" />
-                            </svg>
-                        </div>
-                        <div class="grow">
-                            <div class="flex items-center gap-x-2">
+
+            <!-- Card -->
+            <div class="flex flex-col bg-white border shadow-sm rounded-xl dark:bg-green-900 dark:border-green-800">
+                <div class="p-4 md:p-5 flex gap-x-4">
+                    <div
+                        class="flex-shrink-0 flex justify-center items-center size-[46px] bg-yellow-600 rounded-lg dark:bg-green-800">
                                 <p class="text-xs uppercase tracking-wide text-green-600">Transaction</p>
                             </div>
                             <div class="mt-1 text-green-800 dark:text-green-400">
@@ -173,25 +147,26 @@
                                 <div class="text-xs text-green-600 dark:text-green-300 mt-1">
                                     {{ ucfirst($order->invoice->walletTransaction->status) }} • {{ $order->invoice->walletTransaction->created_at->format('d M Y, H:i') }}
                                 </div>
-                                @php
-                                $filamentUrl = App\Filament\Customer\Clusters\MyWallet\Resources\WalletTransactionResource::getUrl(
-                                    name: 'view',
-                                    parameters: ['record' => $order->invoice->walletTransaction->getKey()],
-                                    panel: 'customer'
-                                );
-                                @endphp
-                                <a href="{{ $filamentUrl }}" class="text-sm font-bold text-yellow-500 hover:underline">
-                                    View Transaction →
-                                </a>
+                        </svg>
+                    </div>
 
-                                <div class="text-sm font-semibold mt-1">
-                                    Amount: {{ Number::currency($order->invoice->walletTransaction->amount) }}
-                                </div>
-                            </div>
+                    <div class="grow">
+                        <div class="flex items-center gap-x-2">
+                            <p class="text-xs uppercase tracking-wide text-green-600">
+                                Status
+                            </p>
+                        </div>
+                        <div class="mt-1 flex items-center gap-x-2">
+                            <div>{{$order->status}}</div>
                         </div>
                     </div>
                 </div>
-                @endif
+            </div>
+            <!-- End Card -->
+        </div>
+    </div>
+</div>
+@endsection
 
             </div>
             <!-- End Card -->

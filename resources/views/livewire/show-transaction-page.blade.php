@@ -1,4 +1,7 @@
 
+@extends('layouts.app')
+
+@section('content')
 <div class="max-w-4xl mx-auto py-10 px-6 bg-white dark:bg-gray-900 rounded-xl shadow">
     <h1 class="text-2xl font-bold text-green-700 dark:text-green-300 mb-6">Transaction Detail</h1>
 
@@ -25,3 +28,4 @@
         <a href="{{ route('wallet.transactions.index') }}" class="text-sm font-bold text-green-600 hover:underline">← Back to Transactions</a>
     </div>
 </div>
+@endsection

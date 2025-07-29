@@ -30,6 +30,7 @@ $iconSizeClasses = [
 ];
 @endphp
 
+@section('content')
 <div
     x-data="themeSwitcher()"
     x-init="init()"
@@ -224,6 +225,7 @@ $iconSizeClasses = [
         </div>
     </div>
 </div>
+@endsection
 
 {{-- Enhanced CSS for smooth theme transitions --}}
 <style>

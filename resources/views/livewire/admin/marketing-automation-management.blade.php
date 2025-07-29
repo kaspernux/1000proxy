@@ -1,3 +1,6 @@
+@extends('layouts.app')
+
+@section('content')
 <div class="min-h-screen bg-gray-50">
     <!-- Header -->
     <div class="bg-white shadow-sm border-b border-gray-200">
@@ -535,3 +538,4 @@
         </div>
     @endif
 </div>
+@endsection

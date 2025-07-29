@@ -1,3 +1,7 @@
+@extends('layouts.app')
+
+@section('content')
+
 @php
     $qrPath = $getState();
     $publicPath = $qrPath ? Storage::disk('public')->url($qrPath) : null;
@@ -18,3 +22,4 @@
 @else
     <span class="text-gray-400 italic">No QR</span>
 @endif
+@endsection

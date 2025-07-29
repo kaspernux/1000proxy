@@ -137,118 +137,55 @@
                 <!-- Features Section -->
                 <section id="features" class="py-24 sm:py-32">
                     <div class="mx-auto max-w-7xl px-6 lg:px-8">
-                        <div class="mx-auto max-w-2xl text-center">
-                            <h2 class="text-base font-semibold leading-7 text-emerald-400">Everything you need</h2>
-                            <p class="mt-2 text-3xl font-bold tracking-tight text-white sm:text-4xl">
-                                Professional-grade proxy infrastructure
-                            </p>
-                            <p class="mt-6 text-lg leading-8 text-slate-300">
-                                Built for developers, businesses, and individuals who demand the best performance and reliability.
-                            </p>
-                        </div>
+@extends('layouts.app')
 
-                        <div class="mx-auto mt-16 max-w-2xl sm:mt-20 lg:mt-24 lg:max-w-none">
-                            <dl class="grid max-w-xl grid-cols-1 gap-x-8 gap-y-16 lg:max-w-none lg:grid-cols-3">
-                                <div class="flex flex-col">
-                                    <dt class="flex items-center gap-x-3 text-base font-semibold leading-7 text-white">
-                                        <x-custom-icon name="globe-alt" class="h-6 w-6 text-emerald-400" />
-                                        Global Network
-                                    </dt>
-                                    <dd class="mt-4 flex flex-auto flex-col text-base leading-7 text-slate-300">
-                                        <p class="flex-auto">Access our worldwide network of premium servers across 150+ locations for optimal performance and reliability.</p>
-                                    </dd>
-                                </div>
+@section('content')
+<div class="relative isolate px-6 pt-14 lg:px-8">
+    <!-- Background decoration -->
+    <div class="absolute inset-x-0 -top-40 -z-10 transform-gpu overflow-hidden blur-3xl sm:-top-80" aria-hidden="true">
+        <div class="relative left-[calc(50%-11rem)] aspect-[1155/678] w-[36.125rem] -translate-x-1/2 rotate-[30deg] bg-gradient-to-tr from-emerald-400 to-blue-600 opacity-20 sm:left-[calc(50%-30rem)] sm:w-[72.1875rem]" style="clip-path: polygon(74.1% 44.1%, 100% 61.6%, 97.5% 26.9%, 85.5% 0.1%, 80.7% 2%, 72.5% 32.5%, 60.2% 62.4%, 52.4% 68.1%, 47.5% 58.3%, 45.2% 34.5%, 27.5% 76.7%, 0.1% 64.9%, 17.9% 100%, 27.6% 76.8%, 76.1% 97.7%, 74.1% 44.1%)"></div>
+    </div>
 
-                                <div class="flex flex-col">
-                                    <dt class="flex items-center gap-x-3 text-base font-semibold leading-7 text-white">
-                                        <x-custom-icon name="shield-check" class="h-6 w-6 text-emerald-400" />
-                                        Enterprise Security
-                                    </dt>
-                                    <dd class="mt-4 flex flex-auto flex-col text-base leading-7 text-slate-300">
-                                        <p class="flex-auto">Military-grade encryption and advanced security protocols protect your data and ensure complete anonymity.</p>
-                                    </dd>
-                                </div>
+    <div class="mx-auto max-w-4xl py-32 sm:py-48 lg:py-56">
+        <div class="text-center">
+            <!-- Badge -->
+            <div class="mb-8">
+                <div class="inline-flex items-center rounded-full px-4 py-2 text-sm font-medium bg-emerald-500/10 text-emerald-400 ring-1 ring-emerald-500/20">
+                    <x-custom-icon name="bolt" class="h-4 w-4 mr-2" />
+                    Premium Proxy Services
+                </div>
+            </div>
 
-                                <div class="flex flex-col">
-                                    <dt class="flex items-center gap-x-3 text-base font-semibold leading-7 text-white">
-                                        <x-custom-icon name="bolt" class="h-6 w-6 text-emerald-400" />
-                                        Lightning Fast
-                                    </dt>
-                                    <dd class="mt-4 flex flex-auto flex-col text-base leading-7 text-slate-300">
-                                        <p class="flex-auto">Ultra-low latency connections with unlimited bandwidth for seamless browsing and data processing.</p>
-                                    </dd>
-                                </div>
+            <!-- Headline -->
+            <h1 class="text-5xl font-extrabold tracking-tight text-white sm:text-7xl lg:text-8xl">
+                <span class="block">The Future of</span>
+                <span class="block bg-gradient-to-r from-emerald-400 via-blue-500 to-purple-600 bg-clip-text text-transparent">
+                    Proxy Solutions
+                </span>
+            </h1>
 
-                                <div class="flex flex-col">
-                                    <dt class="flex items-center gap-x-3 text-base font-semibold leading-7 text-white">
-                                        <x-custom-icon name="cog-6-tooth" class="h-6 w-6 text-emerald-400" />
-                                        Easy Integration
-                                    </dt>
-                                    <dd class="mt-4 flex flex-auto flex-col text-base leading-7 text-slate-300">
-                                        <p class="flex-auto">Simple API and multiple authentication methods make integration effortless for any application.</p>
-                                    </dd>
-                                </div>
+            <!-- Subtitle -->
+            <p class="mx-auto mt-6 max-w-2xl text-lg leading-8 text-slate-300 sm:text-xl">
+                Experience ultra-fast, secure, and reliable proxy connections with our cutting-edge infrastructure.
+                Join thousands of satisfied customers worldwide.
+            </p>
 
-                                <div class="flex flex-col">
-                                    <dt class="flex items-center gap-x-3 text-base font-semibold leading-7 text-white">
-                                        <x-custom-icon name="chart-bar" class="h-6 w-6 text-emerald-400" />
-                                        Real-time Analytics
-                                    </dt>
-                                    <dd class="mt-4 flex flex-auto flex-col text-base leading-7 text-slate-300">
-                                        <p class="flex-auto">Comprehensive dashboard with detailed usage statistics, performance metrics, and cost tracking.</p>
-                                    </dd>
-                                </div>
-
-                                <div class="flex flex-col">
-                                    <dt class="flex items-center gap-x-3 text-base font-semibold leading-7 text-white">
-                                        <x-custom-icon name="heart" class="h-6 w-6 text-emerald-400" />
-                                        24/7 Support
-                                    </dt>
-                                    <dd class="mt-4 flex flex-auto flex-col text-base leading-7 text-slate-300">
-                                        <p class="flex-auto">Expert technical support available around the clock to help you maximize your proxy performance.</p>
-                                    </dd>
-                                </div>
-                            </dl>
-                        </div>
-                    </div>
-                </section>
-
-                <!-- CTA Section -->
-                <section class="bg-gradient-to-r from-emerald-500 to-blue-600">
-                    <div class="px-6 py-24 sm:px-6 sm:py-32 lg:px-8">
-                        <div class="mx-auto max-w-2xl text-center">
-                            <h2 class="text-3xl font-bold tracking-tight text-white sm:text-4xl">
-                                Ready to supercharge your projects?
-                            </h2>
-                            <p class="mx-auto mt-6 max-w-xl text-lg leading-8 text-emerald-100">
-                                Join thousands of developers and businesses who trust 1000Proxy for their mission-critical applications.
-                            </p>
-                            <div class="mt-10 flex items-center justify-center gap-x-6">
-                                <a href="{{ route('register') }}"
-                                   class="group inline-flex items-center rounded-lg bg-white px-8 py-4 text-lg font-semibold text-gray-900 shadow-lg hover:bg-gray-50 transition-all duration-200 transform hover:scale-105">
-                                    <x-custom-icon name="star" class="h-5 w-5 mr-2 text-emerald-600" />
-                                    Start Your Free Trial
-                                    <x-custom-icon name="arrow-right" class="h-5 w-5 ml-2 group-hover:translate-x-1 transition-transform duration-200" />
-                                </a>
-                            </div>
-                        </div>
-                    </div>
-                </section>
-            </main>
-
-            <!-- Footer -->
-            <footer class="bg-slate-900/50 backdrop-blur">
-                <div class="mx-auto max-w-7xl px-6 py-12 md:flex md:items-center md:justify-between lg:px-8">
-                    <div class="flex justify-center space-x-6 md:order-2">
-                        <p class="text-center text-xs leading-5 text-slate-400 md:order-1 md:mt-0">
-                            &copy; {{ date('Y') }} 1000Proxy. All rights reserved.
-                        </p>
-                    </div>
-                    <div class="mt-8 md:order-1 md:mt-0">
-                        <div class="flex items-center justify-center md:justify-start">
-                            <x-custom-icon name="server" class="h-6 w-6 text-emerald-500 mr-2" />
-                            <span class="text-lg font-bold bg-gradient-to-r from-emerald-400 to-blue-500 bg-clip-text text-transparent">
-                                1000Proxy
+            <!-- CTA Buttons -->
+            <div class="mt-10 flex items-center justify-center gap-x-6">
+                <a href="{{ route('register') }}"
+                   class="group inline-flex items-center rounded-lg bg-gradient-to-r from-emerald-500 to-blue-600 px-8 py-4 text-lg font-semibold text-white shadow-lg hover:from-emerald-600 hover:to-blue-700 hover:shadow-xl transition-all duration-200 transform hover:scale-105">
+                    <x-custom-icon name="star" class="h-5 w-5 mr-2" />
+                    Start Free Trial
+                    <x-custom-icon name="arrow-right" class="h-5 w-5 ml-2 group-hover:translate-x-1 transition-transform duration-200" />
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+<footer class="py-16 text-center text-sm text-black dark:text-white/70">
+    Laravel v{{ Illuminate\Foundation\Application::VERSION }} (PHP v{{ PHP_VERSION }})
+</footer>
+@endsection
                             </span>
                         </div>
                     </div>

@@ -1,3 +1,4 @@
+@section('content')
 {{-- Livewire Framework Demo Component --}}
 <div x-data="livewireFrameworkDemo" x-init="init()" class="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6">
     {{-- Header --}}
@@ -338,6 +339,7 @@
         </div>
     </div>
 </div>
+@endsection
 
 <script>
 document.addEventListener('alpine:init', () => {

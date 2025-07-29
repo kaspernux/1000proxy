@@ -1,3 +1,6 @@
+@extends('layouts.app')
+
+@section('content')
 <div class="analytics-dashboard space-y-6">
     <!-- Header Section -->
     <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between">
@@ -357,3 +360,4 @@
     });
 </script>
 @endpush
+@endsection

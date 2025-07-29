@@ -282,6 +282,6 @@
             </div>
         </div>
         @endif
-@endsection
     </div>
 </div>
+@endsection
