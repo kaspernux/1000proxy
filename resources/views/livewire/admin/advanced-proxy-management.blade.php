@@ -1,140 +1,88 @@
 @extends('layouts.app')
 
 @section('content')
-<div>
-    {{-- Advanced Proxy Management Dashboard --}}
-    <div class="min-h-screen bg-gray-50 dark:bg-gray-900">
-        {{-- Header --}}
-        <div class="bg-white dark:bg-gray-800 shadow">
-            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                <div class="flex justify-between items-center py-6">
-                    <div>
-                        <h1 class="text-3xl font-bold text-gray-900 dark:text-white">
-                            Advanced Proxy Management
-                        </h1>
-                        <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
-                            Comprehensive proxy control, monitoring, and analytics
-                        </p>
-                    </div>
-                    <div class="flex items-center space-x-4">
-                        <div class="flex items-center space-x-2">
-                            <div class="h-3 w-3 bg-green-400 rounded-full animate-pulse"></div>
-                            <span class="text-sm text-gray-600 dark:text-gray-300">System Healthy</span>
-                        </div>
-                        <button
-                            wire:click="refreshPerformanceData"
-                            class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
-                        >
-                            <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
-                            </svg>
-                            Refresh
-                        </button>
-                    </div>
-                </div>
+<section class="min-h-screen bg-gradient-to-br from-green-900 via-gray-900 to-indigo-900 py-8 px-2 sm:px-6 lg:px-8">
+    <div class="max-w-7xl mx-auto">
+        <!-- Header -->
+        <header class="flex flex-col md:flex-row md:items-center md:justify-between gap-6 bg-white/10 dark:bg-gray-900/80 shadow-2xl rounded-2xl px-6 py-8 mb-8 border border-white/20">
+            <div>
+                <h1 class="text-3xl md:text-4xl font-extrabold text-white tracking-tight">Advanced Proxy Management</h1>
+                <p class="mt-2 text-lg text-white/80">Comprehensive proxy control, monitoring, and analytics</p>
             </div>
-        </div>
+            <nav class="flex flex-col md:flex-row md:items-center gap-4">
+                <div class="flex items-center gap-2">
+                    <span class="h-3 w-3 bg-green-400 rounded-full animate-pulse"></span>
+                    <span class="text-sm text-white/80">System Healthy</span>
+                </div>
+                <button
+                    wire:click="refreshPerformanceData"
+                    class="inline-flex items-center px-5 py-2 border border-white/20 text-sm font-semibold rounded-lg text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-400 transition"
+                >
+                    <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
+                    </svg>
+                    Refresh
+                </button>
+            </nav>
+        </header>
 
-        {{-- Main Content --}}
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-            {{-- Quick Stats --}}
-            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-                <div class="bg-white dark:bg-gray-800 overflow-hidden shadow rounded-lg">
-                    <div class="p-5">
-                        <div class="flex items-center">
-                            <div class="flex-shrink-0">
-                                <div class="w-8 h-8 bg-blue-500 rounded-md flex items-center justify-center">
-                                    <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                                    </svg>
-                                </div>
-                            </div>
-                            <div class="ml-5 w-0 flex-1">
-                                <dl>
-                                    <dt class="text-sm font-medium text-gray-500 dark:text-gray-400 truncate">
-                                        Active Proxies
-                                    </dt>
-                                    <dd class="text-lg font-medium text-gray-900 dark:text-white">
-                                        {{ number_format($serverStats['total_proxies'] ?? 0) }}
-                                    </dd>
-                                </dl>
-                            </div>
-                        </div>
+        <!-- Main Content -->
+        <main class="py-4">
+            <!-- Quick Stats -->
+            <section aria-label="Quick Stats" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+                <div class="bg-white/10 border border-white/20 shadow-2xl rounded-xl p-5 flex items-center gap-4">
+                    <div class="w-12 h-12 bg-blue-500 rounded-lg flex items-center justify-center">
+                        <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                        </svg>
+                    </div>
+                    <div class="flex-1 min-w-0">
+                        <dl>
+                            <dt class="text-sm font-medium text-white/80 truncate">Active Proxies</dt>
+                            <dd class="text-2xl font-bold text-white">{{ number_format($serverStats['total_proxies'] ?? 0) }}</dd>
+                        </dl>
                     </div>
                 </div>
-
-                <div class="bg-white dark:bg-gray-800 overflow-hidden shadow rounded-lg">
-                    <div class="p-5">
-                        <div class="flex items-center">
-                            <div class="flex-shrink-0">
-                                <div class="w-8 h-8 bg-green-500 rounded-md flex items-center justify-center">
-                                    <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
-                                    </svg>
-                                </div>
-                            </div>
-                            <div class="ml-5 w-0 flex-1">
-                                <dl>
-                                    <dt class="text-sm font-medium text-gray-500 dark:text-gray-400 truncate">
-                                        Avg Response Time
-                                    </dt>
-                                    <dd class="text-lg font-medium text-gray-900 dark:text-white">
-                                        {{ $serverStats['avg_response_time'] ?? 0 }}ms
-                                    </dd>
-                                </dl>
-                            </div>
-                        </div>
+                <div class="bg-white/10 border border-white/20 shadow-2xl rounded-xl p-5 flex items-center gap-4">
+                    <div class="w-12 h-12 bg-green-500 rounded-lg flex items-center justify-center">
+                        <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
+                        </svg>
+                    </div>
+                    <div class="flex-1 min-w-0">
+                        <dl>
+                            <dt class="text-sm font-medium text-white/80 truncate">Avg Response Time</dt>
+                            <dd class="text-2xl font-bold text-white">{{ $serverStats['avg_response_time'] ?? 0 }}ms</dd>
+                        </dl>
                     </div>
                 </div>
-
-                <div class="bg-white dark:bg-gray-800 overflow-hidden shadow rounded-lg">
-                    <div class="p-5">
-                        <div class="flex items-center">
-                            <div class="flex-shrink-0">
-                                <div class="w-8 h-8 bg-yellow-500 rounded-md flex items-center justify-center">
-                                    <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 4V2a1 1 0 011-1h8a1 1 0 011 1v2h4a1 1 0 110 2h-1v12a2 2 0 01-2 2H6a2 2 0 01-2-2V6H3a1 1 0 110-2h4z"></path>
-                                    </svg>
-                                </div>
-                            </div>
-                            <div class="ml-5 w-0 flex-1">
-                                <dl>
-                                    <dt class="text-sm font-medium text-gray-500 dark:text-gray-400 truncate">
-                                        Active Servers
-                                    </dt>
-                                    <dd class="text-lg font-medium text-gray-900 dark:text-white">
-                                        {{ $serverStats['active_servers'] ?? 0 }}
-                                    </dd>
-                                </dl>
-                            </div>
-                        </div>
+                <div class="bg-white/10 border border-white/20 shadow-2xl rounded-xl p-5 flex items-center gap-4">
+                    <div class="w-12 h-12 bg-yellow-500 rounded-lg flex items-center justify-center">
+                        <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 4V2a1 1 0 011-1h8a1 1 0 011 1v2h4a1 1 0 110 2h-1v12a2 2 0 01-2 2H6a2 2 0 01-2-2V6H3a1 1 0 110-2h4z"></path>
+                        </svg>
+                    </div>
+                    <div class="flex-1 min-w-0">
+                        <dl>
+                            <dt class="text-sm font-medium text-white/80 truncate">Active Servers</dt>
+                            <dd class="text-2xl font-bold text-white">{{ $serverStats['active_servers'] ?? 0 }}</dd>
+                        </dl>
                     </div>
                 </div>
-
-                <div class="bg-white dark:bg-gray-800 overflow-hidden shadow rounded-lg">
-                    <div class="p-5">
-                        <div class="flex items-center">
-                            <div class="flex-shrink-0">
-                                <div class="w-8 h-8 bg-purple-500 rounded-md flex items-center justify-center">
-                                    <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
-                                    </svg>
-                                </div>
-                            </div>
-                            <div class="ml-5 w-0 flex-1">
-                                <dl>
-                                    <dt class="text-sm font-medium text-gray-500 dark:text-gray-400 truncate">
-                                        Daily Bandwidth
-                                    </dt>
-                                    <dd class="text-lg font-medium text-gray-900 dark:text-white">
-                                        {{ $serverStats['total_bandwidth'] ?? '0 GB' }}
-                                    </dd>
-                                </dl>
-                            </div>
-                        </div>
+                <div class="bg-white/10 border border-white/20 shadow-2xl rounded-xl p-5 flex items-center gap-4">
+                    <div class="w-12 h-12 bg-purple-500 rounded-lg flex items-center justify-center">
+                        <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
+                        </svg>
+                    </div>
+                    <div class="flex-1 min-w-0">
+                        <dl>
+                            <dt class="text-sm font-medium text-white/80 truncate">Daily Bandwidth</dt>
+                            <dd class="text-2xl font-bold text-white">{{ $serverStats['total_bandwidth'] ?? '0 GB' }}</dd>
+                        </dl>
                     </div>
                 </div>
-            </div>
+            </section>
 
             {{-- User Selection --}}
             <div class="bg-white dark:bg-gray-800 shadow rounded-lg mb-8">
@@ -699,7 +647,7 @@
         </div>
     </div>
 
-    {{-- Auto Refresh --}}
+    <!-- Auto Refresh -->
     <script>
         document.addEventListener('livewire:initialized', () => {
             setInterval(() => {
@@ -709,5 +657,5 @@
             }, @this.refreshInterval * 1000);
         });
     </script>
-</div>
+</section>
 @endsection

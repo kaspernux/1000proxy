@@ -1,18 +1,19 @@
 @extends('layouts.app')
 
 @section('content')
-<div class="space-y-6">
-    {{-- Header --}}
-    <div class="bg-white shadow rounded-lg p-6">
-        <div class="flex items-center justify-between">
+
+<section class="min-h-screen bg-gradient-to-br from-blue-900 via-gray-900 to-indigo-900 py-8 px-2 sm:px-6 lg:px-8">
+    <div class="max-w-7xl mx-auto space-y-8">
+        <!-- Header -->
+        <header class="flex flex-col md:flex-row md:items-center md:justify-between gap-6 bg-white/10 dark:bg-gray-900/80 shadow-2xl rounded-2xl px-6 py-8 border border-white/20 mb-6">
             <div>
-                <h2 class="text-2xl font-bold text-gray-900">Third-Party Integrations</h2>
-                <p class="text-gray-600 mt-1">Manage external service integrations and APIs</p>
+                <h2 class="text-3xl md:text-4xl font-extrabold text-white tracking-tight">Third-Party Integrations</h2>
+                <p class="mt-2 text-lg text-white/80">Manage external service integrations and APIs</p>
             </div>
-            <div class="flex space-x-3">
+            <div class="flex flex-col sm:flex-row gap-3">
                 <button
                     wire:click="refreshStatus"
-                    class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
+                    class="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2 rounded-lg text-sm font-semibold border border-white/20 shadow transition"
                     wire:loading.attr="disabled"
                 >
                     <span wire:loading.remove>Refresh Status</span>
@@ -20,13 +21,14 @@
                 </button>
                 <button
                     wire:click="exportConfiguration"
-                    class="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors"
+                    class="bg-green-600 hover:bg-green-700 text-white px-5 py-2 rounded-lg text-sm font-semibold border border-white/20 shadow transition"
                 >
                     Export Config
                 </button>
             </div>
-        </div>
-    </div>
+        </header>
+
+        <!-- ...existing code... -->
 
     {{-- Navigation Tabs --}}
     <div class="bg-white shadow rounded-lg">

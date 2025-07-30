@@ -1,40 +1,40 @@
 @extends('layouts.app')
 
 @section('content')
-<div class="w-full bg-gradient-to-r from-green-900 to-green-600 min-h-screen py-8 px-4 sm:px-6 lg:px-8">
-    <div class="max-w-7xl mx-auto">
+<main class="min-h-screen bg-gradient-to-b from-green-50 via-white to-green-100 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 py-10 px-2 sm:px-6 lg:px-8">
+    <section class="w-full max-w-7xl mx-auto">
         {{-- Header Section --}}
-        <div class="text-center mb-8">
-            <h1 class="text-4xl font-bold text-white mb-4">My Orders</h1>
-            <p class="text-white/80 text-lg">Track and manage your proxy service orders</p>
-        </div>
+        <header class="text-center mb-10">
+            <h1 class="text-3xl sm:text-4xl font-extrabold text-green-700 dark:text-green-300 mb-3 tracking-tight drop-shadow-lg">My Orders</h1>
+            <p class="text-lg text-green-800 dark:text-green-200">Track and manage your proxy service orders</p>
+        </header>
 
         {{-- Order Statistics Dashboard --}}
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 mb-8">
-            <div class="bg-white/10 backdrop-blur-sm rounded-lg p-6 text-center">
+        <section class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 mb-10">
+            <div class="bg-white/90 dark:bg-green-900 rounded-2xl shadow-lg p-6 text-center flex flex-col items-center">
                 <div class="text-3xl font-bold text-white">{{ $orderStats['total'] }}</div>
                 <div class="text-white/70">Total Orders</div>
             </div>
-            <div class="bg-white/10 backdrop-blur-sm rounded-lg p-6 text-center">
+            <div class="bg-white/90 dark:bg-green-900 rounded-2xl shadow-lg p-6 text-center flex flex-col items-center">
                 <div class="text-3xl font-bold text-yellow-400">{{ $orderStats['pending'] }}</div>
                 <div class="text-white/70">Pending</div>
             </div>
-            <div class="bg-white/10 backdrop-blur-sm rounded-lg p-6 text-center">
+            <div class="bg-white/90 dark:bg-green-900 rounded-2xl shadow-lg p-6 text-center flex flex-col items-center">
                 <div class="text-3xl font-bold text-blue-400">{{ $orderStats['processing'] }}</div>
                 <div class="text-white/70">Processing</div>
             </div>
-            <div class="bg-white/10 backdrop-blur-sm rounded-lg p-6 text-center">
+            <div class="bg-white/90 dark:bg-green-900 rounded-2xl shadow-lg p-6 text-center flex flex-col items-center">
                 <div class="text-3xl font-bold text-green-400">{{ $orderStats['delivered'] }}</div>
                 <div class="text-white/70">Delivered</div>
             </div>
-            <div class="bg-white/10 backdrop-blur-sm rounded-lg p-6 text-center">
+            <div class="bg-white/90 dark:bg-green-900 rounded-2xl shadow-lg p-6 text-center flex flex-col items-center">
                 <div class="text-2xl font-bold text-white">${{ number_format($orderStats['total_spent'], 2) }}</div>
                 <div class="text-white/70">Total Spent</div>
             </div>
         </div>
 
         {{-- Enhanced Filters Section --}}
-        <div class="bg-white/10 backdrop-blur-sm rounded-lg p-6 mb-8">
+        <section class="bg-white/90 dark:bg-green-900 rounded-2xl shadow-lg p-6 mb-10">
             <div class="flex flex-col lg:flex-row justify-between items-start lg:items-center mb-4">
                 <h2 class="text-xl font-bold text-white mb-4 lg:mb-0">Filter & Search Orders</h2>
                 <button wire:click="toggleFilters"
@@ -114,12 +114,12 @@
         </div>
 
         {{-- Enhanced Orders Table --}}
-        <div class="bg-white/10 backdrop-blur-sm rounded-lg overflow-hidden">
+        <section class="bg-white/90 dark:bg-green-900 rounded-2xl shadow-lg overflow-hidden">
             @if($orders->count() > 0)
                 {{-- Desktop Table View --}}
                 <div class="hidden lg:block overflow-x-auto">
-                    <table class="w-full">
-                        <thead class="bg-white/20">
+                    <table class="w-full text-left">
+                        <thead class="bg-green-50 dark:bg-green-800">
                             <tr>
                                 <th class="px-6 py-4 text-left">
                                     <input type="checkbox"
@@ -134,7 +134,7 @@
                                 <th class="px-6 py-4 text-left text-white font-semibold">Actions</th>
                             </tr>
                         </thead>
-                        <tbody class="divide-y divide-white/10">
+                        <tbody class="divide-y divide-green-100 dark:divide-green-800">
                             @foreach ($orders as $order)
                             <tr class="hover:bg-white/5 transition duration-200" wire:key="order-{{ $order->id }}">
                                 <td class="px-6 py-4">
@@ -281,7 +281,7 @@
                 </div>
 
                 {{-- Pagination --}}
-                <div class="p-6 border-t border-white/20">
+                <div class="p-6 border-t border-green-100 dark:border-green-800">
                     {{ $orders->links() }}
                 </div>
             @else
@@ -302,29 +302,27 @@
 
         {{-- Cancellation Modal --}}
         @if($showCancelModal)
-        <div class="fixed inset-0 bg-black/50 flex items-center justify-center z-50" wire:ignore.self>
-            <div class="bg-white rounded-lg p-6 max-w-md w-full mx-4">
-                <h3 class="text-lg font-bold text-gray-900 mb-4">Cancel Order</h3>
-                <p class="text-gray-600 mb-4">Please provide a reason for cancelling this order:</p>
-
+        <div class="fixed inset-0 bg-black/60 flex items-center justify-center z-50" wire:ignore.self>
+            <div class="bg-white dark:bg-green-900 rounded-2xl shadow-2xl p-8 max-w-md w-full mx-4">
+                <h3 class="text-xl font-bold text-green-700 dark:text-green-300 mb-4">Cancel Order</h3>
+                <p class="text-green-800 dark:text-green-200 mb-4">Please provide a reason for cancelling this order:</p>
                 <textarea wire:model="cancellationReason"
                           placeholder="Enter cancellation reason..."
-                          class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-green-500"
+                          class="w-full px-3 py-2 border border-green-200 dark:border-green-800 rounded-lg focus:outline-none focus:border-green-500 bg-white dark:bg-green-950 text-green-900 dark:text-green-200"
                           rows="3"></textarea>
-
                 <div class="flex justify-end space-x-3 mt-6">
                     <button wire:click="$set('showCancelModal', false)"
-                            class="px-4 py-2 text-gray-600 hover:text-gray-800 transition">
+                            class="px-4 py-2 text-green-700 dark:text-green-300 hover:text-green-900 transition">
                         Cancel
                     </button>
                     <button wire:click="cancelOrder"
-                            class="bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700 transition">
+                            class="bg-red-600 text-white px-4 py-2 rounded-lg font-semibold hover:bg-red-700 transition">
                         Confirm Cancellation
                     </button>
                 </div>
             </div>
         </div>
         @endif
-    </div>
-</div>
+    </section>
+</main>
 @endsection

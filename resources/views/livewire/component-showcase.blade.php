@@ -1,23 +1,17 @@
 @extends('layouts.app')
 
 @section('content')
-<div class="component-showcase min-h-screen bg-gray-50 dark:bg-gray-900 py-8">
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+<main class="component-showcase min-h-screen bg-gradient-to-br from-green-900 to-green-600 py-10 px-2 sm:px-6 lg:px-8 flex flex-col items-center">
+    <section class="w-full max-w-7xl mx-auto">
 
         {{-- Header --}}
-        <div class="text-center mb-8">
-            <h1 class="text-4xl font-bold text-gray-900 dark:text-white mb-4">
-                Advanced Livewire Components Showcase
-            </h1>
-            <p class="text-lg text-gray-600 dark:text-gray-400 max-w-3xl mx-auto">
-                Explore our comprehensive collection of advanced Livewire components designed for the 1000proxy platform.
-                Each component features real-time functionality, professional UI/UX, and seamless integration.
-            </p>
-        </div>
+        <header class="text-center mb-10">
+            <h1 class="text-4xl md:text-5xl font-extrabold text-white mb-4 drop-shadow-lg">Advanced Livewire Components Showcase</h1>
+            <p class="text-lg text-green-100 max-w-3xl mx-auto">Explore our comprehensive collection of advanced Livewire components designed for the 1000proxy platform. Each component features real-time functionality, professional UI/UX, and seamless integration.</p>
+        </header>
 
         {{-- Component Navigation --}}
-        <div class="mb-8">
-            <nav class="flex space-x-4 bg-white dark:bg-gray-800 rounded-lg p-2 shadow-sm">
+        <nav class="mb-10 flex flex-wrap gap-4 justify-center bg-white/90 dark:bg-gray-800/90 rounded-xl p-3 shadow-lg">
                 <button
                     wire:click="switchDemo('server-browser')"
                     class="px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 {{ $activeDemo === 'server-browser' ? 'bg-blue-500 text-white' : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white' }}"
@@ -46,11 +40,11 @@
         </div>
 
         {{-- Component Demos --}}
-        <div class="space-y-8">
+        <div class="space-y-12">
 
             {{-- Server Browser Demo --}}
             @if($activeDemo === 'server-browser')
-                <div class="component-demo">
+                <section class="component-demo bg-white/90 dark:bg-gray-800/90 rounded-2xl shadow-lg p-8">
                     <div class="mb-6">
                         <h2 class="text-2xl font-semibold text-gray-900 dark:text-white mb-2">
                             ServerBrowser Component
@@ -92,7 +86,7 @@
                     @if($sampleServers->count() > 0)
                         <livewire:components.server-browser :servers="$sampleServers" />
                     @else
-                        <div class="text-center py-12 bg-white dark:bg-gray-800 rounded-lg">
+                        <div class="text-center py-12 bg-white/80 dark:bg-gray-800/80 rounded-lg">
                             <p class="text-gray-500 dark:text-gray-400">No sample servers available. Please seed the database with sample data.</p>
                         </div>
                     @endif
@@ -101,7 +95,7 @@
 
             {{-- Proxy Configuration Demo --}}
             @if($activeDemo === 'proxy-config')
-                <div class="component-demo">
+                <section class="component-demo bg-white/90 dark:bg-gray-800/90 rounded-2xl shadow-lg p-8">
                     <div class="mb-6">
                         <h2 class="text-2xl font-semibold text-gray-900 dark:text-white mb-2">
                             ProxyConfigurationCard Component
@@ -143,7 +137,7 @@
                     @if($sampleClient)
                         <livewire:components.proxy-configuration-card :server-client="$sampleClient" />
                     @else
-                        <div class="text-center py-12 bg-white dark:bg-gray-800 rounded-lg">
+                        <div class="text-center py-12 bg-white/80 dark:bg-gray-800/80 rounded-lg">
                             <p class="text-gray-500 dark:text-gray-400">No sample client configuration available. Please create a sample client configuration.</p>
                         </div>
                     @endif
@@ -152,7 +146,7 @@
 
             {{-- Payment Processor Demo --}}
             @if($activeDemo === 'payment-processor')
-                <div class="component-demo">
+                <section class="component-demo bg-white/90 dark:bg-gray-800/90 rounded-2xl shadow-lg p-8">
                     <div class="mb-6">
                         <h2 class="text-2xl font-semibold text-gray-900 dark:text-white mb-2">
                             PaymentProcessor Component
@@ -197,7 +191,7 @@
 
             {{-- Health Monitor Demo --}}
             @if($activeDemo === 'health-monitor')
-                <div class="component-demo">
+                <section class="component-demo bg-white/90 dark:bg-gray-800/90 rounded-2xl shadow-lg p-8">
                     <div class="mb-6">
                         <h2 class="text-2xl font-semibold text-gray-900 dark:text-white mb-2">
                             XUIHealthMonitor Component
@@ -239,7 +233,7 @@
                     @if($sampleServers->count() > 0)
                         <livewire:components.xui-health-monitor :servers="$sampleServers" />
                     @else
-                        <div class="text-center py-12 bg-white dark:bg-gray-800 rounded-lg">
+                        <div class="text-center py-12 bg-white/80 dark:bg-gray-800/80 rounded-lg">
                             <p class="text-gray-500 dark:text-gray-400">No sample servers available for health monitoring. Please seed the database with sample data.</p>
                         </div>
                     @endif
@@ -249,7 +243,7 @@
         </div>
 
         {{-- Implementation Guide --}}
-        <div class="mt-12 bg-white dark:bg-gray-800 rounded-lg shadow-lg p-8">
+        <section class="mt-16 bg-white/90 dark:bg-gray-800/90 rounded-2xl shadow-lg p-8">
             <h3 class="text-xl font-semibold text-gray-900 dark:text-white mb-4">
                 Implementation Guide
             </h3>
@@ -293,7 +287,7 @@
         </div>
 
         {{-- Component Files --}}
-        <div class="mt-8 bg-gray-50 dark:bg-gray-700 rounded-lg p-6">
+        <section class="mt-10 bg-gray-50/90 dark:bg-gray-700/90 rounded-2xl p-6 shadow-lg">
             <h4 class="font-semibold text-gray-900 dark:text-white mb-4">Component File Locations</h4>
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm font-mono">
                 <div>

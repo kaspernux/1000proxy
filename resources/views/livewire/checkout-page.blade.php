@@ -1,20 +1,17 @@
 @extends('layouts.app')
 
 @section('content')
-<div class="min-h-screen bg-gradient-to-r from-green-900 to-green-600 py-8">
-    <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
-        {{-- Header --}}
-        <div class="text-center mb-8">
-            <h1 class="text-3xl md:text-4xl font-bold text-white">Complete Your Order</h1>
-            <p class="text-white/80 mt-2">Secure checkout process</p>
-        </div>
-
-        {{-- Progress Steps --}}
-        <div class="mb-8">
-            <div class="flex items-center justify-center space-x-4">
+<main class="min-h-screen bg-gradient-to-br from-green-900 to-green-600 py-10 px-2 sm:px-6 lg:px-8 flex flex-col items-center">
+    <section class="w-full max-w-6xl mx-auto">
+        <header class="text-center mb-10">
+            <h1 class="text-3xl md:text-4xl font-extrabold text-white mb-2">Complete Your Order</h1>
+            <p class="text-lg text-green-100">Secure checkout process</p>
+        </header>
+        <nav class="mb-10">
+            <div class="flex items-center justify-center gap-4">
                 @for($i = 1; $i <= $totalSteps; $i++)
                 <div class="flex items-center">
-                    <div class="flex items-center justify-center w-10 h-10 rounded-full
+                    <div class="flex items-center justify-center w-10 h-10 rounded-full font-bold text-lg shadow-lg
                         {{ $currentStep >= $i ? 'bg-green-500 text-white' : 'bg-white/20 text-white/60' }}">
                         @if($currentStep > $i)
                             <x-custom-icon name="check-circle" class="w-5 h-5" />
@@ -28,20 +25,19 @@
                 </div>
                 @endfor
             </div>
-            <div class="flex justify-center space-x-16 mt-2">
+            <div class="flex flex-wrap justify-center gap-8 mt-2">
                 <span class="text-sm {{ $currentStep >= 1 ? 'text-white' : 'text-white/60' }}">Cart Review</span>
                 <span class="text-sm {{ $currentStep >= 2 ? 'text-white' : 'text-white/60' }}">Billing Info</span>
                 <span class="text-sm {{ $currentStep >= 3 ? 'text-white' : 'text-white/60' }}">Payment</span>
                 <span class="text-sm {{ $currentStep >= 4 ? 'text-white' : 'text-white/60' }}">Confirmation</span>
             </div>
-        </div>
-
+        </nav>
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
             {{-- Main Content --}}
-            <div class="lg:col-span-2">
+            <section class="lg:col-span-2 flex flex-col gap-8">
                 {{-- Step 1: Cart Review --}}
                 @if($currentStep === 1)
-                <div class="bg-white/10 backdrop-blur-sm rounded-lg p-6">
+                <div class="bg-white/10 backdrop-blur-md rounded-2xl p-6 shadow-lg">
                     <h2 class="text-2xl font-bold text-white mb-6">Review Your Order</h2>
 
                     <div class="space-y-4">
@@ -93,7 +89,7 @@
 
                 {{-- Step 2: Billing Information --}}
                 @if($currentStep === 2)
-                <div class="bg-white/10 backdrop-blur-sm rounded-lg p-6">
+                <div class="bg-white/10 backdrop-blur-md rounded-2xl p-6 shadow-lg">
                     <h2 class="text-2xl font-bold text-white mb-6">Billing Information</h2>
 
                     <form wire:submit.prevent="nextStep" class="space-y-4">
@@ -212,7 +208,7 @@
 
                 {{-- Step 3: Payment Method --}}
                 @if($currentStep === 3)
-                <div class="bg-white/10 backdrop-blur-sm rounded-lg p-6">
+                <div class="bg-white/10 backdrop-blur-md rounded-2xl p-6 shadow-lg">
                     <h2 class="text-2xl font-bold text-white mb-6">Payment Method</h2>
 
                     {{-- Payment Method Selection --}}
@@ -271,7 +267,7 @@
 
                 {{-- Step 4: Order Confirmation --}}
                 @if($currentStep === 4)
-                <div class="bg-white/10 backdrop-blur-sm rounded-lg p-6 text-center">
+                <div class="bg-white/10 backdrop-blur-md rounded-2xl p-6 text-center shadow-lg">
                     <div class="w-16 h-16 bg-green-500 rounded-full flex items-center justify-center mx-auto mb-4">
                         <svg class="w-8 h-8 text-white" fill="currentColor" viewBox="0 0 20 20">
                             <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path>
@@ -300,11 +296,11 @@
                     </div>
                 </div>
                 @endif
-            </div>
+            </section>
 
             {{-- Order Summary Sidebar --}}
-            <div class="lg:col-span-1">
-                <div class="bg-white/10 backdrop-blur-sm rounded-lg p-6 sticky top-8">
+            <aside class="lg:col-span-1">
+                <div class="bg-white/10 backdrop-blur-md rounded-2xl p-6 sticky top-8 shadow-lg">
                     <h3 class="text-xl font-bold text-white mb-4">Order Summary</h3>
 
                     <div class="space-y-3 mb-4">
@@ -367,13 +363,13 @@
     </div>
 
     {{-- Loading Overlay --}}
-    <div wire:loading.delay wire:target="processPayment" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-        <div class="bg-white rounded-lg p-6 text-center">
-            <svg class="animate-spin h-8 w-8 text-green-600 mx-auto mb-4" fill="none" viewBox="0 0 24 24">
+    <div wire:loading.delay wire:target="processPayment" class="fixed inset-0 bg-black/60 flex items-center justify-center z-50">
+        <div class="bg-white rounded-2xl p-8 text-center shadow-2xl">
+            <svg class="animate-spin h-10 w-10 text-green-600 mx-auto mb-4" fill="none" viewBox="0 0 24 24">
                 <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                 <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
             </svg>
-            <p class="text-gray-600">Processing your payment...</p>
+            <p class="text-gray-700 font-semibold">Processing your payment...</p>
             <p class="text-sm text-gray-500 mt-2">Please don't close this window</p>
         </div>
     </div>

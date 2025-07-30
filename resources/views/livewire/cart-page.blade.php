@@ -1,16 +1,14 @@
 @extends('layouts.app')
 
 @section('content')
-<div class="w-full bg-gradient-to-r from-green-900 to-green-600 py-12 px-4 sm:px-6 md:px-8 lg:px-10">
-    <div class="max-w-7xl mx-auto">
-        <div class="flex items-center justify-between mb-8">
-            <h1 class="text-2xl sm:text-3xl md:text-4xl font-bold text-white text-left">Shopping Cart</h1>
+<main class="min-h-screen bg-gradient-to-br from-green-900 to-green-600 py-10 px-2 sm:px-6 lg:px-8 flex flex-col items-center">
+    <section class="w-full max-w-7xl mx-auto">
+        <header class="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-8">
+            <h1 class="text-3xl md:text-4xl font-extrabold text-white">Shopping Cart</h1>
             @if(count($order_items) > 0)
-                <div class="text-white/80">
-                    <span class="text-lg">{{ count($order_items) }} item(s) in cart</span>
-                </div>
+                <div class="text-white/80 text-lg">{{ count($order_items) }} item(s) in cart</div>
             @endif
-        </div>
+        </header>
 
         {{-- Success Messages --}}
         @if (session()->has('success'))
@@ -21,9 +19,9 @@
 
         <div class="flex flex-col lg:flex-row gap-8">
             <!-- Cart Items -->
-            <div class="w-full lg:w-2/3">
+            <section class="w-full lg:w-2/3 flex flex-col gap-6">
                 {{-- Cart Items Table --}}
-                <div class="bg-white/10 backdrop-blur-sm rounded-lg p-6 mb-6 overflow-x-auto">
+                <div class="bg-white/10 backdrop-blur-md rounded-2xl p-6 mb-6 overflow-x-auto shadow-lg">
                     @if(count($order_items) > 0)
                         {{-- Table Header --}}
                         <div class="hidden md:grid grid-cols-12 gap-4 pb-4 border-b border-white/20 text-white font-semibold">
@@ -36,7 +34,7 @@
                         {{-- Cart Items --}}
                         <div class="space-y-4 mt-4">
                             @foreach ($order_items as $item)
-                            <div class="grid grid-cols-1 md:grid-cols-12 gap-4 items-center p-4 bg-white/5 rounded-lg hover:bg-white/10 transition duration-200" wire:key='{{ $item["server_plan_id"] }}'>
+                            <div class="grid grid-cols-1 md:grid-cols-12 gap-4 items-center p-4 bg-white/5 rounded-xl hover:bg-white/10 transition duration-200 shadow-sm" wire:key='{{ $item["server_plan_id"] }}'>
                                 {{-- Product Info --}}
                                 <div class="col-span-1 md:col-span-6">
                                     <div class="flex items-center space-x-4">
@@ -94,7 +92,7 @@
                         </div>
 
                         {{-- Cart Actions --}}
-                        <div class="flex flex-col md:flex-row justify-between items-center mt-6 pt-6 border-t border-white/20">
+                        <div class="flex flex-col md:flex-row justify-between items-center mt-6 pt-6 border-t border-white/20 gap-4">
                             <button wire:click="clearCart"
                                     class="text-red-400 hover:text-red-300 font-medium mb-4 md:mb-0 flex items-center">
                                 <x-custom-icon name="x-circle" class="h-4 w-4 mr-2" />
@@ -122,11 +120,11 @@
                     @endif
                 </div>
 
-            </div>
+            </section>
 
             <!-- Enhanced Summary Section -->
-            <div class="w-full lg:w-1/3">
-                <div class="bg-white/10 backdrop-blur-sm rounded-lg p-6 mb-6">
+            <aside class="w-full lg:w-1/3 flex flex-col gap-6">
+                <div class="bg-white/10 backdrop-blur-md rounded-2xl p-6 mb-6 shadow-lg">
                     <h2 class="text-xl font-bold text-white mb-6">Order Summary</h2>
 
                     {{-- Coupon Section --}}
@@ -201,7 +199,7 @@
 
                 {{-- Recently Viewed --}}
                 @if(isset($recentlyViewed) && count($recentlyViewed) > 0)
-                <div class="bg-white/10 backdrop-blur-sm rounded-lg p-6">
+                <div class="bg-white/10 backdrop-blur-md rounded-2xl p-6 shadow-lg">
                     <h3 class="text-lg font-bold text-white mb-4">Recently Viewed</h3>
                     <div class="space-y-3">
                         @foreach($recentlyViewed as $product)
@@ -221,12 +219,12 @@
                     </div>
                 </div>
                 @endif
-            </div>
+            </aside>
         </div>
 
         {{-- Recommended Products --}}
         @if(isset($recommendedProducts) && count($recommendedProducts) > 0)
-        <div class="mt-12">
+        <section class="mt-12">
             <h2 class="text-2xl font-bold text-white mb-6">You might also like</h2>
             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                 @foreach($recommendedProducts as $product)
@@ -251,7 +249,7 @@
 
         {{-- Saved for Later --}}
         @if(isset($savedItems) && count($savedItems) > 0)
-        <div class="mt-12">
+        <section class="mt-12">
             <h2 class="text-2xl font-bold text-white mb-6">Saved for Later</h2>
             <div class="bg-white/10 backdrop-blur-sm rounded-lg p-6">
                 <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -282,6 +280,6 @@
             </div>
         </div>
         @endif
-    </div>
-</div>
+    </section>
+</main>
 @endsection

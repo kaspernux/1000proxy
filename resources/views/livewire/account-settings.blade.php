@@ -1,79 +1,116 @@
 @extends('layouts.app')
 
 @section('content')
-<div class="min-h-screen bg-gray-50/50 backdrop-blur-sm">
-    <!-- Account Header with Statistics -->
-    <div class="bg-white border-b border-gray-200 mb-8">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-            <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between">
-                <div class="flex items-center space-x-6">
-                    <!-- Avatar Section -->
-                    <div class="relative">
-                        @if($current_avatar)
-                            <img class="h-24 w-24 rounded-full object-cover ring-4 ring-white shadow-lg"
-                                 src="{{ Storage::url($current_avatar) }}"
-                                 alt="{{ $name }}">
-                        @else
-                            <div class="h-24 w-24 rounded-full bg-gradient-to-br from-blue-400 to-purple-600 flex items-center justify-center ring-4 ring-white shadow-lg">
-                                <span class="text-2xl font-bold text-white">{{ substr($name, 0, 2) }}</span>
-                            </div>
-                        @endif
-                        <button wire:click="$set('activeTab', 'profile')"
-                                class="absolute -bottom-2 -right-2 bg-blue-600 text-white rounded-full p-2 hover:bg-blue-700 transition-colors shadow-lg">
-                            <x-custom-icon name="user" class="w-4 h-4" />
-                        </button>
-                    </div>
-
-                    <!-- User Info -->
-                    <div>
-                        <h1 class="text-3xl font-bold text-gray-900">{{ $name }}</h1>
-                        <p class="text-lg text-gray-600">{{ $email }}</p>
-                        <div class="flex items-center mt-2 space-x-4">
-                            <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-green-100 text-green-800">
-                                <svg class="w-4 h-4 mr-1.5" fill="currentColor" viewBox="0 0 20 20">
-                                    <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
-                                </svg>
-                                Verified Account
-                            </span>
-                            @if($user->premium)
-                                <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-yellow-100 text-yellow-800">
-                                    <svg class="w-4 h-4 mr-1.5" fill="currentColor" viewBox="0 0 20 20">
-                                        <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
-                                    </svg>
-                                    Premium Member
-                                </span>
-                            @endif
+<main class="min-h-screen bg-gradient-to-br from-blue-50/60 to-purple-100/60 dark:from-gray-900 dark:to-gray-800 py-8 px-2 sm:px-6 lg:px-8">
+    <header class="w-full max-w-7xl mx-auto mb-8">
+        <section class="flex flex-col md:flex-row md:items-center md:justify-between gap-8 bg-white/80 dark:bg-gray-900/80 rounded-2xl shadow-lg p-6 md:p-10 border border-gray-200">
+            <div class="flex flex-col sm:flex-row items-center gap-6">
+                <!-- Avatar Section -->
+                <div class="relative">
+                    @if($current_avatar)
+                        <img class="h-24 w-24 rounded-full object-cover ring-4 ring-blue-400 shadow-lg" src="{{ Storage::url($current_avatar) }}" alt="{{ $name }}">
+                    @else
+                        <div class="h-24 w-24 rounded-full bg-gradient-to-br from-blue-400 to-purple-600 flex items-center justify-center ring-4 ring-blue-400 shadow-lg">
+                            <span class="text-2xl font-bold text-white">{{ substr($name, 0, 2) }}</span>
                         </div>
-                    </div>
+                    @endif
+                    <button wire:click="$set('activeTab', 'profile')" class="absolute -bottom-2 -right-2 bg-blue-600 text-white rounded-full p-2 hover:bg-blue-700 transition-colors shadow-lg">
+                        <x-custom-icon name="user" class="w-4 h-4" />
+                    </button>
                 </div>
-
-                <!-- Account Statistics -->
-                <div class="mt-6 lg:mt-0 grid grid-cols-2 lg:grid-cols-4 gap-4">
-                    <div class="bg-blue-50 rounded-lg p-4 text-center">
-                        <div class="text-2xl font-bold text-blue-600">{{ $accountStats['total_orders'] }}</div>
-                        <div class="text-sm text-blue-700">Total Orders</div>
-                    </div>
-                    <div class="bg-green-50 rounded-lg p-4 text-center">
-                        <div class="text-2xl font-bold text-green-600">${{ number_format($accountStats['total_spent'], 0) }}</div>
-                        <div class="text-sm text-green-700">Total Spent</div>
-                    </div>
-                    <div class="bg-purple-50 rounded-lg p-4 text-center">
-                        <div class="text-2xl font-bold text-purple-600">{{ $accountStats['account_age_days'] }}</div>
-                        <div class="text-sm text-purple-700">Days with Us</div>
-                    </div>
-                    <div class="bg-orange-50 rounded-lg p-4 text-center">
-                        <div class="text-2xl font-bold text-orange-600">
-                            @if($accountStats['last_order'])
-                                {{ $accountStats['last_order']->created_at->diffForHumans() }}
-                            @else
-                                Never
-                            @endif
-                        </div>
-                        <div class="text-sm text-orange-700">Last Order</div>
+                <!-- User Info -->
+                <div class="flex flex-col gap-1">
+                    <h1 class="text-2xl md:text-3xl font-extrabold text-gray-900 dark:text-white">{{ $name }}</h1>
+                    <p class="text-base md:text-lg text-gray-600 dark:text-gray-300">{{ $email }}</p>
+                    <div class="flex flex-wrap items-center gap-2 mt-2">
+                        <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                            <svg class="w-4 h-4 mr-1.5" fill="currentColor" viewBox="0 0 20 20">
+                                <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
+                            </svg>
+                            Verified Account
+                        </span>
+                        @if($user->premium)
+                            <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
+                                <svg class="w-4 h-4 mr-1.5" fill="currentColor" viewBox="0 0 20 20">
+                                    <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+                                </svg>
+                                Premium Member
+                            </span>
+                        @endif
                     </div>
                 </div>
             </div>
-        <!-- Tab Content -->
+            <!-- Account Statistics -->
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-4 w-full md:w-auto">
+                <div class="bg-blue-50 dark:bg-blue-900 rounded-xl p-4 text-center shadow">
+                    <div class="text-2xl font-bold text-blue-600 dark:text-blue-300">{{ $accountStats['total_orders'] }}</div>
+                    <div class="text-xs text-blue-700 dark:text-blue-200">Total Orders</div>
+                </div>
+                <div class="bg-green-50 dark:bg-green-900 rounded-xl p-4 text-center shadow">
+                    <div class="text-2xl font-bold text-green-600 dark:text-green-300">${{ number_format($accountStats['total_spent'], 2) }}</div>
+                    <div class="text-xs text-green-700 dark:text-green-200">Total Spent</div>
+                </div>
+                <div class="bg-purple-50 dark:bg-purple-900 rounded-xl p-4 text-center shadow">
+                    <div class="text-2xl font-bold text-purple-600 dark:text-purple-300">{{ $accountStats['account_age_days'] }}</div>
+                    <div class="text-xs text-purple-700 dark:text-purple-200">Days with Us</div>
+                </div>
+                <div class="bg-orange-50 dark:bg-orange-900 rounded-xl p-4 text-center shadow">
+                    <div class="text-2xl font-bold text-orange-600 dark:text-orange-300">
+                        @if($accountStats['last_order'])
+                            {{ $accountStats['last_order']->created_at->diffForHumans() }}
+                        @else
+                            Never
+                        @endif
+                    </div>
+                    <div class="text-xs text-orange-700 dark:text-orange-200">Last Order</div>
+                </div>
+            </div>
+        </section>
+    </header>
+    <section class="max-w-7xl mx-auto pb-12">
+        <!-- Tab Navigation -->
+        <nav class="bg-white/90 dark:bg-gray-900/90 rounded-lg shadow-sm mb-8 border border-gray-200">
+            <div class="border-b border-gray-200 dark:border-gray-700">
+                <div class="flex flex-wrap gap-2 px-4 py-2">
+                    <button wire:click="setActiveTab('profile')"
+                            class="py-3 px-3 border-b-2 font-medium text-sm transition-colors flex items-center gap-2 {{ $activeTab === 'profile' ? 'border-blue-500 text-blue-600 dark:text-blue-300' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-300 dark:hover:text-white' }}">
+                        <svg class="w-5 h-5 mr-1 inline" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                        </svg>
+                        Profile
+                    </button>
+                    <button wire:click="setActiveTab('security')"
+                            class="py-3 px-3 border-b-2 font-medium text-sm transition-colors flex items-center gap-2 {{ $activeTab === 'security' ? 'border-blue-500 text-blue-600 dark:text-blue-300' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-300 dark:hover:text-white' }}">
+                        <svg class="w-5 h-5 mr-1 inline" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                        </svg>
+                        Security
+                    </button>
+                    <button wire:click="setActiveTab('addresses')"
+                            class="py-3 px-3 border-b-2 font-medium text-sm transition-colors flex items-center gap-2 {{ $activeTab === 'addresses' ? 'border-blue-500 text-blue-600 dark:text-blue-300' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-300 dark:hover:text-white' }}">
+                        <svg class="w-5 h-5 mr-1 inline" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                        </svg>
+                        Addresses
+                    </button>
+                    <button wire:click="setActiveTab('notifications')"
+                            class="py-3 px-3 border-b-2 font-medium text-sm transition-colors flex items-center gap-2 {{ $activeTab === 'notifications' ? 'border-blue-500 text-blue-600 dark:text-blue-300' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-300 dark:hover:text-white' }}">
+                        <svg class="w-5 h-5 mr-1 inline" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-5 5v-5zM4 19h11" />
+                        </svg>
+                        Notifications
+                    </button>
+                    <button wire:click="setActiveTab('privacy')"
+                            class="py-3 px-3 border-b-2 font-medium text-sm transition-colors flex items-center gap-2 {{ $activeTab === 'privacy' ? 'border-blue-500 text-blue-600 dark:text-blue-300' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-300 dark:hover:text-white' }}">
+                        <svg class="w-5 h-5 mr-1 inline" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                        </svg>
+                        Privacy
+                    </button>
+                </div>
+            </div>
+        </nav>
         <div class="space-y-8">
             <!-- Profile Tab -->
             @if($activeTab === 'profile')

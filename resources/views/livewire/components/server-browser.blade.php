@@ -1,26 +1,26 @@
-<div class="server-browser-container">
-    {{-- Real-time status header --}}
-    <div class="flex items-center justify-between mb-6 p-4 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-gray-800 dark:to-gray-700 rounded-lg">
-        <div class="flex items-center space-x-4">
-            <div class="flex items-center space-x-2">
-                <div class="w-3 h-3 bg-green-500 rounded-full animate-pulse"></div>
-                <span class="text-sm font-medium text-gray-700 dark:text-gray-300">
+
+<section class="server-browser-container bg-white dark:bg-gray-900 rounded-2xl shadow-xl border border-gray-100 dark:border-gray-800 overflow-hidden">
+    <!-- Real-time status header -->
+    <header class="flex flex-col md:flex-row items-center justify-between gap-4 px-6 pt-6 pb-4 border-b border-gray-100 dark:border-gray-800 bg-gradient-to-r from-blue-50/60 to-indigo-50/60 dark:from-gray-800/60 dark:to-gray-700/60">
+        <div class="flex items-center gap-4 w-full md:w-auto">
+            <span class="inline-flex items-center gap-2">
+                <span class="w-3 h-3 bg-green-500 rounded-full animate-pulse"></span>
+                <span class="text-sm font-semibold text-gray-700 dark:text-gray-300">
                     {{ $serverPlans->total() }} servers available
                 </span>
-            </div>
+            </span>
             @if($lastUpdate)
-                <div class="text-xs text-gray-500">
-                    Last updated: {{ $lastUpdate->diffForHumans() }}
-                </div>
+                <span class="text-xs text-gray-500">Last updated: {{ $lastUpdate->diffForHumans() }}</span>
             @endif
         </div>
-
-        <div class="flex items-center space-x-2">
-            {{-- View mode toggle --}}
-            <div class="flex bg-white dark:bg-gray-800 rounded-lg p-1 shadow-sm">
+        <div class="flex items-center gap-2">
+            <!-- View mode toggle -->
+            <nav class="flex bg-white dark:bg-gray-800 rounded-lg p-1 shadow-sm" aria-label="View mode toggle">
                 <button
                     wire:click="changeViewMode('grid')"
                     class="p-2 rounded {{ $viewMode === 'grid' ? 'bg-blue-500 text-white' : 'text-gray-500 hover:text-gray-700' }} transition-all duration-200"
+                    aria-current="{{ $viewMode === 'grid' ? 'page' : false }}"
+                    aria-label="Grid view"
                 >
                     <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
                         <path d="M5 3a2 2 0 00-2 2v2a2 2 0 002 2h2a2 2 0 002-2V5a2 2 0 00-2-2H5zM5 11a2 2 0 00-2 2v2a2 2 0 002 2h2a2 2 0 002-2v-2a2 2 0 00-2-2H5zM11 5a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V5zM11 13a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"></path>
@@ -29,18 +29,20 @@
                 <button
                     wire:click="changeViewMode('list')"
                     class="p-2 rounded {{ $viewMode === 'list' ? 'bg-blue-500 text-white' : 'text-gray-500 hover:text-gray-700' }} transition-all duration-200"
+                    aria-current="{{ $viewMode === 'list' ? 'page' : false }}"
+                    aria-label="List view"
                 >
                     <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
                         <path fill-rule="evenodd" d="M3 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1z" clip-rule="evenodd"></path>
                     </svg>
                 </button>
-            </div>
-
-            {{-- Refresh button --}}
+            </nav>
+            <!-- Refresh button -->
             <button
                 wire:click="refreshServerData"
                 class="p-2 bg-white dark:bg-gray-800 rounded-lg shadow-sm hover:shadow-md transition-all duration-200 group"
                 wire:loading.attr="disabled"
+                aria-label="Refresh server data"
             >
                 <svg class="w-4 h-4 text-gray-500 group-hover:text-blue-500 transition-colors duration-200"
                      wire:loading.class="animate-spin"
@@ -49,24 +51,24 @@
                 </svg>
             </button>
         </div>
-    </div>
+    </header>
 
-    {{-- Advanced Filters Section --}}
-    <div class="mb-6">
-        <div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6">
-            {{-- Filter header with expand/collapse --}}
+
+    <!-- Advanced Filters Section -->
+    <section class="mb-6 px-6 pt-6">
+        <div class="bg-white dark:bg-gray-900 rounded-xl shadow-sm p-6 border border-gray-100 dark:border-gray-800">
             <div class="flex items-center justify-between mb-4" x-data="{ filtersOpen: true }">
-                <h3 class="text-lg font-semibold text-gray-900 dark:text-white">Advanced Filters</h3>
-                <div class="flex items-center space-x-3">
+                <h2 class="text-lg font-bold text-gray-900 dark:text-white">Advanced Filters</h2>
+                <div class="flex items-center gap-3">
                     <button
                         wire:click="clearFilters"
-                        class="text-sm text-gray-500 hover:text-red-500 transition-colors duration-200"
-                    >
-                        Clear All
-                    </button>
+                        class="text-sm text-gray-500 hover:text-red-500 font-semibold transition-colors duration-200"
+                    >Clear All</button>
                     <button
                         @click="filtersOpen = !filtersOpen"
-                        class="p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors duration-200"
+                        class="p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors duration-200"
+                        aria-expanded="{{ filtersOpen ? 'true' : 'false' }}"
+                        aria-controls="filters-content"
                     >
                         <svg class="w-5 h-5 transition-transform duration-200"
                              :class="{ 'rotate-180': !filtersOpen }"
@@ -76,22 +78,18 @@
                     </button>
                 </div>
             </div>
-
-            {{-- Filter content --}}
-            <div x-show="filtersOpen" x-transition class="space-y-4">
-                {{-- Search and Quick Filters Row --}}
+            <div x-show="filtersOpen" x-transition class="space-y-4" id="filters-content">
+                <!-- Search and Quick Filters Row -->
                 <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
-                    {{-- Search input --}}
+                    <!-- Search input -->
                     <div class="md:col-span-2">
-                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                            Search Servers
-                        </label>
+                        <label class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">Search Servers</label>
                         <div class="relative">
                             <input
                                 type="text"
                                 wire:model.live.debounce.300ms="searchTerm"
                                 placeholder="Search by name, location, or features..."
-                                class="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
+                                class="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-800 dark:text-white"
                             >
                             <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                                 <svg class="h-5 w-5 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
@@ -100,15 +98,12 @@
                             </div>
                         </div>
                     </div>
-
-                    {{-- Sort by --}}
+                    <!-- Sort by -->
                     <div>
-                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                            Sort By
-                        </label>
+                        <label class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">Sort By</label>
                         <select
                             wire:model.live="sortBy"
-                            class="w-full py-2 px-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
+                            class="w-full py-2 px-3 border border-gray-300 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-800 dark:text-white"
                         >
                             <option value="location_first">Location First</option>
                             <option value="price_low">Price: Low to High</option>
@@ -118,15 +113,12 @@
                             <option value="newest">Newest First</option>
                         </select>
                     </div>
-
-                    {{-- Items per page --}}
+                    <!-- Items per page -->
                     <div>
-                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                            Items Per Page
-                        </label>
+                        <label class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">Items Per Page</label>
                         <select
                             wire:model.live="itemsPerPage"
-                            class="w-full py-2 px-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
+                            class="w-full py-2 px-3 border border-gray-300 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-800 dark:text-white"
                         >
                             <option value="6">6</option>
                             <option value="12">12</option>
@@ -135,35 +127,27 @@
                         </select>
                     </div>
                 </div>
-
-                {{-- Category Filters Row --}}
+                <!-- Category Filters Row -->
                 <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
-                    {{-- Country filter --}}
+                    <!-- Country filter -->
                     <div>
-                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                            Country
-                        </label>
+                        <label class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">Country</label>
                         <select
                             wire:model.live="selectedCountry"
-                            class="w-full py-2 px-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
+                            class="w-full py-2 px-3 border border-gray-300 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-800 dark:text-white"
                         >
                             <option value="">All Countries</option>
                             @foreach($countries as $country)
-                                <option value="{{ $country['code'] }}">
-                                    {{ $country['flag'] }} {{ $country['name'] }}
-                                </option>
+                                <option value="{{ $country['code'] }}">{{ $country['flag'] }} {{ $country['name'] }}</option>
                             @endforeach
                         </select>
                     </div>
-
-                    {{-- Category filter --}}
+                    <!-- Category filter -->
                     <div>
-                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                            Category
-                        </label>
+                        <label class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">Category</label>
                         <select
                             wire:model.live="selectedCategory"
-                            class="w-full py-2 px-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
+                            class="w-full py-2 px-3 border border-gray-300 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-800 dark:text-white"
                         >
                             <option value="">All Categories</option>
                             @foreach($categories as $category)
@@ -171,15 +155,12 @@
                             @endforeach
                         </select>
                     </div>
-
-                    {{-- Brand filter --}}
+                    <!-- Brand filter -->
                     <div>
-                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                            Brand
-                        </label>
+                        <label class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">Brand</label>
                         <select
                             wire:model.live="selectedBrand"
-                            class="w-full py-2 px-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
+                            class="w-full py-2 px-3 border border-gray-300 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-800 dark:text-white"
                         >
                             <option value="">All Brands</option>
                             @foreach($brands as $brand)
@@ -187,15 +168,12 @@
                             @endforeach
                         </select>
                     </div>
-
-                    {{-- Protocol filter --}}
+                    <!-- Protocol filter -->
                     <div>
-                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                            Protocol
-                        </label>
+                        <label class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">Protocol</label>
                         <select
                             wire:model.live="selectedProtocol"
-                            class="w-full py-2 px-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
+                            class="w-full py-2 px-3 border border-gray-300 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-800 dark:text-white"
                         >
                             <option value="">All Protocols</option>
                             @foreach($protocols as $protocol)
@@ -204,96 +182,88 @@
                         </select>
                     </div>
                 </div>
-
-                {{-- Range Filters Row --}}
+                <!-- Range Filters Row -->
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    {{-- Price range --}}
+                    <!-- Price range -->
                     <div>
-                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                            Price Range (${{ $priceRange[0] }} - ${{ $priceRange[1] }})
-                        </label>
-                        <div class="flex items-center space-x-4">
+                        <label class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">Price Range (${{ $priceRange[0] }} - ${{ $priceRange[1] }})</label>
+                        <div class="flex items-center gap-4">
                             <input
                                 type="number"
                                 wire:model.live.debounce.500ms="priceRange.0"
                                 placeholder="Min"
-                                class="w-20 py-1 px-2 border border-gray-300 dark:border-gray-600 rounded focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white text-sm"
+                                class="w-20 py-1 px-2 border border-gray-300 dark:border-gray-700 rounded focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-800 dark:text-white text-sm"
                             >
                             <span class="text-gray-500">to</span>
                             <input
                                 type="number"
                                 wire:model.live.debounce.500ms="priceRange.1"
                                 placeholder="Max"
-                                class="w-20 py-1 px-2 border border-gray-300 dark:border-gray-600 rounded focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white text-sm"
+                                class="w-20 py-1 px-2 border border-gray-300 dark:border-gray-700 rounded focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-800 dark:text-white text-sm"
                             >
                         </div>
                     </div>
-
-                    {{-- Speed range --}}
+                    <!-- Speed range -->
                     <div>
-                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                            Speed Range ({{ $speedRange[0] }} - {{ $speedRange[1] }} Mbps)
-                        </label>
-                        <div class="flex items-center space-x-4">
+                        <label class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">Speed Range ({{ $speedRange[0] }} - {{ $speedRange[1] }} Mbps)</label>
+                        <div class="flex items-center gap-4">
                             <input
                                 type="number"
                                 wire:model.live.debounce.500ms="speedRange.0"
                                 placeholder="Min"
-                                class="w-20 py-1 px-2 border border-gray-300 dark:border-gray-600 rounded focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white text-sm"
+                                class="w-20 py-1 px-2 border border-gray-300 dark:border-gray-700 rounded focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-800 dark:text-white text-sm"
                             >
                             <span class="text-gray-500">to</span>
                             <input
                                 type="number"
                                 wire:model.live.debounce.500ms="speedRange.1"
                                 placeholder="Max"
-                                class="w-20 py-1 px-2 border border-gray-300 dark:border-gray-600 rounded focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white text-sm"
+                                class="w-20 py-1 px-2 border border-gray-300 dark:border-gray-700 rounded focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-800 dark:text-white text-sm"
                             >
                         </div>
                     </div>
                 </div>
             </div>
         </div>
-    </div>
+    </section>
 
-    {{-- Loading Overlay --}}
-    <div wire:loading.flex class="fixed inset-0 bg-black bg-opacity-50 z-50 items-center justify-center">
-        <div class="bg-white dark:bg-gray-800 rounded-lg p-6 flex items-center space-x-4">
+    <!-- Loading Overlay -->
+    <div wire:loading.flex class="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center">
+        <div class="bg-white dark:bg-gray-900 rounded-2xl p-8 flex items-center gap-4 shadow-xl border border-gray-100 dark:border-gray-800">
             <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
-            <span class="text-lg font-medium text-gray-900 dark:text-white">Loading servers...</span>
+            <span class="text-lg font-bold text-gray-900 dark:text-white">Loading servers...</span>
         </div>
     </div>
 
-    {{-- Server Results --}}
-    <div class="transition-all duration-300" wire:loading.class="opacity-50">
+
+    <!-- Server Results -->
+    <section class="transition-all duration-300 px-6 pb-8" wire:loading.class="opacity-50">
         @if($serverPlans->count() > 0)
-            {{-- Results count --}}
+            <!-- Results count -->
             <div class="flex items-center justify-between mb-4">
                 <span class="text-sm text-gray-600 dark:text-gray-400">
                     Showing {{ $serverPlans->firstItem() }}-{{ $serverPlans->lastItem() }} of {{ $serverPlans->total() }} servers
                 </span>
             </div>
-
-            {{-- Server Grid/List --}}
+            <!-- Server Grid/List -->
             <div class="server-grid {{ $viewMode === 'list' ? 'space-y-4' : 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6' }}">
                 @foreach($serverPlans as $plan)
                     @php
                         $serverHealth = $this->getServerHealthStatus($plan->server_id);
                     @endphp
-
-                    <div class="proxy-card group hover:shadow-lg transition-all duration-300 transform hover:-translate-y-1 {{ $viewMode === 'list' ? 'flex items-center p-4' : 'p-6' }}">
-                        {{-- Server status indicator --}}
-                        <div class="absolute top-3 right-3 flex items-center space-x-2">
-                            <div class="w-3 h-3 rounded-full {{ $serverHealth['status'] === 'online' ? 'bg-green-500 animate-pulse' : 'bg-red-500' }}"></div>
+                    <article class="proxy-card group hover:shadow-lg transition-all duration-300 transform hover:-translate-y-1 {{ $viewMode === 'list' ? 'flex items-center p-4' : 'p-6' }} bg-white dark:bg-gray-900 rounded-xl border border-gray-100 dark:border-gray-800 relative">
+                        <!-- Server status indicator -->
+                        <div class="absolute top-3 right-3 flex items-center gap-2">
+                            <span class="w-3 h-3 rounded-full {{ $serverHealth['status'] === 'online' ? 'bg-green-500 animate-pulse' : 'bg-red-500' }}"></span>
                             @if($serverHealth['response_time'])
                                 <span class="text-xs text-gray-500">{{ $serverHealth['response_time'] }}ms</span>
                             @endif
                         </div>
-
-                        {{-- Server info --}}
-                        <div class="{{ $viewMode === 'list' ? 'flex-1 flex items-center space-x-4' : '' }}">
-                            {{-- Flag and country --}}
-                            <div class="{{ $viewMode === 'list' ? 'flex items-center space-x-2' : 'flex items-center justify-between mb-4' }}">
-                                <div class="flex items-center space-x-2">
+                        <!-- Server info -->
+                        <div class="{{ $viewMode === 'list' ? 'flex-1 flex items-center gap-4' : '' }}">
+                            <!-- Flag and country -->
+                            <div class="{{ $viewMode === 'list' ? 'flex items-center gap-2' : 'flex items-center justify-between mb-4' }}">
+                                <div class="flex items-center gap-2">
                                     <span class="text-2xl">{{ $plan->server->flag }}</span>
                                     <span class="font-semibold text-gray-900 dark:text-white">{{ $plan->server->country }}</span>
                                 </div>
@@ -301,6 +271,7 @@
                                     <button
                                         wire:click="toggleServerFavorite({{ $plan->id }})"
                                         class="text-gray-400 hover:text-red-500 transition-colors duration-200"
+                                        aria-label="Toggle favorite"
                                     >
                                         <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
                                             <path d="M3.172 5.172a4 4 0 015.656 0L10 6.343l1.172-1.171a4 4 0 115.656 5.656L10 17.657l-6.828-6.829a4 4 0 010-5.656z"></path>
@@ -308,11 +279,10 @@
                                     </button>
                                 @endif
                             </div>
-
-                            {{-- Plan details --}}
+                            <!-- Plan details -->
                             <div class="{{ $viewMode === 'list' ? 'flex-1' : '' }}">
                                 <h3 class="font-bold text-lg text-gray-900 dark:text-white mb-2">{{ $plan->name }}</h3>
-                                <div class="flex items-center space-x-4 text-sm text-gray-600 dark:text-gray-400 mb-3">
+                                <div class="flex items-center gap-4 text-sm text-gray-600 dark:text-gray-400 mb-3">
                                     <span class="flex items-center">
                                         <svg class="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
                                             <path fill-rule="evenodd" d="M3 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1z" clip-rule="evenodd"></path>
@@ -328,30 +298,25 @@
                                         </span>
                                     @endif
                                 </div>
-
                                 @if($plan->description && $viewMode !== 'list')
                                     <p class="text-sm text-gray-600 dark:text-gray-400 mb-4">{{ Str::limit($plan->description, 100) }}</p>
                                 @endif
                             </div>
-
-                            {{-- Price and actions --}}
-                            <div class="{{ $viewMode === 'list' ? 'flex items-center space-x-4' : 'flex items-center justify-between' }}">
+                            <!-- Price and actions -->
+                            <div class="{{ $viewMode === 'list' ? 'flex items-center gap-4' : 'flex items-center justify-between' }}">
                                 <div class="text-right">
                                     <div class="text-2xl font-bold text-blue-600 dark:text-blue-400">${{ number_format($plan->price, 2) }}</div>
                                     @if($plan->original_price && $plan->original_price > $plan->price)
                                         <div class="text-sm text-gray-500 line-through">${{ number_format($plan->original_price, 2) }}</div>
                                     @endif
                                 </div>
-
                                 <button
                                     wire:click="quickAddToCart({{ $plan->id }})"
                                     class="btn-primary touch-target"
                                     wire:loading.attr="disabled"
                                     wire:target="quickAddToCart({{ $plan->id }})"
                                 >
-                                    <span wire:loading.remove wire:target="quickAddToCart({{ $plan->id }})">
-                                        Add to Cart
-                                    </span>
+                                    <span wire:loading.remove wire:target="quickAddToCart({{ $plan->id }})">Add to Cart</span>
                                     <span wire:loading wire:target="quickAddToCart({{ $plan->id }})">
                                         <div class="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
                                         Adding...
@@ -359,37 +324,32 @@
                                 </button>
                             </div>
                         </div>
-                    </div>
+                    </article>
                 @endforeach
             </div>
-
-            {{-- Pagination --}}
+            <!-- Pagination -->
             <div class="mt-8">
                 {{ $serverPlans->links() }}
             </div>
         @else
-            {{-- No results state --}}
+            <!-- No results state -->
             <div class="text-center py-12">
                 <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.172 16.172a4 4 0 015.656 0M9 12h6m-6-4h6m2 5.291A7.962 7.962 0 0121 12c0-4.411-3.589-8-8-8s-8 3.589-8 8c0 2.152.851 4.103 2.233 5.535z"></path>
                 </svg>
-                <h3 class="mt-2 text-sm font-medium text-gray-900 dark:text-white">No servers found</h3>
-                <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
-                    Try adjusting your filters or search terms.
-                </p>
+                <h3 class="mt-2 text-sm font-bold text-gray-900 dark:text-white">No servers found</h3>
+                <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Try adjusting your filters or search terms.</p>
                 <div class="mt-6">
                     <button
                         wire:click="clearFilters"
                         class="btn-primary"
-                    >
-                        Clear all filters
-                    </button>
+                    >Clear all filters</button>
                 </div>
             </div>
         @endif
-    </div>
+    </section>
 
-    {{-- Auto-refresh script --}}
+    <!-- Auto-refresh script -->
     <script>
         document.addEventListener('livewire:init', () => {
             setInterval(() => {
@@ -397,4 +357,4 @@
             }, 300000); // Poll every 5 minutes
         });
     </script>
-</div>
+</section>

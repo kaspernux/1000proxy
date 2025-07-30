@@ -1,34 +1,38 @@
-<div class="xui-health-monitor bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6">
-    {{-- Header with controls --}}
-    <div class="flex items-center justify-between mb-6">
+
+<section class="xui-health-monitor bg-white dark:bg-gray-900 rounded-2xl shadow-2xl p-0 md:p-8 max-w-7xl mx-auto my-8">
+    <!-- Header & Controls -->
+    <header class="flex flex-col md:flex-row md:items-center md:justify-between gap-4 px-6 pt-6 pb-4 border-b border-gray-100 dark:border-gray-800">
         <div>
-            <h3 class="text-xl font-semibold text-gray-900 dark:text-white">XUI Health Monitor</h3>
-            <p class="text-sm text-gray-500 dark:text-gray-400">
-                Real-time monitoring of {{ count($servers) }} servers
+            <h1 class="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white tracking-tight">XUI Health Monitor</h1>
+            <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                Real-time monitoring of <span class="font-semibold text-blue-600 dark:text-blue-400">{{ count($servers) }}</span> servers
                 @if($lastUpdate)
-                    • Last updated {{ $lastUpdate->diffForHumans() }}
+                    <span class="mx-2 text-gray-300 dark:text-gray-600">•</span>
+                    <span>Last updated {{ $lastUpdate->diffForHumans() }}</span>
                 @endif
             </p>
         </div>
-
-        <div class="flex items-center space-x-3">
-            {{-- Auto-refresh toggle --}}
-            <div class="flex items-center space-x-2">
-                <span class="text-sm text-gray-600 dark:text-gray-400">Auto-refresh</span>
+        <nav aria-label="Monitor controls" class="flex flex-wrap items-center gap-2 md:gap-4">
+            <!-- Auto-refresh toggle -->
+            <div class="flex items-center gap-2">
+                <span class="text-xs md:text-sm text-gray-600 dark:text-gray-400">Auto-refresh</span>
                 <button
                     wire:click="toggleAutoRefresh"
+                    type="button"
+                    aria-pressed="{{ $autoRefresh ? 'true' : 'false' }}"
                     class="relative inline-flex h-6 w-11 items-center rounded-full transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 {{ $autoRefresh ? 'bg-blue-600' : 'bg-gray-200 dark:bg-gray-700' }}"
                 >
+                    <span class="sr-only">Toggle auto-refresh</span>
                     <span class="inline-block h-4 w-4 transform rounded-full bg-white transition-transform duration-200 {{ $autoRefresh ? 'translate-x-6' : 'translate-x-1' }}"></span>
                 </button>
             </div>
-
-            {{-- Refresh interval selector --}}
+            <!-- Refresh interval selector -->
             @if($autoRefresh)
                 <select
                     wire:model.live="refreshInterval"
                     wire:change="changeRefreshInterval($event.target.value)"
-                    class="text-sm border border-gray-300 dark:border-gray-600 rounded-lg px-2 py-1 dark:bg-gray-700 dark:text-white"
+                    class="text-xs md:text-sm border border-gray-300 dark:border-gray-600 rounded-lg px-2 py-1 dark:bg-gray-700 dark:text-white focus:ring-2 focus:ring-blue-500"
+                    aria-label="Refresh interval"
                 >
                     <option value="5">5s</option>
                     <option value="15">15s</option>
@@ -37,23 +41,25 @@
                     <option value="300">5m</option>
                 </select>
             @endif
-
-            {{-- Manual refresh button --}}
+            <!-- Manual refresh button -->
             <button
                 wire:click="refreshAllHealth"
                 wire:loading.attr="disabled"
-                class="p-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors duration-200 disabled:opacity-50"
+                type="button"
+                class="p-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors duration-200 disabled:opacity-50 focus:outline-none focus:ring-2 focus:ring-blue-500"
                 title="Refresh all health data"
+                aria-label="Refresh all health data"
             >
                 <svg class="w-4 h-4" wire:loading.class="animate-spin" fill="currentColor" viewBox="0 0 20 20">
                     <path fill-rule="evenodd" d="M4 2a1 1 0 011 1v2.101a7.002 7.002 0 0111.601 2.566 1 1 0 11-1.885.666A5.002 5.002 0 005.999 7H9a1 1 0 010 2H4a1 1 0 01-1-1V3a1 1 0 011-1zm.008 9.057a1 1 0 011.276.61A5.002 5.002 0 0014.001 13H11a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0v-2.101a7.002 7.002 0 01-11.601-2.566 1 1 0 01.61-1.276z" clip-rule="evenodd"></path>
                 </svg>
             </button>
-        </div>
-    </div>
+        </nav>
+    </header>
 
-    {{-- Health Summary Cards --}}
-    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
+    <!-- Health Summary Cards -->
+    <main class="px-6 pt-6">
+    <section aria-label="Health summary" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6 mb-8">
         <div class="summary-card bg-green-50 dark:bg-green-900/20 p-4 rounded-lg">
             <div class="flex items-center justify-between">
                 <div>
@@ -109,74 +115,67 @@
                 </div>
             </div>
         </div>
-    </div>
+    </section>
 
-    {{-- Alerts Banner --}}
+    <!-- Alerts Banner -->
     @if($alertsCount > 0)
-        <div class="mb-6 p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
-            <div class="flex items-center">
-                <svg class="w-5 h-5 text-red-500 mr-2" fill="currentColor" viewBox="0 0 20 20">
-                    <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd"></path>
-                </svg>
-                <span class="text-red-700 dark:text-red-300 font-medium">
-                    {{ $alertsCount }} active {{ $alertsCount === 1 ? 'alert' : 'alerts' }} require attention
-                </span>
-            </div>
-        </div>
+        <aside class="mb-8 p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg flex items-center gap-3" aria-live="polite">
+            <svg class="w-5 h-5 text-red-500" fill="currentColor" viewBox="0 0 20 20">
+                <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd"></path>
+            </svg>
+            <span class="text-red-700 dark:text-red-300 font-medium">
+                {{ $alertsCount }} active {{ $alertsCount === 1 ? 'alert' : 'alerts' }} require attention
+            </span>
+        </aside>
     @endif
 
-    {{-- Server Status Groups --}}
-    <div class="space-y-6">
+    <!-- Server Status Groups -->
+    <section aria-label="Server status groups" class="space-y-8">
         @foreach(['online', 'warning', 'offline'] as $status)
             @if(count($serverGroups[$status]) > 0)
-                <div class="server-group">
-                    <h4 class="text-lg font-medium text-gray-900 dark:text-white mb-4 flex items-center">
+                <article class="server-group">
+                    <header class="flex items-center mb-4">
                         @if($status === 'online')
-                            <div class="w-3 h-3 bg-green-500 rounded-full mr-2"></div>
-                            Online Servers ({{ count($serverGroups[$status]) }})
+                            <span class="w-3 h-3 bg-green-500 rounded-full mr-2"></span>
+                            <h2 class="text-lg font-semibold text-gray-900 dark:text-white">Online Servers ({{ count($serverGroups[$status]) }})</h2>
                         @elseif($status === 'warning')
-                            <div class="w-3 h-3 bg-yellow-500 rounded-full mr-2"></div>
-                            Warning Servers ({{ count($serverGroups[$status]) }})
+                            <span class="w-3 h-3 bg-yellow-500 rounded-full mr-2"></span>
+                            <h2 class="text-lg font-semibold text-gray-900 dark:text-white">Warning Servers ({{ count($serverGroups[$status]) }})</h2>
                         @else
-                            <div class="w-3 h-3 bg-red-500 rounded-full mr-2"></div>
-                            Offline Servers ({{ count($serverGroups[$status]) }})
+                            <span class="w-3 h-3 bg-red-500 rounded-full mr-2"></span>
+                            <h2 class="text-lg font-semibold text-gray-900 dark:text-white">Offline Servers ({{ count($serverGroups[$status]) }})</h2>
                         @endif
-                    </h4>
-
-                    <div class="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-4">
+                    </header>
+                    <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
                         @foreach($serverGroups[$status] as $serverData)
                             @php
                                 $server = $serverData['server'];
                                 $health = $serverData['health'];
                                 $clients = $serverData['clients'];
                             @endphp
-
-                            <div class="server-card p-4 border border-gray-200 dark:border-gray-600 rounded-lg hover:shadow-md transition-shadow duration-200 {{ $selectedServer === $server->id ? 'ring-2 ring-blue-500' : '' }}">
-                                {{-- Server header --}}
-                                <div class="flex items-center justify-between mb-3">
-                                    <div class="flex items-center space-x-2">
+                            <section class="server-card p-4 border border-gray-200 dark:border-gray-600 rounded-xl hover:shadow-lg transition-shadow duration-200 bg-white dark:bg-gray-800 flex flex-col gap-2 {{ $selectedServer === $server->id ? 'ring-2 ring-blue-500' : '' }}" aria-label="Server {{ $server->name }}">
+                                <!-- Server header -->
+                                <header class="flex items-center justify-between mb-2">
+                                    <div class="flex items-center gap-2">
                                         <span class="text-lg">{{ $server->flag }}</span>
                                         <div>
-                                            <h5 class="font-medium text-gray-900 dark:text-white">{{ $server->name }}</h5>
+                                            <h3 class="font-semibold text-gray-900 dark:text-white">{{ $server->name }}</h3>
                                             <p class="text-xs text-gray-500 dark:text-gray-400">{{ $server->country }}</p>
                                         </div>
                                     </div>
-
-                                    <div class="flex items-center space-x-1">
-                                        {{-- Status indicator --}}
-                                        <div class="w-3 h-3 rounded-full {{ $health['status'] === 'online' ? 'bg-green-500 animate-pulse' : ($health['status'] === 'offline' ? 'bg-red-500' : 'bg-yellow-500') }}"></div>
-
-                                        {{-- Response time --}}
+                                    <div class="flex items-center gap-1">
+                                        <!-- Status indicator -->
+                                        <span class="w-3 h-3 rounded-full {{ $health['status'] === 'online' ? 'bg-green-500 animate-pulse' : ($health['status'] === 'offline' ? 'bg-red-500' : 'bg-yellow-500') }}"></span>
+                                        <!-- Response time -->
                                         @if($health['response_time'])
                                             <span class="text-xs text-gray-500">{{ $health['response_time'] }}ms</span>
                                         @endif
                                     </div>
-                                </div>
-
-                                {{-- Server metrics --}}
-                                <div class="space-y-2 mb-4">
-                                    {{-- CPU Usage --}}
-                                    <div class="flex items-center justify-between text-sm">
+                                </header>
+                                <!-- Server metrics -->
+                                <div class="space-y-2 mb-2">
+                                    <!-- CPU Usage -->
+                                    <div class="flex items-center justify-between text-xs md:text-sm">
                                         <span class="text-gray-600 dark:text-gray-400">CPU</span>
                                         <span class="font-medium {{ $health['cpu_usage'] > 80 ? 'text-red-600' : 'text-gray-900 dark:text-white' }}">
                                             {{ $health['cpu_usage'] }}%
@@ -188,9 +187,8 @@
                                             style="width: {{ $health['cpu_usage'] }}%"
                                         ></div>
                                     </div>
-
-                                    {{-- Memory Usage --}}
-                                    <div class="flex items-center justify-between text-sm">
+                                    <!-- Memory Usage -->
+                                    <div class="flex items-center justify-between text-xs md:text-sm">
                                         <span class="text-gray-600 dark:text-gray-400">Memory</span>
                                         <span class="font-medium {{ $health['memory_usage'] > 90 ? 'text-red-600' : 'text-gray-900 dark:text-white' }}">
                                             {{ $health['memory_usage'] }}%
@@ -203,9 +201,8 @@
                                         ></div>
                                     </div>
                                 </div>
-
-                                {{-- Client stats --}}
-                                <div class="grid grid-cols-2 gap-2 mb-4 text-xs">
+                                <!-- Client stats -->
+                                <div class="grid grid-cols-2 gap-2 mb-2 text-xs">
                                     <div class="text-center p-2 bg-gray-50 dark:bg-gray-700 rounded">
                                         <div class="font-semibold text-gray-900 dark:text-white">{{ $clients['active_clients'] ?? 0 }}</div>
                                         <div class="text-gray-500 dark:text-gray-400">Active</div>
@@ -215,17 +212,15 @@
                                         <div class="text-gray-500 dark:text-gray-400">Connections</div>
                                     </div>
                                 </div>
-
-                                {{-- Action buttons --}}
-                                <div class="flex items-center justify-between">
+                                <!-- Action buttons -->
+                                <footer class="flex items-center justify-between mt-auto pt-2">
                                     <button
                                         wire:click="selectServer({{ $server->id }})"
-                                        class="text-sm text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300"
+                                        class="text-xs md:text-sm text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 font-medium"
                                     >
                                         View Details
                                     </button>
-
-                                    <div class="flex items-center space-x-2">
+                                    <div class="flex items-center gap-2">
                                         <button
                                             wire:click="testServerConnection({{ $server->id }})"
                                             class="p-1 text-gray-500 hover:text-green-600 transition-colors duration-200"
@@ -237,7 +232,6 @@
                                                 <path fill-rule="evenodd" d="M11.3 1.046A1 1 0 0112 2v5h4a1 1 0 01.82 1.573l-7 10A1 1 0 018 18v-5H4a1 1 0 01-.82-1.573l7-10a1 1 0 011.12-.38z" clip-rule="evenodd"></path>
                                             </svg>
                                         </button>
-
                                         @if($health['status'] === 'offline')
                                             <button
                                                 wire:click="restartServer({{ $server->id }})"
@@ -251,46 +245,45 @@
                                             </button>
                                         @endif
                                     </div>
-                                </div>
-                            </div>
+                                </footer>
+                            </section>
                         @endforeach
                     </div>
-                </div>
+                </article>
             @endif
         @endforeach
-    </div>
+    </section>
 
-    {{-- Detailed server view modal --}}
+    <!-- Detailed server view modal -->
     @if($selectedServer && array_key_exists($selectedServer, $systemMetrics))
         <div class="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4"
              wire:click.self="$set('selectedServer', null)">
-            <div class="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+            <section class="bg-white dark:bg-gray-900 rounded-2xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
                 <div class="p-6">
                     @php
                         $server = $servers->find($selectedServer);
                         $metrics = $systemMetrics[$selectedServer] ?? [];
                     @endphp
-
-                    {{-- Modal header --}}
-                    <div class="flex items-center justify-between mb-6">
-                        <h3 class="text-xl font-semibold text-gray-900 dark:text-white">
-                            {{ $server->flag }} {{ $server->name }} - System Details
+                    <!-- Modal header -->
+                    <header class="flex items-center justify-between mb-6">
+                        <h3 class="text-xl font-bold text-gray-900 dark:text-white">
+                            {{ $server->flag }} {{ $server->name }} <span class="font-normal">- System Details</span>
                         </h3>
                         <button
                             wire:click="$set('selectedServer', null)"
                             class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+                            aria-label="Close details modal"
                         >
                             <svg class="w-6 h-6" fill="currentColor" viewBox="0 0 20 20">
                                 <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"></path>
                             </svg>
                         </button>
-                    </div>
-
-                    {{-- System metrics grid --}}
+                    </header>
+                    <!-- System metrics grid -->
                     <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                        {{-- System Load --}}
-                        <div class="metric-card p-4 border border-gray-200 dark:border-gray-600 rounded-lg">
-                            <h4 class="font-medium text-gray-900 dark:text-white mb-3">System Load</h4>
+                        <!-- System Load -->
+                        <article class="metric-card p-4 border border-gray-200 dark:border-gray-600 rounded-xl">
+                            <h4 class="font-semibold text-gray-900 dark:text-white mb-3">System Load</h4>
                             <div class="space-y-2">
                                 <div class="flex justify-between text-sm">
                                     <span>1 minute:</span>
@@ -305,11 +298,10 @@
                                     <span class="font-medium">{{ $metrics['system_load']['load_15m'] }}</span>
                                 </div>
                             </div>
-                        </div>
-
-                        {{-- Memory Details --}}
-                        <div class="metric-card p-4 border border-gray-200 dark:border-gray-600 rounded-lg">
-                            <h4 class="font-medium text-gray-900 dark:text-white mb-3">Memory Usage</h4>
+                        </article>
+                        <!-- Memory Details -->
+                        <article class="metric-card p-4 border border-gray-200 dark:border-gray-600 rounded-xl">
+                            <h4 class="font-semibold text-gray-900 dark:text-white mb-3">Memory Usage</h4>
                             <div class="space-y-2">
                                 <div class="flex justify-between text-sm">
                                     <span>Total:</span>
@@ -330,11 +322,10 @@
                                     ></div>
                                 </div>
                             </div>
-                        </div>
-
-                        {{-- Disk Usage --}}
-                        <div class="metric-card p-4 border border-gray-200 dark:border-gray-600 rounded-lg">
-                            <h4 class="font-medium text-gray-900 dark:text-white mb-3">Disk Usage</h4>
+                        </article>
+                        <!-- Disk Usage -->
+                        <article class="metric-card p-4 border border-gray-200 dark:border-gray-600 rounded-xl">
+                            <h4 class="font-semibold text-gray-900 dark:text-white mb-3">Disk Usage</h4>
                             <div class="space-y-2">
                                 <div class="flex justify-between text-sm">
                                     <span>Total:</span>
@@ -355,11 +346,10 @@
                                     ></div>
                                 </div>
                             </div>
-                        </div>
-
-                        {{-- Network Stats --}}
-                        <div class="metric-card p-4 border border-gray-200 dark:border-gray-600 rounded-lg">
-                            <h4 class="font-medium text-gray-900 dark:text-white mb-3">Network Interface (eth0)</h4>
+                        </article>
+                        <!-- Network Stats -->
+                        <article class="metric-card p-4 border border-gray-200 dark:border-gray-600 rounded-xl">
+                            <h4 class="font-semibold text-gray-900 dark:text-white mb-3">Network Interface (eth0)</h4>
                             <div class="space-y-2">
                                 @php $eth0 = $metrics['network_interfaces']['eth0']; @endphp
                                 <div class="flex justify-between text-sm">
@@ -379,32 +369,29 @@
                                     <span class="font-medium">{{ number_format($eth0['tx_packets']) }}</span>
                                 </div>
                             </div>
-                        </div>
+                        </article>
                     </div>
                 </div>
-            </div>
+            </section>
         </div>
     @endif
 
-    {{-- Auto-refresh script --}}
+    <!-- Auto-refresh script -->
     <script>
         document.addEventListener('livewire:init', () => {
             let refreshInterval = null;
-
             Livewire.on('startAutoRefresh', (event) => {
                 if (refreshInterval) clearInterval(refreshInterval);
                 refreshInterval = setInterval(() => {
                     @this.pollHealth();
                 }, event.interval * 1000);
             });
-
             Livewire.on('stopAutoRefresh', () => {
                 if (refreshInterval) {
                     clearInterval(refreshInterval);
                     refreshInterval = null;
                 }
             });
-
             Livewire.on('updateRefreshInterval', (event) => {
                 if (refreshInterval) {
                     clearInterval(refreshInterval);
@@ -413,13 +400,11 @@
                     }, event.interval * 1000);
                 }
             });
-
             Livewire.on('simulateRestart', (event) => {
                 setTimeout(() => {
                     @this.handleServerStatusChange(event.serverId, 'online');
                 }, 3000);
             });
-
             // Initialize auto-refresh if enabled
             @if($autoRefresh)
                 refreshInterval = setInterval(() => {
@@ -428,4 +413,5 @@
             @endif
         });
     </script>
-</div>
+</main>
+</section>

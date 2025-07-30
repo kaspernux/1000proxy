@@ -36,7 +36,7 @@ Your service supports multiple connection methods:
 
 ### 📱 **Mobile Apps**
 - Scan QR codes for instant setup
-- Compatible with V2RayNG, Shadowrocket, and more
+- Compatible with V2Box, V2RayNG, Shadowrocket, and more
 
 ### 💻 **Desktop Apps**
 - Import configuration files

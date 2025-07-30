@@ -1,44 +1,44 @@
 @extends('layouts.app')
 
 @section('content')
-<div class="min-h-screen bg-gray-50">
-    <!-- Header -->
-    <div class="bg-white shadow-sm border-b border-gray-200">
-        <div class="px-6 py-4">
-            <div class="flex items-center justify-between">
-                <div>
-                    <h1 class="text-2xl font-bold text-gray-900">Marketing Automation</h1>
-                    <p class="text-sm text-gray-600 mt-1">Manage email campaigns, lead nurturing, and automated workflows</p>
-                </div>
-                <div class="flex items-center space-x-3">
-                    <button wire:click="initializeAutomation"
-                            class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors duration-200"
-                            wire:loading.attr="disabled">
-                        <div wire:loading.remove wire:target="initializeAutomation">
-                            <svg class="w-4 h-4 inline mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
-                            </svg>
-                            Initialize System
-                        </div>
-                        <div wire:loading wire:target="initializeAutomation" class="flex items-center">
-                            <svg class="animate-spin h-4 w-4 mr-2" viewBox="0 0 24 24">
-                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" fill="none"></circle>
-                                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                            </svg>
-                            Initializing...
-                        </div>
-                    </button>
-                    <button wire:click="loadInitialData"
-                            class="bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors duration-200">
-                        <svg class="w-4 h-4 inline mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
-                        </svg>
-                        Refresh
-                    </button>
-                </div>
+
+<section class="min-h-screen bg-gradient-to-br from-blue-900 via-gray-900 to-indigo-900 py-8 px-2 sm:px-6 lg:px-8">
+    <div class="max-w-7xl mx-auto space-y-8">
+        <!-- Header -->
+        <header class="flex flex-col md:flex-row md:items-center md:justify-between gap-6 bg-white/10 dark:bg-gray-900/80 shadow-2xl rounded-2xl px-6 py-8 border border-white/20 mb-6">
+            <div>
+                <h1 class="text-3xl md:text-4xl font-extrabold text-white tracking-tight">Marketing Automation</h1>
+                <p class="mt-2 text-lg text-white/80">Manage email campaigns, lead nurturing, and automated workflows</p>
             </div>
-        </div>
-    </div>
+            <div class="flex flex-col sm:flex-row gap-3">
+                <button wire:click="initializeAutomation"
+                        class="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2 rounded-lg text-sm font-semibold border border-white/20 shadow transition"
+                        wire:loading.attr="disabled">
+                    <div wire:loading.remove wire:target="initializeAutomation" class="flex items-center">
+                        <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
+                        </svg>
+                        Initialize System
+                    </div>
+                    <div wire:loading wire:target="initializeAutomation" class="flex items-center">
+                        <svg class="animate-spin h-4 w-4 mr-2" viewBox="0 0 24 24">
+                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" fill="none"></circle>
+                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                        Initializing...
+                    </div>
+                </button>
+                <button wire:click="loadInitialData"
+                        class="bg-gray-600 hover:bg-gray-700 text-white px-5 py-2 rounded-lg text-sm font-semibold border border-white/20 shadow transition">
+                    <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
+                    </svg>
+                    Refresh
+                </button>
+            </div>
+        </header>
+
+        <!-- ...existing code... -->
 
     <!-- Loading Overlay -->
     <div wire:loading.flex wire:target="loading" class="fixed inset-0 bg-black bg-opacity-50 z-50 items-center justify-center">

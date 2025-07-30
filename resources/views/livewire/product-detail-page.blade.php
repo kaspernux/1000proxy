@@ -1,194 +1,137 @@
 @extends('layouts.app')
 
 @section('content')
-<div class="w-full font-mono bg-gradient-to-r from-green-900 to-green-600 max-w-auto py-10 px-4 sm:px-6 lg:px-8 mx-auto">
-    {{-- Enhanced Product Detail Section --}}
-    <section class="overflow-hidden container mx-auto px-4 max-w-7xl border-2 rounded-lg border-double border-yellow-600 py-11 font-mono dark:bg-green-400">
-        <div class="max-w-6xl px-4 py-4 mx-auto lg:py-8 md:px-6">
-            <div class="flex flex-wrap -mx-4">
-                {{-- Product Image Section --}}
-                <div class="mb-8 md:w-1/2 md:mb-0" x-data="{ mainImage: '{{url('storage/'.$this->serverPlan->product_image)}}' }">
-                    <div class="top-0 z-50 py-6 items-center">
-                        <div class="relative mb-6 lg:mb-10 lg:h-2/4">
-                            <img x-bind:src="mainImage" alt="{{ $this->serverPlan->name }}" class="object-cover w-full lg:h-full rounded-lg">
 
-                            {{-- Server Status Indicator --}}
-                            @if($serverStatus)
-                            <div class="absolute top-4 right-4 px-3 py-1 rounded-full text-sm font-semibold
-                                {{ $serverStatus === 'online' ? 'bg-green-500 text-white' : 'bg-red-500 text-white' }}">
-                                {{ ucfirst($serverStatus) }}
-                            </div>
-                            @endif
-                        </div>
-
-                        {{-- Server Health Metrics --}}
-                        @if($serverHealth)
-                        <div class="mb-6 p-4 bg-white/10 backdrop-blur-sm rounded-lg">
-                            <h3 class="text-white font-semibold mb-3">Server Performance</h3>
-                            <div class="grid grid-cols-2 gap-4">
-                                <div class="text-center">
-                                    <div class="text-2xl font-bold text-green-400">{{ $serverHealth['uptime'] ?? '99.9' }}%</div>
-                                    <div class="text-sm text-white/70">Uptime</div>
-                                </div>
-                                <div class="text-center">
-                                    <div class="text-2xl font-bold text-green-400">{{ $serverHealth['response_time'] ?? '< 50' }}ms</div>
-                                    <div class="text-sm text-white/70">Response Time</div>
-                                </div>
-                            </div>
-                        </div>
-                        @endif
-
-                        {{-- Quick Info Section --}}
-                        <div class="px-6 pb-6 mt-6 border-t border-accent-yellow dark:border-green-400">
-                            <div class="flex flex-wrap items-center mt-6">
-                                <x-custom-icon name="server" class="w-4 h-4 text-white mr-2" />
-                                <h2 class="text-sm font-medium text-white dark:text-white">Instant configuration delivery to your account</h2>
-                            </div>
-                        </div>
+<main class="min-h-screen bg-gradient-to-br from-green-900 to-green-600 py-8 px-2 sm:px-6 lg:px-8 flex flex-col items-center">
+    <section class="w-full max-w-7xl mx-auto rounded-2xl border-2 border-double border-yellow-600 shadow-xl bg-white/5 backdrop-blur-md p-4 sm:p-8 md:p-12 flex flex-col md:flex-row gap-8 md:gap-12">
+        <!-- Product Image & Status -->
+        <aside class="w-full md:w-1/2 flex flex-col gap-6">
+            <div class="relative rounded-xl overflow-hidden shadow-lg aspect-square bg-green-800 flex items-center justify-center">
+                <img x-bind:src="mainImage" :src="mainImage" alt="{{ $this->serverPlan->name }}" class="object-contain w-full h-full max-h-96 transition-transform duration-300 hover:scale-105" x-data="{ mainImage: '{{url('storage/'.$this->serverPlan->product_image)}}' }">
+                @if($serverStatus)
+                <span class="absolute top-4 right-4 px-4 py-1 rounded-full text-xs font-bold tracking-wide shadow-lg
+                    {{ $serverStatus === 'online' ? 'bg-green-500 text-white' : 'bg-red-500 text-white' }}">
+                    {{ ucfirst($serverStatus) }}
+                </span>
+                @endif
+            </div>
+            @if($serverHealth)
+            <div class="flex flex-col gap-2 bg-green-900/80 rounded-lg p-4 border border-yellow-600">
+                <h3 class="text-white font-semibold mb-2 text-lg">Server Performance</h3>
+                <div class="grid grid-cols-2 gap-4">
+                    <div class="text-center">
+                        <div class="text-2xl font-bold text-green-300">{{ number_format($serverHealth['uptime'] ?? 99.9, 2) }}%</div>
+                        <div class="text-xs text-white/70">Uptime</div>
                     </div>
-                </div>
-
-                {{-- Product Details Section --}}
-                <div class="w-full py-6 pt-6 md:w-1/2 bg-green-900 border-2 items-center rounded-lg border-double border-yellow-600">
-                    <div class="lg:pl-20">
-                        <div class="mb-8 text-white dark:text-white [&>*]:mx-3 [&>ul]:list-disc [&>ul]:mx-8 [&>*]:text-white [&>*]:dark:text-white">
-                            {{-- Product Title and Breadcrumbs --}}
-                            <div class="mb-4">
-                                <nav class="text-sm text-white/70 mb-2">
-                                    <a href="/" wire:navigate class="hover:text-white">Home</a>
-                                    <span class="mx-2">/</span>
-                                    <a href="/servers" wire:navigate class="hover:text-white">Servers</a>
-                                    @if($this->serverPlan->category)
-                                        <span class="mx-2">/</span>
-                                        <span>{{ $this->serverPlan->category->name }}</span>
-                                    @endif
-                                </nav>
-                                <h2 class="max-w-xl mb-6 text-2xl text-white font-bold dark:text-white md:text-4xl">
-                                    {{ $this->serverPlan->name }}
-                                </h2>
-
-                                {{-- Brand & Category Info --}}
-                                <div class="flex flex-wrap gap-2 mb-4">
-                                    @if($this->serverPlan->brand)
-                                        <span class="px-3 py-1 bg-blue-600/20 text-blue-300 rounded-full text-sm">
-                                            {{ $this->serverPlan->brand->name }}
-                                        </span>
-                                    @endif
-                                    @if($this->serverPlan->category)
-                                        <span class="px-3 py-1 bg-green-600/20 text-green-300 rounded-full text-sm">
-                                            {{ $this->serverPlan->category->name }}
-                                        </span>
-                                    @endif
-                                </div>
-                            </div>
-
-                            {{-- Enhanced Pricing Calculator --}}
-                            <div class="mb-6 p-4 bg-white/10 backdrop-blur-sm rounded-lg">
-                                <div class="mb-4">
-                                    <label class="block text-white font-medium mb-2">Select Duration:</label>
-                                    <div class="grid grid-cols-2 md:grid-cols-4 gap-2">
-                                        @foreach([1, 3, 6, 12] as $duration)
-                                        <button wire:click="$set('selectedDuration', {{ $duration }})"
-                                                class="px-3 py-2 rounded text-sm font-medium transition
-                                                {{ $selectedDuration === $duration
-                                                    ? 'bg-green-600 text-white'
-                                                    : 'bg-white/20 text-white hover:bg-white/30' }}">
-                                            {{ $duration }} {{ $duration === 1 ? 'month' : 'months' }}
-                                            @if($duration > 1)
-                                                <div class="text-xs text-green-300">Save {{ (1 - (1 / (1 + ($duration * 0.05)))) * 100 }}%</div>
-                                            @endif
-                                        </button>
-                                        @endforeach
-                                    </div>
-                                </div>
-
-                                <div class="mb-4">
-                                    @php
-                                        $basePrice = $this->serverPlan->price;
-                                        $discountMultiplier = 1;
-                                        if ($selectedDuration >= 3) $discountMultiplier = 0.95;
-                                        if ($selectedDuration >= 6) $discountMultiplier = 0.90;
-                                        if ($selectedDuration >= 12) $discountMultiplier = 0.85;
-
-                                        $monthlyPrice = $basePrice * $discountMultiplier;
-                                        $totalPrice = $monthlyPrice * $selectedDuration;
-                                        $savings = ($basePrice - $monthlyPrice) * $selectedDuration;
-                                    @endphp
-
-                                    <div class="text-center">
-                                        <div class="text-4xl font-bold text-white mb-2">
-                                            ${{ number_format($totalPrice, 2) }}
-                                        </div>
-                                        <div class="text-white/70">
-                                            ${{ number_format($monthlyPrice, 2) }}/month
-                                            @if($savings > 0)
-                                                <span class="text-green-400 ml-2">Save ${{ number_format($savings, 2) }}</span>
-                                            @endif
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-
-                            {{-- Product Description --}}
-                            <p class="max-w-md text-white dark:text-white mb-6">
-                                {{ $this->serverPlan->description ?? 'Premium proxy service with high-speed connections and reliable performance.' }}
-                            </p>
-
-                            {{-- Server Specifications --}}
-                            @if($this->serverPlan->server)
-                            <div class="mb-6 p-4 bg-white/10 backdrop-blur-sm rounded-lg">
-                                <h3 class="text-white font-semibold mb-3">Server Details</h3>
-                                <div class="space-y-2 text-sm">
-                                    <div class="flex justify-between">
-                                        <span class="text-white/70">Location:</span>
-                                        <span class="text-white">{{ $this->serverPlan->server->location }}</span>
-                                    </div>
-                                    <div class="flex justify-between">
-                                        <span class="text-white/70">Server Name:</span>
-                                        <span class="text-white">{{ $this->serverPlan->server->name }}</span>
-                                    </div>
-                                    @if($this->serverPlan->server->ip_address)
-                                    <div class="flex justify-between">
-                                        <span class="text-white/70">IP Address:</span>
-                                        <span class="text-white font-mono">{{ $this->serverPlan->server->ip_address }}</span>
-                                    </div>
-                                    @endif
-                                </div>
-                            </div>
-                            @endif
-                            @if (!empty($serverPlan->description))
-                                {!! Str::markdown($serverPlan->description ?? 'No description available.') !!}
-                            @endif
-                            </p>
-                        </div>
-                        <div class="w-32 mb-8">
-                            <label for=""
-                                class="w-full pb-1 text-xl font-semibold text-white border-b border-yellow-600 dark:border-yellow-600 dark:text-white">Quantity</label>
-                            <div class="relative flex flex-row w-full h-10 mt-6 bg-transparent rounded-lg">
-                                <button wire:click='decreaseQty'
-                                    class="w-20 h-full text-white bg-green-700 rounded-l outline-none cursor-pointer dark:hover:bg-yellow-600 dark:text-white hover:text-white dark:bg-green-700 hover:bg-green-400">
-                                    <span class="m-auto text-2xl font-mono text-white">-</span>
-                                </button>
-                                <input type="number" wire:model='quantity' readonly
-                                    class="flex justify-center items-center w-full font-bold text-center text-white placeholder-green-700 bg-green-400 outline-none border-green-700 dark:border-green-700 dark:text-white dark:placeholder-green-700 dark:bg-green-900 focus:outline-none text-md hover:yellow-600"
-                                    placeholder="1">
-                                <button wire:click='increaseQty'
-                                    class="w-20 h-full text-white bg-green-700 rounded-r outline-none cursor-pointer dark:hover:bg-yellow-600 dark:text-white hover:text-white dark:bg-green-700 hover:bg-green-400">
-                                    <span class="m-auto text-2xl font-mono text-white">+</span>
-                                </button>
-                            </div>
-                        </div>
-                        <div class="flex flex-wrap items-center gap-4">
-                            <button wire:click='addToCart({{$serverPlan->id}})'
-                                class="w-full p-4 bg-yellow-600 rounded-md lg:w-2/5 dark:text-white text-white hover:bg-green-400 dark:bg-green-400 dark:hover:bg-green-400">
-                                <span wire:loading.remove wire:target='addToCart({{$serverPlan->id}})'>Add to Cart</span>
-                                <span wire:loading wire:target='addToCart({{$serverPlan->id}})'>Adding...</span>
-                            </button>
-                        </div>
+                    <div class="text-center">
+                        <div class="text-2xl font-bold text-green-300">{{ number_format($serverHealth['response_time'] ?? 50, 2) }}ms</div>
+                        <div class="text-xs text-white/70">Response Time</div>
                     </div>
                 </div>
             </div>
-        </div>
+            @endif
+            <div class="flex items-center gap-2 mt-4 text-white text-sm bg-green-800/80 rounded-lg px-4 py-2">
+                <x-custom-icon name="server" class="w-4 h-4 text-yellow-400" />
+                <span>Instant configuration delivery to your account</span>
+            </div>
+        </aside>
+
+        <!-- Product Details -->
+        <section class="w-full md:w-1/2 flex flex-col gap-6">
+            <!-- Breadcrumbs -->
+            <nav class="text-xs text-yellow-200 mb-2 flex flex-wrap gap-1 items-center">
+                <a href="/" wire:navigate class="hover:text-yellow-400">Home</a>
+                <span>/</span>
+                <a href="/servers" wire:navigate class="hover:text-yellow-400">Servers</a>
+                @if($this->serverPlan->category)
+                    <span>/</span>
+                    <span>{{ $this->serverPlan->category->name }}</span>
+                @endif
+            </nav>
+            <h1 class="text-2xl md:text-4xl font-extrabold text-white mb-2">{{ $this->serverPlan->name }}</h1>
+            <div class="flex flex-wrap gap-2 mb-4">
+                @if($this->serverPlan->brand)
+                    <span class="px-3 py-1 bg-blue-600/20 text-blue-200 rounded-full text-xs font-semibold">{{ $this->serverPlan->brand->name }}</span>
+                @endif
+                @if($this->serverPlan->category)
+                    <span class="px-3 py-1 bg-green-600/20 text-green-200 rounded-full text-xs font-semibold">{{ $this->serverPlan->category->name }}</span>
+                @endif
+            </div>
+
+            <!-- Pricing Calculator -->
+            <div class="bg-yellow-50/10 border border-yellow-600 rounded-lg p-4 flex flex-col gap-3">
+                <label class="block text-white font-medium mb-1">Select Duration:</label>
+                <div class="flex gap-2 flex-wrap">
+                    @foreach([1, 3, 6, 12] as $duration)
+                    <button wire:click="$set('selectedDuration', {{ $duration }})"
+                        class="px-3 py-2 rounded text-xs font-semibold transition-all duration-200
+                        {{ $selectedDuration === $duration ? 'bg-yellow-600 text-white shadow' : 'bg-white/20 text-yellow-200 hover:bg-yellow-600 hover:text-white' }}">
+                        {{ $duration }} {{ $duration === 1 ? 'month' : 'months' }}
+                        @if($duration > 1)
+                            <span class="block text-[10px] text-green-300 font-normal">Save {{ number_format((1 - (1 / (1 + ($duration * 0.05)))) * 100, 2) }}%</span>
+                        @endif
+                    </button>
+                    @endforeach
+                </div>
+                @php
+                    $basePrice = $this->serverPlan->price;
+                    $discountMultiplier = 1;
+                    if ($selectedDuration >= 3) $discountMultiplier = 0.95;
+                    if ($selectedDuration >= 6) $discountMultiplier = 0.90;
+                    if ($selectedDuration >= 12) $discountMultiplier = 0.85;
+                    $monthlyPrice = $basePrice * $discountMultiplier;
+                    $totalPrice = $monthlyPrice * $selectedDuration;
+                    $savings = ($basePrice - $monthlyPrice) * $selectedDuration;
+                @endphp
+                <div class="flex flex-col items-center gap-1">
+                    <div class="text-3xl md:text-4xl font-bold text-yellow-400">${{ number_format($totalPrice, 2) }}</div>
+                    <div class="text-white/80 text-sm">${{ number_format($monthlyPrice, 2) }}/month
+                        @if($savings > 0)
+                            <span class="text-green-400 ml-2">Save ${{ number_format($savings, 2) }}</span>
+                        @endif
+                    </div>
+                </div>
+            </div>
+
+            <!-- Product Description -->
+            <div class="prose prose-invert max-w-none text-white text-base leading-relaxed bg-green-900/60 rounded-lg p-4">
+                {{ $this->serverPlan->description ?? 'Premium proxy service with high-speed connections and reliable performance.' }}
+            </div>
+
+            <!-- Server Specifications -->
+            @if($this->serverPlan->server)
+            <div class="bg-green-800/80 border border-yellow-600 rounded-lg p-4 flex flex-col gap-2">
+                <h3 class="text-white font-semibold mb-2 text-lg">Server Details</h3>
+                <div class="flex flex-col gap-1 text-sm">
+                    <div class="flex justify-between"><span class="text-white/70">Location:</span><span class="text-white">{{ $this->serverPlan->server->location }}</span></div>
+                    <div class="flex justify-between"><span class="text-white/70">Server Name:</span><span class="text-white">{{ $this->serverPlan->server->name }}</span></div>
+                    @if($this->serverPlan->server->ip_address)
+                    <div class="flex justify-between"><span class="text-white/70">IP Address:</span><span class="text-white font-mono">{{ $this->serverPlan->server->ip_address }}</span></div>
+                    @endif
+                </div>
+            </div>
+            @endif
+            @if (!empty($serverPlan->description))
+                <div class="prose prose-invert max-w-none text-white mt-2">{!! Str::markdown($serverPlan->description ?? 'No description available.') !!}</div>
+            @endif
+
+            <!-- Quantity & Add to Cart -->
+            <div class="flex flex-col sm:flex-row items-center gap-4 mt-4">
+                <div class="flex flex-col items-center w-full sm:w-32">
+                    <label class="w-full pb-1 text-lg font-semibold text-white border-b border-yellow-600">Quantity</label>
+                    <div class="flex flex-row w-full h-10 mt-2 bg-transparent rounded-lg overflow-hidden border border-yellow-600">
+                        <button wire:click='decreaseQty' class="w-10 h-full text-white bg-green-700 hover:bg-yellow-600 transition-all duration-150 font-bold text-xl">-</button>
+                        <input type="number" wire:model='quantity' readonly class="w-full text-center font-bold text-white bg-green-900 border-none focus:outline-none" placeholder="1">
+                        <button wire:click='increaseQty' class="w-10 h-full text-white bg-green-700 hover:bg-yellow-600 transition-all duration-150 font-bold text-xl">+</button>
+                    </div>
+                </div>
+                <button wire:click='addToCart({{$serverPlan->id}})'
+                    class="w-full sm:w-auto px-8 py-3 bg-yellow-600 rounded-lg text-white font-bold text-lg shadow hover:bg-yellow-500 transition-all duration-200 flex items-center justify-center gap-2">
+                    <span wire:loading.remove wire:target='addToCart({{$serverPlan->id}})'>Add to Cart</span>
+                    <span wire:loading wire:target='addToCart({{$serverPlan->id}})'>Adding...</span>
+                </button>
+            </div>
+        </section>
     </section>
-</div>
+</main>
 @endsection

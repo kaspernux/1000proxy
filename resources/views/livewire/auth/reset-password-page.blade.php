@@ -1,105 +1,115 @@
 @extends('layouts.app')
 
 @section('content')
-<div
-    class="w-full bg-gradient-to-r from-green-900 to-green-600 py-12 px-6 sm:px-8 lg:px-10 mx-auto max-w-[auto] flex justify-center">
-    <div class="container mx-auto px-4 max-w-7xl">
-        <main class="w-full max-w-md mx-auto p-6">
-            <div
-                class="mt-7 bg-white border border-gray-200 rounded-xl shadow-sm dark:bg-gray-800 dark:border-gray-700">
-                <div class="p-4 sm:p-7">
-                    <div class="text-center">
-                        <h1 class="block text-2xl font-bold text-gray-800 dark:text-white">Reset password</h1>
-                    </div>
 
-                    <div class="mt-5">
-                        <!-- Flash Messages -->
-                        @if (session()->has('success'))
-                        <div
-                            class="bg-green-400 mt-2 border mb-4 border-green-600 text-sm text-green-900 rounded-lg p-4 dark:bg-green-400 dark:border-green-600 dark:white">
+<section class="w-full bg-gradient-to-r from-green-900 to-green-600 min-h-screen py-12 px-6 sm:px-8 lg:px-10 flex items-center justify-center">
+    <div class="container mx-auto px-4 max-w-7xl">
+        <main class="w-full max-w-md mx-auto">
+            <div class="bg-white/10 backdrop-blur-sm border border-white/20 rounded-xl shadow-2xl">
+                <div class="p-4 sm:p-7">
+                    <!-- Header -->
+                    <div class="text-center mb-8">
+                        <div class="mb-4">
+                            <svg class="w-16 h-16 mx-auto text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                        </div>
+                        <h1 class="block text-3xl font-bold text-white mb-2">Reset Password</h1>
+                        <p class="text-white/80">Set a new password for your account</p>
+                    </div>
+                    <!-- Flash Messages -->
+                    @if (session()->has('success'))
+                    <div class="mb-6 bg-green-500/20 border border-green-500 text-green-100 rounded-lg p-4" role="alert">
+                        <div class="flex items-center">
+                            <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                            </svg>
                             {{ session('success') }}
                         </div>
-                        @endif
-                        @if (session()->has('error'))
-                        <div
-                            class="mt-2 bg-red-400 border mb-4 border-red-600 text-sm text-red-800 rounded-lg p-4 dark:bg-red-800/10 dark:border-red-900 dark:text-red-500">
+                    </div>
+                    @endif
+                    @if (session()->has('error'))
+                    <div class="mb-6 bg-red-500/20 border border-red-500 text-red-100 rounded-lg p-4" role="alert">
+                        <div class="flex items-center">
+                            <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                            </svg>
                             {{ session('error') }}
                         </div>
-                        @endif
-
-                        <!-- Form -->
-                        <form wire:submit.prevent='save'>
-                            @csrf
-                            <div class="grid gap-y-4">
-                                <!-- Form Group -->
-                                <div>
-                                    <label for="password" class="block text-sm mb-2 dark:text-white">Password</label>
-                                    <div class="relative">
-                                        <input type="password" id="password" wire:model="password"
-                                            class="py-3 px-4 block w-full border border-gray-200 rounded-lg text-sm focus:border-accent-yellow focus:ring-accent-yellow disabled:opacity-50 disabled:pointer-events-none dark:bg-slate-900 dark:border-gray-700 dark:text-gray-400 dark:focus:ring-gray-600"
-                                            aria-describedby="password-error">
-                                        <button type="button"
-                                            class="absolute inset-y-0 right-0 pr-3 flex items-center text-sm leading-5"
-                                            onclick="togglePassword('password')">
-                                            <x-heroicon-o-eye id="password-eye-open" class="h-6 text-gray-700 hidden" />
-                                            <x-heroicon-o-eye-slash id="password-eye-closed"
-                                                class="h-6 text-gray-700" />
-                                        </button>
-                                        @error('password')
-                                        <div
-                                            class="hidden absolute inset-y-0 end-0 items-center pointer-events-none pe-3">
-                                            <x-heroicon-o-exclamation-circle class="h-5 w-5 text-red-500" />
-                                        </div>
-                                        @enderror
-                                    </div>
-                                    @error('password')
-                                    <p class="text-xs text-red-600 mt-2" id="password-error">{{$message}}</p>
-                                    @enderror
-                                </div>
-                                <!-- End Form Group -->
-
-                                <div>
-                                    <label for="password_confirmation"
-                                        class="block text-sm mb-2 dark:text-white">Confirm Password</label>
-                                    <div class="relative">
-                                        <input type="password" id="password_confirmation"
-                                            wire:model="password_confirmation"
-                                            class="py-3 px-4 block w-full border border-gray-200 rounded-lg text-sm focus:border-accent-yellow focus:ring-accent-yellow disabled:opacity-50 disabled:pointer-events-none dark:bg-slate-900 dark:border-gray-700 dark:text-gray-400 dark:focus:ring-gray-600"
-                                            aria-describedby="password_confirmation-error">
-                                        <button type="button"
-                                            class="absolute inset-y-0 right-0 pr-3 flex items-center text-sm leading-5"
-                                            onclick="togglePassword('password_confirmation')">
-                                            <x-heroicon-o-eye id="password_confirmation-eye-open"
-                                                class="h-6 text-gray-700 hidden" />
-                                            <x-heroicon-o-eye-slash id="password_confirmation-eye-closed"
-                                                class="h-6 text-gray-700" />
-                                        </button>
-                                        @error('password_confirmation')
-                                        <div class="hidden inset-y-0 end-0 items-center pointer-events-none pe-3">
-                                            <x-heroicon-o-exclamation-circle class="h-5 w-5 text-red-500" />
-                                        </div>
-                                        @enderror
-                                    </div>
-                                    @error('password_confirmation')
-                                    <p class="text-xs text-red-600 mt-2" id="password_confirmation-error">{{$message}}
-                                    </p>
-                                    @enderror
-                                </div>
-                                <!-- End Form Group -->
-
-                                <button type="submit"
-                                    class="py-3 px-4 inline-flex justify-center items-center gap-2 rounded-md border border-transparent font-semibold bg-yellow-400 text-black hover:bg-yellow-500 focus:outline-none focus:ring-2 focus:ring-accent-yellow focus:ring-offset-2 transition-all text-sm dark:focus:ring-offset-gray-800">
-                                    Reset password
-                                </button>
-                            </div>
-                        </form>
-                        <!-- End Form -->
                     </div>
+                    @endif
+                    <!-- Form -->
+                    <form wire:submit.prevent='save' class="space-y-6">
+                        @csrf
+                        <!-- Password -->
+                        <div>
+                            <label for="password" class="block text-sm font-medium text-white mb-2">Password</label>
+                            <div class="relative">
+                                <input type="password" id="password" wire:model="password"
+                                    class="py-3 px-4 block w-full bg-white/10 border border-white/20 rounded-lg text-white placeholder-white/50 focus:outline-none focus:border-green-400 focus:bg-white/20 transition duration-200"
+                                    placeholder="Enter your new password"
+                                    aria-describedby="password-error">
+                                <button type="button"
+                                    class="absolute inset-y-0 right-0 pr-3 flex items-center text-sm leading-5"
+                                    onclick="togglePassword('password')">
+                                    <x-heroicon-o-eye id="password-eye-open" class="h-6 text-white hidden" />
+                                    <x-heroicon-o-eye-slash id="password-eye-closed" class="h-6 text-white" />
+                                </button>
+                                @error('password')
+                                <div class="absolute inset-y-0 end-0 flex items-center pr-3 pointer-events-none">
+                                    <svg class="h-5 w-5 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                    </svg>
+                                </div>
+                                @enderror
+                            </div>
+                            @error('password')
+                            <p class="text-red-400 text-sm mt-2" id="password-error">{{$message}}</p>
+                            @enderror
+                        </div>
+                        <!-- Confirm Password -->
+                        <div>
+                            <label for="password_confirmation" class="block text-sm font-medium text-white mb-2">Confirm Password</label>
+                            <div class="relative">
+                                <input type="password" id="password_confirmation" wire:model="password_confirmation"
+                                    class="py-3 px-4 block w-full bg-white/10 border border-white/20 rounded-lg text-white placeholder-white/50 focus:outline-none focus:border-green-400 focus:bg-white/20 transition duration-200"
+                                    placeholder="Confirm your new password"
+                                    aria-describedby="password_confirmation-error">
+                                <button type="button"
+                                    class="absolute inset-y-0 right-0 pr-3 flex items-center text-sm leading-5"
+                                    onclick="togglePassword('password_confirmation')">
+                                    <x-heroicon-o-eye id="password_confirmation-eye-open" class="h-6 text-white hidden" />
+                                    <x-heroicon-o-eye-slash id="password_confirmation-eye-closed" class="h-6 text-white" />
+                                </button>
+                                @error('password_confirmation')
+                                <div class="absolute inset-y-0 end-0 flex items-center pr-3 pointer-events-none">
+                                    <svg class="h-5 w-5 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                    </svg>
+                                </div>
+                                @enderror
+                            </div>
+                            @error('password_confirmation')
+                            <p class="text-red-400 text-sm mt-2" id="password_confirmation-error">{{$message}}</p>
+                            @enderror
+                        </div>
+                        <!-- Submit -->
+                        <button type="submit"
+                                class="w-full py-3 px-4 bg-green-600 hover:bg-green-700 text-white font-semibold rounded-lg transition duration-200 flex items-center justify-center space-x-2">
+                            <span wire:loading.remove wire:target="save">Reset Password</span>
+                            <span wire:loading wire:target="save" class="flex items-center space-x-2">
+                                <svg class="animate-spin w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
+                                </svg>
+                                <span>Resetting...</span>
+                            </span>
+                        </button>
+                    </form>
                 </div>
             </div>
         </main>
     </div>
-</div>
+</section>
 
 <script>
     function togglePassword(field) {
