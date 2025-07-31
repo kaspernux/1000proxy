@@ -56,6 +56,14 @@
                     <form wire:submit.prevent='save' class="space-y-6">
                         @csrf
 
+                        <script>
+                        document.addEventListener('livewire:load', () => {
+                            Livewire.on('redirectToFilamentCustomerPanel', () => {
+                                window.location.href = "{{ $filament_customer_dashboard_url }}";
+                            });
+                        });
+                        </script>
+
                         {{-- Email Field --}}
                         <div>
                             <label for="email" class="block text-sm font-medium text-white mb-2">
@@ -69,6 +77,8 @@
                                 </div>
                                 <input type="email"
                                        id="email"
+                                       name="email"
+                                       autocomplete="email"
                                        wire:model="email"
                                        placeholder="Enter your email address"
                                        class="w-full pl-10 pr-4 py-3 bg-white/10 border border-white/20 rounded-lg text-white placeholder-white/50 focus:outline-none focus:border-green-400 focus:bg-white/20 transition duration-200">
@@ -105,6 +115,8 @@
                                 </div>
                                 <input type="password"
                                        id="password"
+                                       name="password"
+                                       autocomplete="current-password"
                                        wire:model="password"
                                        placeholder="Enter your password"
                                        class="w-full pl-10 pr-4 py-3 bg-white/10 border border-white/20 rounded-lg text-white placeholder-white/50 focus:outline-none focus:border-green-400 focus:bg-white/20 transition duration-200">
@@ -126,6 +138,8 @@
                             <div class="flex items-center">
                                 <input type="checkbox"
                                        id="remember"
+                                       name="remember"
+                                       autocomplete="on"
                                        wire:model="remember"
                                        class="w-4 h-4 bg-white/10 border border-white/20 rounded focus:ring-green-400 focus:ring-2">
                                 <label for="remember" class="ml-2 text-sm text-white/80">

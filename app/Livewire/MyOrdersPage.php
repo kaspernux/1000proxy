@@ -349,10 +349,10 @@ class MyOrdersPage extends Component
         // Calculate order statistics
         $orderStats = [
             'total' => Order::where('customer_id', Auth::guard('customer')->id())->count(),
-            'pending' => Order::where('customer_id', Auth::guard('customer')->id())->where('status', 'pending')->count(),
-            'processing' => Order::where('customer_id', Auth::guard('customer')->id())->where('status', 'processing')->count(),
-            'delivered' => Order::where('customer_id', Auth::guard('customer')->id())->where('status', 'delivered')->count(),
-            'total_spent' => Order::where('customer_id', Auth::guard('customer')->id())->where('status', 'delivered')->sum('grand_total'),
+            'pending' => Order::where('customer_id', Auth::guard('customer')->id())->where('order_status', 'pending')->count(),
+            'processing' => Order::where('customer_id', Auth::guard('customer')->id())->where('order_status', 'processing')->count(),
+            'delivered' => Order::where('customer_id', Auth::guard('customer')->id())->where('order_status', 'delivered')->count(),
+            'total_spent' => Order::where('customer_id', Auth::guard('customer')->id())->where('order_status', 'delivered')->sum('grand_total'),
         ];
 
         return view('livewire.my-orders-page', [

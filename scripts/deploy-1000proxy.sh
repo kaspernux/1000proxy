@@ -1054,7 +1054,8 @@ monitor_failed_logins() {
 monitor_queue_failures() {
     while true; do
         if command -v php &> /dev/null; then
-            failed_jobs=$(cd "$PROJECT_DIR" && php artisan queue:failed --format=json | jq length 2>/dev/null || echo "0")
+            # Count lines, skip header, handle no jobs gracefully
+            failed_jobs=$(cd "$PROJECT_DIR" && php artisan queue:failed | tail -n +2 | grep -c . || echo "0")
             if [[ "$failed_jobs" -gt 0 ]]; then
                 echo "[$(date)] Queue Alert: $failed_jobs failed jobs detected" >> "$LOG_FILE"
             fi

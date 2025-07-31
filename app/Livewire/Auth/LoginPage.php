@@ -93,34 +93,17 @@ class LoginPage extends Component
             // Record login attempt
             RateLimiter::hit($key, 300); // 5 minute window
 
-            // Attempt to authenticate as Admin/Staff User
-            if (Auth::guard('web')->attempt(
-                ['email' => $this->email, 'password' => $this->password],
-                $this->remember
-            )) {
-                if (Auth::user()->canAccessPanel(new Panel())) {
-                    // Clear rate limit on successful login
-                    RateLimiter::clear($key);
-
-                    // Regenerate session
-                    request()->session()->regenerate();
-
-                    $this->alert('success', 'Welcome back! Redirecting to admin panel...', [
-                        'position' => 'top-end',
-                        'timer' => 2000,
-                        'toast' => true,
-                    ]);
-
-                    return redirect()->intended('/admin');
-                } else {
-                    Auth::logout();
-                    throw ValidationException::withMessages([
-                        'email' => ['You do not have access to the admin panel.'],
-                    ]);
-                }
+            // If the email exists in the staff (User) table, redirect to /admin/login
+            if (\App\Models\User::where('email', $this->email)->exists()) {
+                $this->alert('info', 'Staff accounts must log in via the admin panel.', [
+                    'position' => 'top-end',
+                    'timer' => 4000,
+                    'toast' => true,
+                ]);
+                return redirect('/admin/login');
             }
 
-            // Attempt to authenticate as Customer
+            // Attempt to authenticate as Customer only
             if (Auth::guard('customer')->attempt(
                 ['email' => $this->email, 'password' => $this->password],
                 $this->remember
@@ -140,10 +123,12 @@ class LoginPage extends Component
                     'toast' => true,
                 ]);
 
-                return redirect()->intended('/customer');
+                // Use Livewire event to trigger JS redirect to Filament customer dashboard
+                $this->dispatch('redirectToFilamentCustomerPanel');
+                return;
             }
 
-            // If neither authentication attempt succeeds
+            // If authentication attempt fails
             throw ValidationException::withMessages([
                 'email' => ['These credentials do not match our records.'],
             ]);
@@ -214,6 +199,7 @@ class LoginPage extends Component
         return view('livewire.auth.login-page', [
             'rate_limited' => $this->blocked_until && $this->blocked_until > time(),
             'attempts_remaining' => max(0, 5 - $this->login_attempts),
+            'filament_customer_dashboard_url' => route('filament.customer.pages.dashboard'),
         ]);
     }
 }

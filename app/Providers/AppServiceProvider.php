@@ -5,6 +5,7 @@ namespace App\Providers;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\View;
+use Illuminate\Support\Facades\Blade;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Session;
 use Illuminate\Support\Facades\App;
@@ -58,6 +59,43 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        // Register all Blade components in livewire/components
+        $components = [
+            'custom-icon', 'xui-server-selector', 'xui-server-browser', 'xui-inbound-manager',
+            'accessibility-enhancements', 'advanced-interaction-patterns-demo', 'advanced-layout-demo',
+            'advanced-state-demo', 'animated-toggle', 'api-integration-demo', 'app-layout',
+            'application-logo', 'client-configuration-builder', 'client-usage-analyzer',
+            'color-theme-settings', 'crypto-payment-monitor', 'custom-dropdown', 'data-table',
+            'dropdown-link', 'dropdown', 'icon', 'inbound-traffic-monitor', 'interactive-data-table',
+            'live-order-tracker', 'livewire-framework-demo', 'nav-link', 'payment-history-table',
+            'payment-integration', 'payment-processor', 'proxy-configuration-card', 'pwa-meta',
+            'pwa-status', 'responsive-nav-link', 'server-browser', 'server-status-monitor',
+            'telegram-integration', 'telegram-notification-center', 'theme-switcher',
+            'ui-component-library-demo', 'websocket-demo', 'xui-additional-components',
+            'xui-connection-tester', 'xui-health-monitor', 'xui-integration-interface',
+            'xui-integration',
+        ];
+        foreach ($components as $component) {
+            Blade::component('livewire.components.' . $component, $component);
+        }
+
+        // Register Blade components in livewire/components/forms
+        $formComponents = [
+            'auto-complete-search', 'dynamic-form-validation', 'file-upload-drag-drop', 'multi-step-wizard',
+        ];
+        foreach ($formComponents as $component) {
+            Blade::component('livewire.components.forms.' . $component, $component);
+        }
+
+        // Register Blade components in livewire/components/ui
+        $uiComponents = [
+            'dashboard-chart', 'date-picker', 'dropdown', 'file-upload', 'modal', 'progress',
+            'theme-switcher', 'toast', 'toggle',
+        ];
+        foreach ($uiComponents as $component) {
+            Blade::component('livewire.components.ui.' . $component, $component);
+        }
+
         Model::unguard();
 
         // Register policies

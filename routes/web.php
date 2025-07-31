@@ -98,12 +98,19 @@ Route::middleware(['auth:web,customer'])->group(function () {
         // Insufficient balance redirect
         Route::get('/{currency}/insufficient', [WalletController::class, 'insufficient'])->name('wallet.insufficient');
 
-        // Transactions
-        Route::get('/transactions', [WalletTransactionController::class, 'index'])->name('wallet.transactions.index');
+    // Transactions
+    Route::get('/transactions', [WalletTransactionController::class, 'index'])->name('wallet.transactions.index');
     Route::get('/transactions/{transaction}', [WalletTransactionController::class, 'show'])->name('wallet.transactions.show');
     Route::get('/transactions/{transaction}/download', [WalletTransactionController::class, 'download'])->name('wallet.transactions.download');
+    // End of wallet group
 
-    });
+// Customer dashboard: redirect to Filament customer panel
+Route::middleware('auth:customer')->get('/customer', function () {
+    return redirect()->route('filament.customer.pages.dashboard');
+})->name('customer.dashboard');
+});
+    
+    
 
     // Horizon Jobs
     Horizon::routeMailNotificationsTo('you@example.com');

@@ -22,39 +22,6 @@ document.addEventListener( 'livewire:navigated', () =>
 } );
 
 // Initialize Alpine.js
-import Alpine from 'alpinejs';
-window.Alpine = Alpine;
-Alpine.start();
-
-// Initialize Alpine.js components
-document.addEventListener( 'alpine:init', () =>
-{
-    // Register data table components
-    Alpine.data( 'dataTable', window.dataTable );
-    Alpine.data( 'interactiveDataTable', window.interactiveDataTable );
-    Alpine.data( 'editableDataTable', window.editableDataTable );
-    Alpine.data( 'serversDataTable', window.serversDataTable );
-    Alpine.data( 'serverClientsDataTable', window.serverClientsDataTable );
-    Alpine.data( 'ordersDataTable', window.ordersDataTable );
-    Alpine.data( 'usersDataTable', window.usersDataTable );
-
-    // Register color theme manager
-    Alpine.data( 'colorThemeManager', window.colorThemeManager );
-
-    // Register theme switcher
-    Alpine.data( 'themeSwitcher', window.themeSwitcher );
-
-    // Register accessibility manager
-    Alpine.data( 'accessibilityManager', window.accessibilityManager );
-
-    // Register XUI Integration components
-    Alpine.data( 'xuiIntegrationManager', window.xuiIntegrationManager );
-
-    // Register Telegram Bot Integration components
-    Alpine.data( 'telegramBotControlPanel', window.telegramBotControlPanel );
-    Alpine.data( 'userTelegramLinking', window.userTelegramLinking );
-    Alpine.data( 'telegramNotificationCenter', window.telegramNotificationCenter );
-} );
 
 
 
