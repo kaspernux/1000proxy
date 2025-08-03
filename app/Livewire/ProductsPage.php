@@ -10,6 +10,9 @@ use Livewire\WithPagination;
 use App\Models\ServerCategory;
 use App\Helpers\CartManagement;
 use App\Livewire\Partials\Navbar;
+use Illuminate\Support\Facades\RateLimiter;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Validation\ValidationException;
 use Livewire\Attributes\Url;
 use Livewire\Attributes\Title;
 use Jantinnerezo\LivewireAlert\LivewireAlert;
@@ -45,6 +48,10 @@ class ProductsPage extends Component
     #[Url]
     public $server_status = 'online'; // online, offline, all
 
+    // Loading states
+    public $is_loading = false;
+    public $is_adding_to_cart = false;
+
     public $price_min = 0;
     public $price_max = 1000;
     public $bandwidth_min = 0;
@@ -67,25 +74,99 @@ class ProductsPage extends Component
         'sortOrder' => ['except' => 'location_first'],
     ];
 
+    protected function rules()
+    {
+        return [
+            'selected_categories' => 'array',
+            'selected_brands' => 'array',
+            'selected_countries' => 'array',
+            'selected_protocols' => 'array',
+            'price_min' => 'numeric|min:0|max:1000',
+            'price_max' => 'numeric|min:0|max:1000',
+            'bandwidth_min' => 'numeric|min:0',
+            'bandwidth_max' => 'numeric|min:0',
+        ];
+    }
+
     // Add product to cart method
     public function addToCart($server_plan_id)
     {
-        $total_count = CartManagement::addItemToCart($server_plan_id);
-        $this->dispatch('update-cart-count', total_count: $total_count)->to(Navbar::class);
+        $this->is_adding_to_cart = true;
 
-        $this->alert('success', 'Product added successfully!', [
-            'position' => 'bottom-end',
-            'timer' => '2000',
-            'toast' => true,
-            'timerProgressBar' => true,
-        ]);
+        try {
+            // Rate limiting for cart additions
+            $key = 'add_to_cart.' . request()->ip();
+            if (RateLimiter::tooManyAttempts($key, 20)) {
+                $seconds = RateLimiter::availableAt($key) - time();
+                throw ValidationException::withMessages([
+                    'cart' => ["Too many cart additions. Please try again in {$seconds} seconds."],
+                ]);
+            }
+
+            RateLimiter::hit($key, 60); // 1-minute window
+
+            $total_count = CartManagement::addItemToCart($server_plan_id);
+            $this->dispatch('update-cart-count', total_count: $total_count)->to(Navbar::class);
+
+            $this->is_adding_to_cart = false;
+
+            $this->alert('success', 'Product added successfully!', [
+                'position' => 'bottom-end',
+                'timer' => '2000',
+                'toast' => true,
+                'timerProgressBar' => true,
+            ]);
+
+        } catch (ValidationException $e) {
+            $this->is_adding_to_cart = false;
+            throw $e;
+        } catch (\Exception $e) {
+            $this->is_adding_to_cart = false;
+            Log::error('Add to cart error', [
+                'error' => $e->getMessage(),
+                'server_plan_id' => $server_plan_id,
+                'ip' => request()->ip()
+            ]);
+            
+            $this->alert('error', 'Failed to add product to cart. Please try again.', [
+                'position' => 'bottom-end',
+                'timer' => 3000,
+                'toast' => true,
+            ]);
+        }
     }
 
     // Apply filters method
     public function applyFilters()
     {
-        // Trigger re-render with updated filters
-        $this->render();
+        try {
+            $this->is_loading = true;
+            $this->validate();
+            $this->is_loading = false;
+            
+            // Trigger re-render with updated filters
+            $this->render();
+        } catch (ValidationException $e) {
+            $this->is_loading = false;
+            throw $e;
+        } catch (\Exception $e) {
+            $this->is_loading = false;
+            Log::error('Filter application error', [
+                'error' => $e->getMessage(),
+                'filters' => [
+                    'categories' => $this->selected_categories,
+                    'brands' => $this->selected_brands,
+                    'countries' => $this->selected_countries,
+                ],
+                'ip' => request()->ip()
+            ]);
+            
+            $this->alert('error', 'Failed to apply filters. Please try again.', [
+                'position' => 'bottom-end',
+                'timer' => 3000,
+                'toast' => true,
+            ]);
+        }
     }
 
     // Reset all filters to default values
@@ -111,6 +192,24 @@ class ProductsPage extends Component
             'toast' => true,
             'timerProgressBar' => true,
         ]);
+    }
+
+    // Remove specific country filter
+    public function removeCountryFilter($country)
+    {
+        $this->selected_countries = array_diff($this->selected_countries, [$country]);
+    }
+
+    // Remove specific category filter
+    public function removeCategoryFilter($categoryId)
+    {
+        $this->selected_categories = array_diff($this->selected_categories, [$categoryId]);
+    }
+
+    // Remove specific brand filter
+    public function removeBrandFilter($brandId)
+    {
+        $this->selected_brands = array_diff($this->selected_brands, [$brandId]);
     }
 
     public function render()

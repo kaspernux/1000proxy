@@ -8,6 +8,9 @@ use Livewire\Attributes\Title;
 use Livewire\Attributes\Url;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\RateLimiter;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Validation\ValidationException;
 use Jantinnerezo\LivewireAlert\LivewireAlert;
 use App\Models\WalletTransaction;
 use App\Models\Wallet;
@@ -29,6 +32,11 @@ class Transactions extends Component
 
     #[Url]
     public $searchTerm = '';
+
+    // Loading states
+    public $is_loading = false;
+    public $is_exporting = false;
+    public $is_processing_bulk = false;
 
     public $selectedTransactions = [];
     public $showFilters = false;
@@ -56,6 +64,24 @@ class Transactions extends Component
         'searchTerm' => ['except' => ''],
         'sortBy' => ['except' => 'latest'],
     ];
+
+    protected function rules()
+    {
+        return [
+            'searchTerm' => 'nullable|string|max:255',
+            'customDateFrom' => 'nullable|date',
+            'customDateTo' => 'nullable|date|after_or_equal:customDateFrom',
+            'exportFormat' => 'required|in:csv,xlsx,pdf',
+        ];
+    }
+
+    public function mount()
+    {
+        // Check authentication
+        if (!Auth::guard('customer')->check()) {
+            return redirect('/login');
+        }
+    }
 
     // Transaction type options
     public function getTypeOptions()
@@ -143,20 +169,42 @@ class Transactions extends Component
     // Transaction actions
     public function viewTransaction($transactionId)
     {
-        $customer = Auth::guard('customer')->user();
-        if (!$customer) {
-            return;
-        }
+        try {
+            $customer = Auth::guard('customer')->user();
+            if (!$customer) {
+                return redirect('/login');
+            }
 
-        $customerWallet = $customer->wallet;
+            $customerWallet = $customer->wallet;
 
-        $this->selectedTransaction = WalletTransaction::where('id', $transactionId)
-                                                    ->where('wallet_id', $customerWallet->id)
-                                                    ->with(['wallet', 'order'])
-                                                    ->first();
+            $this->selectedTransaction = WalletTransaction::where('id', $transactionId)
+                                                        ->where('wallet_id', $customerWallet->id)
+                                                        ->with(['wallet', 'order'])
+                                                        ->first();
 
-        if ($this->selectedTransaction) {
-            $this->showTransactionModal = true;
+            if ($this->selectedTransaction) {
+                $this->showTransactionModal = true;
+            } else {
+                $this->alert('error', 'Transaction not found.', [
+                    'position' => 'bottom-end',
+                    'timer' => 3000,
+                    'toast' => true,
+                ]);
+            }
+
+        } catch (\Exception $e) {
+            Log::error('Transaction view error', [
+                'error' => $e->getMessage(),
+                'transaction_id' => $transactionId,
+                'customer_id' => Auth::guard('customer')->id(),
+                'ip' => request()->ip()
+            ]);
+            
+            $this->alert('error', 'Failed to load transaction details.', [
+                'position' => 'bottom-end',
+                'timer' => 3000,
+                'toast' => true,
+            ]);
         }
     }
 
@@ -195,34 +243,67 @@ class Transactions extends Component
 
     public function requestRefund($transactionId)
     {
-        $customer = Auth::guard('customer')->user();
-        if (!$customer) {
-            return;
-        }
+        try {
+            // Rate limiting for refund requests
+            $key = 'refund_request.' . Auth::guard('customer')->id();
+            if (RateLimiter::tooManyAttempts($key, 3)) {
+                $seconds = RateLimiter::availableAt($key) - time();
+                throw new \Exception("Too many refund requests. Please try again in {$seconds} seconds.");
+            }
 
-        $customerWallet = $customer->wallet;
+            $customer = Auth::guard('customer')->user();
+            if (!$customer) {
+                return redirect('/login');
+            }
 
-        $transaction = WalletTransaction::where('id', $transactionId)
-                                       ->where('wallet_id', $customerWallet->id)
-                                       ->where('type', 'payment')
-                                       ->where('status', 'completed')
-                                       ->first();
+            $customerWallet = $customer->wallet;
 
-        if (!$transaction) {
-            $this->alert('error', 'Refund not available for this transaction.', [
+            $transaction = WalletTransaction::where('id', $transactionId)
+                                           ->where('wallet_id', $customerWallet->id)
+                                           ->where('type', 'payment')
+                                           ->where('status', 'completed')
+                                           ->first();
+
+            if (!$transaction) {
+                $this->alert('error', 'Refund not available for this transaction.', [
+                    'position' => 'bottom-end',
+                    'timer' => 3000,
+                    'toast' => true,
+                ]);
+                return;
+            }
+
+            RateLimiter::hit($key, 1800); // 30-minute window
+
+            // Create refund request logic here
+            $this->alert('info', 'Refund request submitted. We will process it within 3-5 business days.', [
+                'position' => 'bottom-end',
+                'timer' => 5000,
+                'toast' => true,
+            ]);
+
+            // Security logging
+            Log::info('Refund request submitted', [
+                'transaction_id' => $transactionId,
+                'customer_id' => $customer->id,
+                'amount' => $transaction->amount,
+                'ip' => request()->ip(),
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Refund request error', [
+                'error' => $e->getMessage(),
+                'transaction_id' => $transactionId,
+                'customer_id' => Auth::guard('customer')->id(),
+                'ip' => request()->ip()
+            ]);
+            
+            $this->alert('error', 'Failed to submit refund request. Please try again.', [
                 'position' => 'bottom-end',
                 'timer' => 3000,
                 'toast' => true,
             ]);
-            return;
         }
-
-        // Create refund request logic here
-        $this->alert('info', 'Refund request submitted. We will process it within 3-5 business days.', [
-            'position' => 'bottom-end',
-            'timer' => 5000,
-            'toast' => true,
-        ]);
     }
 
     // Bulk actions
@@ -237,30 +318,61 @@ class Transactions extends Component
 
     public function executeBulkAction()
     {
-        if (empty($this->selectedTransactions) || !$this->bulkAction) {
-            $this->alert('error', 'Please select transactions and action.', [
+        $this->is_processing_bulk = true;
+
+        try {
+            if (empty($this->selectedTransactions) || !$this->bulkAction) {
+                $this->alert('error', 'Please select transactions and action.', [
+                    'position' => 'bottom-end',
+                    'timer' => 3000,
+                    'toast' => true,
+                ]);
+                $this->is_processing_bulk = false;
+                return;
+            }
+
+            // Rate limiting for bulk actions
+            $key = 'bulk_action.' . Auth::guard('customer')->id();
+            if (RateLimiter::tooManyAttempts($key, 5)) {
+                $seconds = RateLimiter::availableAt($key) - time();
+                throw new \Exception("Too many bulk actions. Please try again in {$seconds} seconds.");
+            }
+
+            RateLimiter::hit($key, 600); // 10-minute window
+
+            switch ($this->bulkAction) {
+                case 'download_receipts':
+                    $this->bulkDownloadReceipts();
+                    break;
+                case 'export_data':
+                    $this->bulkExportData();
+                    break;
+                case 'mark_reviewed':
+                    $this->bulkMarkReviewed();
+                    break;
+            }
+
+            RateLimiter::clear($key);
+            $this->selectedTransactions = [];
+            $this->bulkAction = '';
+            $this->selectAll = false;
+            $this->is_processing_bulk = false;
+
+        } catch (\Exception $e) {
+            $this->is_processing_bulk = false;
+            Log::error('Bulk action error', [
+                'error' => $e->getMessage(),
+                'action' => $this->bulkAction,
+                'customer_id' => Auth::guard('customer')->id(),
+                'ip' => request()->ip()
+            ]);
+            
+            $this->alert('error', 'Failed to execute bulk action. Please try again.', [
                 'position' => 'bottom-end',
                 'timer' => 3000,
                 'toast' => true,
             ]);
-            return;
         }
-
-        switch ($this->bulkAction) {
-            case 'download_receipts':
-                $this->bulkDownloadReceipts();
-                break;
-            case 'export_data':
-                $this->bulkExportData();
-                break;
-            case 'mark_reviewed':
-                $this->bulkMarkReviewed();
-                break;
-        }
-
-        $this->selectedTransactions = [];
-        $this->bulkAction = '';
-        $this->selectAll = false;
     }
 
     private function bulkDownloadReceipts()
@@ -326,15 +438,60 @@ class Transactions extends Component
     // Export functions
     public function exportTransactions()
     {
-        $transactions = $this->getFilteredTransactions();
+        $this->is_exporting = true;
 
-        $this->alert('info', 'Transaction export started. Download will begin shortly.', [
-            'position' => 'bottom-end',
-            'timer' => 5000,
-            'toast' => true,
-        ]);
+        try {
+            // Rate limiting for exports
+            $key = 'export_transactions.' . Auth::guard('customer')->id();
+            if (RateLimiter::tooManyAttempts($key, 3)) {
+                $seconds = RateLimiter::availableAt($key) - time();
+                throw new \Exception("Too many export requests. Please try again in {$seconds} seconds.");
+            }
 
-        // Implement actual export logic based on format
+            $this->validate(['exportFormat' => 'required|in:csv,xlsx,pdf']);
+
+            RateLimiter::hit($key, 1800); // 30-minute window
+
+            $transactions = $this->getFilteredTransactions();
+
+            $this->alert('info', 'Transaction export started. Download will begin shortly.', [
+                'position' => 'bottom-end',
+                'timer' => 5000,
+                'toast' => true,
+            ]);
+
+            // Security logging
+            Log::info('Transaction export requested', [
+                'customer_id' => Auth::guard('customer')->id(),
+                'format' => $this->exportFormat,
+                'filters' => [
+                    'type' => $this->typeFilter,
+                    'status' => $this->statusFilter,
+                    'date_range' => $this->dateRange,
+                ],
+                'ip' => request()->ip(),
+            ]);
+
+            // Implement actual export logic based on format
+            $this->is_exporting = false;
+
+        } catch (ValidationException $e) {
+            $this->is_exporting = false;
+            throw $e;
+        } catch (\Exception $e) {
+            $this->is_exporting = false;
+            Log::error('Transaction export error', [
+                'error' => $e->getMessage(),
+                'customer_id' => Auth::guard('customer')->id(),
+                'ip' => request()->ip()
+            ]);
+            
+            $this->alert('error', 'Failed to export transactions. Please try again.', [
+                'position' => 'bottom-end',
+                'timer' => 3000,
+                'toast' => true,
+            ]);
+        }
     }
 
     private function getFilteredTransactions()

@@ -53,14 +53,57 @@
                     @endif
 
                     {{-- Enhanced Login Form --}}
-                    <form wire:submit.prevent='save' class="space-y-6">
-                        @csrf
+                    <form wire:submit="save" class="space-y-6">
 
                         <script>
-                        document.addEventListener('livewire:load', () => {
-                            Livewire.on('redirectToFilamentCustomerPanel', () => {
-                                window.location.href = "{{ $filament_customer_dashboard_url }}";
-                            });
+                        document.addEventListener('DOMContentLoaded', function() {
+                            const form = document.querySelector('form[wire\\:submit="save"]');
+                            if (form) {
+                                form.addEventListener('submit', function(e) {
+                                    e.preventDefault(); // Prevent default Livewire submission
+                                    
+                                    // Get form data
+                                    const email = document.querySelector('input[wire\\:model="email"]').value;
+                                    const password = document.querySelector('input[wire\\:model="password"]').value;
+                                    
+                                    // Show loading state
+                                    const submitBtn = form.querySelector('button[type="submit"]');
+                                    const originalText = submitBtn.innerHTML;
+                                    submitBtn.innerHTML = '<span class="flex items-center space-x-2"><svg class="animate-spin w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg><span>Signing In...</span></span>';
+                                    
+                                    // Call the direct endpoint
+                                    fetch('/test-livewire-direct', {
+                                        method: 'POST',
+                                        headers: {
+                                            'Content-Type': 'application/json',
+                                            'X-Requested-With': 'XMLHttpRequest',
+                                            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || ''
+                                        },
+                                        credentials: 'same-origin',
+                                        body: JSON.stringify({
+                                            email: email,
+                                            password: password
+                                        })
+                                    })
+                                    .then(response => response.json())
+                                    .then(data => {
+                                        // Restore button
+                                        submitBtn.innerHTML = originalText;
+                                        
+                                        if (data.status === 'success') {
+                                            window.location.href = '/servers';
+                                        } else if (data.status === 'error') {
+                                            alert('Login failed: ' + data.message);
+                                        } else {
+                                            window.location.href = '/servers';
+                                        }
+                                    })
+                                    .catch(error => {
+                                        submitBtn.innerHTML = originalText;
+                                        alert('Login failed. Please try again.');
+                                    });
+                                });
+                            }
                         });
                         </script>
 
@@ -77,7 +120,6 @@
                                 </div>
                                 <input type="email"
                                        id="email"
-                                       name="email"
                                        autocomplete="email"
                                        wire:model="email"
                                        placeholder="Enter your email address"
@@ -115,7 +157,6 @@
                                 </div>
                                 <input type="password"
                                        id="password"
-                                       name="password"
                                        autocomplete="current-password"
                                        wire:model="password"
                                        placeholder="Enter your password"
@@ -138,7 +179,6 @@
                             <div class="flex items-center">
                                 <input type="checkbox"
                                        id="remember"
-                                       name="remember"
                                        autocomplete="on"
                                        wire:model="remember"
                                        class="w-4 h-4 bg-white/10 border border-white/20 rounded focus:ring-green-400 focus:ring-2">
@@ -150,7 +190,8 @@
 
                         {{-- Submit Button --}}
                         <button type="submit"
-                                class="w-full py-3 px-4 bg-green-600 hover:bg-green-700 text-white font-semibold rounded-lg transition duration-200 flex items-center justify-center space-x-2">
+                                wire:loading.attr="disabled"
+                                class="w-full py-3 px-4 bg-green-600 hover:bg-green-700 disabled:bg-gray-600 text-white font-semibold rounded-lg transition duration-200 flex items-center justify-center space-x-2">
                             <span wire:loading.remove wire:target="save">Sign In</span>
                             <span wire:loading wire:target="save" class="flex items-center space-x-2">
                                 <svg class="animate-spin w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">

@@ -4,48 +4,118 @@ namespace App\Livewire\Auth;
 
 use Livewire\Component;
 use App\Models\Customer;
-use App\Models\User;
 use Livewire\Attributes\Title;
 use Illuminate\Support\Facades\Password;
+use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Validation\ValidationException;
+use Jantinnerezo\LivewireAlert\LivewireAlert;
 
 #[Title('Forgot Password - 1000 PROXIES')]
 class ForgotPage extends Component
 {
-    public $email;
+    use LivewireAlert;
 
-    public function save()
+    public $email = '';
+    public $is_loading = false;
+
+    // Security features
+    public $reset_attempts = 0;
+    public $blocked_until = null;
+
+    protected function rules()
     {
-        $this->validate([
-            'email' => 'required|email|max:255'
-        ]);
+        return [
+            'email' => 'required|email|max:255',
+        ];
+    }
 
-        // Determine which broker to use based on the email
-        $broker = $this->getPasswordBroker();
+    public function mount()
+    {
+        $this->checkRateLimit();
+    }
 
-        $status = Password::broker($broker)->sendResetLink(['email' => $this->email]);
+    private function checkRateLimit()
+    {
+        $key = 'password_reset.' . request()->ip();
+        $this->reset_attempts = RateLimiter::attempts($key);
 
-        if ($status === Password::RESET_LINK_SENT) {
-            session()->flash('success', 'Password reset link has been sent to your email address!');
-            $this->email = '';
-        } else {
-            session()->flash('error', 'Email could not be sent to this email address.');
+        if (RateLimiter::tooManyAttempts($key, 5)) {
+            $this->blocked_until = RateLimiter::availableAt($key);
         }
     }
 
-    private function getPasswordBroker()
+    public function save()
     {
-        // Check if the email belongs to a User
-        if (User::where('email', $this->email)->exists()) {
-            return 'users';
-        }
+        $this->is_loading = true;
 
-        // Otherwise, assume it belongs to a Customer
-        return 'customers';
+        try {
+            // Check rate limiting
+            $key = 'password_reset.' . request()->ip();
+
+            if (RateLimiter::tooManyAttempts($key, 5)) {
+                $seconds = RateLimiter::availableAt($key) - time();
+                throw ValidationException::withMessages([
+                    'email' => ["Too many password reset attempts. Please try again in {$seconds} seconds."],
+                ]);
+            }
+
+            $this->validate();
+
+            // Record reset attempt
+            RateLimiter::hit($key, 300); // 5 minute window
+
+            // Always use the customers broker
+            $status = Password::broker('customers')->sendResetLink([
+                'email' => strtolower(trim($this->email))
+            ]);
+
+            $this->is_loading = false;
+
+            if ($status === Password::RESET_LINK_SENT) {
+                // Clear rate limiting on successful send
+                RateLimiter::clear($key);
+                
+                session()->flash('success', 'Password reset link has been sent to your email address!');
+                $this->email = '';
+                
+                // Log successful password reset request (security)
+                \Log::info('Password reset link sent', [
+                    'email' => $this->email,
+                    'ip' => request()->ip()
+                ]);
+            } else {
+                // Don't reveal if email exists or not for security
+                session()->flash('success', 'If this email address exists in our system, you will receive a password reset link.');
+                $this->email = '';
+                
+                // Log failed password reset attempt
+                \Log::warning('Password reset attempted for non-existent email', [
+                    'email' => $this->email,
+                    'ip' => request()->ip()
+                ]);
+            }
+
+        } catch (ValidationException $e) {
+            $this->is_loading = false;
+            $this->checkRateLimit();
+            throw $e;
+        } catch (\Exception $e) {
+            $this->is_loading = false;
+            \Log::error('Password reset error', [
+                'error' => $e->getMessage(),
+                'email' => $this->email,
+                'ip' => request()->ip()
+            ]);
+            
+            session()->flash('error', 'An error occurred. Please try again later.');
+        }
     }
 
     public function render()
     {
-        return view('livewire.auth.forgot-page');
+        return view('livewire.auth.forgot-page', [
+            'rate_limited' => $this->blocked_until && $this->blocked_until > time(),
+            'attempts_remaining' => max(0, 5 - $this->reset_attempts),
+        ]);
     }
 }

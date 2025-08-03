@@ -7,13 +7,14 @@ use Livewire\Attributes\Url;
 use Livewire\Attributes\Title;
 use App\Models\Order;
 use App\Models\OrderItem;
-use App\Models\User;
 use App\Mail\OrderPlaced;
 use App\Services\EnhancedMailService;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\RateLimiter;
+use Illuminate\Validation\ValidationException;
 use Jantinnerezo\LivewireAlert\LivewireAlert;
 use Stripe\Stripe;
 use Stripe\Checkout\Session;
@@ -39,6 +40,7 @@ class SuccessPage extends Component
     public $showOrderDetails = false;
     public $showInvoiceModal = false;
     public $showSupportModal = false;
+    public bool $isLoading = false;
 
     // Upsell and cross-sell
     public $relatedProducts = [];
@@ -55,35 +57,80 @@ class SuccessPage extends Component
     public $joinLoyaltyProgram = false;
     public $enableNotifications = true;
 
+    protected function rules()
+    {
+        return [
+            'orderRating' => 'required|integer|min:1|max:5',
+            'orderFeedback' => 'nullable|string|max:500',
+            'order_id' => 'nullable|integer|exists:orders,id',
+            'session_id' => 'nullable|string|max:255',
+            'payment_id' => 'nullable|string|max:255',
+        ];
+    }
+
     public function mount()
     {
-        // Get the latest order or specific order by ID
-        if ($this->order_id) {
-            $this->order = Order::with(['invoice', 'paymentMethod', 'customer', 'orderItems.serverPlan'])
-                               ->where('id', $this->order_id)
-                               ->where('customer_id', Auth::guard('customer')->id())
-                               ->first();
-        } else {
-            $this->order = Order::with(['invoice', 'paymentMethod', 'customer', 'orderItems.serverPlan'])
-                               ->where('customer_id', Auth::guard('customer')->id())
-                               ->latest()
-                               ->first();
-        }
+        try {
+            $this->isLoading = true;
 
-        if (!$this->order) {
+            // Get the latest order or specific order by ID
+            if ($this->order_id) {
+                $this->order = Order::with(['invoice', 'paymentMethod', 'customer', 'orderItems.serverPlan'])
+                                   ->where('id', $this->order_id)
+                                   ->where('customer_id', Auth::guard('customer')->id())
+                                   ->first();
+            } else {
+                $this->order = Order::with(['invoice', 'paymentMethod', 'customer', 'orderItems.serverPlan'])
+                                   ->where('customer_id', Auth::guard('customer')->id())
+                                   ->latest()
+                                   ->first();
+            }
+
+            if (!$this->order) {
+                Log::warning('Success page accessed without valid order', [
+                    'order_id' => $this->order_id,
+                    'customer_id' => Auth::guard('customer')->id(),
+                    'ip' => request()->ip()
+                ]);
+                return redirect()->route('my.orders');
+            }
+
+            $this->orderItems = $this->order->orderItems;
+
+            // Security logging
+            Log::info('Success page accessed', [
+                'order_id' => $this->order->id,
+                'customer_id' => Auth::guard('customer')->id(),
+                'payment_status' => $this->order->payment_status,
+                'ip' => request()->ip(),
+            ]);
+
+            // Process payment verification and order completion
+            $this->processPaymentVerification();
+
+            // Load related products for upselling
+            $this->loadRelatedProducts();
+
+            // Clear cart after successful order
+            session()->forget('cart');
+
+        } catch (\Exception $e) {
+            Log::error('Success page mount error', [
+                'error' => $e->getMessage(),
+                'order_id' => $this->order_id,
+                'ip' => request()->ip()
+            ]);
+            
+            $this->alert('error', 'Failed to load order details. Please try again.', [
+                'position' => 'center',
+                'timer' => 4000,
+                'toast' => false,
+            ]);
+            
             return redirect()->route('my.orders');
+        } finally {
+            $this->isLoading = false;
         }
-
-        $this->orderItems = $this->order->orderItems;
-
-        // Process payment verification and order completion
-        $this->processPaymentVerification();
-
-        // Load related products for upselling
-        $this->loadRelatedProducts();
-
-        // Clear cart after successful order
-        session()->forget('cart');
     }
 
     private function processPaymentVerification()
@@ -282,12 +329,12 @@ class SuccessPage extends Component
             if ($success) {
                 Log::info('Order confirmation email sent successfully via EnhancedMailService', [
                     'order_id' => $this->order->id,
-                    'email' => $this->order->user->email
+                    'email' => $this->order->customer->email
                 ]);
             } else {
                 Log::warning('Order confirmation email failed via EnhancedMailService', [
                     'order_id' => $this->order->id,
-                    'email' => $this->order->user->email
+                    'email' => $this->order->customer->email
                 ]);
             }
         } catch (\Exception $e) {
@@ -378,46 +425,124 @@ class SuccessPage extends Component
 
     public function addToCart($productId, $quantity = 1)
     {
-        // Add to cart using session
-        $cart = session()->get('cart', []);
-        $serverPlan = \App\Models\ServerPlan::find($productId);
+        try {
+            // Rate limiting for cart additions
+            $key = 'add_to_cart_success.' . request()->ip();
+            if (RateLimiter::tooManyAttempts($key, 10)) {
+                $seconds = RateLimiter::availableAt($key) - time();
+                throw new \Exception("Too many cart additions. Please try again in {$seconds} seconds.");
+            }
 
-        if ($serverPlan) {
+            $this->validate([
+                'productId' => 'required|integer|exists:server_plans,id',
+                'quantity' => 'required|integer|min:1|max:10'
+            ], [
+                'productId' => $productId,
+                'quantity' => $quantity
+            ]);
+
+            // Add to cart using session
+            $cart = session()->get('cart', []);
+            $serverPlan = \App\Models\ServerPlan::where('id', $productId)
+                                               ->where('is_active', true)
+                                               ->firstOrFail();
+
+            RateLimiter::hit($key, 60); // 1-minute window
+
             $cart[$productId] = [
                 'quantity' => $quantity,
                 'server_plan' => $serverPlan,
             ];
             session()->put('cart', $cart);
-        }
 
-        $this->alert('success', 'Product added to cart!', [
-            'position' => 'bottom-end',
-            'timer' => 3000,
-            'toast' => true,
-        ]);
+            // Security logging
+            Log::info('Product added to cart from success page', [
+                'product_id' => $productId,
+                'quantity' => $quantity,
+                'order_id' => $this->order->id,
+                'customer_id' => Auth::guard('customer')->id(),
+                'ip' => request()->ip(),
+            ]);
+
+            $this->alert('success', 'Product added to cart!', [
+                'position' => 'bottom-end',
+                'timer' => 3000,
+                'toast' => true,
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Add to cart error from success page', [
+                'error' => $e->getMessage(),
+                'product_id' => $productId,
+                'quantity' => $quantity,
+                'ip' => request()->ip()
+            ]);
+            
+            $this->alert('error', 'Failed to add product to cart. Please try again.', [
+                'position' => 'bottom-end',
+                'timer' => 3000,
+                'toast' => true,
+            ]);
+        }
     }
 
     // Feedback and follow-up
     public function submitFeedback()
     {
-        $this->validate([
-            'orderRating' => 'required|integer|min:1|max:5',
-            'orderFeedback' => 'nullable|string|max:500',
-        ]);
+        try {
+            $this->isLoading = true;
 
-        // Save feedback
-        $this->order->update([
-            'customer_rating' => $this->orderRating,
-            'customer_feedback' => $this->orderFeedback,
-        ]);
+            // Rate limiting for feedback submissions
+            $key = 'order_feedback.' . Auth::guard('customer')->id();
+            if (RateLimiter::tooManyAttempts($key, 3)) {
+                $seconds = RateLimiter::availableAt($key) - time();
+                throw new \Exception("Too many feedback submissions. Please try again in {$seconds} seconds.");
+            }
 
-        $this->showFeedbackForm = false;
+            $this->validate([
+                'orderRating' => 'required|integer|min:1|max:5',
+                'orderFeedback' => 'nullable|string|max:500',
+            ]);
 
-        $this->alert('success', 'Thank you for your feedback!', [
-            'position' => 'bottom-end',
-            'timer' => 3000,
-            'toast' => true,
-        ]);
+            RateLimiter::hit($key, 300); // 5-minute window
+
+            // Save feedback
+            $this->order->update([
+                'customer_rating' => $this->orderRating,
+                'customer_feedback' => $this->orderFeedback,
+            ]);
+
+            $this->showFeedbackForm = false;
+
+            // Security logging
+            Log::info('Order feedback submitted', [
+                'order_id' => $this->order->id,
+                'rating' => $this->orderRating,
+                'customer_id' => Auth::guard('customer')->id(),
+                'ip' => request()->ip(),
+            ]);
+
+            $this->alert('success', 'Thank you for your feedback!', [
+                'position' => 'bottom-end',
+                'timer' => 3000,
+                'toast' => true,
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Order feedback submission error', [
+                'order_id' => $this->order->id,
+                'error' => $e->getMessage(),
+                'ip' => request()->ip()
+            ]);
+            
+            $this->alert('error', 'Failed to submit feedback. Please try again.', [
+                'position' => 'bottom-end',
+                'timer' => 3000,
+                'toast' => true,
+            ]);
+        } finally {
+            $this->isLoading = false;
+        }
     }
 
     public function subscribeNewsletter()

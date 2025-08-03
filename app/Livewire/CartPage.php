@@ -14,6 +14,9 @@ use Livewire\Attributes\Computed;
 use Livewire\Attributes\On;
 use App\Helpers\CartManagement;
 use App\Livewire\Partials\Navbar;
+use Illuminate\Support\Facades\RateLimiter;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Validation\ValidationException;
 use Jantinnerezo\LivewireAlert\LivewireAlert;
 use Illuminate\Support\Collection;
 
@@ -31,6 +34,11 @@ class CartPage extends Component
     public string $coupon_code = '';
     public ?string $applied_coupon = null;
     
+    // Loading states
+    public bool $is_loading = false;
+    public bool $is_applying_coupon = false;
+    public bool $is_updating_quantity = false;
+    
     public bool $show_coupon_form = false;
 
     // Cart persistence
@@ -42,6 +50,13 @@ class CartPage extends Component
     protected $listeners = [
         'cartUpdated' => 'refreshCart',
     ];
+
+    protected function rules()
+    {
+        return [
+            'coupon_code' => 'nullable|string|max:50',
+        ];
+    }
     /**
      * Initialize the cart page by loading cart items, recently viewed products, and saved-for-later items from session.
      */
@@ -130,19 +145,39 @@ class CartPage extends Component
 
     public function removeItem($server_plan_id)
     {
-        $this->order_items = CartManagement::removeCartItem($server_plan_id);
-        $this->grand_amount = CartManagement::calculateGrandTotal($this->order_items);
-        $this->recalculateAmounts();
+        try {
+            $this->is_loading = true;
 
-        $this->dispatch('update-cart-count', total_count: count($this->order_items))->to(Navbar::class);
-        $this->dispatch('cartUpdated');
+            $this->order_items = CartManagement::removeCartItem($server_plan_id);
+            $this->grand_amount = CartManagement::calculateGrandTotal($this->order_items);
+            $this->recalculateAmounts();
 
-        $this->alert('success', 'Item removed from cart!', [
-            'position' => 'bottom-end',
-            'timer' => 2000,
-            'toast' => true,
-            'timerProgressBar' => true,
-        ]);
+            $this->dispatch('update-cart-count', total_count: count($this->order_items))->to(Navbar::class);
+            $this->dispatch('cartUpdated');
+
+            $this->is_loading = false;
+
+            $this->alert('success', 'Item removed from cart!', [
+                'position' => 'bottom-end',
+                'timer' => 2000,
+                'toast' => true,
+                'timerProgressBar' => true,
+            ]);
+
+        } catch (\Exception $e) {
+            $this->is_loading = false;
+            Log::error('Cart item removal error', [
+                'error' => $e->getMessage(),
+                'server_plan_id' => $server_plan_id,
+                'ip' => request()->ip()
+            ]);
+            
+            $this->alert('error', 'Failed to remove item. Please try again.', [
+                'position' => 'bottom-end',
+                'timer' => 3000,
+                'toast' => true,
+            ]);
+        }
     }
 
     public function increaseQty($server_plan_id)
@@ -163,14 +198,45 @@ class CartPage extends Component
 
     public function updateQuantity($server_plan_id, $quantity)
     {
-        if ($quantity <= 0) {
-            $this->removeItem($server_plan_id);
-            return;
-        }
+        try {
+            $this->is_updating_quantity = true;
 
-        $this->order_items = CartManagement::updateItemQuantity($server_plan_id, $quantity);
-        $this->grand_amount = CartManagement::calculateGrandTotal($this->order_items);
-        $this->recalculateAmounts();
+            // Rate limiting for quantity updates
+            $key = 'cart_update.' . request()->ip();
+            if (RateLimiter::tooManyAttempts($key, 10)) {
+                $seconds = RateLimiter::availableAt($key) - time();
+                throw new \Exception("Too many cart updates. Please try again in {$seconds} seconds.");
+            }
+
+            RateLimiter::hit($key, 60); // 1-minute window
+
+            if ($quantity <= 0) {
+                $this->removeItem($server_plan_id);
+                $this->is_updating_quantity = false;
+                return;
+            }
+
+            $this->order_items = CartManagement::updateItemQuantity($server_plan_id, $quantity);
+            $this->grand_amount = CartManagement::calculateGrandTotal($this->order_items);
+            $this->recalculateAmounts();
+
+            $this->is_updating_quantity = false;
+
+        } catch (\Exception $e) {
+            $this->is_updating_quantity = false;
+            Log::error('Cart quantity update error', [
+                'error' => $e->getMessage(),
+                'server_plan_id' => $server_plan_id,
+                'quantity' => $quantity,
+                'ip' => request()->ip()
+            ]);
+            
+            $this->alert('error', 'Failed to update quantity. Please try again.', [
+                'position' => 'bottom-end',
+                'timer' => 3000,
+                'toast' => true,
+            ]);
+        }
     }
     public function saveForLater($server_plan_id)
     {
@@ -231,26 +297,64 @@ class CartPage extends Component
 
     public function applyCouponCode()
     {
-        if (empty($this->coupon_code)) {
-            $this->alert('error', 'Please enter a coupon code');
-            return;
-        }
+        $this->is_applying_coupon = true;
 
-        // Validate coupon code (this would integrate with a coupons system)
-        $discount = $this->validateAndCalculateDiscount($this->coupon_code);
+        try {
+            // Rate limiting for coupon applications
+            $key = 'coupon_apply.' . request()->ip();
+            if (RateLimiter::tooManyAttempts($key, 5)) {
+                $seconds = RateLimiter::availableAt($key) - time();
+                throw ValidationException::withMessages([
+                    'coupon_code' => ["Too many coupon attempts. Please try again in {$seconds} seconds."],
+                ]);
+            }
 
-        if ($discount > 0) {
-            $this->discount_amount = $discount;
-            $this->applied_coupon = $this->coupon_code;
-            $this->show_coupon_form = false;
+            if (empty($this->coupon_code)) {
+                $this->alert('error', 'Please enter a coupon code');
+                $this->is_applying_coupon = false;
+                return;
+            }
 
-            $this->alert('success', "Coupon applied! You saved $" . number_format($discount, 2), [
+            // Validate coupon code
+            $discount = $this->validateAndCalculateDiscount($this->coupon_code);
+
+            if ($discount > 0) {
+                $this->discount_amount = $discount;
+                $this->applied_coupon = $this->coupon_code;
+                $this->show_coupon_form = false;
+
+                // Clear rate limit on success
+                RateLimiter::clear($key);
+
+                $this->alert('success', "Coupon applied! You saved $" . number_format($discount, 2), [
+                    'position' => 'top-end',
+                    'timer' => 3000,
+                    'toast' => true,
+                ]);
+            } else {
+                RateLimiter::hit($key, 300); // 5-minute window
+                
+                $this->alert('error', 'Invalid coupon code');
+            }
+
+            $this->is_applying_coupon = false;
+
+        } catch (ValidationException $e) {
+            $this->is_applying_coupon = false;
+            throw $e;
+        } catch (\Exception $e) {
+            $this->is_applying_coupon = false;
+            Log::error('Coupon application error', [
+                'error' => $e->getMessage(),
+                'coupon_code' => $this->coupon_code,
+                'ip' => request()->ip()
+            ]);
+            
+            $this->alert('error', 'Failed to apply coupon. Please try again.', [
                 'position' => 'top-end',
                 'timer' => 3000,
                 'toast' => true,
             ]);
-        } else {
-            $this->alert('error', 'Invalid coupon code');
         }
     }
 
@@ -294,19 +398,38 @@ class CartPage extends Component
 
     public function clearCart()
     {
-        CartManagement::clearCartItems();
-        $this->order_items = [];
-        $this->grand_amount = 0;
-        $this->recalculateAmounts();
+        try {
+            $this->is_loading = true;
 
-        $this->dispatch('update-cart-count', total_count: 0)->to(Navbar::class);
-        $this->dispatch('cartUpdated');
+            CartManagement::clearCartItems();
+            $this->order_items = [];
+            $this->grand_amount = 0;
+            $this->recalculateAmounts();
 
-        $this->alert('info', 'Cart cleared!', [
-            'position' => 'bottom-end',
-            'timer' => 2000,
-            'toast' => true,
-        ]);
+            $this->dispatch('update-cart-count', total_count: 0)->to(Navbar::class);
+            $this->dispatch('cartUpdated');
+
+            $this->is_loading = false;
+
+            $this->alert('info', 'Cart cleared!', [
+                'position' => 'bottom-end',
+                'timer' => 2000,
+                'toast' => true,
+            ]);
+
+        } catch (\Exception $e) {
+            $this->is_loading = false;
+            Log::error('Cart clear error', [
+                'error' => $e->getMessage(),
+                'ip' => request()->ip()
+            ]);
+            
+            $this->alert('error', 'Failed to clear cart. Please try again.', [
+                'position' => 'bottom-end',
+                'timer' => 3000,
+                'toast' => true,
+            ]);
+        }
     }
 
     public function addRecommendedToCart($planId)

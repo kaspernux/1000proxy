@@ -9,20 +9,30 @@ use App\Models\ServerBrand;
 use App\Models\ServerCategory;
 use App\Models\ServerPlan;
 use App\Models\Order;
-use App\Models\User;
+use App\Models\Customer;
 use App\Services\XUIService;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\RateLimiter;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Validation\ValidationException;
+use Jantinnerezo\LivewireAlert\LivewireAlert;
 
 #[Title('Home - Premium VPN & Proxy Solutions | 1000 PROXIES')]
 
 class HomePage extends Component
 {
+    use LivewireAlert;
+
     public $searchTerm = '';
     public $selectedCategory = '';
     public $selectedBrand = '';
     public bool $showStats = true;
     public bool $showFeaturedPlans = true;
+
+    // Loading states
+    public $is_loading = false;
+    public $is_searching = false;
 
     // Data properties
     public $brands;
@@ -34,6 +44,15 @@ class HomePage extends Component
         'cartUpdated' => '$refresh',
         'userRegistered' => 'handleUserRegistered'
     ];
+
+    protected function rules()
+    {
+        return [
+            'searchTerm' => 'nullable|string|max:255',
+            'selectedCategory' => 'nullable|string|max:255',
+            'selectedBrand' => 'nullable|string|max:255',
+        ];
+    }
 
     public function mount()
     {
@@ -90,7 +109,7 @@ class HomePage extends Component
     {
         return Cache::remember('homepage.platform_stats', 3600, function() {
             return [
-                'total_users' => User::where('role', 'customer')->count(),
+                'total_users' => Customer::count(),
                 'total_orders' => Order::whereIn('order_status', ['completed', 'processing'])->count(),
                 'active_servers' => ServerPlan::where('is_active', true)->count(),
                 'countries_count' => ServerPlan::where('server_plans.is_active', true)
@@ -123,7 +142,40 @@ class HomePage extends Component
 
     public function searchPlans()
     {
-        $this->redirectToProducts();
+        $this->is_searching = true;
+
+        try {
+            // Rate limiting for searches
+            $key = 'search_plans.' . request()->ip();
+            if (RateLimiter::tooManyAttempts($key, 10)) {
+                $seconds = RateLimiter::availableAt($key) - time();
+                throw new \Exception("Too many search attempts. Please try again in {$seconds} seconds.");
+            }
+
+            $this->validate(['searchTerm' => 'nullable|string|max:255']);
+
+            RateLimiter::hit($key, 60); // 1-minute window
+
+            $this->redirectToProducts();
+            $this->is_searching = false;
+
+        } catch (ValidationException $e) {
+            $this->is_searching = false;
+            throw $e;
+        } catch (\Exception $e) {
+            $this->is_searching = false;
+            Log::error('Search plans error', [
+                'error' => $e->getMessage(),
+                'search_term' => $this->searchTerm,
+                'ip' => request()->ip()
+            ]);
+            
+            $this->alert('error', 'Search failed. Please try again.', [
+                'position' => 'bottom-end',
+                'timer' => 3000,
+                'toast' => true,
+            ]);
+        }
     }
 
     private function redirectToProducts()
@@ -142,28 +194,61 @@ class HomePage extends Component
 
     public function addToCart($planId)
     {
-        $plan = ServerPlan::findOrFail($planId);
+        try {
+            // Rate limiting for cart additions
+            $key = 'add_to_cart_home.' . request()->ip();
+            if (RateLimiter::tooManyAttempts($key, 15)) {
+                $seconds = RateLimiter::availableAt($key) - time();
+                throw new \Exception("Too many cart additions. Please try again in {$seconds} seconds.");
+            }
 
-        if (!$plan->is_active) {
-            $this->dispatch('toast', [
-                'type' => 'error',
-                'message' => 'This plan is currently unavailable.'
+            $plan = ServerPlan::findOrFail($planId);
+
+            if (!$plan->is_active) {
+                $this->alert('error', 'This plan is currently unavailable.', [
+                    'position' => 'bottom-end',
+                    'timer' => 3000,
+                    'toast' => true,
+                ]);
+                return;
+            }
+
+            RateLimiter::hit($key, 60); // 1-minute window
+
+            // Add to cart logic here
+            session()->push('cart.items', [
+                'plan_id' => $planId,
+                'quantity' => 1,
+                'added_at' => now(),
             ]);
-            return;
+
+            $this->dispatch('cartUpdated');
+            $this->alert('success', 'Plan added to cart successfully!', [
+                'position' => 'bottom-end',
+                'timer' => 3000,
+                'toast' => true,
+            ]);
+
+            // Security logging
+            Log::info('Plan added to cart from homepage', [
+                'plan_id' => $planId,
+                'plan_name' => $plan->name,
+                'ip' => request()->ip(),
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Add to cart error from homepage', [
+                'error' => $e->getMessage(),
+                'plan_id' => $planId,
+                'ip' => request()->ip()
+            ]);
+            
+            $this->alert('error', 'Failed to add plan to cart. Please try again.', [
+                'position' => 'bottom-end',
+                'timer' => 3000,
+                'toast' => true,
+            ]);
         }
-
-        // Add to cart logic here
-        session()->push('cart.items', [
-            'plan_id' => $planId,
-            'quantity' => 1,
-            'added_at' => now(),
-        ]);
-
-        $this->dispatch('cartUpdated');
-        $this->dispatch('toast', [
-            'type' => 'success',
-            'message' => 'Plan added to cart successfully!'
-        ]);
     }
 
     public function handleUserRegistered($userId)

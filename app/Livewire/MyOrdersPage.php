@@ -9,6 +9,9 @@ use Livewire\WithPagination;
 use Livewire\Attributes\Url;
 use Livewire\Attributes\Title;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\RateLimiter;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Validation\ValidationException;
 use Jantinnerezo\LivewireAlert\LivewireAlert;
 use App\Services\XUIService;
 
@@ -26,6 +29,11 @@ class MyOrdersPage extends Component
 
     #[Url]
     public $searchTerm = '';
+
+    // Loading states
+    public $is_loading = false;
+    public $is_processing_bulk = false;
+    public $is_cancelling = false;
 
     public $selectedOrders = [];
     public $showFilters = false;
@@ -46,6 +54,22 @@ class MyOrdersPage extends Component
         'searchTerm' => ['except' => ''],
         'sortBy' => ['except' => 'latest'],
     ];
+
+    protected function rules()
+    {
+        return [
+            'searchTerm' => 'nullable|string|max:255',
+            'cancellationReason' => 'required_with:orderToCancel|string|max:500',
+        ];
+    }
+
+    public function mount()
+    {
+        // Check authentication
+        if (!Auth::guard('customer')->check()) {
+            return redirect('/login');
+        }
+    }
 
     // Advanced order status options
     public function getStatusOptions()
@@ -171,35 +195,83 @@ class MyOrdersPage extends Component
 
     public function cancelOrder()
     {
-        if (!$this->orderToCancel || !$this->cancellationReason) {
-            $this->alert('error', 'Please provide a cancellation reason.', [
+        $this->is_cancelling = true;
+
+        try {
+            // Rate limiting for order cancellations
+            $key = 'order_cancel.' . Auth::guard('customer')->id();
+            if (RateLimiter::tooManyAttempts($key, 3)) {
+                $seconds = RateLimiter::availableAt($key) - time();
+                throw ValidationException::withMessages([
+                    'cancellationReason' => ["Too many cancellation attempts. Please try again in {$seconds} seconds."],
+                ]);
+            }
+
+            if (!$this->orderToCancel || !$this->cancellationReason) {
+                $this->alert('error', 'Please provide a cancellation reason.', [
+                    'position' => 'bottom-end',
+                    'timer' => 3000,
+                    'toast' => true,
+                ]);
+                $this->is_cancelling = false;
+                return;
+            }
+
+            $this->validate(['cancellationReason' => 'required|string|max:500']);
+
+            RateLimiter::hit($key, 1800); // 30-minute window
+
+            $order = Order::where('id', $this->orderToCancel)
+                         ->where('customer_id', Auth::guard('customer')->id())
+                         ->whereIn('status', ['pending', 'processing'])
+                         ->firstOrFail();
+
+            $order->update([
+                'status' => 'cancelled',
+                'cancellation_reason' => $this->cancellationReason,
+                'cancelled_at' => now(),
+            ]);
+
+            // Clear rate limit on success
+            RateLimiter::clear($key);
+
+            $this->showCancelModal = false;
+            $this->orderToCancel = null;
+            $this->cancellationReason = '';
+            $this->is_cancelling = false;
+
+            // Security logging
+            Log::info('Order cancelled by customer', [
+                'order_id' => $order->id,
+                'customer_id' => Auth::guard('customer')->id(),
+                'reason' => $this->cancellationReason,
+                'ip' => request()->ip(),
+            ]);
+
+            $this->alert('success', 'Order cancelled successfully!', [
                 'position' => 'bottom-end',
                 'timer' => 3000,
                 'toast' => true,
             ]);
-            return;
+
+        } catch (ValidationException $e) {
+            $this->is_cancelling = false;
+            throw $e;
+        } catch (\Exception $e) {
+            $this->is_cancelling = false;
+            Log::error('Order cancellation error', [
+                'error' => $e->getMessage(),
+                'order_id' => $this->orderToCancel,
+                'customer_id' => Auth::guard('customer')->id(),
+                'ip' => request()->ip()
+            ]);
+            
+            $this->alert('error', 'Failed to cancel order. Please try again.', [
+                'position' => 'bottom-end',
+                'timer' => 3000,
+                'toast' => true,
+            ]);
         }
-
-        $order = Order::where('id', $this->orderToCancel)
-                     ->where('customer_id', Auth::guard('customer')->id())
-                     ->whereIn('status', ['pending', 'processing'])
-                     ->firstOrFail();
-
-        $order->update([
-            'status' => 'cancelled',
-            'cancellation_reason' => $this->cancellationReason,
-            'cancelled_at' => now(),
-        ]);
-
-        $this->showCancelModal = false;
-        $this->orderToCancel = null;
-        $this->cancellationReason = '';
-
-        $this->alert('success', 'Order cancelled successfully!', [
-            'position' => 'bottom-end',
-            'timer' => 3000,
-            'toast' => true,
-        ]);
     }
 
     // Bulk actions
@@ -214,30 +286,61 @@ class MyOrdersPage extends Component
 
     public function executeBulkAction()
     {
-        if (empty($this->selectedOrders) || !$this->bulkAction) {
-            $this->alert('error', 'Please select orders and action.', [
+        $this->is_processing_bulk = true;
+
+        try {
+            if (empty($this->selectedOrders) || !$this->bulkAction) {
+                $this->alert('error', 'Please select orders and action.', [
+                    'position' => 'bottom-end',
+                    'timer' => 3000,
+                    'toast' => true,
+                ]);
+                $this->is_processing_bulk = false;
+                return;
+            }
+
+            // Rate limiting for bulk actions
+            $key = 'bulk_order_action.' . Auth::guard('customer')->id();
+            if (RateLimiter::tooManyAttempts($key, 5)) {
+                $seconds = RateLimiter::availableAt($key) - time();
+                throw new \Exception("Too many bulk actions. Please try again in {$seconds} seconds.");
+            }
+
+            RateLimiter::hit($key, 600); // 10-minute window
+
+            switch ($this->bulkAction) {
+                case 'download_invoices':
+                    $this->bulkDownloadInvoices();
+                    break;
+                case 'cancel_orders':
+                    $this->bulkCancelOrders();
+                    break;
+                case 'mark_received':
+                    $this->bulkMarkReceived();
+                    break;
+            }
+
+            RateLimiter::clear($key);
+            $this->selectedOrders = [];
+            $this->bulkAction = '';
+            $this->selectAll = false;
+            $this->is_processing_bulk = false;
+
+        } catch (\Exception $e) {
+            $this->is_processing_bulk = false;
+            Log::error('Bulk order action error', [
+                'error' => $e->getMessage(),
+                'action' => $this->bulkAction,
+                'customer_id' => Auth::guard('customer')->id(),
+                'ip' => request()->ip()
+            ]);
+            
+            $this->alert('error', 'Failed to execute bulk action. Please try again.', [
                 'position' => 'bottom-end',
                 'timer' => 3000,
                 'toast' => true,
             ]);
-            return;
         }
-
-        switch ($this->bulkAction) {
-            case 'download_invoices':
-                $this->bulkDownloadInvoices();
-                break;
-            case 'cancel_orders':
-                $this->bulkCancelOrders();
-                break;
-            case 'mark_received':
-                $this->bulkMarkReceived();
-                break;
-        }
-
-        $this->selectedOrders = [];
-        $this->bulkAction = '';
-        $this->selectAll = false;
     }
 
     private function bulkDownloadInvoices()

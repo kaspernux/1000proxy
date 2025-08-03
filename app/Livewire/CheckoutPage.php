@@ -6,7 +6,6 @@ use Livewire\Component;
 use Livewire\Attributes\Title;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\On;
-use Livewire\Attributes\Rule;
 use App\Models\Order;
 use App\Models\ServerPlan;
 use App\Helpers\CartManagement;
@@ -15,6 +14,9 @@ use App\Services\PaymentGateways\PayPalPaymentService;
 use App\Services\PaymentGateways\CryptoPaymentService;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\RateLimiter;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Validation\ValidationException;
 use Jantinnerezo\LivewireAlert\LivewireAlert;
 
 #[Title('Checkout - Complete Your Order | 1000 PROXIES')]
@@ -26,36 +28,24 @@ class CheckoutPage extends Component
     public $currentStep = 1; // 1: Cart Review, 2: Billing Info, 3: Payment, 4: Confirmation
     public $totalSteps = 4;
 
+    // Loading states
+    public $is_loading = false;
+    public $is_processing = false;
+    public $is_applying_coupon = false;
+
     // Cart data
     public $cart_items = [];
     public $order_summary = [];
 
     // Billing information
-    #[Rule('required|string|max:255')]
     public $first_name = '';
-
-    #[Rule('required|string|max:255')]
     public $last_name = '';
-
-    #[Rule('required|email|max:255')]
     public $email = '';
-
-    #[Rule('required|string|max:20')]
     public $phone = '';
-
-    #[Rule('required|string|max:255')]
     public $company = '';
-
-    #[Rule('required|string|max:255')]
     public $address = '';
-
-    #[Rule('required|string|max:255')]
     public $city = '';
-
-    #[Rule('required|string|max:10')]
     public $postal_code = '';
-
-    #[Rule('required|string|max:255')]
     public $country = '';
 
     // Payment information
@@ -65,7 +55,6 @@ class CheckoutPage extends Component
     public $subscribe_newsletter = true;
 
     // Processing states
-    public $is_processing = false;
     public $order_created = null;
     public $payment_intent = null;
     public $error_message = '';
@@ -81,8 +70,30 @@ class CheckoutPage extends Component
         'paymentFailed' => 'handlePaymentFailed'
     ];
 
+    protected function rules()
+    {
+        return [
+            'first_name' => 'required|string|max:255|min:2',
+            'last_name' => 'required|string|max:255|min:2',
+            'email' => 'required|email|max:255',
+            'phone' => 'required|string|max:20',
+            'company' => 'nullable|string|max:255',
+            'address' => 'required|string|max:255',
+            'city' => 'required|string|max:255',
+            'postal_code' => 'required|string|max:10',
+            'country' => 'required|string|max:255',
+            'agree_to_terms' => 'accepted',
+            'coupon_code' => 'nullable|string|max:50',
+        ];
+    }
+
     public function mount()
     {
+        // Check authentication
+        if (!Auth::guard('customer')->check()) {
+            return redirect('/login');
+        }
+
         // Redirect if cart is empty
         $this->cart_items = CartManagement::getCartItemsFromCookie();
 
@@ -162,15 +173,41 @@ class CheckoutPage extends Component
 
     public function nextStep()
     {
-        if ($this->currentStep < $this->totalSteps) {
+        $this->is_loading = true;
 
-            // Validate current step before proceeding
-            if ($this->validateCurrentStep()) {
-                $this->currentStep++;
+        try {
+            if ($this->currentStep < $this->totalSteps) {
+                // Validate current step before proceeding
+                if ($this->validateCurrentStep()) {
+                    $this->currentStep++;
 
-                // Perform step-specific actions
-                $this->handleStepTransition();
+                    // Perform step-specific actions
+                    $this->handleStepTransition();
+                    $this->is_loading = false;
+                } else {
+                    $this->is_loading = false;
+                }
+            } else {
+                $this->is_loading = false;
             }
+
+        } catch (ValidationException $e) {
+            $this->is_loading = false;
+            throw $e;
+        } catch (\Exception $e) {
+            $this->is_loading = false;
+            Log::error('Checkout step navigation error', [
+                'error' => $e->getMessage(),
+                'customer_id' => Auth::guard('customer')->id(),
+                'step' => $this->currentStep,
+                'ip' => request()->ip()
+            ]);
+            
+            $this->alert('error', 'An error occurred. Please try again.', [
+                'position' => 'top-end',
+                'timer' => 3000,
+                'toast' => true,
+            ]);
         }
     }
 
@@ -202,8 +239,8 @@ class CheckoutPage extends Component
     {
         try {
             $this->validate([
-                'first_name' => 'required|string|max:255',
-                'last_name' => 'required|string|max:255',
+                'first_name' => 'required|string|max:255|min:2',
+                'last_name' => 'required|string|max:255|min:2',
                 'email' => 'required|email|max:255',
                 'phone' => 'required|string|max:20',
                 'address' => 'required|string|max:255',
@@ -212,6 +249,8 @@ class CheckoutPage extends Component
                 'country' => 'required|string|max:255',
             ]);
             return true;
+        } catch (ValidationException $e) {
+            throw $e;
         } catch (\Exception $e) {
             return false;
         }
@@ -255,26 +294,65 @@ class CheckoutPage extends Component
 
     public function applyCoupon()
     {
-        if (empty($this->coupon_code)) {
-            $this->alert('error', 'Please enter a coupon code');
-            return;
-        }
+        $this->is_applying_coupon = true;
 
-        // Validate coupon
-        $discount = $this->validateCoupon($this->coupon_code);
+        try {
+            // Rate limiting
+            $key = 'coupon_apply.' . Auth::guard('customer')->id();
+            if (RateLimiter::tooManyAttempts($key, 5)) {
+                $seconds = RateLimiter::availableAt($key) - time();
+                throw ValidationException::withMessages([
+                    'coupon_code' => ["Too many coupon attempts. Please try again in {$seconds} seconds."],
+                ]);
+            }
 
-        if ($discount > 0) {
-            $this->discount_amount = $discount;
-            $this->applied_coupon = $this->coupon_code;
-            $this->calculateOrderSummary();
+            if (empty($this->coupon_code)) {
+                $this->alert('error', 'Please enter a coupon code');
+                $this->is_applying_coupon = false;
+                return;
+            }
 
-            $this->alert('success', "Coupon applied! You saved $" . number_format($discount, 2), [
-                'position' => 'top-end',
-                'timer' => 3000,
-                'toast' => true,
+            // Validate coupon
+            $discount = $this->validateCoupon($this->coupon_code);
+
+            if ($discount > 0) {
+                $this->discount_amount = $discount;
+                $this->applied_coupon = $this->coupon_code;
+                $this->calculateOrderSummary();
+
+                // Clear rate limit on success
+                RateLimiter::clear($key);
+
+                $this->alert('success', "Coupon applied! You saved $" . number_format($discount, 2), [
+                    'position' => 'top-end',
+                    'timer' => 3000,
+                    'toast' => true,
+                ]);
+            } else {
+                RateLimiter::hit($key, 300);
+                
+                $this->alert('error', 'Invalid or expired coupon code', [
+                    'position' => 'top-end',
+                    'timer' => 3000,
+                    'toast' => true,
+                ]);
+            }
+
+            $this->is_applying_coupon = false;
+
+        } catch (ValidationException $e) {
+            $this->is_applying_coupon = false;
+            throw $e;
+        } catch (\Exception $e) {
+            $this->is_applying_coupon = false;
+            Log::error('Coupon application error', [
+                'error' => $e->getMessage(),
+                'customer_id' => Auth::guard('customer')->id(),
+                'coupon_code' => $this->coupon_code,
+                'ip' => request()->ip()
             ]);
-        } else {
-            $this->alert('error', 'Invalid or expired coupon code', [
+            
+            $this->alert('error', 'Failed to apply coupon. Please try again.', [
                 'position' => 'top-end',
                 'timer' => 3000,
                 'toast' => true,
@@ -323,6 +401,15 @@ class CheckoutPage extends Component
         $this->is_processing = true;
 
         try {
+            // Rate limiting for order processing
+            $key = 'order_process.' . Auth::guard('customer')->id();
+            if (RateLimiter::tooManyAttempts($key, 3)) {
+                $seconds = RateLimiter::availableAt($key) - time();
+                throw new \Exception("Too many order attempts. Please try again in {$seconds} seconds.");
+            }
+
+            RateLimiter::hit($key, 600); // 10-minute window
+
             DB::beginTransaction();
 
             // Create order
@@ -349,7 +436,19 @@ class CheckoutPage extends Component
 
                 DB::commit();
 
+                // Clear rate limit on success
+                RateLimiter::clear($key);
+
                 $this->currentStep = 4; // Confirmation step
+
+                // Security logging
+                Log::info('Order completed successfully', [
+                    'order_id' => $order->id,
+                    'customer_id' => Auth::guard('customer')->id(),
+                    'amount' => $order->total_amount,
+                    'payment_method' => $this->payment_method,
+                    'ip' => request()->ip(),
+                ]);
 
                 $this->alert('success', 'Order completed successfully!', [
                     'position' => 'center',
@@ -364,6 +463,14 @@ class CheckoutPage extends Component
         } catch (\Exception $e) {
             DB::rollBack();
             $this->error_message = $e->getMessage();
+
+            Log::error('Order processing failed', [
+                'error' => $e->getMessage(),
+                'customer_id' => Auth::guard('customer')->id(),
+                'cart_items' => $this->cart_items,
+                'payment_method' => $this->payment_method,
+                'ip' => request()->ip()
+            ]);
 
             $this->alert('error', 'Order processing failed: ' . $e->getMessage(), [
                 'position' => 'top-end',

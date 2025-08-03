@@ -5,7 +5,6 @@ namespace App\Livewire\Auth;
 use Filament\Panel;
 use Livewire\Component;
 use Livewire\Attributes\Title;
-use Livewire\Attributes\Rule;
 use Livewire\Attributes\On;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\RateLimiter;
@@ -13,47 +12,42 @@ use Illuminate\Support\Facades\Session;
 use Illuminate\Validation\ValidationException;
 use Jantinnerezo\LivewireAlert\LivewireAlert;
 
-#[Title('Sign In - 1000 PROXIES')]
+    #[Title('Sign In - 1000 PROXIES')]
 class LoginPage extends Component
 {
     use LivewireAlert;
 
-    #[Rule('required|email|max:255')]
     public $email = '';
-
-    #[Rule('required|min:6|max:255')]
     public $password = '';
 
     public $remember = false;
     public $show_password = false;
     public $is_loading = false;
-    public $redirect_after_login = '/';
+    public $redirect_after_login = '/servers';
 
     // Security features
     public $captcha_required = false;
     public $login_attempts = 0;
     public $blocked_until = null;
 
-    protected $listeners = [
+    protected function rules()
+    {
+        return [
+            'email' => 'required|email|max:255',
+            'password' => 'required|min:6|max:255',
+        ];
+    }    protected $listeners = [
         'socialLoginSuccess' => 'handleSocialLogin',
         'captchaVerified' => 'proceedWithLogin'
     ];
 
     public function mount()
     {
-        // Check if user is already authenticated
-        if (Auth::guard('web')->check()) {
-            return redirect('/admin');
-        }
-
+        // Only check customer guard
         if (Auth::guard('customer')->check()) {
-            return redirect('/customer');
+            return redirect()->route('filament.customer.pages.dashboard');
         }
-
-        // Get intended redirect URL
-        $this->redirect_after_login = session()->get('url.intended', '/');
-
-        // Check rate limiting
+        $this->redirect_after_login = session()->get('url.intended', '/servers');
         $this->checkRateLimit();
     }
 
@@ -93,60 +87,39 @@ class LoginPage extends Component
             // Record login attempt
             RateLimiter::hit($key, 300); // 5 minute window
 
-            // If the email exists in the staff (User) table, redirect to /admin/login
-            if (\App\Models\User::where('email', $this->email)->exists()) {
-                $this->alert('info', 'Staff accounts must log in via the admin panel.', [
-                    'position' => 'top-end',
-                    'timer' => 4000,
-                    'toast' => true,
-                ]);
-                return redirect('/admin/login');
-            }
-
-            // Attempt to authenticate as Customer only
+            // Only allow customer login
             if (Auth::guard('customer')->attempt(
                 ['email' => $this->email, 'password' => $this->password],
                 $this->remember
             )) {
-                // Clear rate limit on successful login
                 RateLimiter::clear($key);
-
-                // Regenerate session
                 request()->session()->regenerate();
-
-                // Store customer login info
                 session()->put('customer_last_login', now());
-
-                $this->alert('success', 'Welcome back! Redirecting to your dashboard...', [
-                    'position' => 'top-end',
-                    'timer' => 2000,
-                    'toast' => true,
-                ]);
-
-                // Use Livewire event to trigger JS redirect to Filament customer dashboard
-                $this->dispatch('redirectToFilamentCustomerPanel');
-                return;
+                
+                $this->is_loading = false;
+                
+                // Direct redirect without alerts
+                return redirect('/servers');
             }
 
             // If authentication attempt fails
+            \Log::warning('Login failed - invalid credentials', ['email' => $this->email]);
             throw ValidationException::withMessages([
                 'email' => ['These credentials do not match our records.'],
             ]);
 
         } catch (ValidationException $e) {
             $this->is_loading = false;
-
-            // Show error alert
-            $this->alert('error', 'Login failed. Please check your credentials.', [
-                'position' => 'top-end',
-                'timer' => 3000,
-                'toast' => true,
-            ]);
-
+            
             // Update rate limiting status
             $this->checkRateLimit();
 
             throw $e;
+        } catch (\Exception $e) {
+            $this->is_loading = false;
+            \Log::error('Login error', ['error' => $e->getMessage(), 'email' => $this->email]);
+            
+            $this->addError('email', 'An error occurred during login. Please try again.');
         }
     }
 
@@ -199,7 +172,6 @@ class LoginPage extends Component
         return view('livewire.auth.login-page', [
             'rate_limited' => $this->blocked_until && $this->blocked_until > time(),
             'attempts_remaining' => max(0, 5 - $this->login_attempts),
-            'filament_customer_dashboard_url' => route('filament.customer.pages.dashboard'),
         ]);
     }
 }

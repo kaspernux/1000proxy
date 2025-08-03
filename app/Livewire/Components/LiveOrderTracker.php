@@ -5,9 +5,11 @@ namespace App\Livewire\Components;
 use Livewire\Component;
 use Livewire\Attributes\On;
 use App\Models\Order;
-use App\Models\User;
+use App\Models\Customer;
 use App\Services\PaymentService;
 use App\Services\XUIService;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log;
 use Carbon\Carbon;
 
 class LiveOrderTracker extends Component
@@ -103,9 +105,9 @@ class LiveOrderTracker extends Component
         $this->isLoading = true;
         
         try {
-            $query = Order::with(['user', 'orderItems.serverPlan', 'payment'])
+            $query = Order::with(['customer', 'orderItems.serverPlan', 'payment'])
                 ->select([
-                    'id', 'user_id', 'status', 'total_amount', 'currency', 
+                    'id', 'customer_id', 'status', 'total_amount', 'currency', 
                     'payment_method', 'payment_status', 'created_at', 'updated_at',
                     'processing_started_at', 'completed_at', 'notes'
                 ]);
@@ -279,7 +281,7 @@ class LiveOrderTracker extends Component
                         'order_id' => $order->id,
                         'order_item_id' => $item->id,
                         'server_plan_id' => $serverPlan->id,
-                        'user_id' => $order->user_id,
+                        'customer_id' => $order->customer_id,
                         'client_uuid' => $clientData['uuid'],
                         'client_email' => $clientData['email'],
                         'inbound_id' => $serverPlan->inbound_id,

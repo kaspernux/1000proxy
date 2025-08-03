@@ -3,8 +3,8 @@
 namespace App\Livewire\Components;
 
 use Livewire\Component;
+use App\Models\Customer;
 use App\Models\Order;
-use App\Models\User;
 use App\Services\PaymentGateways\StripePaymentService;
 use App\Services\PaymentGateways\PayPalPaymentService;
 use Livewire\Attributes\On;
@@ -19,7 +19,7 @@ class PaymentProcessor extends Component
     public $order;
 
     #[Reactive]
-    public $user;
+    public $customer;
 
     public $selectedGateway = 'wallet';
     public $paymentAmount = 0;
@@ -59,10 +59,10 @@ class PaymentProcessor extends Component
         'cardholderName' => 'required_if:selectedGateway,stripe|string|min:2|max:100',
     ];
 
-    public function mount(Order $order = null, User $user = null)
+    public function mount(Order $order = null, Customer $customer = null)
     {
         $this->order = $order;
-        $this->user = $user ?? \Illuminate\Support\Facades\Auth::guard('customer')->user();
+        $this->customer = $customer ?? \Illuminate\Support\Facades\Auth::guard('customer')->user();
         $this->paymentAmount = $order ? $order->total_amount : 0;
         $this->loadWalletBalance();
     }

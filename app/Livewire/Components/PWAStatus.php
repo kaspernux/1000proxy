@@ -270,11 +270,11 @@ class PWAStatus extends Component
     }
 
     /**
-     * Check if admin user
+     * Check if customer is authenticated
      */
-    public function getIsAdminProperty(): bool
+    public function getIsAuthenticatedProperty(): bool
     {
-        return Auth::check() && optional(Auth::user())->hasRole('admin');
+        return Auth::guard('customer')->check();
     }
 
     /**
