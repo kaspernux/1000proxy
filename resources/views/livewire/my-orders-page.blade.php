@@ -1,6 +1,3 @@
-@extends('layouts.app')
-
-@section('content')
 <main class="min-h-screen bg-gradient-to-b from-green-50 via-white to-green-100 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 py-10 px-2 sm:px-6 lg:px-8">
     <section class="w-full max-w-7xl mx-auto">
         {{-- Header Section --}}
@@ -325,4 +322,3 @@
         @endif
     </section>
 </main>
-@endsection

@@ -1,7 +1,3 @@
-@extends('layouts.app')
-
-@section('content')
-
 <section class="min-h-screen flex items-center justify-center bg-gradient-to-br from-green-900 via-green-700 to-green-600 px-4 py-12">
     <div x-data="{ countdown: 5 }"
          x-init="
@@ -42,4 +38,3 @@
         </article>
     </div>
 </section>
-@endsection

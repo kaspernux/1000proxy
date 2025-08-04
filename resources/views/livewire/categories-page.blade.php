@@ -1,23 +1,67 @@
-@extends('layouts.app')
-
-@section('content')
 <main class="min-h-screen bg-gradient-to-br from-green-900 via-green-800 to-green-600 py-12 px-4 sm:px-6 lg:px-8">
-    <!-- Hero Section -->
-    <div class="max-w-7xl mx-auto text-center mb-16">
-        <div class="relative">
-            <h1 class="text-5xl md:text-7xl font-bold text-white mb-6">
-                <span class="bg-gradient-to-r from-yellow-400 to-yellow-200 bg-clip-text text-transparent">
-                    Proxy Categories
-                </span>
-            </h1>
-            <p class="text-xl md:text-2xl text-green-100 max-w-3xl mx-auto leading-relaxed">
-                Choose from our carefully curated selection of premium proxy services, 
-                each category designed for specific use cases and performance requirements.
-            </p>
+    <!-- Enhanced Hero Section -->
+    <div class="max-w-7xl mx-auto mb-12">
+        <div class="relative bg-white/5 backdrop-blur-lg rounded-3xl p-8 md:p-12 border border-white/10 shadow-2xl overflow-hidden">
+            <!-- Background Pattern -->
+            <div class="absolute inset-0 opacity-5">
+                <svg class="w-full h-full" viewBox="0 0 100 100" fill="none">
+                    <defs>
+                        <pattern id="grid" width="10" height="10" patternUnits="userSpaceOnUse">
+                            <path d="M 10 0 L 0 0 0 10" fill="none" stroke="currentColor" stroke-width="0.5"/>
+                        </pattern>
+                    </defs>
+                    <rect width="100" height="100" fill="url(#grid)" />
+                </svg>
+            </div>
             
-            <!-- Floating Elements -->
-            <div class="absolute -top-4 -left-4 w-24 h-24 bg-yellow-400/20 rounded-full blur-xl animate-pulse"></div>
-            <div class="absolute -bottom-4 -right-4 w-32 h-32 bg-green-400/20 rounded-full blur-xl animate-pulse" style="animation-delay: 1s;"></div>
+            <!-- Floating Gradient Orbs -->
+            <div class="absolute top-0 left-0 w-32 h-32 bg-gradient-to-br from-yellow-400/30 to-orange-500/30 rounded-full blur-2xl animate-float"></div>
+            <div class="absolute bottom-0 right-0 w-40 h-40 bg-gradient-to-br from-green-400/30 to-blue-500/30 rounded-full blur-2xl animate-float" style="animation-delay: -1.5s;"></div>
+            
+            <div class="relative z-10 text-center">
+                <!-- Breadcrumb -->
+                <div class="mb-6">
+                    <nav class="flex justify-center items-center space-x-2 text-sm">
+                        <a href="/" class="text-green-300 hover:text-yellow-400 transition-colors">Home</a>
+                        <svg class="w-4 h-4 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
+                        </svg>
+                        <span class="text-yellow-400 font-medium">Categories</span>
+                    </nav>
+                </div>
+
+                <!-- Main Title -->
+                <h1 class="text-4xl md:text-6xl font-bold text-white mb-6">
+                    <span class="bg-gradient-to-r from-yellow-400 via-yellow-300 to-yellow-200 bg-clip-text text-transparent">
+                        Proxy Categories
+                    </span>
+                </h1>
+                
+                <!-- Description -->
+                <p class="text-lg md:text-xl text-green-100 max-w-2xl mx-auto leading-relaxed mb-8">
+                    Discover our specialized proxy categories, each tailored for specific use cases and optimized for maximum performance.
+                </p>
+
+                <!-- Stats Row -->
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-4 max-w-4xl mx-auto">
+                    <div class="bg-white/10 rounded-xl p-4 backdrop-blur-sm border border-white/20">
+                        <div class="text-2xl font-bold text-yellow-400">{{ $categories->count() }}</div>
+                        <div class="text-sm text-green-200">Categories</div>
+                    </div>
+                    <div class="bg-white/10 rounded-xl p-4 backdrop-blur-sm border border-white/20">
+                        <div class="text-2xl font-bold text-yellow-400">{{ $categories->sum(function($cat) { return $cat->plans ? $cat->plans->count() : 0; }) }}</div>
+                        <div class="text-sm text-green-200">Total Plans</div>
+                    </div>
+                    <div class="bg-white/10 rounded-xl p-4 backdrop-blur-sm border border-white/20">
+                        <div class="text-2xl font-bold text-yellow-400">{{ $categories->sum(function($cat) { return $cat->servers ? $cat->servers->count() : 0; }) }}</div>
+                        <div class="text-sm text-green-200">Active Servers</div>
+                    </div>
+                    <div class="bg-white/10 rounded-xl p-4 backdrop-blur-sm border border-white/20">
+                        <div class="text-2xl font-bold text-yellow-400">99.9%</div>
+                        <div class="text-sm text-green-200">Uptime</div>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -151,30 +195,118 @@
             @endforelse
         </div>
 
-        <!-- Additional Features Section -->
-        <div class="mt-20 grid grid-cols-1 md:grid-cols-3 gap-8">
-            <div class="text-center p-8 bg-white/5 backdrop-blur-md rounded-2xl border border-white/10">
-                <div class="w-16 h-16 bg-green-600/20 rounded-full flex items-center justify-center mx-auto mb-4">
-                    <x-custom-icon name="bolt" class="w-8 h-8 text-green-400" />
-                </div>
-                <h4 class="text-xl font-bold text-white mb-2">Lightning Fast</h4>
-                <p class="text-green-200">Experience blazing-fast connection speeds with our optimized proxy network.</p>
+        <!-- Enhanced Features & Benefits Section -->
+        <div class="mt-16 relative">
+            <!-- Section Header -->
+            <div class="text-center mb-12">
+                <h2 class="text-3xl md:text-4xl font-bold text-white mb-4">
+                    Why Choose Our <span class="text-yellow-400">Proxy Network</span>?
+                </h2>
+                <p class="text-lg text-green-200 max-w-2xl mx-auto">
+                    Experience the difference with our premium infrastructure and dedicated support.
+                </p>
             </div>
-            
-            <div class="text-center p-8 bg-white/5 backdrop-blur-md rounded-2xl border border-white/10">
-                <div class="w-16 h-16 bg-yellow-600/20 rounded-full flex items-center justify-center mx-auto mb-4">
-                    <x-custom-icon name="shield-check" class="w-8 h-8 text-yellow-400" />
+
+            <!-- Features Grid -->
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <!-- Performance Feature -->
+                <div class="group relative bg-white/5 backdrop-blur-md rounded-2xl p-8 border border-white/10 hover:bg-white/10 transition-all duration-300 hover:scale-105">
+                    <div class="absolute inset-0 bg-gradient-to-br from-green-600/10 to-green-800/10 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                    <div class="relative z-10">
+                        <!-- Icon -->
+                        <div class="w-16 h-16 bg-gradient-to-br from-green-500 to-green-600 rounded-2xl flex items-center justify-center mx-auto mb-6 group-hover:scale-110 transition-transform duration-300 shadow-lg">
+                            <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
+                            </svg>
+                        </div>
+                        <!-- Content -->
+                        <h4 class="text-xl font-bold text-white mb-3 group-hover:text-green-300 transition-colors">Lightning Fast</h4>
+                        <p class="text-green-200 text-sm leading-relaxed group-hover:text-white transition-colors">
+                            Experience blazing-fast speeds with our optimized global network infrastructure and premium bandwidth allocation.
+                        </p>
+                        <!-- Stats -->
+                        <div class="mt-4 pt-4 border-t border-white/10">
+                            <div class="flex items-center justify-between text-xs">
+                                <span class="text-green-400 font-medium">Avg Speed:</span>
+                                <span class="text-yellow-400 font-bold">1000+ Mbps</span>
+                            </div>
+                        </div>
+                    </div>
                 </div>
-                <h4 class="text-xl font-bold text-white mb-2">Secure & Private</h4>
-                <p class="text-green-200">Your data is protected with enterprise-grade security and encryption.</p>
+
+                <!-- Security Feature -->
+                <div class="group relative bg-white/5 backdrop-blur-md rounded-2xl p-8 border border-white/10 hover:bg-white/10 transition-all duration-300 hover:scale-105">
+                    <div class="absolute inset-0 bg-gradient-to-br from-yellow-600/10 to-yellow-800/10 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                    <div class="relative z-10">
+                        <!-- Icon -->
+                        <div class="w-16 h-16 bg-gradient-to-br from-yellow-500 to-yellow-600 rounded-2xl flex items-center justify-center mx-auto mb-6 group-hover:scale-110 transition-transform duration-300 shadow-lg">
+                            <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"></path>
+                            </svg>
+                        </div>
+                        <!-- Content -->
+                        <h4 class="text-xl font-bold text-white mb-3 group-hover:text-yellow-300 transition-colors">Military-Grade Security</h4>
+                        <p class="text-green-200 text-sm leading-relaxed group-hover:text-white transition-colors">
+                            Your privacy is our priority. Advanced encryption protocols and strict no-logs policy ensure complete anonymity.
+                        </p>
+                        <!-- Stats -->
+                        <div class="mt-4 pt-4 border-t border-white/10">
+                            <div class="flex items-center justify-between text-xs">
+                                <span class="text-green-400 font-medium">Encryption:</span>
+                                <span class="text-yellow-400 font-bold">AES-256</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Support Feature -->
+                <div class="group relative bg-white/5 backdrop-blur-md rounded-2xl p-8 border border-white/10 hover:bg-white/10 transition-all duration-300 hover:scale-105 md:col-span-2 lg:col-span-1">
+                    <div class="absolute inset-0 bg-gradient-to-br from-blue-600/10 to-blue-800/10 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                    <div class="relative z-10">
+                        <!-- Icon -->
+                        <div class="w-16 h-16 bg-gradient-to-br from-blue-500 to-blue-600 rounded-2xl flex items-center justify-center mx-auto mb-6 group-hover:scale-110 transition-transform duration-300 shadow-lg">
+                            <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 5.636l-3.536 3.536m0 5.656l3.536 3.536M9.172 9.172L5.636 5.636m3.536 9.192L5.636 18.364M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-5 0a4 4 0 11-8 0 4 4 0 018 0z"></path>
+                            </svg>
+                        </div>
+                        <!-- Content -->
+                        <h4 class="text-xl font-bold text-white mb-3 group-hover:text-blue-300 transition-colors">24/7 Expert Support</h4>
+                        <p class="text-green-200 text-sm leading-relaxed group-hover:text-white transition-colors">
+                            Round-the-clock technical support from our experienced team. Get help whenever you need it, wherever you are.
+                        </p>
+                        <!-- Stats -->
+                        <div class="mt-4 pt-4 border-t border-white/10">
+                            <div class="flex items-center justify-between text-xs">
+                                <span class="text-green-400 font-medium">Response Time:</span>
+                                <span class="text-yellow-400 font-bold">&lt; 15 mins</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
-            
-            <div class="text-center p-8 bg-white/5 backdrop-blur-md rounded-2xl border border-white/10">
-                <div class="w-16 h-16 bg-blue-600/20 rounded-full flex items-center justify-center mx-auto mb-4">
-                    <x-custom-icon name="clock" class="w-8 h-8 text-blue-400" />
+
+            <!-- Call to Action Section -->
+            <div class="mt-12 text-center">
+                <div class="bg-gradient-to-r from-yellow-600/20 to-green-600/20 backdrop-blur-sm rounded-2xl p-8 border border-yellow-400/30">
+                    <h3 class="text-2xl font-bold text-white mb-4">Ready to Get Started?</h3>
+                    <p class="text-green-200 mb-6 max-w-md mx-auto">
+                        Browse our categories and find the perfect proxy solution for your needs.
+                    </p>
+                    <div class="flex flex-col sm:flex-row gap-4 justify-center">
+                        <a href="/servers" class="inline-flex items-center px-6 py-3 bg-gradient-to-r from-yellow-600 to-yellow-500 hover:from-yellow-500 hover:to-yellow-400 text-white font-bold rounded-lg transition-all duration-200 transform hover:scale-105 shadow-lg">
+                            <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+                            </svg>
+                            Browse All Proxies
+                        </a>
+                        <a href="/contact" class="inline-flex items-center px-6 py-3 bg-white/10 hover:bg-white/20 text-white font-medium rounded-lg transition-all duration-200 border border-white/20 hover:border-white/40">
+                            <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"></path>
+                            </svg>
+                            Contact Sales
+                        </a>
+                    </div>
                 </div>
-                <h4 class="text-xl font-bold text-white mb-2">24/7 Support</h4>
-                <p class="text-green-200">Round-the-clock technical support to ensure uninterrupted service.</p>
             </div>
         </div>
     </section>
@@ -182,12 +314,23 @@
 
 <style>
 @keyframes float {
-    0%, 100% { transform: translateY(0px); }
-    50% { transform: translateY(-10px); }
+    0%, 100% { transform: translateY(0px) rotate(0deg); }
+    33% { transform: translateY(-10px) rotate(1deg); }
+    66% { transform: translateY(-5px) rotate(-1deg); }
+}
+
+@keyframes float-reverse {
+    0%, 100% { transform: translateY(0px) rotate(0deg); }
+    33% { transform: translateY(10px) rotate(-1deg); }
+    66% { transform: translateY(5px) rotate(1deg); }
 }
 
 .animate-float {
-    animation: float 3s ease-in-out infinite;
+    animation: float 6s ease-in-out infinite;
+}
+
+.animate-float-reverse {
+    animation: float-reverse 8s ease-in-out infinite;
 }
 
 .line-clamp-2 {
@@ -198,13 +341,34 @@
 }
 
 @keyframes pulse-dot {
-    0%, 100% { opacity: 0.4; }
-    50% { opacity: 1; }
+    0%, 100% { opacity: 0.4; transform: scale(1); }
+    50% { opacity: 1; transform: scale(1.2); }
 }
 
 .animate-pulse-dot {
     animation: pulse-dot 1.5s ease-in-out infinite;
 }
-</style>
 
-@endsection
+@keyframes glow {
+    0%, 100% { box-shadow: 0 0 20px rgba(255, 255, 255, 0.1); }
+    50% { box-shadow: 0 0 30px rgba(255, 255, 255, 0.2), 0 0 40px rgba(34, 197, 94, 0.1); }
+}
+
+.animate-glow {
+    animation: glow 3s ease-in-out infinite;
+}
+
+/* Smooth transitions for all interactive elements */
+* {
+    transition-property: transform, background-color, border-color, opacity, box-shadow;
+    transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+    transition-duration: 300ms;
+}
+
+/* Custom gradient backgrounds */
+.bg-gradient-mesh {
+    background: radial-gradient(circle at 20% 80%, rgba(120, 119, 198, 0.1) 0%, transparent 50%),
+                radial-gradient(circle at 80% 20%, rgba(255, 255, 255, 0.05) 0%, transparent 50%),
+                radial-gradient(circle at 40% 40%, rgba(34, 197, 94, 0.1) 0%, transparent 50%);
+}
+</style>

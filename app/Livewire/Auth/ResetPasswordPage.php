@@ -48,7 +48,8 @@ class ResetPasswordPage extends Component
         // Validate token and email are present
         if (!$this->token || !$this->email) {
             session()->flash('error', 'Invalid password reset link.');
-            return redirect('/forgot');
+            $this->redirect('/forgot', navigate: true);
+            return;
         }
         
         $this->checkRateLimit();
@@ -81,6 +82,8 @@ class ResetPasswordPage extends Component
 
             $this->validate();
 
+            \Log::info('Password reset submit attempt', ['email' => $this->email]);
+
             // Record reset attempt
             RateLimiter::hit($key, 300); // 5 minute window
 
@@ -111,7 +114,8 @@ class ResetPasswordPage extends Component
                 ]);
 
                 session()->flash('success', 'Password has been reset successfully! Please log in with your new password.');
-                return redirect('/login');
+                $this->redirect('/login', navigate: true);
+                return;
             } else {
                 // Log failed password reset
                 \Log::warning('Password reset failed', [
@@ -121,7 +125,8 @@ class ResetPasswordPage extends Component
                 ]);
 
                 session()->flash('error', 'This password reset link is invalid or has expired. Please request a new one.');
-                return redirect('/forgot');
+                $this->redirect('/forgot', navigate: true);
+                return;
             }
 
         } catch (ValidationException $e) {
@@ -133,7 +138,8 @@ class ResetPasswordPage extends Component
             \Log::error('Password reset error', [
                 'error' => $e->getMessage(),
                 'email' => $this->email,
-                'ip' => request()->ip()
+                'ip' => request()->ip(),
+                'trace' => $e->getTraceAsString()
             ]);
             
             session()->flash('error', 'An error occurred while resetting your password. Please try again.');

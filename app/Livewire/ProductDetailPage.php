@@ -189,9 +189,7 @@ class ProductDetailPage extends Component
             RateLimiter::hit($key, 60); // 1-minute window
 
             $total_count = CartManagement::addItemToCartWithQty($server_plan_id, $this->quantity);
-            $this->dispatch('update-cart-count', total_count: $total_count)->to(Navbar::class);
-
-            $this->is_adding_to_cart = false;
+            $this->dispatch('update-cart-count', total_count: $total_count)->to(Navbar::class);            $this->is_adding_to_cart = false;
 
             $this->alert('success', "Added {$this->quantity} × {$plan->name} to cart!", [
                 'position' => 'bottom-end',

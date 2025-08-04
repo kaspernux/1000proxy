@@ -8,6 +8,7 @@ use App\Livewire\{
     MyOrdersPage,
     ProductsPage,
     Auth\LoginPage,
+    Auth\NewLoginPage,
     CategoriesPage,
     Auth\ForgotPage,
     Auth\RegisterPage,
@@ -18,6 +19,7 @@ use App\Livewire\{
 };
 
 use App\Http\Controllers\{
+    Auth\CustomerLoginController,
     PaymentController,
     PaymentMethodController,
     WalletController,
@@ -46,12 +48,21 @@ use App\Http\Controllers\DepositWebhookController;
 
 Route::get('/', HomePage::class);
 Route::get('/categories', CategoriesPage::class);
-Route::get('/servers', ProductsPage::class);
+Route::get('/servers', ProductsPage::class)->name('servers.index');
 Route::get('/cart', CartPage::class);
 Route::get('/servers/{slug}', ProductDetailPage::class);
 
 Route::middleware('guest')->group(function () {
-    Route::match(['GET', 'POST'], '/login', LoginPage::class)->name('login');
+    // Test with fresh new component to avoid caching issues
+    Route::match(['GET', 'POST'], '/login', NewLoginPage::class)->name('login');
+    
+    // Keep the old Livewire for comparison
+    Route::match(['GET', 'POST'], '/login-old', LoginPage::class)->name('login.old');
+    
+    // Keep the standard controller for comparison/backup
+    Route::get('/login-standard', [CustomerLoginController::class, 'showLoginForm'])->name('customer.login');
+    Route::post('/login-standard', [CustomerLoginController::class, 'login'])->name('customer.login.submit');
+    
     Route::get('/register', RegisterPage::class)->name('register'); // <-- Add ->name('register')
     Route::get('/reset-password/{token}', ResetPasswordPage::class)->name('password.reset');
     Route::get('/forgot', ForgotPage::class)->name('password.request');
@@ -77,6 +88,7 @@ Route::middleware(['auth:customer'])->group(function () {
     Route::get('/success', SuccessPage::class)->name('success');
     Route::get('/cancel', CancelPage::class)->name('cancel');
     Route::get('/account-settings', AccountSettings::class)->name('account.settings');
+    Route::get('/telegram-link', \App\Livewire\Auth\TelegramLink::class)->name('telegram.link');
 
     // Nowpayments Routes
     Route::post('/create-invoice/nowpayments/{order}', [PaymentController::class, 'createCryptoPayment'])->name('create.invoice.nowpay');

@@ -1,215 +1,133 @@
-@extends('layouts.app')
-
-@section('content')
 <div>
-    {{-- Hero Section Start  --}}
-    <div class="w-full max-h-auto pt-3 py-auto font-mono bg-gradient-to-r from-green-900 to-green-600 px-4 sm:px-6 lg:px-8 mx-auto relative">
-        <div class="max-w-[85rem] mx-auto px-4 sm:px-6 lg:px-8">
-            <!-- Grid -->
-            <div class="grid md:grid-cols-2 gap-4 md:gap-8 xl:gap-20 md:items-center">
-                <div>
-                <h1 class="text-2xl sm:text-4xl lg:text-6xl leading-snug font-bold text-white">
-                    Discover the Future of <span class="text-green-400">VPN & Proxy</span> Solutions
+    {{-- Modern Hero Section --}}
+    <div class="relative bg-gradient-to-br from-gray-900 via-gray-800 to-blue-900 overflow-hidden min-h-screen flex items-center">
+        <!-- Animated background elements -->
+        <div class="absolute inset-0">
+            <div class="absolute inset-0 bg-gradient-to-r from-blue-600/15 to-yellow-500/15 animate-pulse"></div>
+            <div class="absolute top-0 left-0 w-full h-full bg-gradient-to-b from-transparent to-gray-900/60"></div>
+        </div>
+        
+        <!-- Floating shapes with enhanced animations -->
+        <div class="absolute inset-0 overflow-hidden">
+            <div class="absolute -top-40 -right-32 w-80 h-80 bg-gradient-to-br from-yellow-400/25 to-blue-400/25 rounded-full blur-3xl animate-bounce duration-[6000ms]"></div>
+            <div class="absolute -bottom-40 -left-32 w-80 h-80 bg-gradient-to-br from-blue-400/20 to-yellow-400/15 rounded-full blur-3xl animate-pulse duration-[8000ms]"></div>
+            <div class="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-gradient-to-r from-purple-400/10 to-pink-400/10 rounded-full blur-2xl animate-spin duration-[20000ms]"></div>
+        </div>
+
+        
+        <div class="relative z-10 mx-auto max-w-7xl px-8 py-32 sm:py-40 lg:px-12 xl:px-16 w-full">
+            <div class="text-center space-y-12 lg:space-y-16 xl:space-y-20">
+                <!-- Status Badge with enhanced styling -->
+                <div class="mb-12 flex justify-center">
+                    <div class="inline-flex items-center rounded-full bg-blue-500/10 px-6 py-3 text-sm font-medium text-blue-400 ring-1 ring-blue-500/20 backdrop-blur-sm hover:bg-blue-500/20 hover:scale-105 transition-all duration-300 cursor-default">
+                        <div class="mr-3 h-3 w-3 bg-blue-400 rounded-full animate-pulse"></div>
+                        <span class="tracking-wide">Live Proxy Network • 99.9% Uptime</span>
+                    </div>
+                </div>
+
+                <!-- Main Headline with enhanced typography -->
+                <h1 class="text-5xl font-extrabold tracking-tight text-white sm:text-7xl lg:text-8xl xl:text-9xl leading-tight">
+                    <span class="block mb-4 animate-fade-in-up">Premium</span>
+                    <span class="bg-gradient-to-r from-blue-400 via-yellow-400 to-blue-500 bg-clip-text text-transparent animate-fade-in-up animation-delay-200">
+                        Proxy Solutions
+                    </span>
                 </h1>
 
-                <p class="mt-3 text-base sm:text-lg text-white">
-                    Optimize your internet experience with cutting-edge VPN and Proxy configurations designed for complete anonymity and security.
+                <!-- Subtitle with better line height and spacing -->
+                <p class="mx-auto mt-8 max-w-3xl text-xl leading-relaxed text-gray-300 sm:text-2xl lg:text-3xl font-light tracking-wide">
+                    Unlock the power of our global proxy network. Fast, secure, and reliable connections for 
+                    <span class="text-blue-400 font-semibold hover:text-blue-300 transition-colors">web scraping</span>, 
+                    <span class="text-yellow-400 font-semibold hover:text-yellow-300 transition-colors">market research</span>, and 
+                    <span class="text-blue-300 font-semibold hover:text-blue-200 transition-colors">business automation</span>.
                 </p>
 
-                {{-- Dynamic Platform Stats Display --}}
-                @if($this->showStats && $this->platformStats)
-                <div class="mt-6 grid grid-cols-2 md:grid-cols-4 gap-4">
-                    <div class="text-center">
-                        <div class="text-2xl font-bold text-green-400">{{ number_format($this->platformStats['total_users']) }}+</div>
-                        <div class="text-sm text-white">Happy Customers</div>
-                    </div>
-                    <div class="text-center">
-                        <div class="text-2xl font-bold text-green-400">{{ number_format($this->platformStats['active_servers']) }}+</div>
-                        <div class="text-sm text-white">Active Servers</div>
-                    </div>
-                    <div class="text-center">
-                        <div class="text-2xl font-bold text-green-400">{{ $this->platformStats['countries_count'] }}+</div>
-                        <div class="text-sm text-white">Countries</div>
-                    </div>
-                    <div class="text-center">
-                        <div class="text-2xl font-bold text-green-400">{{ $this->platformStats['avg_rating'] }}</div>
-                        <div class="text-sm text-white">Average Rating</div>
-                    </div>
+                <!-- Action Buttons with enhanced spacing and effects -->
+                <div class="mt-16 flex flex-col sm:flex-row gap-6 justify-center items-center">
+                    <a href="/servers" wire:navigate
+                       class="group relative w-full sm:w-auto inline-flex items-center justify-center px-10 py-5 text-lg font-semibold text-white bg-gradient-to-r from-blue-600 to-yellow-600 rounded-2xl shadow-2xl hover:shadow-blue-500/25 transition-all duration-500 hover:scale-110 transform focus:outline-none focus:ring-4 focus:ring-blue-500/50">
+                        <span class="relative z-10 tracking-wide">Explore Proxy Plans</span>
+                        <svg class="ml-4 h-6 w-6 transition-transform group-hover:translate-x-2 duration-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6" />
+                        </svg>
+                        <div class="absolute inset-0 bg-gradient-to-r from-blue-600 to-yellow-600 rounded-2xl blur opacity-50 group-hover:opacity-75 transition-opacity duration-500"></div>
+                    </a>
+                    
+                    <button onclick="document.getElementById('demo-section').scrollIntoView({behavior: 'smooth'})"
+                            class="group w-full sm:w-auto inline-flex items-center justify-center px-10 py-5 text-lg font-semibold text-white border-2 border-white/20 rounded-2xl backdrop-blur-sm hover:border-white/40 hover:bg-white/10 transition-all duration-500 hover:scale-105 focus:outline-none focus:ring-4 focus:ring-white/25">
+                        <svg class="mr-4 h-6 w-6 transition-transform group-hover:rotate-12 duration-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.828 14.828a4 4 0 01-5.656 0M9 10h1m4 0h1m-6 4h.01M12 5v.01M12 19v.01M12 12h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                        <span class="tracking-wide">Watch Demo</span>
+                    </button>
                 </div>
-                @endif
 
-                    <!-- Buttons -->
-                    <div class="mt-7 w-full flex flex-col sm:flex-row sm:gap-3 gap-2">
-                        <a wire:navigate class="py-3 px-4 font-mono inline-flex justify-center items-center gap-x-2 text-sm font-semibold rounded-lg border border-transparent bg-green-500 text-white hover:bg-yellow-600 disabled:opacity-50 disabled:pointer-events-none dark:focus:outline-none dark:focus:ring-1 dark:focus:ring-gray-600"
-                            href="/register">
-                            Get Started
-                            <x-custom-icon name="arrow-right" class="flex-shrink-0 w-4 h-4" />
-                        </a>
-                        <a wire:navigate class="py-3 px-4 inline-flex font-mono justify-center items-center gap-x-2 text-sm font-medium rounded-lg border border-white bg-green-800 text-green-600 shadow-sm hover:bg-yellow-600 disabled:opacity-50 disabled:pointer-events-none dark:bg-slate-900 dark:border-green-600 dark:text-white dark:hover:bg-yellow-600 dark:focus:outline-none dark:focus:ring-1 dark:focus:ring-gray-600"
-                            href="/contact">
-                            Contact Sales Team
-                        </a>
-                    </div>
-                    <!-- End Buttons -->
-
-                    <!-- Review -->
-                    <div class="mt-6 lg:mt-10 grid grid-cols-2 gap-x-5">
-                        <!-- Review -->
-                        <div class="py-5">
-                            <div class="flex space-x-1">
-                                <svg class="h-4 w-4 text-yellow-600 dark:text-green-400" width="51" height="51"
-                                    viewBox="0 0 51 51" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                    <path
-                                        d="M27.0352 1.6307L33.9181 16.3633C34.2173 16.6768 34.5166 16.9903 34.8158 16.9903L50.0779 19.1845C50.9757 19.1845 51.275 20.4383 50.6764 21.0652L39.604 32.3498C39.3047 32.6632 39.3047 32.9767 39.3047 33.2901L41.998 49.2766C42.2973 50.217 41.1002 50.8439 40.5017 50.5304L26.4367 43.3208C26.1375 43.3208 25.8382 43.3208 25.539 43.3208L11.7732 50.8439C10.8754 51.1573 9.97763 50.5304 10.2769 49.59L12.9702 33.6036C12.9702 33.2901 12.9702 32.9767 12.671 32.6632L1.29923 21.0652C0.700724 20.4383 0.999979 19.4979 1.89775 19.4979L17.1598 17.3037C17.459 17.3037 17.7583 16.9903 18.0575 16.6768L24.9404 1.6307C25.539 0.69032 26.736 0.69032 27.0352 1.6307Z"
-                                        fill="currentColor" />
-                                </svg>
-                                <svg class="h-4 w-4 text-yellow-600 dark:text-green-400" width="51" height="51"
-                                    viewBox="0 0 51 51" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                    <path
-                                        d="M27.0352 1.6307L33.9181 16.3633C34.2173 16.6768 34.5166 16.9903 34.8158 16.9903L50.0779 19.1845C50.9757 19.1845 51.275 20.4383 50.6764 21.0652L39.604 32.3498C39.3047 32.6632 39.3047 32.9767 39.3047 33.2901L41.998 49.2766C42.2973 50.217 41.1002 50.8439 40.5017 50.5304L26.4367 43.3208C26.1375 43.3208 25.8382 43.3208 25.539 43.3208L11.7732 50.8439C10.8754 51.1573 9.97763 50.5304 10.2769 49.59L12.9702 33.6036C12.9702 33.2901 12.9702 32.9767 12.671 32.6632L1.29923 21.0652C0.700724 20.4383 0.999979 19.4979 1.89775 19.4979L17.1598 17.3037C17.459 17.3037 17.7583 16.9903 18.0575 16.6768L24.9404 1.6307C25.539 0.69032 26.736 0.69032 27.0352 1.6307Z"
-                                        fill="currentColor" />
-                                </svg>
-                                <svg class="h-4 w-4 text-yellow-600 dark:text-green-400" width="51" height="51"
-                                    viewBox="0 0 51 51" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                    <path
-                                        d="M27.0352 1.6307L33.9181 16.3633C34.2173 16.6768 34.5166 16.9903 34.8158 16.9903L50.0779 19.1845C50.9757 19.1845 51.275 20.4383 50.6764 21.0652L39.604 32.3498C39.3047 32.6632 39.3047 32.9767 39.3047 33.2901L41.998 49.2766C42.2973 50.217 41.1002 50.8439 40.5017 50.5304L26.4367 43.3208C26.1375 43.3208 25.8382 43.3208 25.539 43.3208L11.7732 50.8439C10.8754 51.1573 9.97763 50.5304 10.2769 49.59L12.9702 33.6036C12.9702 33.2901 12.9702 32.9767 12.671 32.6632L1.29923 21.0652C0.700724 20.4383 0.999979 19.4979 1.89775 19.4979L17.1598 17.3037C17.459 17.3037 17.7583 16.9903 18.0575 16.6768L24.9404 1.6307C25.539 0.69032 26.736 0.69032 27.0352 1.6307Z"
-                                        fill="currentColor" />
-                                </svg>
-                                <svg class="h-4 w-4 text-yellow-600 dark:text-green-400" width="51" height="51"
-                                    viewBox="0 0 51 51" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                    <path
-                                        d="M27.0352 1.6307L33.9181 16.3633C34.2173 16.6768 34.5166 16.9903 34.8158 16.9903L50.0779 19.1845C50.9757 19.1845 51.275 20.4383 50.6764 21.0652L39.604 32.3498C39.3047 32.6632 39.3047 32.9767 39.3047 33.2901L41.998 49.2766C42.2973 50.217 41.1002 50.8439 40.5017 50.5304L26.4367 43.3208C26.1375 43.3208 25.8382 43.3208 25.539 43.3208L11.7732 50.8439C10.8754 51.1573 9.97763 50.5304 10.2769 49.59L12.9702 33.6036C12.9702 33.2901 12.9702 32.9767 12.671 32.6632L1.29923 21.0652C0.700724 20.4383 0.999979 19.4979 1.89775 19.4979L17.1598 17.3037C17.459 17.3037 17.7583 16.9903 18.0575 16.6768L24.9404 1.6307C25.539 0.69032 26.736 0.69032 27.0352 1.6307Z"
-                                        fill="currentColor" />
-                                </svg>
-                                <svg class="h-4 w-4 text-yellow-600 dark:text-green-400" width="51" height="51"
-                                    viewBox="0 0 51 51" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                    <path
-                                        d="M27.0352 1.6307L33.9181 16.3633C34.2173 16.6768 34.5166 16.9903 34.8158 16.9903L50.0779 19.1845C50.9757 19.1845 51.275 20.4383 50.6764 21.0652L39.604 32.3498C39.3047 32.6632 39.3047 32.9767 39.3047 33.2901L41.998 49.2766C42.2973 50.217 41.1002 50.8439 40.5017 50.5304L26.4367 43.3208C26.1375 43.3208 25.8382 43.3208 25.539 43.3208L11.7732 50.8439C10.8754 51.1573 9.97763 50.5304 10.2769 49.59L12.9702 33.6036C12.9702 33.2901 12.9702 32.9767 12.671 32.6632L1.29923 21.0652C0.700724 20.4383 0.999979 19.4979 1.89775 19.4979L17.1598 17.3037C17.459 17.3037 17.7583 16.9903 18.0575 16.6768L24.9404 1.6307C25.539 0.69032 26.736 0.69032 27.0352 1.6307Z"
-                                        fill="currentColor" />
-                                </svg>
-                            </div>
-
-                            <p class="mt-3 text-sm text-white dark:text-green-400">
-                                <span class="font-bold font-mono">4.6</span> /5 - from 12k reviews
-                            </p>
-
-                            <div class="mt-5">
-                                <!-- Star -->
-                                <svg class="h-auto w-16 text-white dark:text-white" width="80" height="27"
-                                    viewBox="0 0 80 27" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                    <path
-                                        d="M20.558 9.74046H11.576V12.3752H17.9632C17.6438 16.0878 14.5301 17.7245 11.6159 17.7245C7.86341 17.7245 4.58995 14.7704 4.58995 10.6586C4.58995 6.62669 7.70373 3.51291 11.6159 3.51291C14.6498 3.51291 16.4063 5.42908 16.4063 5.42908L18.2426 3.51291C18.2426 3.51291 15.8474 0.878184 11.4961 0.878184C5.94724 0.838264 1.67578 5.50892 1.67578 10.5788C1.67578 15.5289 5.70772 20.3592 11.6558 20.3592C16.8854 20.3592 20.7177 16.8063 20.7177 11.4969C20.7177 10.3792 20.558 9.74046 20.558 9.74046Z"
-                                        fill="currentColor" />
-                                    <path
-                                        d="M27.8621 7.78442C24.1894 7.78442 21.5547 10.6587 21.5547 14.012C21.5547 17.4451 24.1096 20.3593 27.9419 20.3593C31.415 20.3593 34.2094 17.7645 34.2094 14.0918C34.1695 9.94011 30.896 7.78442 27.8621 7.78442ZM27.902 10.2994C29.6984 10.2994 31.415 11.7764 31.415 14.0918C31.415 16.4072 29.7383 17.8842 27.902 17.8842C25.906 17.8842 24.3491 16.2874 24.3491 14.0519C24.3092 11.8962 25.8661 10.2994 27.902 10.2994Z"
-                                        fill="currentColor" />
-                                    <path
-                                        d="M41.5964 7.78442C37.9238 7.78442 35.2891 10.6587 35.2891 14.012C35.2891 17.4451 37.844 20.3593 41.6763 20.3593C45.1493 20.3593 47.9438 17.7645 47.9438 14.0918C47.9038 9.94011 44.6304 7.78442 41.5964 7.78442ZM41.6364 10.2994C43.4328 10.2994 45.1493 11.7764 45.1493 14.0918C45.1493 16.4072 43.4727 17.8842 41.6364 17.8842C39.6404 17.8842 38.0835 16.2874 38.0835 14.0519C38.0436 11.8962 39.6004 10.2994 41.6364 10.2994Z"
-                                        fill="currentColor" />
-                                    <path
-                                        d="M55.0475 7.82434C51.6543 7.82434 49.0195 10.7784 49.0195 14.0918C49.0195 17.8443 52.0934 20.3992 54.9676 20.3992C56.764 20.3992 57.6822 19.7205 58.4407 18.8822V20.1198C58.4407 22.2754 57.1233 23.5928 55.1273 23.5928C53.2111 23.5928 52.2531 22.1557 51.8938 21.3573L49.4587 22.3553C50.297 24.1517 52.0135 26.0279 55.0874 26.0279C58.4407 26.0279 60.9956 23.9122 60.9956 19.481V8.18362H58.3608V9.26147C57.6423 8.38322 56.5245 7.82434 55.0475 7.82434ZM55.287 10.2994C56.9237 10.2994 58.6403 11.7365 58.6403 14.1317C58.6403 16.6068 56.9636 17.9241 55.2471 17.9241C53.4507 17.9241 51.774 16.4471 51.774 14.1716C51.8139 11.6966 53.5305 10.2994 55.287 10.2994Z"
-                                        fill="currentColor" />
-                                    <path
-                                        d="M72.8136 7.78442C69.62 7.78442 66.9453 10.2994 66.9453 14.0519C66.9453 18.004 69.9393 20.3593 73.093 20.3593C75.7278 20.3593 77.4044 18.8822 78.3625 17.6048L76.1669 16.1277C75.608 17.006 74.6499 17.8443 73.093 17.8443C71.3365 17.8443 70.5381 16.8862 70.0192 15.9281L78.4423 12.4152L78.0032 11.3772C77.1649 9.46107 75.2886 7.78442 72.8136 7.78442ZM72.8934 10.2196C74.0511 10.2196 74.8495 10.8184 75.2487 11.5768L69.6599 13.9321C69.3405 12.0958 71.097 10.2196 72.8934 10.2196Z"
-                                        fill="currentColor" />
-                                    <path d="M62.9531 19.9999H65.7076V1.47693H62.9531V19.9999Z" fill="currentColor" />
-                                </svg>
-                                <!-- End Star -->
-                            </div>
+                <!-- Stats Row with enhanced grid and animations -->
+                <div class="mt-20 grid grid-cols-1 sm:grid-cols-3 gap-8 lg:gap-12 text-center">
+                    <div class="group p-6 rounded-2xl bg-white/5 backdrop-blur-sm hover:bg-white/10 transition-all duration-500 hover:scale-105">
+                        <div class="text-5xl lg:text-6xl font-bold text-white mb-3 group-hover:text-blue-400 transition-colors duration-300 tracking-tight">
+                            {{ number_format($this->categories->count()) }}+
                         </div>
-                        <!-- End Review -->
-
-                        <!-- Review -->
-                        <div class="py-5">
-                            <div class="flex space-x-1">
-                                <svg class="h-4 w-4 text-yellow-600 dark:text-green-400" width="51" height="51"
-                                    viewBox="0 0 51 51" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                    <path
-                                        d="M27.0352 1.6307L33.9181 16.3633C34.2173 16.6768 34.5166 16.9903 34.8158 16.9903L50.0779 19.1845C50.9757 19.1845 51.275 20.4383 50.6764 21.0652L39.604 32.3498C39.3047 32.6632 39.3047 32.9767 39.3047 33.2901L41.998 49.2766C42.2973 50.217 41.1002 50.8439 40.5017 50.5304L26.4367 43.3208C26.1375 43.3208 25.8382 43.3208 25.539 43.3208L11.7732 50.8439C10.8754 51.1573 9.97763 50.5304 10.2769 49.59L12.9702 33.6036C12.9702 33.2901 12.9702 32.9767 12.671 32.6632L1.29923 21.0652C0.700724 20.4383 0.999979 19.4979 1.89775 19.4979L17.1598 17.3037C17.459 17.3037 17.7583 16.9903 18.0575 16.6768L24.9404 1.6307C25.539 0.69032 26.736 0.69032 27.0352 1.6307Z"
-                                        fill="currentColor" />
-                                </svg>
-                                <svg class="h-4 w-4 text-yellow-600 dark:text-green-400" width="51" height="51"
-                                    viewBox="0 0 51 51" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                    <path
-                                        d="M27.0352 1.6307L33.9181 16.3633C34.2173 16.6768 34.5166 16.9903 34.8158 16.9903L50.0779 19.1845C50.9757 19.1845 51.275 20.4383 50.6764 21.0652L39.604 32.3498C39.3047 32.6632 39.3047 32.9767 39.3047 33.2901L41.998 49.2766C42.2973 50.217 41.1002 50.8439 40.5017 50.5304L26.4367 43.3208C26.1375 43.3208 25.8382 43.3208 25.539 43.3208L11.7732 50.8439C10.8754 51.1573 9.97763 50.5304 10.2769 49.59L12.9702 33.6036C12.9702 33.2901 12.9702 32.9767 12.671 32.6632L1.29923 21.0652C0.700724 20.4383 0.999979 19.4979 1.89775 19.4979L17.1598 17.3037C17.459 17.3037 17.7583 16.9903 18.0575 16.6768L24.9404 1.6307C25.539 0.69032 26.736 0.69032 27.0352 1.6307Z"
-                                        fill="currentColor" />
-                                </svg>
-                                <svg class="h-4 w-4 text-yellow-600 dark:text-green-400" width="51" height="51"
-                                    viewBox="0 0 51 51" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                    <path
-                                        d="M27.0352 1.6307L33.9181 16.3633C34.2173 16.6768 34.5166 16.9903 34.8158 16.9903L50.0779 19.1845C50.9757 19.1845 51.275 20.4383 50.6764 21.0652L39.604 32.3498C39.3047 32.6632 39.3047 32.9767 39.3047 33.2901L41.998 49.2766C42.2973 50.217 41.1002 50.8439 40.5017 50.5304L26.4367 43.3208C26.1375 43.3208 25.8382 43.3208 25.539 43.3208L11.7732 50.8439C10.8754 51.1573 9.97763 50.5304 10.2769 49.59L12.9702 33.6036C12.9702 33.2901 12.9702 32.9767 12.671 32.6632L1.29923 21.0652C0.700724 20.4383 0.999979 19.4979 1.89775 19.4979L17.1598 17.3037C17.459 17.3037 17.7583 16.9903 18.0575 16.6768L24.9404 1.6307C25.539 0.69032 26.736 0.69032 27.0352 1.6307Z"
-                                        fill="currentColor" />
-                                </svg>
-                                <svg class="h-4 w-4 text-yellow-600 dark:text-green-400" width="51" height="51"
-                                    viewBox="0 0 51 51" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                    <path
-                                        d="M27.0352 1.6307L33.9181 16.3633C34.2173 16.6768 34.5166 16.9903 34.8158 16.9903L50.0779 19.1845C50.9757 19.1845 51.275 20.4383 50.6764 21.0652L39.604 32.3498C39.3047 32.6632 39.3047 32.9767 39.3047 33.2901L41.998 49.2766C42.2973 50.217 41.1002 50.8439 40.5017 50.5304L26.4367 43.3208C26.1375 43.3208 25.8382 43.3208 25.539 43.3208L11.7732 50.8439C10.8754 51.1573 9.97763 50.5304 10.2769 49.59L12.9702 33.6036C12.9702 33.2901 12.9702 32.9767 12.671 32.6632L1.29923 21.0652C0.700724 20.4383 0.999979 19.4979 1.89775 19.4979L17.1598 17.3037C17.459 17.3037 17.7583 16.9903 18.0575 16.6768L24.9404 1.6307C25.539 0.69032 26.736 0.69032 27.0352 1.6307Z"
-                                        fill="currentColor" />
-                                </svg>
-                                <svg class="h-4 w-4 text-yellow-600 dark:text-green-400" width="51" height="51"
-                                    viewBox="0 0 51 51" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                    <path
-                                        d="M49.6867 20.0305C50.2889 19.3946 49.9878 18.1228 49.0846 18.1228L33.7306 15.8972C33.4296 15.8972 33.1285 15.8972 32.8275 15.2613L25.9032 0.317944C25.6021 0 25.3011 0 25 0V42.6046C25 42.6046 25.3011 42.6046 25.6021 42.6046L39.7518 49.9173C40.3539 50.2352 41.5581 49.5994 41.2571 48.6455L38.5476 32.4303C38.5476 32.1124 38.5476 31.7944 38.8486 31.4765L49.6867 20.0305Z"
-                                        fill="transparent" />
-                                    <path
-                                        d="M0.313299 20.0305C-0.288914 19.3946 0.0122427 18.1228 0.915411 18.1228L16.2694 15.8972C16.5704 15.8972 16.8715 15.8972 17.1725 15.2613L24.0968 0.317944C24.3979 0 24.6989 0 25 0V42.6046C25 42.6046 24.6989 42.6046 24.3979 42.6046L10.2482 49.9173C9.64609 50.2352 8.44187 49.5994 8.74292 48.6455L11.4524 32.4303C11.4524 32.1124 11.4524 31.7944 11.1514 31.4765L0.313299 20.0305Z"
-                                        fill="currentColor" />
-                                </svg>
-                            </div>
-
-                            <p class="mt-3 text-sm text-white dark:text-green-400">
-                                <span class="font-bold font-mono">4.8</span> /5 - from 5k reviews
-                            </p>
-
-                            <div class="mt-5">
-                                <!-- Star -->
-                                <svg class="h-auto w-16 text-white dark:text-white" width="110" height="28"
-                                    viewBox="0 0 110 28" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                    <path
-                                        d="M66.6601 8.35107C64.8995 8.35107 63.5167 8.72875 62.1331 9.48265C62.1331 5.4582 62.1331 1.81143 62.2594 0.554199L53.8321 2.06273V2.81736L54.7124 2.94301C55.8433 3.19431 56.2224 3.82257 56.4715 5.33255C56.725 8.35107 56.5979 24.4496 56.4715 27.0912C58.7354 27.5945 61.1257 27.9722 63.5159 27.9722C70.1819 27.9722 74.2064 23.8213 74.2064 17.281C74.2064 12.1249 70.9366 8.35107 66.6601 8.35107ZM63.7672 26.5878C63.2639 26.5878 62.6342 26.5878 62.258 26.4629C62.1316 24.7023 62.0067 17.281 62.1316 10.7413C62.8862 10.4893 63.3888 10.3637 64.0185 10.3637C66.7872 10.3637 68.2965 13.6335 68.2965 17.6572C68.2957 22.6898 66.4088 26.5878 63.7672 26.5878ZM22.1363 1.0568H0V2.18838L1.25796 2.31403C2.89214 2.56533 3.52184 3.57127 3.77242 5.9608C4.15082 10.4886 4.02445 18.6646 3.77242 22.5619C3.52112 24.9522 2.89287 26.0845 1.25796 26.2087L0 26.4615V27.4674H14.2123V26.4615L12.703 26.2087C11.0681 26.0838 10.4392 24.9522 10.1879 22.5619C10.0615 20.9263 9.93583 18.2847 9.93583 15.0156L12.9543 15.1413C14.8413 15.1413 15.7208 16.6505 16.0985 18.7881H17.2308V9.86106H16.0985C15.7201 11.9993 14.8413 13.5078 12.9543 13.5078L9.93655 13.6342C9.93655 9.35773 10.0622 5.33328 10.1886 2.94374H14.59C17.9869 2.94374 19.7475 5.08125 21.0047 8.85513L22.2626 8.47745L22.1363 1.0568Z"
-                                        fill="currentColor" />
-                                    <path
-                                        d="M29.3053 8.09998C35.5944 8.09998 38.7385 12.3764 38.7385 18.0358C38.7385 23.4439 35.2167 27.9731 28.9276 27.9731C22.6393 27.9731 19.4951 23.6959 19.4951 18.0358C19.4951 12.6277 23.0162 8.09998 29.3053 8.09998ZM28.9276 9.35793C26.1604 9.35793 25.4058 13.1311 25.4058 18.0358C25.4058 22.8149 26.6637 26.7137 29.1796 26.7137C32.0703 26.7137 32.8264 22.9405 32.8264 18.0358C32.8264 13.2567 31.5699 9.35793 28.9276 9.35793ZM75.8403 18.1622C75.8403 13.0054 79.1101 8.09998 85.5248 8.09998C90.8057 8.09998 93.3224 11.9995 93.3224 17.1555H81.6253C81.4989 21.8089 83.7628 25.2051 88.2913 25.2051C90.3038 25.2051 91.3098 24.7033 92.5685 23.8223L93.0703 24.4505C91.8124 26.2111 89.0459 27.9731 85.5248 27.9731C79.8647 27.9724 75.8403 23.9479 75.8403 18.1622ZM81.6253 15.7726L87.5366 15.6463C87.5366 13.1311 87.159 9.35793 85.0214 9.35793C82.8839 9.35793 81.7502 12.8791 81.6253 15.7726ZM108.291 9.10663C106.782 8.47693 104.77 8.09998 102.506 8.09998C97.8538 8.09998 94.9594 10.8665 94.9594 14.137C94.9594 17.4075 97.0955 18.7904 100.118 19.7971C103.261 20.9279 104.142 21.8089 104.142 23.3182C104.142 24.8275 103.01 26.2103 100.997 26.2103C98.6084 26.2103 96.8464 24.8275 95.4635 21.0536L94.5825 21.3063L94.7089 26.84C96.2181 27.4683 98.9846 27.9724 101.375 27.9724C106.28 27.9724 109.425 25.4557 109.425 21.5576C109.425 18.9161 108.041 17.4075 104.771 16.1489C101.249 14.766 99.992 13.8857 99.992 12.2501C99.992 10.6152 101.126 9.48286 102.635 9.48286C104.897 9.48286 106.407 10.8665 107.54 14.2627L108.42 14.0114L108.291 9.10663ZM55.0883 8.6033C52.9508 7.3468 49.1769 7.97433 47.1651 12.5028L47.29 8.1007L38.8642 9.73561V10.4902L39.7444 10.6159C40.8775 10.7423 41.3794 11.3705 41.5057 13.0062C41.757 16.0247 41.6314 21.3078 41.5057 23.9486C41.3794 25.4564 40.8775 26.2111 39.7444 26.3374L38.8642 26.4638V27.4697H50.5606V26.4638L49.0513 26.3374C47.7941 26.2111 47.4164 25.4564 47.29 23.9486C47.0387 21.5584 47.0387 16.7793 47.1651 13.7608C47.7933 12.8798 50.5606 12.1259 53.0757 13.7608L55.0883 8.6033Z"
-                                        fill="currentColor" />
-                                </svg>
-                                <!-- End Star -->
-                            </div>
-                        </div>
-                        <!-- End Review -->
+                        <div class="text-gray-400 font-medium text-lg tracking-wide">Proxy Categories</div>
                     </div>
-                    <!-- End Review -->
+                    <div class="group p-6 rounded-2xl bg-white/5 backdrop-blur-sm hover:bg-white/10 transition-all duration-500 hover:scale-105">
+                        <div class="text-5xl lg:text-6xl font-bold text-white mb-3 group-hover:text-yellow-400 transition-colors duration-300 tracking-tight">
+                            {{ number_format($this->brands->count()) }}+
+                        </div>
+                        <div class="text-gray-400 font-medium text-lg tracking-wide">Trusted Brands</div>
+                    </div>
+                    <div class="group p-6 rounded-2xl bg-white/5 backdrop-blur-sm hover:bg-white/10 transition-all duration-500 hover:scale-105">
+                        <div class="text-5xl lg:text-6xl font-bold text-white mb-3 group-hover:text-blue-300 transition-colors duration-300 tracking-tight">
+                            100K+
+                        </div>
+                        <div class="text-gray-400 font-medium text-lg tracking-wide">Active IPs</div>
+                    </div>
                 </div>
-                <!-- End Col -->
-
-                <div>
-                    <img class="relative py-auto size-auto justify-center items-center mx-auto w-full max-w-full sm:max-w-full md:max-w-full"
-                        src="{{ asset('storage/uploads/hero.png') }}" alt="#">
-                </div>
-                <!-- End Col -->
             </div>
-            <!-- End Grid -->
         </div>
     </div>
-    {{-- Hero Section End  --}}
+    {{-- Hero Section End --}}
 
     {{-- Enhanced Search & Filtering Section Start --}}
-    <div class="w-full bg-gradient-to-r from-green-800 to-green-700 py-8">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div class="bg-white/10 backdrop-blur-sm rounded-xl p-6">
-                <h2 class="text-2xl font-bold text-white text-center mb-6">Find Your Perfect Proxy Solution</h2>
+    <div class="w-full bg-gradient-to-br from-green-900 via-gray-800 to-gray-900 py-20 lg:py-24 relative overflow-hidden">
+        <!-- Background pattern -->
+        <div class="absolute inset-0 opacity-10">
+            <div class="absolute inset-0" style="background-image: radial-gradient(circle at 2px 2px, rgba(255,255,255,0.1) 1px, transparent 0); background-size: 30px 30px;"></div>
+        </div>
+        
+        <!-- Enhanced background effects -->
+        <div class="absolute inset-0">
+            <div class="absolute inset-0 bg-gradient-to-r from-blue-600/8 to-yellow-500/8"></div>
+            <div class="absolute top-0 right-0 w-96 h-96 bg-gradient-to-br from-blue-400/10 to-transparent rounded-full blur-3xl"></div>
+            <div class="absolute bottom-0 left-0 w-96 h-96 bg-gradient-to-tr from-yellow-400/10 to-transparent rounded-full blur-3xl"></div>
+        </div>
+        
+        <div class="max-w-7xl mx-auto px-6 sm:px-8 lg:px-12 xl:px-16 relative">
+            <div class="bg-white/10 backdrop-blur-lg rounded-3xl p-10 lg:p-16 xl:p-20 ring-1 ring-white/20 shadow-2xl">
+                <h2 class="text-3xl lg:text-4xl font-bold text-white text-center mb-10 tracking-tight">Find Your Perfect Proxy Solution</h2>
 
-                {{-- Search Bar --}}
-                <div class="mb-6">
-                    <div class="relative">
+                {{-- Search Bar with enhanced styling and informative text --}}
+                <div class="mb-10">
+                    <div class="mb-4">
+                        <label class="block text-lg font-semibold text-white mb-3 tracking-wide flex items-center">
+                            <svg class="mr-3 h-6 w-6 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+                            </svg>
+                            Search for a Server
+                        </label>
+                        <p class="text-blue-200 text-sm mb-4 ml-9 leading-relaxed">
+                            Enter server names, locations, or specific features to find your ideal proxy solution
+                        </p>
+                    </div>
+                    <div class="relative group">
                         <input type="text"
                                wire:model.live.debounce.300ms="searchTerm"
                                placeholder="Search servers, locations, brands..."
-                               class="w-full px-4 py-3 pl-12 rounded-lg border border-gray-300 focus:ring-2 focus:ring-green-500 focus:border-transparent">
-                        <svg class="absolute left-4 top-3.5 h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                               class="w-full px-6 py-4 pl-14 rounded-2xl border-0 bg-white backdrop-blur-sm focus:ring-4 focus:ring-blue-500/50 focus:bg-white transition-all duration-300 text-lg text-gray-900 placeholder-gray-600 shadow-lg">
+                        <svg class="absolute left-5 top-1/2 transform -translate-y-1/2 h-6 w-6 text-gray-500 group-focus-within:text-blue-500 transition-colors duration-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
                         </svg>
                         @if($searchTerm)
-                            <button wire:click="$set('searchTerm', '')" class="absolute right-3 top-3.5 text-gray-400 hover:text-gray-600">
+                            <button wire:click="$set('searchTerm', '')" class="absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700 p-1 rounded-full hover:bg-gray-100 transition-all duration-200">
                                 <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
                                 </svg>
@@ -218,518 +136,1401 @@
                     </div>
                 </div>
 
-                {{-- Quick Filters --}}
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {{-- Brand Filter --}}
-                    <div>
-                        <label class="block text-sm font-medium text-white mb-2">Select Brand</label>
-                        <select wire:model.live="selectedBrand" class="w-full px-3 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-green-500 focus:border-transparent">
-                            <option value="">All Brands</option>
-                            @foreach($this->brands as $brand)
-                                <option value="{{ $brand->id }}">{{ $brand->name }}</option>
-                            @endforeach
-                        </select>
-                    </div>
-
-                    {{-- Category Filter --}}
-                    <div>
-                        <label class="block text-sm font-medium text-white mb-2">Select Category</label>
-                        <select wire:model.live="selectedCategory" class="w-full px-3 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-green-500 focus:border-transparent">
-                            <option value="">All Categories</option>
+                {{-- Quick Filters with enhanced grid and informative text --}}
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-8 lg:gap-10 mb-8">
+                    <div class="space-y-4">
+                        <div class="mb-4">
+                            <label class="block text-lg font-semibold text-white mb-3 tracking-wide flex items-center">
+                                <svg class="mr-3 h-6 w-6 text-yellow-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+                                </svg>
+                                Choose a Server Category
+                            </label>
+                            <p class="text-yellow-200 text-sm mb-4 ml-9 leading-relaxed">
+                                Select the type of proxy service that best fits your use case
+                            </p>
+                        </div>
+                        <select wire:model.live="selectedCategory" class="w-full px-4 py-3 rounded-xl border-0 bg-white backdrop-blur-sm focus:ring-4 focus:ring-yellow-500/50 transition-all duration-300 text-gray-900 font-medium shadow-lg hover:shadow-yellow-500/20">
+                            <option value="" class="text-gray-900 bg-white">All Categories</option>
                             @foreach($this->categories as $category)
-                                <option value="{{ $category->id }}">{{ $category->name }}</option>
+                                <option value="{{ $category->id }}" class="text-gray-900 bg-white">{{ $category->name }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+                    <div class="space-y-4">
+                        <div class="mb-4">
+                            <label class="block text-lg font-semibold text-white mb-3 tracking-wide flex items-center">
+                                <svg class="mr-3 h-6 w-6 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" />
+                                </svg>
+                                Choose a Brand
+                            </label>
+                            <p class="text-green-200 text-sm mb-4 ml-9 leading-relaxed">
+                                Filter by trusted proxy providers and premium brands
+                            </p>
+                        </div>
+                        <select wire:model.live="selectedBrand" class="w-full px-4 py-3 rounded-xl border-0 bg-white backdrop-blur-sm focus:ring-4 focus:ring-green-500/50 transition-all duration-300 text-gray-900 font-medium shadow-lg hover:shadow-green-500/20">
+                            <option value="" class="text-gray-900 bg-white">All Brands</option>
+                            @foreach($this->brands as $brand)
+                                <option value="{{ $brand->id }}" class="text-gray-900 bg-white">{{ $brand->name }}</option>
                             @endforeach
                         </select>
                     </div>
                 </div>
 
-                {{-- Quick Action Buttons --}}
-                <div class="flex flex-wrap justify-center gap-3 mt-6">
-                    <a href="/servers" wire:navigate class="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition duration-200">
-                        Browse All Servers
-                    </a>
-                    <a href="/servers?featured=1" wire:navigate class="px-6 py-2 bg-yellow-600 text-white rounded-lg hover:bg-yellow-700 transition duration-200">
-                        Featured Plans
-                    </a>
-                    @auth
-                        <a href="/customer" wire:navigate class="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition duration-200">
-                            My Dashboard
-                        </a>
-                    @endauth
-                </div>
+                {{-- Search Results Preview with enhanced styling and visibility --}}
+                @if($searchTerm || $selectedCategory || $selectedBrand)
+                    <div class="mt-8 bg-gradient-to-br from-gray-800/95 to-gray-900/95 backdrop-blur-lg rounded-2xl p-8 shadow-2xl ring-1 ring-blue-500/30 border border-blue-400/20">
+                        <div class="flex items-center justify-between mb-6">
+                            <h3 class="text-2xl font-bold text-white tracking-tight flex items-center">
+                                <svg class="mr-3 h-6 w-6 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path>
+                                </svg>
+                                {{ $filteredServers->count() }} Results Found
+                            </h3>
+                            <a href="{{ route('servers.index', array_filter(['search' => $searchTerm, 'category' => $selectedCategory, 'brand' => $selectedBrand])) }}" 
+                               wire:navigate
+                               class="inline-flex items-center px-4 py-2 bg-gradient-to-r from-blue-600 to-blue-700 text-white font-semibold rounded-xl hover:from-blue-700 hover:to-blue-800 transition-all duration-200 group shadow-lg hover:shadow-blue-500/25 transform hover:scale-105">
+                                <span>View All</span>
+                                <svg class="ml-2 h-4 w-4 transition-transform group-hover:translate-x-1 duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 8l4 4m0 0l-4 4m4-4H3"></path>
+                                </svg>
+                            </a>
+                        </div>
+                        <div class="space-y-4 max-h-80 overflow-y-auto scrollbar-thin scrollbar-thumb-blue-500 scrollbar-track-gray-700 pr-2">
+                            @forelse($filteredServers->take(5) as $server)
+                                <div class="flex items-center justify-between p-5 bg-gradient-to-r from-gray-700/80 to-gray-800/80 hover:from-blue-800/50 hover:to-blue-900/50 rounded-xl transition-all duration-300 group ring-1 ring-gray-600/50 hover:ring-blue-400/50 shadow-lg hover:shadow-xl hover:shadow-blue-500/20 transform hover:scale-[1.02]">
+                                    <div class="flex items-center space-x-4">
+                                        <!-- Brand Image Only -->
+                                        <div class="relative">
+                                            <img src="{{ $server->brand->image ? url('storage/'.$server->brand->image) : '/default-brand.png' }}" 
+                                                 alt="{{ $server->brand->name }}" 
+                                                 class="w-14 h-14 rounded-xl object-cover ring-2 ring-blue-500/50 group-hover:ring-blue-400 transition-all duration-300 shadow-md">
+                                            <div class="absolute -top-1 -right-1 w-4 h-4 bg-green-500 rounded-full ring-2 ring-gray-800 flex items-center justify-center">
+                                                <div class="w-2 h-2 bg-white rounded-full"></div>
+                                            </div>
+                                        </div>
+                                        
+                                        <!-- Server Information -->
+                                        <div class="space-y-1 flex-1">
+                                            <div class="font-bold text-white group-hover:text-blue-300 transition-colors duration-300 text-lg">{{ $server->name }}</div>
+                                            <div class="flex items-center space-x-3">
+                                                <div class="flex items-center space-x-1">
+                                                    <svg class="h-3 w-3 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z"></path>
+                                                    </svg>
+                                                    <span class="text-blue-300 text-sm font-medium">{{ $server->brand->name }}</span>
+                                                </div>
+                                                @if($server->category)
+                                                <div class="flex items-center space-x-1">
+                                                    <svg class="h-3 w-3 text-yellow-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z"></path>
+                                                    </svg>
+                                                    <span class="text-yellow-300 text-sm font-medium">{{ $server->category->name }}</span>
+                                                </div>
+                                                @endif
+                                            </div>
+                                            <div class="flex items-center text-xs text-gray-400">
+                                                <svg class="mr-1 h-3 w-3 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                                                </svg>
+                                                Active • High Performance
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="text-right">
+                                        <div class="text-blue-400 font-bold text-xl group-hover:text-blue-300 transition-colors duration-300">
+                                            ${{ number_format($server->plans->min('price'), 2) }}
+                                        </div>
+                                        <div class="text-gray-400 text-sm font-medium">/month</div>
+                                        <div class="text-xs text-green-400 font-medium mt-1">
+                                            {{ $server->plans->count() }} plans available
+                                        </div>
+                                    </div>
+                                </div>
+                            @empty
+                                <div class="text-center py-12 bg-gradient-to-br from-gray-800/50 to-gray-900/50 rounded-xl ring-1 ring-gray-600/30">
+                                    <svg class="mx-auto h-16 w-16 text-gray-500 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.172 16.172a4 4 0 015.656 0M9 12h6m-6 4h6m-3-16v4m6 6l4-4m0 0l-4-4m4 4H9"></path>
+                                    </svg>
+                                    <p class="text-xl font-bold text-white mb-2">No servers found matching your criteria</p>
+                                    <p class="text-gray-400 max-w-md mx-auto">Try adjusting your search terms or filters to find more results</p>
+                                </div>
+                            @endforelse
+                        </div>
+                        
+                        {{-- Enhanced search summary --}}
+                        <div class="mt-6 pt-6 border-t border-gray-600/50">
+                            <div class="flex flex-wrap items-center justify-between gap-4">
+                                <div class="flex flex-wrap items-center gap-3">
+                                    @if($searchTerm)
+                                        <span class="inline-flex items-center px-3 py-1 rounded-lg bg-blue-600/20 text-blue-300 text-sm font-medium ring-1 ring-blue-500/30">
+                                            <svg class="mr-1 h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+                                            </svg>
+                                            "{{ $searchTerm }}"
+                                        </span>
+                                    @endif
+                                    @if($selectedCategory)
+                                        <span class="inline-flex items-center px-3 py-1 rounded-lg bg-yellow-600/20 text-yellow-300 text-sm font-medium ring-1 ring-yellow-500/30">
+                                            <svg class="mr-1 h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z"></path>
+                                            </svg>
+                                            Category: {{ $this->categories->where('id', $selectedCategory)->first()->name ?? 'Selected' }}
+                                        </span>
+                                    @endif
+                                    @if($selectedBrand)
+                                        <span class="inline-flex items-center px-3 py-1 rounded-lg bg-green-600/20 text-green-300 text-sm font-medium ring-1 ring-green-500/30">
+                                            <svg class="mr-1 h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z"></path>
+                                            </svg>
+                                            Brand: {{ $this->brands->where('id', $selectedBrand)->first()->name ?? 'Selected' }}
+                                        </span>
+                                    @endif
+                                </div>
+                                <button wire:click="$set('searchTerm', ''); $set('selectedCategory', ''); $set('selectedBrand', '')" 
+                                        class="inline-flex items-center px-3 py-1 text-gray-400 hover:text-white text-sm font-medium transition-colors duration-200">
+                                    <svg class="mr-1 h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                                    </svg>
+                                    Clear All
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                @endif
             </div>
         </div>
     </div>
     {{-- Enhanced Search & Filtering Section End --}}
 
-    {{-- Featured Plans Section Start --}}
-    @if($this->showFeaturedPlans && $this->featuredPlans->count() > 0)
-    <div class="w-full bg-gradient-to-r from-green-900 to-green-600 py-12">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div class="text-center mb-12">
-                <h2 class="text-4xl font-bold text-white mb-4">Featured Plans</h2>
-                <p class="text-lg text-white/80">Handpicked premium proxy solutions for every need</p>
+    {{-- Enhanced Categories Section Start --}}
+    <section id="categories" class="relative bg-gradient-to-br from-gray-900 via-blue-900/10 to-gray-900 py-32 sm:py-40 overflow-hidden">
+        <!-- Background Effects with enhanced patterns -->
+        <div class="absolute inset-0">
+            <div class="absolute inset-0 bg-gradient-to-r from-blue-600/8 to-yellow-500/8"></div>
+            <div class="absolute top-0 right-0 w-96 h-96 bg-gradient-to-br from-blue-400/15 to-transparent rounded-full blur-3xl animate-pulse duration-[8000ms]"></div>
+            <div class="absolute bottom-0 left-0 w-96 h-96 bg-gradient-to-tr from-yellow-400/15 to-transparent rounded-full blur-3xl animate-pulse duration-[6000ms]"></div>
+            <div class="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-gradient-to-r from-purple-400/5 to-pink-400/5 rounded-full blur-3xl animate-spin duration-[30000ms]"></div>
+        </div>
+
+        <div class="relative mx-auto max-w-7xl px-6 sm:px-8 lg:px-12 xl:px-16">
+            <!-- Section Header with enhanced spacing -->
+            <div class="text-center mb-28 lg:mb-36 xl:mb-40 space-y-10 lg:space-y-12">
+                <div class="inline-flex items-center rounded-full bg-gradient-to-r from-blue-100/10 to-yellow-100/10 px-8 py-3 text-sm font-medium text-blue-400 ring-1 ring-blue-400/20 backdrop-blur-sm mb-10 hover:scale-105 transition-transform duration-300">
+                    <svg class="mr-3 h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+                    </svg>
+                    <span class="tracking-wider">Proxy Categories</span>
+                </div>
+                
+                <h2 class="text-5xl lg:text-7xl xl:text-8xl font-bold tracking-tight text-white leading-tight">
+                    <span class="block mb-4">Choose Your Perfect</span>
+                    <span class="bg-gradient-to-r from-blue-400 to-yellow-400 bg-clip-text text-transparent">Proxy Solution</span>
+                </h2>
+                
+                <p class="mt-8 text-xl lg:text-2xl leading-relaxed text-gray-300 max-w-4xl mx-auto font-light tracking-wide">
+                    Discover our comprehensive range of proxy services designed to meet every business need. 
+                    From high-speed residential proxies to enterprise data center solutions.
+                </p>
             </div>
+            
+            <!-- Categories Grid with enhanced responsive design -->
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-10 lg:gap-12 xl:gap-16 mb-28 lg:mb-32">
+                @foreach($this->categories as $index => $serverCategory)
+                <div class="group relative" wire:key="{{$serverCategory->id}}" style="animation-delay: {{ $index * 100 }}ms">
+                    <a href="/servers?selected_categories[0]={{ $serverCategory->id }}" wire:navigate 
+                       class="block relative bg-gradient-to-br from-white/8 to-gray-800/40 backdrop-blur-lg rounded-3xl p-10 lg:p-12 xl:p-14 ring-1 ring-white/15 hover:ring-blue-400/60 transition-all duration-700 hover:shadow-2xl hover:shadow-blue-500/25 transform hover:scale-110 hover:-translate-y-2 h-full group focus:outline-none focus:ring-4 focus:ring-blue-500/50">
+                        
+                        <!-- Enhanced Gradient Overlay -->
+                        <div class="absolute inset-0 bg-gradient-to-br from-blue-500/8 to-yellow-500/8 rounded-3xl opacity-0 group-hover:opacity-100 transition-opacity duration-700"></div>
+                        
+                        <!-- Content with better spacing -->
+                        <div class="relative space-y-8">
+                            <!-- Icon and Badge with enhanced positioning -->
+                            <div class="flex items-start justify-between">
+                                <div class="relative">
+                                    <div class="w-20 h-20 lg:w-24 lg:h-24 rounded-3xl bg-gradient-to-br from-blue-500/25 to-yellow-500/25 flex items-center justify-center ring-1 ring-blue-500/40 group-hover:ring-yellow-400/60 transition-all duration-500 group-hover:scale-125 group-hover:rotate-3">
+                                        <img class="h-12 w-12 lg:h-14 lg:w-14 rounded-2xl object-cover"
+                                             src="{{ url('storage/'.$serverCategory->image)}}" 
+                                             alt="{{ $serverCategory->name}}"
+                                             onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+                                        <div class="hidden h-12 w-12 lg:h-14 lg:w-14 rounded-2xl bg-gradient-to-br from-blue-500 to-yellow-500 items-center justify-center text-white font-bold text-xl">
+                                            {{ substr($serverCategory->name, 0, 2) }}
+                                        </div>
+                                    </div>
+                                    <!-- Enhanced status indicator -->
+                                    <div class="absolute -top-2 -right-2 w-6 h-6 bg-green-500 rounded-full flex items-center justify-center ring-4 ring-gray-800 group-hover:scale-125 group-hover:ring-green-300 transition-all duration-500">
+                                        <div class="w-2.5 h-2.5 bg-white rounded-full animate-pulse"></div>
+                                    </div>
+                                </div>
+                                
+                                <!-- Enhanced Arrow -->
+                                <div class="text-blue-400 group-hover:text-yellow-400 transition-all duration-500 transform group-hover:scale-125">
+                                    <svg class="h-7 w-7 lg:h-8 lg:w-8 transform group-hover:translate-x-2 group-hover:-translate-y-2 transition-transform duration-700" 
+                                         fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M17 8l4 4m0 0l-4 4m4-4H3" />
+                                    </svg>
+                                </div>
+                            </div>
 
-            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-                @foreach($this->featuredPlans as $plan)
-                <div class="bg-white/10 backdrop-blur-sm rounded-xl p-6 hover:bg-white/20 transition duration-300">
-                    <div class="flex items-center mb-4">
-                        @if($plan->brand)
-                            <img src="{{ url('storage/'.$plan->brand->image) }}"
-                                 alt="{{ $plan->brand->name }}"
-                                 class="w-12 h-12 rounded-lg mr-3">
-                        @endif
-                        <div>
-                            <h3 class="text-xl font-bold text-white">{{ $plan->name }}</h3>
-                            @if($plan->category)
-                                <p class="text-green-300 text-sm">{{ $plan->category->name }}</p>
-                            @endif
+                            <!-- Category Info with enhanced typography -->
+                            <div class="space-y-4">
+                                <h3 class="text-2xl lg:text-3xl font-bold text-white group-hover:text-blue-400 transition-colors duration-500 line-clamp-2 tracking-tight">
+                                    {{ $serverCategory->name}}
+                                </h3>
+                                <p class="text-base lg:text-lg text-gray-300 group-hover:text-white transition-colors duration-500 leading-relaxed line-clamp-3 tracking-wide">
+                                    High-performance proxy solutions tailored for {{ strtolower($serverCategory->name) }} use cases with enterprise-grade reliability.
+                                </p>
+                            </div>
+
+                            <!-- Stats and CTA with better spacing -->
+                            <div class="space-y-6">
+                                <div class="flex items-center justify-between">
+                                    <div class="flex items-center text-sm lg:text-base text-gray-400 font-medium">
+                                        <svg class="mr-3 h-5 w-5 text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 12h14M5 12a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v4a2 2 0 01-2 2M5 12a2 2 0 00-2 2v4a2 2 0 002 2h14a2 2 0 002-2v-4a2 2 0 00-2-2" />
+                                        </svg>
+                                        {{ $serverCategory->plans_count ?? $serverCategory->server_plans_count ?? '10+' }} plans
+                                    </div>
+                                    <div class="inline-flex items-center rounded-full bg-blue-100/15 px-4 py-2 text-xs font-semibold text-blue-300 ring-1 ring-blue-400/30 tracking-wide">
+                                        Available
+                                    </div>
+                                </div>
+                                
+                                <div class="flex items-center text--400 group-hover:text-yellow-400 font-semibold transition-colors duration-500">
+                                    <span class="text-base lg:text-lg tracking-wide">Explore Solutions</span>
+                                    <svg class="ml-3 h-5 w-5 transition-transform group-hover:translate-x-2 duration-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6" />
+                                    </svg>
+                                </div>
+                            </div>
                         </div>
-                    </div>
-
-                    <div class="mb-4">
-                        <div class="text-3xl font-bold text-green-400">${{ number_format($plan->price, 2) }}</div>
-                        <div class="text-white/60 text-sm">per month</div>
-                    </div>
-
-                    @if($plan->server)
-                    <div class="text-white/80 text-sm mb-4">
-                        <div class="flex items-center mb-1">
-                            <span class="w-2 h-2 bg-green-400 rounded-full mr-2"></span>
-                            Location: {{ $plan->server->name }}
-                        </div>
-                        <div class="flex items-center">
-                            <span class="w-2 h-2 bg-green-400 rounded-full mr-2"></span>
-                            Country: {{ $plan->server->location }}
-                        </div>
-                    </div>
-                    @endif
-
-                    <a href="/servers/{{ $plan->slug }}" wire:navigate
-                       class="w-full bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition duration-200 text-center block">
-                        View Details
                     </a>
                 </div>
                 @endforeach
             </div>
-        </div>
-    </div>
-    @endif
-    {{-- Featured Plans Section End --}}
 
-    {{-- Categories Section Start  --}}
-    <div class="w-full h-auto py-auto font-mono bg-gradient-to-r from-green-900 to-green-600 py-6">
-        <div class="max-w-7xl mx-auto px-10 py-6 lg:py-8 md:px-10">
-            <div class="text-center ">
-                <div class="relative flex flex-col items-center">
-                    <h1 class="text-5xl font-bold font-mono text-white py-3">Fast and Secure <span class="text-yellow-600">Proxies</span>
-                    </h1>
-                    <div class="flex w-40 mt-3 mb-6 overflow-hidden rounded">
-                        <div class="flex-1 h-2 bg-gradient-to-r from-green-400 to-yellow-600">
+            <!-- Bottom CTA Section with enhanced design -->
+            <div class="text-center">
+                <div class="bg-gradient-to-r from-blue-900/40 to-yellow-900/40 backdrop-blur-lg rounded-3xl p-12 lg:p-16 ring-1 ring-white/20 shadow-2xl hover:shadow-3xl transition-all duration-700 hover:scale-105 group">
+                    <div class="space-y-8">
+                        <h3 class="text-3xl lg:text-4xl font-bold text-white tracking-tight group-hover:text-blue-400 transition-colors duration-500">
+                            Can't Find What You're Looking For?
+                        </h3>
+                        <p class="text-xl lg:text-2xl text-gray-300 max-w-3xl mx-auto leading-relaxed font-light tracking-wide group-hover:text-white transition-colors duration-500">
+                            Our team can help you find the perfect proxy solution for your specific needs. 
+                            Get personalized recommendations from our experts.
+                        </p>
+                        <a href="/contact" wire:navigate
+                           class="inline-flex items-center rounded-3xl bg-gradient-to-r from-blue-600 to-yellow-600 px-12 py-6 text-xl font-semibold text-white shadow-2xl hover:shadow-blue-500/30 transition-all duration-500 hover:scale-110 transform focus:outline-none focus:ring-4 focus:ring-blue-500/50 group">
+                            <svg class="mr-4 h-6 w-6 transition-transform group-hover:rotate-12 duration-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                            </svg>
+                            <span class="tracking-wide">Get Custom Solution</span>
+                            <svg class="ml-4 h-6 w-6 transition-transform group-hover:translate-x-2 duration-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 8l4 4m0 0l-4 4m4-4H3" />
+                            </svg>
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+    {{-- Enhanced Categories Section End --}}
+
+    {{-- Enhanced Brands Section Start --}}
+    <section id="brands" class="relative bg-gradient-to-br from-gray-50 via-white to-blue-50/30 dark:from-gray-900 dark:via-blue-900/10 dark:to-gray-900 py-28 sm:py-36 lg:py-40 overflow-hidden">
+        <!-- Background Pattern -->
+        <div class="absolute inset-0 opacity-10 dark:opacity-5">
+            <div class="absolute inset-0" style="background-image: radial-gradient(circle at 2px 2px, currentColor 1px, transparent 0); background-size: 40px 40px;"></div>
+        </div>
+        
+        <!-- Background Effects -->
+        <div class="absolute inset-0">
+            <div class="absolute inset-0 bg-gradient-to-r from-blue-600/5 to-yellow-500/5"></div>
+            <div class="absolute top-0 right-0 w-96 h-96 bg-gradient-to-br from-blue-400/10 to-transparent rounded-full blur-3xl"></div>
+            <div class="absolute bottom-0 left-0 w-96 h-96 bg-gradient-to-tr from-yellow-400/10 to-transparent rounded-full blur-3xl"></div>
+        </div>
+
+        <div class="relative mx-auto max-w-7xl px-6 sm:px-8 lg:px-12 xl:px-16">
+            <!-- Section Header -->
+            <div class="text-center mb-24 lg:mb-28">
+                <div class="inline-flex items-center rounded-full bg-gradient-to-r from-yellow-100/10 to-blue-100/10 px-6 py-2 text-sm font-medium text-blue-400 ring-1 ring-blue-400/20 backdrop-blur-sm mb-8">
+                    <svg class="mr-2 h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" />
+                    </svg>
+                    Trusted Partners
+                </div>
+                
+                <h2 class="text-4xl font-bold tracking-tight text-gray-900 dark:text-white sm:text-5xl lg:text-6xl">
+                    Premium
+                    <span class="bg-gradient-to-r from-blue-400 to-yellow-400 bg-clip-text text-transparent">Proxy Brands</span>
+                </h2>
+                
+                <p class="mt-8 text-xl leading-8 text-gray-600 dark:text-gray-300 max-w-3xl mx-auto">
+                    Partner with industry-leading proxy providers. Each brand is carefully vetted for reliability, 
+                    performance, and enterprise-grade security standards.
+                </p>
+            </div>
+
+            <!-- Brands Grid - Responsive: Column on mobile, Row on desktop -->
+            @if($this->brands->count() > 0)
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8 lg:gap-10 xl:gap-12">
+                    @foreach($this->brands->take(8) as $index => $brand)
+                        <div class="group relative" wire:key="{{ $brand->id }}">
+                            <a href="/servers?brands[]={{ $brand->id }}" wire:navigate 
+                               class="block relative bg-gradient-to-br from-white/10 to-gray-100/30 dark:from-white/5 dark:to-gray-800/30 backdrop-blur-sm rounded-3xl p-6 ring-1 ring-white/20 dark:ring-white/10 hover:ring-blue-400/50 transition-all duration-500 hover:shadow-2xl hover:shadow-blue-500/20 transform hover:scale-105 h-full">
+                                
+                                <!-- Gradient Overlay -->
+                                <div class="absolute inset-0 bg-gradient-to-br from-blue-500/5 to-yellow-500/5 rounded-3xl opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
+                                
+                                <!-- Content -->
+                                <div class="relative">
+                                    <!-- Icon and Badge -->
+                                    <div class="flex items-start justify-between mb-6">
+                                        <div class="relative">
+                                            <div class="w-16 h-16 rounded-2xl bg-gradient-to-br from-blue-500/20 to-yellow-500/20 flex items-center justify-center ring-1 ring-blue-500/30 group-hover:ring-yellow-400/50 transition-all duration-300 group-hover:scale-110">
+                                                <img class="h-10 w-10 rounded-xl object-cover"
+                                                     src="{{ url('storage/'.$brand->image)}}" 
+                                                     alt="{{ $brand->name}}"
+                                                     onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+                                                <div class="hidden h-10 w-10 rounded-xl bg-gradient-to-br from-blue-500 to-yellow-500 items-center justify-center text-white font-bold text-lg">
+                                                    {{ substr($brand->name, 0, 2) }}
+                                                </div>
+                                            </div>
+                                            <!-- Status indicator -->
+                                            <div class="absolute -top-1 -right-1 w-5 h-5 bg-green-500 rounded-full flex items-center justify-center ring-2 ring-white dark:ring-gray-800 group-hover:scale-110 transition-transform duration-300">
+                                                <div class="w-2 h-2 bg-white rounded-full"></div>
+                                            </div>
+                                        </div>
+                                        
+                                        <!-- Arrow -->
+                                        <div class="text-blue-400 group-hover:text-yellow-400 transition-colors duration-300">
+                                            <svg class="h-6 w-6 transform group-hover:translate-x-1 group-hover:-translate-y-1 transition-transform duration-300" 
+                                                 fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                                <path stroke-linecap="round" stroke-linejoin="round" d="M17 8l4 4m0 0l-4 4m4-4H3" />
+                                            </svg>
+                                        </div>
+                                    </div>
+
+                                    <!-- Brand Info -->
+                                    <div class="mb-6">
+                                        <h3 class="text-xl font-bold text-gray-900 dark:text-white group-hover:text-blue-400 transition-colors duration-300 mb-2 line-clamp-2">
+                                            {{ $brand->name}}
+                                        </h3>
+                                        <p class="text-sm text-gray-600 dark:text-gray-300 group-hover:text-gray-900 dark:group-hover:text-white transition-colors duration-300 leading-relaxed line-clamp-3">
+                                            Premium proxy solutions with enterprise-grade reliability and high-performance infrastructure for {{ strtolower($brand->name) }}.
+                                        </p>
+                                    </div>
+
+                                    <!-- Stats and CTA -->
+                                    <div class="space-y-4">
+                                        <div class="flex items-center justify-between">
+                                            <div class="flex items-center text-sm text-gray-500 dark:text-gray-400">
+                                                <svg class="mr-2 h-4 w-4 text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 12h14M5 12a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v4a2 2 0 01-2 2M5 12a2 2 0 00-2 2v4a2 2 0 002 2h14a2 2 0 002-2v-4a2 2 0 00-2-2" />
+                                                </svg>
+                                                {{ $brand->servers_count ?? rand(10, 100) }} servers
+                                            </div>
+                                            <div class="inline-flex items-center rounded-full bg-yellow-100/20 dark:bg-yellow-100/10 px-3 py-1 text-xs font-medium text-yellow-700 dark:text-yellow-700 ring-1 ring-yellow-400/20">
+                                                @switch($index % 4)
+                                                    @case(0) Premium Partner @break
+                                                    @case(1) Enterprise Ready @break
+                                                    @case(2) High Performance @break
+                                                    @default Verified Provider
+                                                @endswitch
+                                            </div>
+                                        </div>
+                                        
+                                        <div class="flex items-center text-gray-700 dark:text-gray-200 group-hover:text-yellow-600 dark:group-hover:text-yellow-400 font-medium transition-colors duration-300">
+                                            <span class="text-sm">Explore Plans</span>
+                                            <svg class="ml-2 h-4 w-4 transition-transform group-hover:translate-x-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6" />
+                                            </svg>
+                                        </div>
+                                    </div>
+                                </div>
+                            </a>
+                        </div>
+                    @endforeach
+                </div>
+
+                <!-- View All Button -->
+                @if($this->brands->count() > 8)
+                    <div class="mt-16 text-center">
+                        <a href="/servers#brands" wire:navigate
+                           class="group inline-flex items-center rounded-2xl bg-gradient-to-r from-blue-600 to-yellow-600 px-8 py-4 text-lg font-semibold text-white shadow-lg hover:shadow-xl hover:shadow-blue-500/25 transition-all duration-300 hover:scale-105">
+                            View All {{ $this->brands->count() }} Premium Brands
+                            <svg class="ml-3 h-5 w-5 transition-transform group-hover:translate-x-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 8l4 4m0 0l-4 4m4-4H3" />
+                            </svg>
+                        </a>
+                    </div>
+                @endif
+
+                <!-- Bottom CTA Section -->
+                <div class="mt-20 text-center">
+                    <div class="bg-gradient-to-r from-blue-900/30 to-yellow-900/30 backdrop-blur-sm rounded-3xl p-8 ring-1 ring-white/10">
+                        <h3 class="text-2xl font-bold text-gray-900 dark:text-white mb-4">
+                            Ready to Partner with Premium Brands?
+                        </h3>
+                        <p class="text-gray-600 dark:text-gray-300 mb-6 max-w-2xl mx-auto">
+                            Join thousands of businesses that trust our verified proxy partners for their mission-critical operations. 
+                            Get started with enterprise-grade solutions today.
+                        </p>
+                        <a href="/servers" wire:navigate
+                           class="inline-flex items-center rounded-2xl bg-gradient-to-r from-blue-600 to-yellow-600 px-8 py-4 text-lg font-semibold text-white shadow-lg hover:shadow-xl hover:shadow-blue-500/25 transition-all duration-300 hover:scale-105">
+                            Browse All Solutions
+                            <svg class="ml-3 h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 8l4 4m0 0l-4 4m4-4H3" />
+                            </svg>
+                        </a>
+                    </div>
+                </div>
+            @else
+                <!-- Empty State -->
+                <div class="text-center py-16">
+                    <div class="mx-auto h-24 w-24 rounded-full bg-gradient-to-br from-blue-100 to-yellow-100 dark:from-blue-900/20 dark:to-yellow-900/20 flex items-center justify-center mb-6">
+                        <svg class="h-12 w-12 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" />
+                        </svg>
+                    </div>
+                    <h3 class="text-lg font-medium text-gray-900 dark:text-white mb-2">No brands available</h3>
+                    <p class="text-gray-500 dark:text-gray-400">New premium proxy brands will be added soon.</p>
+                </div>
+            @endif
+
+            <!-- Trust Indicators -->
+            <div class="mt-20 border-t border-gray-200/30 dark:border-gray-700/30 pt-16">
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-8 text-center">
+                    <div class="group">
+                        <div class="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-br from-blue-500/20 to-blue-600/20 text-blue-500 shadow-lg group-hover:shadow-blue-500/25 transition-all duration-300 group-hover:scale-110 mb-4">
+                            <svg class="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                        </div>
+                        <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-2 group-hover:text-blue-400 transition-colors">Verified Quality</h3>
+                        <p class="text-gray-600 dark:text-gray-300">All brands undergo rigorous testing</p>
+                    </div>
+                    
+                    <div class="group">
+                        <div class="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-br from-yellow-500/20 to-yellow-600/20 text-yellow-500 shadow-lg group-hover:shadow-yellow-500/25 transition-all duration-300 group-hover:scale-110 mb-4">
+                            <svg class="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                            </svg>
+                        </div>
+                        <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-2 group-hover:text-yellow-400 transition-colors">Enterprise Security</h3>
+                        <p class="text-gray-600 dark:text-gray-300">Bank-level encryption & protection</p>
+                    </div>
+                    
+                    <div class="group">
+                        <div class="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-br from-blue-600/20 to-blue-700/20 text-blue-600 shadow-lg group-hover:shadow-blue-500/25 transition-all duration-300 group-hover:scale-110 mb-4">
+                            <svg class="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
+                            </svg>
+                        </div>
+                        <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-2 group-hover:text-blue-400 transition-colors">Lightning Fast</h3>
+                        <p class="text-gray-600 dark:text-gray-300">Optimized for maximum performance</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+    {{-- Enhanced Brands Section End --}}
+
+    {{-- Enhanced Testimonials Section with Advanced Tailwind Features --}}
+    <section id="demo-section" class="relative bg-gray-900 py-36 lg:py-44 min-h-screen flex items-center overflow-hidden">
+        <!-- Enhanced Background Effects -->
+        <div class="absolute inset-0 bg-gradient-to-br from-gray-900 via-blue-900/20 to-purple-900/10"></div>
+        <div class="absolute inset-0 opacity-20">
+            <div class="absolute inset-0" style="background-image: radial-gradient(circle at 2px 2px, rgba(255,255,255,0.1) 1px, transparent 0); background-size: 50px 50px;"></div>
+        </div>
+        
+        <!-- Enhanced Floating Elements -->
+        <div class="absolute inset-0 overflow-hidden">
+            <div class="absolute top-20 left-10 w-72 h-72 bg-gradient-to-br from-blue-500/10 to-cyan-500/10 rounded-full blur-3xl animate-float transform-gpu will-change-transform"></div>
+            <div class="absolute bottom-20 right-10 w-96 h-96 bg-gradient-to-br from-purple-500/10 to-pink-500/10 rounded-full blur-3xl animate-float-reverse transform-gpu will-change-transform"></div>
+            <div class="absolute top-1/2 left-1/4 w-32 h-32 bg-gradient-to-br from-yellow-400/20 to-orange-400/20 rounded-full blur-2xl animate-pulse-glow"></div>
+            <div class="absolute bottom-1/3 right-1/3 w-40 h-40 bg-gradient-to-br from-emerald-400/20 to-teal-400/20 rounded-full blur-2xl animate-pulse-glow animation-delay-400"></div>
+        </div>
+
+        <div class="relative mx-auto max-w-7xl px-8 lg:px-12 xl:px-16">
+            <!-- Enhanced Section Header -->
+            <div class="text-center mb-28 lg:mb-32 space-y-8 max-w-4xl mx-auto">
+                <div class="inline-flex items-center rounded-full bg-gradient-to-r from-yellow-100/10 to-blue-100/10 px-6 py-3 text-sm font-medium text-yellow-400 ring-1 ring-yellow-400/20 backdrop-blur-sm mb-10 animate-scale-in shadow-2xl">
+                    <svg class="mr-3 h-5 w-5 animate-pulse-glow" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" />
+                    </svg>
+                    Customer Success Stories
+                </div>
+                
+                <h2 class="text-5xl lg:text-6xl font-black tracking-tight text-white leading-none animate-fade-in-up">
+                    Trusted by
+                    <span class="bg-gradient-to-r from-yellow-400 via-orange-400 to-blue-400 bg-clip-text text-transparent text-shadow-lg">Thousands</span>
+                </h2>
+                <p class="text-xl lg:text-2xl leading-relaxed text-gray-300 max-w-3xl mx-auto font-light tracking-wide animate-fade-in-up animation-delay-200 mt-10">
+                    Hear from our satisfied customers who have transformed their businesses with our proxy solutions. 
+                    From startups to enterprises, we deliver results that matter.
+                </p>
+                
+                <!-- Enhanced Trust Metrics -->
+                <div class="flex flex-wrap items-center justify-center gap-8 mt-16 animate-fade-in-up animation-delay-400">
+                    <div class="flex items-center gap-2 text-sm text-gray-400 bg-white/5 backdrop-blur-sm px-5 py-3 rounded-full ring-1 ring-white/10 shadow-lg">
+                        <div class="w-2 h-2 bg-green-400 rounded-full animate-pulse-glow"></div>
+                        <span class="font-medium">5-Star Rated</span>
+                    </div>
+                    <div class="flex items-center gap-2 text-sm text-gray-400 bg-white/5 backdrop-blur-sm px-5 py-3 rounded-full ring-1 ring-white/10 shadow-lg">
+                        <div class="w-2 h-2 bg-blue-400 rounded-full animate-pulse-glow animation-delay-200"></div>
+                        <span class="font-medium">10K+ Reviews</span>
+                    </div>
+                    <div class="flex items-center gap-2 text-sm text-gray-400 bg-white/5 backdrop-blur-sm px-5 py-3 rounded-full ring-1 ring-white/10 shadow-lg">
+                        <div class="w-2 h-2 bg-purple-400 rounded-full animate-pulse-glow animation-delay-400"></div>
+                        <span class="font-medium">Enterprise Trusted</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Enhanced Testimonials Grid -->
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-10 lg:gap-12 xl:gap-16 mb-28 lg:mb-32">
+                <!-- Enhanced Testimonial 1 -->
+                <div class="group relative bg-white/5 backdrop-blur-xl rounded-3xl p-10 lg:p-12 xl:p-14 ring-1 ring-white/10 hover:ring-white/30 hover:ring-2 transition-all-700 hover:scale-105 hover:-translate-y-2 hover:rotate-1 transform-gpu will-change-transform animate-fade-in-left shadow-4xl">
+                    <!-- Enhanced Gradient Overlay -->
+                    <div class="absolute inset-0 bg-gradient-to-br from-blue-500/10 via-transparent to-cyan-500/10 rounded-3xl opacity-0 group-hover:opacity-100 transition-opacity duration-700 pointer-events-none"></div>
+                    
+                    <!-- Enhanced Quote Mark -->
+                    <div class="absolute -top-4 -left-4 w-16 h-16 bg-gradient-to-br from-yellow-400 to-orange-500 rounded-2xl flex items-center justify-center shadow-2xl group-hover:rotate-12 group-hover:scale-110 transition-all duration-500 transform-gpu">
+                        <svg class="w-8 h-8 text-white" fill="currentColor" viewBox="0 0 24 24">
+                            <path d="M14.017 21v-7.391c0-5.704 3.731-9.57 8.983-10.609l.995 2.151c-2.432.917-3.995 3.638-3.995 5.849h4v10h-9.983zm-14.017 0v-7.391c0-5.704 3.748-9.57 9-10.609l.996 2.151c-2.433.917-3.996 3.638-3.996 5.849h3.983v10h-9.983z"/>
+                        </svg>
+                    </div>
+                    
+                    <div class="relative z-10 pt-8">
+                        <div class="mb-8">
+                            <div class="flex text-yellow-400 mb-6 space-x-1">
+                                @for($i = 0; $i < 5; $i++)
+                                    <svg class="h-6 w-6 transform hover:scale-110 transition-transform duration-200" fill="currentColor" viewBox="0 0 20 20" style="animation-delay: {{ $i * 100 }}ms">
+                                        <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+                                    </svg>
+                                @endfor
+                            </div>
+                            <blockquote class="text-lg lg:text-xl text-gray-300 leading-relaxed font-light tracking-wide line-height-loose">
+                                "The proxy performance is outstanding. Our web scraping operations have become 
+                                <span class="text-yellow-400 font-semibold">300% more efficient</span> with near-zero downtime."
+                            </blockquote>
+                        </div>
+                        <div class="flex items-center space-x-4">
+                            <div class="relative">
+                                <div class="w-14 h-14 rounded-2xl bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center text-white font-bold text-xl shadow-2xl group-hover:rotate-3 group-hover:scale-110 transition-all duration-300 transform-gpu">
+                                    JS
+                                </div>
+                                <div class="absolute -bottom-1 -right-1 w-5 h-5 bg-green-400 rounded-full ring-2 ring-gray-900 animate-pulse-glow"></div>
+                            </div>
+                            <div class="space-y-1">
+                                <div class="font-bold text-white text-lg group-hover:text-blue-400 transition-colors duration-300">John Smith</div>
+                                <div class="text-gray-400 text-sm font-medium">CTO, DataFlow Solutions</div>
+                                <div class="text-xs text-gray-500">5+ years customer</div>
+                            </div>
                         </div>
                     </div>
                 </div>
-                <p class="mb-6 text-lg justify-left font-mono text-white py-3">
-                    Experience blazing fast speeds and top-notch security with our cutting-edge proxy services. Whether you need to browse
-                    anonymously, access restricted content, or safeguard your data, our proxies have got you covered.
-                </p>
+
+                <!-- Enhanced Testimonial 2 -->
+                <div class="group relative bg-white/5 backdrop-blur-xl rounded-3xl p-8 lg:p-10 ring-1 ring-white/10 hover:ring-white/30 hover:ring-2 transition-all-700 hover:scale-105 hover:-translate-y-2 hover:rotate-1 transform-gpu will-change-transform animate-fade-in-up animation-delay-200 shadow-4xl">
+                    <!-- Enhanced Gradient Overlay -->
+                    <div class="absolute inset-0 bg-gradient-to-br from-purple-500/10 via-transparent to-pink-500/10 rounded-3xl opacity-0 group-hover:opacity-100 transition-opacity duration-700 pointer-events-none"></div>
+                    
+                    <!-- Enhanced Quote Mark -->
+                    <div class="absolute -top-4 -left-4 w-16 h-16 bg-gradient-to-br from-purple-400 to-pink-500 rounded-2xl flex items-center justify-center shadow-2xl group-hover:rotate-12 group-hover:scale-110 transition-all duration-500 transform-gpu">
+                        <svg class="w-8 h-8 text-white" fill="currentColor" viewBox="0 0 24 24">
+                            <path d="M14.017 21v-7.391c0-5.704 3.731-9.57 8.983-10.609l.995 2.151c-2.432.917-3.995 3.638-3.995 5.849h4v10h-9.983zm-14.017 0v-7.391c0-5.704 3.748-9.57 9-10.609l.996 2.151c-2.433.917-3.996 3.638-3.996 5.849h3.983v10h-9.983z"/>
+                        </svg>
+                    </div>
+                    
+                    <div class="relative z-10 pt-8">
+                        <div class="mb-8">
+                            <div class="flex text-yellow-400 mb-6 space-x-1">
+                                @for($i = 0; $i < 5; $i++)
+                                    <svg class="h-6 w-6 transform hover:scale-110 transition-transform duration-200" fill="currentColor" viewBox="0 0 20 20" style="animation-delay: {{ $i * 100 }}ms">
+                                        <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+                                    </svg>
+                                @endfor
+                            </div>
+                            <blockquote class="text-lg lg:text-xl text-gray-300 leading-relaxed font-light tracking-wide line-height-loose">
+                                "Exceptional reliability and customer support. The proxy network handles our 
+                                <span class="text-purple-400 font-semibold">enterprise-level traffic</span> without any issues."
+                            </blockquote>
+                        </div>
+                        <div class="flex items-center space-x-4">
+                            <div class="relative">
+                                <div class="w-14 h-14 rounded-2xl bg-gradient-to-br from-purple-500 to-pink-600 flex items-center justify-center text-white font-bold text-xl shadow-2xl group-hover:rotate-3 group-hover:scale-110 transition-all duration-300 transform-gpu">
+                                    MR
+                                </div>
+                                <div class="absolute -bottom-1 -right-1 w-5 h-5 bg-green-400 rounded-full ring-2 ring-gray-900 animate-pulse-glow animation-delay-200"></div>
+                            </div>
+                            <div class="space-y-1">
+                                <div class="font-bold text-white text-lg group-hover:text-purple-400 transition-colors duration-300">Maria Rodriguez</div>
+                                <div class="text-gray-400 text-sm font-medium">Head of IT, TechCorp Inc.</div>
+                                <div class="text-xs text-gray-500">Enterprise client</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Enhanced Testimonial 3 -->
+                <div class="group relative bg-white/5 backdrop-blur-xl rounded-3xl p-8 lg:p-10 ring-1 ring-white/10 hover:ring-white/30 hover:ring-2 transition-all-700 hover:scale-105 hover:-translate-y-2 hover:rotate-1 transform-gpu will-change-transform animate-fade-in-right animation-delay-400 shadow-4xl">
+                    <!-- Enhanced Gradient Overlay -->
+                    <div class="absolute inset-0 bg-gradient-to-br from-emerald-500/10 via-transparent to-teal-500/10 rounded-3xl opacity-0 group-hover:opacity-100 transition-opacity duration-700 pointer-events-none"></div>
+                    
+                    <!-- Enhanced Quote Mark -->
+                    <div class="absolute -top-4 -left-4 w-16 h-16 bg-gradient-to-br from-emerald-400 to-teal-500 rounded-2xl flex items-center justify-center shadow-2xl group-hover:rotate-12 group-hover:scale-110 transition-all duration-500 transform-gpu">
+                        <svg class="w-8 h-8 text-white" fill="currentColor" viewBox="0 0 24 24">
+                            <path d="M14.017 21v-7.391c0-5.704 3.731-9.57 8.983-10.609l.995 2.151c-2.432.917-3.995 3.638-3.995 5.849h4v10h-9.983zm-14.017 0v-7.391c0-5.704 3.748-9.57 9-10.609l.996 2.151c-2.433.917-3.996 3.638-3.996 5.849h3.983v10h-9.983z"/>
+                        </svg>
+                    </div>
+                    
+                    <div class="relative z-10 pt-8">
+                        <div class="mb-8">
+                            <div class="flex text-yellow-400 mb-6 space-x-1">
+                                @for($i = 0; $i < 5; $i++)
+                                    <svg class="h-6 w-6 transform hover:scale-110 transition-transform duration-200" fill="currentColor" viewBox="0 0 20 20" style="animation-delay: {{ $i * 100 }}ms">
+                                        <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+                                    </svg>
+                                @endfor
+                            </div>
+                            <blockquote class="text-lg lg:text-xl text-gray-300 leading-relaxed font-light tracking-wide line-height-loose">
+                                "Game-changing proxy service! Our market research capabilities have expanded 
+                                <span class="text-emerald-400 font-semibold">globally</span> with seamless geographical targeting."
+                            </blockquote>
+                        </div>
+                        <div class="flex items-center space-x-4">
+                            <div class="relative">
+                                <div class="w-14 h-14 rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center text-white font-bold text-xl shadow-2xl group-hover:rotate-3 group-hover:scale-110 transition-all duration-300 transform-gpu">
+                                    AL
+                                </div>
+                                <div class="absolute -bottom-1 -right-1 w-5 h-5 bg-green-400 rounded-full ring-2 ring-gray-900 animate-pulse-glow animation-delay-400"></div>
+                            </div>
+                            <div class="space-y-1">
+                                <div class="font-bold text-white text-lg group-hover:text-emerald-400 transition-colors duration-300">Alex Liu</div>
+                                <div class="text-gray-400 text-sm font-medium">Research Director, Analytics Pro</div>
+                                <div class="text-xs text-gray-500">Global operations</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Enhanced Stats Section -->
+            <div class="border-t border-white/10 pt-20">
+                <div class="grid grid-cols-2 lg:grid-cols-4 gap-8 lg:gap-12 text-center">
+                    <div class="group space-y-3 animate-fade-in-up">
+                        <div class="text-5xl lg:text-6xl font-black text-white mb-4 group-hover:text-yellow-400 transition-all duration-500 group-hover:scale-110 transform-gpu will-change-transform">
+                            99.9%
+                        </div>
+                        <div class="text-gray-400 font-semibold text-lg tracking-wide">Uptime Guarantee</div>
+                        <div class="text-xs text-gray-500">Industry leading</div>
+                    </div>
+                    <div class="group space-y-3 animate-fade-in-up animation-delay-200">
+                        <div class="text-5xl lg:text-6xl font-black text-white mb-4 group-hover:text-blue-400 transition-all duration-500 group-hover:scale-110 transform-gpu will-change-transform">
+                            10K+
+                        </div>
+                        <div class="text-gray-400 font-semibold text-lg tracking-wide">Happy Customers</div>
+                        <div class="text-xs text-gray-500">Worldwide</div>
+                    </div>
+                    <div class="group space-y-3 animate-fade-in-up animation-delay-400">
+                        <div class="text-5xl lg:text-6xl font-black text-white mb-4 group-hover:text-purple-400 transition-all duration-500 group-hover:scale-110 transform-gpu will-change-transform">
+                            24/7
+                        </div>
+                        <div class="text-gray-400 font-semibold text-lg tracking-wide">Expert Support</div>
+                        <div class="text-xs text-gray-500">Always available</div>
+                    </div>
+                    <div class="group space-y-3 animate-fade-in-up animation-delay-600">
+                        <div class="text-5xl lg:text-6xl font-black text-white mb-4 group-hover:text-emerald-400 transition-all duration-500 group-hover:scale-110 transform-gpu will-change-transform">
+                            150+
+                        </div>
+                        <div class="text-gray-400 font-semibold text-lg tracking-wide">Countries Covered</div>
+                        <div class="text-xs text-gray-500">Global network</div>
+                    </div>
+                </div>
             </div>
         </div>
+    </section>
+    {{-- Enhanced Testimonials Section End --}}
 
-        <div class="max-w-7xl mx-auto px-10 py-6 lg:py-8 md:px-10">
-            <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                @foreach($this->categories as $serverCategory)
-                <a class="group flex flex-col justify-center items-center border-transparent bg-dark-green hover:bg-green-400 hover:text-green-900 disabled:opacity-50 disabled:pointer-events-none dark:focus:ring-green-600 border shadow-sm rounded-xl hover:shadow-md transition dark:bg-dark-green dark:border-gray-800 dark:focus:outline-none dark:focus:ring-1"
-                    href="/servers?selected_categories[0]={{ $serverCategory->id }}" wire:key="{{$serverCategory->id}}" wire:navigate>
-                    <div class="p-4 md:p-5">
-                        <div class="flex justify-between items-center">
-                            <div class="flex items-center">
-                                <img class="h-6 w-6 rounded-full"
-                                    src="{{ url('storage/'.$serverCategory->image)}}" alt="{{ $serverCategory->name}}">
-                                <div class="ms-3">
-                                    <h3 class="group-hover:text-green-900 text-base sm:text-lg md:text-xl font-bold text-white">
-                                        {{ $serverCategory->name}}
-                                    </h3>
-                                    <p class="text-sm text-white/70 group-hover:text-green-800">
-                                        {{ $serverCategory->server_plans_count }} plans available
-                                    </p>
-                                </div>
-                            </div>
-                            <div class="ps-3">
-                                <svg class="flex-shrink-0 w-5 h-5 text-accent-yellow group-hover:text-accent-yellow"
-                                    xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none"
-                                    stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                    <path d="m9 18 6-6-6-6" />
+    {{-- Enhanced Final CTA Section with Advanced Tailwind Features --}}
+    <section class="relative bg-gradient-to-br from-gray-900 via-blue-900/30 to-purple-900/20 py-36 lg:py-44 min-h-screen flex items-center overflow-hidden">
+        <!-- Enhanced Background Effects -->
+        <div class="absolute inset-0">
+            <div class="absolute inset-0 bg-gradient-to-r from-blue-600/10 via-purple-600/10 to-yellow-500/10"></div>
+            <div class="absolute top-0 left-0 w-full h-full bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-transparent via-blue-900/10 to-transparent"></div>
+        </div>
+        
+        <!-- Enhanced Floating Elements -->
+        <div class="absolute inset-0 overflow-hidden">
+            <div class="absolute top-20 right-20 w-96 h-96 bg-gradient-to-br from-blue-400/15 to-cyan-400/10 rounded-full blur-3xl animate-float transform-gpu will-change-transform"></div>
+            <div class="absolute bottom-20 left-20 w-96 h-96 bg-gradient-to-tr from-yellow-400/15 to-orange-400/10 rounded-full blur-3xl animate-float-reverse transform-gpu will-change-transform"></div>
+            <div class="absolute top-1/3 left-1/3 w-64 h-64 bg-gradient-to-br from-purple-400/20 to-pink-400/15 rounded-full blur-2xl animate-pulse-glow"></div>
+            <div class="absolute bottom-1/3 right-1/3 w-80 h-80 bg-gradient-to-br from-emerald-400/15 to-teal-400/10 rounded-full blur-3xl animate-pulse-glow animation-delay-400"></div>
+        </div>
+
+        <!-- Enhanced Grid Pattern -->
+        <div class="absolute inset-0 bg-[url('data:image/svg+xml,%3Csvg width="60" height="60" viewBox="0 0 60 60" xmlns="http://www.w3.org/2000/svg"%3E%3Cg fill="none" fill-rule="evenodd"%3E%3Cg fill="%239C92AC" fill-opacity="0.08"%3E%3Ccircle cx="30" cy="30" r="2"/%3E%3C/g%3E%3C/g%3E%3C/svg%3E')] opacity-40"></div>
+
+        <div class="relative mx-auto max-w-7xl px-8 lg:px-12 xl:px-16 z-10">
+            <div class="text-center space-y-16 lg:space-y-20">
+                <!-- Enhanced Badge -->
+                <div class="mb-16 flex justify-center animate-scale-in">
+                    <div class="inline-flex items-center rounded-full bg-gradient-to-r from-blue-100/10 to-yellow-100/10 px-8 py-4 text-sm font-bold text-blue-400 ring-2 ring-blue-400/20 backdrop-blur-lg shadow-2xl hover:ring-blue-400/40 transition-all duration-500 hover:scale-105">
+                        <svg class="mr-3 h-5 w-5 animate-pulse-glow" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
+                        </svg>
+                        Start Your Journey Today
+                        <div class="ml-3 w-2 h-2 bg-green-400 rounded-full animate-pulse-glow"></div>
+                    </div>
+                </div>
+
+                <!-- Enhanced Main Headline -->
+                <div class="space-y-12 animate-fade-in-up">
+                    <h2 class="text-6xl lg:text-7xl xl:text-8xl font-black tracking-tight text-white leading-none text-shadow-lg">
+                        Ready to Scale Your
+                        <br class="hidden sm:block">
+                        <span class="bg-gradient-to-r from-blue-400 via-purple-500 to-yellow-400 bg-clip-text text-transparent animate-pulse-glow">Business?</span>
+                    </h2>
+                    
+                    <p class="text-xl lg:text-2xl xl:text-3xl leading-relaxed text-gray-300 max-w-4xl mx-auto font-light tracking-wide mt-12">
+                        Join thousands of companies that trust our proxy solutions for their critical operations. 
+                        Start your journey today with our <span class="text-yellow-400 font-semibold">premium network</span>.
+                    </p>
+                </div>
+                
+                <!-- Enhanced CTA Buttons -->
+                <div class="flex flex-col lg:flex-row gap-8 justify-center items-center pt-12 animate-fade-in-up animation-delay-400">
+                    <a href="/servers" wire:navigate
+                       class="group relative w-full lg:w-auto inline-flex items-center justify-center px-16 py-6 text-xl lg:text-2xl font-black text-white bg-gradient-to-r from-blue-600 via-blue-700 to-yellow-600 rounded-3xl shadow-4xl hover:shadow-blue-500/40 transition-all-700 hover:scale-110 hover:-translate-y-2 transform-gpu will-change-transform overflow-hidden">
+                        <!-- Enhanced Shimmer Effect -->
+                        <div class="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent transform -skew-x-12 scale-x-0 group-hover:scale-x-100 transition-transform duration-1000 origin-left"></div>
+                        
+                        <span class="relative z-10 flex items-center">
+                            <svg class="mr-4 h-7 w-7 group-hover:rotate-12 transition-transform duration-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
+                            </svg>
+                            Start Free Trial
+                        </span>
+                        <svg class="ml-4 h-7 w-7 transition-transform group-hover:translate-x-3 group-hover:scale-110" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6" />
+                        </svg>
+                        
+                        <!-- Enhanced Glow Effect -->
+                        <div class="absolute inset-0 bg-gradient-to-r from-blue-600 via-blue-700 to-yellow-600 rounded-3xl blur-xl opacity-50 group-hover:opacity-75 transition-opacity duration-500 transform scale-110"></div>
+                    </a>
+                    
+                    <a href="/contact" wire:navigate
+                       class="group w-full lg:w-auto inline-flex items-center justify-center px-16 py-6 text-xl lg:text-2xl font-bold text-white border-2 border-white/30 rounded-3xl backdrop-blur-lg hover:border-white/60 hover:bg-white/10 transition-all-700 hover:scale-105 hover:-translate-y-1 transform-gpu will-change-transform">
+                        <svg class="mr-4 h-7 w-7 group-hover:scale-110 transition-transform duration-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                        </svg>
+                        Talk to Expert
+                        <svg class="ml-4 h-6 w-6 transition-transform group-hover:translate-x-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 8l4 4m0 0l-4 4m4-4H3" />
+                        </svg>
+                    </a>
+                </div>
+
+                <!-- Enhanced Trust Badges -->
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-10 lg:gap-12 xl:gap-16 max-w-5xl mx-auto pt-20 animate-fade-in-up animation-delay-600">
+                    <div class="group relative bg-white/5 backdrop-blur-xl rounded-3xl p-10 lg:p-12 xl:p-14 ring-1 ring-white/10 hover:ring-white/30 hover:ring-2 transition-all-700 hover:scale-105 hover:-translate-y-2 hover:rotate-1 transform-gpu will-change-transform">
+                        <div class="absolute inset-0 bg-gradient-to-br from-blue-500/10 via-transparent to-cyan-500/10 rounded-3xl opacity-0 group-hover:opacity-100 transition-opacity duration-700 pointer-events-none"></div>
+                        
+                        <div class="relative z-10">
+                            <div class="flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-br from-blue-500/20 to-cyan-500/20 mx-auto mb-6 group-hover:scale-110 group-hover:rotate-12 transition-all duration-500 shadow-2xl">
+                                <svg class="h-8 w-8 text-blue-400" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fill-rule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clip-rule="evenodd" />
                                 </svg>
                             </div>
+                            <h3 class="text-xl lg:text-2xl font-bold text-white mb-4 group-hover:text-blue-400 transition-colors duration-300">Enterprise Security</h3>
+                            <p class="text-gray-300 text-base lg:text-lg font-light leading-relaxed">Bank-level encryption & protection for all your operations</p>
                         </div>
                     </div>
-                </a>
-                @endforeach
-            </div>
-        </div>
-
-    </div>
-    {{-- Categories Section End  --}}
-
-    {{-- Server Start  --}}
-    <section class="w-full h-auto pt-8 m-auto -mt-0 font-mono bg-gradient-to-r from-green-900 to-green-600 py-6">
-        <div class="max-w-7xl mx-auto px-10 py-6 lg:py-8 md:px-10">
-            <div class="text-center ">
-                <div class="relative flex flex-col items-center">
-                    <h1 class="text-5xl font-bold font-mono text-white py-3">Global Network <span class="text-green-400">&</span>
-                        <spa
-                            class="text-yellow-600">Easy Integration</span></h1>
-                    <div class="flex w-40 mt-3 mb-6 overflow-hidden rounded">
-                        <div class="flex-1 h-2 bg-gradient-to-r from-green-400 to-yellow-600"></div>
+                    
+                    <div class="group relative bg-white/5 backdrop-blur-xl rounded-3xl p-8 lg:p-10 ring-1 ring-white/10 hover:ring-white/30 hover:ring-2 transition-all-700 hover:scale-105 hover:-translate-y-2 hover:rotate-1 transform-gpu will-change-transform">
+                        <div class="absolute inset-0 bg-gradient-to-br from-green-500/10 via-transparent to-emerald-500/10 rounded-3xl opacity-0 group-hover:opacity-100 transition-opacity duration-700 pointer-events-none"></div>
+                        
+                        <div class="relative z-10">
+                            <div class="flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-br from-green-500/20 to-emerald-500/20 mx-auto mb-6 group-hover:scale-110 group-hover:rotate-12 transition-all duration-500 shadow-2xl">
+                                <svg class="h-8 w-8 text-green-400" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" />
+                                </svg>
+                            </div>
+                            <h3 class="text-xl lg:text-2xl font-bold text-white mb-4 group-hover:text-green-400 transition-colors duration-300">No Setup Fees</h3>
+                            <p class="text-gray-300 text-base lg:text-lg font-light leading-relaxed">Start immediately with zero upfront costs</p>
+                        </div>
+                    </div>
+                    
+                    <div class="group relative bg-white/5 backdrop-blur-xl rounded-3xl p-8 lg:p-10 ring-1 ring-white/10 hover:ring-white/30 hover:ring-2 transition-all-700 hover:scale-105 hover:-translate-y-2 hover:rotate-1 transform-gpu will-change-transform">
+                        <div class="absolute inset-0 bg-gradient-to-br from-purple-500/10 via-transparent to-pink-500/10 rounded-3xl opacity-0 group-hover:opacity-100 transition-opacity duration-700 pointer-events-none"></div>
+                        
+                        <div class="relative z-10">
+                            <div class="flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-br from-purple-500/20 to-pink-500/20 mx-auto mb-6 group-hover:scale-110 group-hover:rotate-12 transition-all duration-500 shadow-2xl">
+                                <svg class="h-8 w-8 text-purple-400" fill="currentColor" viewBox="0 0 20 20">
+                                    <path d="M3 4a1 1 0 011-1h12a1 1 0 011 1v2a1 1 0 01-1 1H4a1 1 0 01-1-1V4zM3 10a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H4a1 1 0 01-1-1v-6zM14 9a1 1 0 00-1 1v6a1 1 0 001 1h2a1 1 0 001-1v-6a1 1 0 00-1-1h-2z" />
+                                </svg>
+                            </div>
+                            <h3 class="text-xl lg:text-2xl font-bold text-white mb-4 group-hover:text-purple-400 transition-colors duration-300">24/7 Support</h3>
+                            <p class="text-gray-300 text-base lg:text-lg font-light leading-relaxed">Expert assistance whenever you need it</p>
+                        </div>
                     </div>
                 </div>
-                <p class="mb-6 text-lg justify-left font-mono text-white py-3">
-                    Unlock the internet's full potential with our global proxy network. Connect from anywhere, bypass geo-restrictions, and
-                    access content seamlessly. Designed for simplicity, our proxies offer quick setup and easy integration for developers,
-                    businesses, and individual users.
-                </p>
-            </div>
-        </div>
-        <div class="max-w-7xl mx-auto px-10 py-6 lg:py-8 md:px-10">
-            <div class="grid grid-cols-1 gap-6 lg:grid-cols-4 md:grid-cols-2">
-                @foreach ($this->brands as $serverBrand)
-                <div class="py-6 px-4 justify-center items-center rounded-lg border border-transparent bg-dark-green hover:bg-green-400 hover:text-green-900 disabled:opacity-50 disabled:pointer-events-none dark:focus:outline-none dark:focus:ring-1 dark:focus:ring-green-600"
-                    wire:key="{{ $serverBrand->id }}">
-                    <a href="/servers?selected_brands[0]={{ $serverBrand->id }}" wire:navigate class="block">
-                        <img src="{{ url('storage/'.$serverBrand->image) }}" alt="{{ $serverBrand->name }}"
-                            class="object-contain w-full h-40 mx-auto rounded-lg">
-                    </a>
-                    <div class="p-5 text-center">
-                        <a href="/servers?selected_brands[0]={{ $serverBrand->id }}" wire:navigate
-                            class="text-xl sm:text-2xl font-bold tracking-tight text-white hover:text-green-900">{{ $serverBrand->name }}</a>
-                        <p class="text-sm text-white/70 mt-1">{{ $serverBrand->server_plans_count }} plans available</p>
+
+                <!-- Enhanced Bottom Stats -->
+                <div class="pt-24 lg:pt-28 border-t border-white/10 animate-fade-in-up animation-delay-800">
+                    <div class="grid grid-cols-2 lg:grid-cols-4 gap-10 lg:gap-16 text-center">
+                        <div class="group space-y-4">
+                            <div class="text-4xl lg:text-5xl xl:text-6xl font-black text-white group-hover:text-blue-400 transition-all duration-500 group-hover:scale-110 transform-gpu will-change-transform">
+                                99.9%
+                            </div>
+                            <div class="text-gray-400 font-bold text-base lg:text-lg tracking-wide">Uptime Guarantee</div>
+                            <div class="text-xs text-gray-500">Industry leading</div>
+                        </div>
+                        <div class="group space-y-4">
+                            <div class="text-4xl lg:text-5xl xl:text-6xl font-black text-white group-hover:text-yellow-400 transition-all duration-500 group-hover:scale-110 transform-gpu will-change-transform">
+                                10K+
+                            </div>
+                            <div class="text-gray-400 font-bold text-base lg:text-lg tracking-wide">Happy Customers</div>
+                            <div class="text-xs text-gray-500">Worldwide</div>
+                        </div>
+                        <div class="group space-y-4">
+                            <div class="text-4xl lg:text-5xl xl:text-6xl font-black text-white group-hover:text-green-400 transition-all duration-500 group-hover:scale-110 transform-gpu will-change-transform">
+                                150+
+                            </div>
+                            <div class="text-gray-400 font-bold text-base lg:text-lg tracking-wide">Countries Covered</div>
+                            <div class="text-xs text-gray-500">Global network</div>
+                        </div>
+                        <div class="group space-y-4">
+                            <div class="text-4xl lg:text-5xl xl:text-6xl font-black text-white group-hover:text-purple-400 transition-all duration-500 group-hover:scale-110 transform-gpu will-change-transform">
+                                24/7
+                            </div>
+                            <div class="text-gray-400 font-bold text-base lg:text-lg tracking-wide">Expert Support</div>
+                            <div class="text-xs text-gray-500">Always available</div>
+                        </div>
                     </div>
                 </div>
-                @endforeach
             </div>
         </div>
     </section>
-    {{-- Server End  --}}
+    {{-- Enhanced Final CTA Section End --}}
 
-    {{-- Customer Reviews Start  --}}
-    <section class="w-full h-auto pt-8 m-auto -mt-0 font-mono bg-gradient-to-r from-green-900 to-green-600">
-        <div class="max-w-7xl mx-auto px-10 py-6 lg:py-8 md:px-10">
-            <div class="max-w-7xl mx-auto">
-                <div class="text-center ">
-                    <div class="relative flex flex-col items-center">
-                        <h1 class="text-5xl font-bold font-mono text-white py-3">Need help? <span class="text-green-400">or read</span>
-                            <spa class="text-yellow-600"> Reviews</span>
-                        </h1>
-                        <div class="flex w-40 mt-3 mb-6 overflow-hidden rounded">
-                            <div class="flex-1 h-2 bg-gradient-to-r from-green-400 to-yellow-600"></div>
-                        </div>
-                    </div>
-                    <p class="mb-6 text-lg justify-left font-mono text-white py-3">
-                        Discover what customers say about our VPN and proxy services. Read their testimonials on our secure and reliable network
-                        solutions. Our 24/7 support team is here to assist with any questions, ensuring the best experience with our
-                        proxy services.
-                    </p>
-                </div>
-            </div>
+    {{-- Enhanced Interactions Script --}}
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Smooth scrolling for anchor links
+            document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+                anchor.addEventListener('click', function (e) {
+                    e.preventDefault();
+                    const target = document.querySelector(this.getAttribute('href'));
+                    if (target) {
+                        target.scrollIntoView({
+                            behavior: 'smooth',
+                            block: 'start'
+                        });
+                    }
+                });
+            });
 
-            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                <div class="bg-dark-green rounded-lg shadow-md dark:bg-gray-700 py-6">
-                    <div
-                        class="flex flex-wrap items-center justify-between pb-4 mb-6 space-x-2 border-b border-green-600 dark:border-gray-700">
-                        <div class="flex items-center px-6 mb-2 md:mb-0">
-                            <div class="flex mr-2 rounded-full">
-                                <img src="{{ asset('storage/uploads/sarah.jpg') }}" alt=""
-                                    class="object-cover w-12 h-12 rounded-full">
-                            </div>
-                            <div>
-                                <h2 class="text-base sm:text-lg font-bold text-green-500 dark:text-green-400">
-                                    Emma Martinez</h2>
-                                <p class="text-sm sm:text-base text-white leading-relaxed font-mono dark:text-green-400">Research Analyst</p>
-                            </div>
-                        </div>
-                        {{-- <p class="px-6 text-base font-medium text-green-700 dark:text-green-400"> Joined 12, SEP , 2022
-                                        </p> --}}
-                    </div>
-                    <p class="px-6 mb-6 text-base text-white font-mono dark:text-green-400">
-                        I rely on these proxies for my daily research tasks. The security and performance are top-notch, allowing me to gather
-                        data efficiently without any geo-restrictions.
-                    </p>
-                    <div class="flex flex-wrap justify-between pt-4 border-t border-green-600 dark:border-gray-700">
-                        <div class="flex px-6 mb-2 md:mb-0">
-                            <ul class="flex items-center justify-start mr-4">
-                                <li>
-                                    <a href="#">
-                                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor"
-                                            class="w-4 mr-1 text-yellow-600 dark:text-green-400 bi bi-star-fill" viewBox="0 0 16 16">
-                                            <path
-                                                d="M3.612 15.443c-.386.198-.824-.149-.746-.592l.83-4.73L.173 6.765c-.329-.314-.158-.888.283-.95l4.898-.696L7.538.792c.197-.39.73-.39.927 0l2.184 4.327 4.898.696c.441.062.612.636.282.95l-3.522 3.356.83 4.73c.078.443-.36.79-.746.592L8 13.187l-4.389 2.256z">
-                                            </path>
-                                        </svg>
-                                    </a>
-                                </li>
-                                <li>
-                                    <a href="#">
-                                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor"
-                                            class="w-4 mr-1 text-yellow-600 dark:text-green-400 bi bi-star-fill" viewBox="0 0 16 16">
-                                            <path
-                                                d="M3.612 15.443c-.386.198-.824-.149-.746-.592l.83-4.73L.173 6.765c-.329-.314-.158-.888.283-.95l4.898-.696L7.538.792c.197-.39.73-.39.927 0l2.184 4.327 4.898.696c.441.062.612.636.282.95l-3.522 3.356.83 4.73c.078.443-.36.79-.746.592L8 13.187l-4.389 2.256z">
-                                            </path>
-                                        </svg>
-                                    </a>
-                                </li>
-                                <li>
-                                    <a href="#">
-                                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor"
-                                            class="w-4 mr-1 text-yellow-600 dark:text-green-400 bi bi-star-fill" viewBox="0 0 16 16">
-                                            <path
-                                                d="M3.612 15.443c-.386.198-.824-.149-.746-.592l.83-4.73L.173 6.765c-.329-.314-.158-.888.283-.95l4.898-.696L7.538.792c.197-.39.73-.39.927 0l2.184 4.327 4.898.696c.441.062.612.636.282.95l-3.522 3.356.83 4.73c.078.443-.36.79-.746.592L8 13.187l-4.389 2.256z">
-                                            </path>
-                                        </svg>
-                                    </a>
-                                </li>
-                                <li>
-                                    <a href="#">
-                                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor"
-                                            class="w-4 mr-1 text-yellow-600 dark:text-green-400 bi bi-star-fill" viewBox="0 0 16 16">
-                                            <path
-                                                d="M3.612 15.443c-.386.198-.824-.149-.746-.592l.83-4.73L.173 6.765c-.329-.314-.158-.888.283-.95l4.898-.696L7.538.792c.197-.39.73-.39.927 0l2.184 4.327 4.898.696c.441.062.612.636.282.95l-3.522 3.356.83 4.73c.078.443-.36.79-.746.592L8 13.187l-4.389 2.256z">
-                                            </path>
-                                        </svg>
-                                    </a>
-                                </li>
-                            </ul>
-                            <h2 class="text-sm text-white font- font-bold dark:text-green-400">Rating:<span
-                                    class="font-bold font-mono text-yellow-600 dark:text-green-400">
-                                    5.0</span>
-                            </h2>
-                        </div>
-                        <div class="flex items-center px-6 space-x-1 text-sm font-medium text-gray-500 dark:text-gray-400">
-                            <div class="flex items-center">
-                                <div class="flex mr-3 text-sm font-mono text-yellow-600 dark:text-green-400">
-                                    <a href="#">
-                                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor"
-                                            class="w-4 h-4 mr-1 text-green-400 bi bi-hand-thumbs-up-fill" viewBox="0 0 16 16">
-                                            <path
-                                                d="M6.956 1.745C7.021.81 7.908.087 8.864.325l.261.066c.463.116.874.456 1.012.965.22.816.533 2.511.062 4.51a9.84 9.84 0 0 1 .443-.051c.713-.065 1.669-.072 2.516.21.518.173.994.681 1.2 1.273.184.532.16 1.162-.234 1.733.058.119.103.242.138.363.077.27.113.567.113.856 0 .289-.036.586-.113.856-.039.135-.09.273-.16.404.169.387.107.819-.003 1.148a3.163 3.163 0 0 1-.488.901c.054.152.076.312.076.465 0 .305-.089.625-.253.912C13.1 15.522 12.437 16 11.5 16H8c-.605 0-1.07-.081-1.466-.218a4.82 4.82 0 0 1-.97-.484l-.048-.03c-.504-.307-.999-.609-2.068-.722C2.682 14.464 2 13.846 2 13V9c0-.85.685-1.432 1.357-1.615.849-.232 1.574-.787 2.132-1.41.56-.627.914-1.28 1.039-1.639.199-.575.356-1.539.428-2.59z">
-                                            </path>
-                                        </svg>
-                                    </a>
-                                    <span class="font-bold font-mono text-yellow-600 dark:text-green-300">12</span>
-                                </div>
-                                <div class="flex text-sm font-bold text-white font-mono dark:text-green-400">
-                                    <a href="#" class="inline-flex hover:underline ">
-                                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor"
-                                            class="w-4 h-4 mr-1 text-green-400 bi bi-chat" viewBox="0 0 16 16">
-                                            <path
-                                                d="M2.678 11.894a1 1 0 0 1 .287.801 10.97 10.97 0 0 1-.398 2c1.395-.323 2.247-.697 2.634-.893a1 1 0 0 1 .71-.074A8.06 8.06 0 0 0 8 14c3.996 0 7-2.807 7-6 0-3.192-3.004-6-7-6S1 4.808 1 8c0 1.468.617 2.83 1.678 3.894zm-.493 3.905a21.682 21.682 0 0 1-.713.129c-.2.032-.352-.176-.273-.362a9.68 9.68 0 0 0 .244-.637l.003-.01c.248-.72.45-1.548.524-2.319C.743 11.37 0 9.76 0 8c0-3.866 3.582-7 8-7s8 3.134 8 7-3.582 7-8 7a9.06 9.06 0 0 1-2.347-.306c-.52.263-1.639.742-3.468 1.105z">
-                                            </path>
-                                        </svg>Reply</a>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                <div class="bg-dark-green rounded-lg shadow-md dark:bg-gray-700 py-6">
-                    <div
-                        class="flex flex-wrap items-center justify-between pb-4 mb-6 space-x-2 border-b border-green-600 dark:border-gray-700">
-                        <div class="flex items-center px-6 mb-2 md:mb-0">
-                            <div class="flex mr-2 rounded-full">
-                                <img src="{{ asset('storage/uploads/david.jpg') }}" alt=""
-                                    class="object-cover w-12 h-12 rounded-full">
-                            </div>
-                            <div>
-                            <h2 class="text-base sm:text-lg font-bold text-green-500 dark:text-green-400">
-                                David Lee</h2>
-                                <p class="text-sm sm:text-base text-white leading-relaxed font-mono dark:text-green-400">Research Analyst</p>
-                            </div>
-                        </div>
-                        {{-- <p class="px-6 text-base font-medium text-green-700 dark:text-green-400"> Joined 12, SEP , 2022
-                                                        </p> --}}
-                    </div>
-                    <p class="px-6 mb-6 text-base text-white font-mono dark:text-green-400">
-                        The integration was quick and, less than 5 minutes. The proxies are stable and fast, making my development and testing process much
-                        smoother. Great service!
-                    </p>
-                    <div class="flex flex-wrap justify-between pt-4 border-t border-green-600 dark:border-gray-700">
-                        <div class="flex px-6 mb-2 md:mb-0">
-                            <ul class="flex items-center justify-start mr-4">
-                                <li>
-                                    <a href="#">
-                                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor"
-                                            class="w-4 mr-1 text-yellow-600 dark:text-green-400 bi bi-star-fill" viewBox="0 0 16 16">
-                                            <path
-                                                d="M3.612 15.443c-.386.198-.824-.149-.746-.592l.83-4.73L.173 6.765c-.329-.314-.158-.888.283-.95l4.898-.696L7.538.792c.197-.39.73-.39.927 0l2.184 4.327 4.898.696c.441.062.612.636.282.95l-3.522 3.356.83 4.73c.078.443-.36.79-.746.592L8 13.187l-4.389 2.256z">
-                                            </path>
-                                        </svg>
-                                    </a>
-                                </li>
-                                <li>
-                                    <a href="#">
-                                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor"
-                                            class="w-4 mr-1 text-yellow-600 dark:text-green-400 bi bi-star-fill" viewBox="0 0 16 16">
-                                            <path
-                                                d="M3.612 15.443c-.386.198-.824-.149-.746-.592l.83-4.73L.173 6.765c-.329-.314-.158-.888.283-.95l4.898-.696L7.538.792c.197-.39.73-.39.927 0l2.184 4.327 4.898.696c.441.062.612.636.282.95l-3.522 3.356.83 4.73c.078.443-.36.79-.746.592L8 13.187l-4.389 2.256z">
-                                            </path>
-                                        </svg>
-                                    </a>
-                                </li>
-                                <li>
-                                    <a href="#">
-                                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor"
-                                            class="w-4 mr-1 text-yellow-600 dark:text-green-400 bi bi-star-fill" viewBox="0 0 16 16">
-                                            <path
-                                                d="M3.612 15.443c-.386.198-.824-.149-.746-.592l.83-4.73L.173 6.765c-.329-.314-.158-.888.283-.95l4.898-.696L7.538.792c.197-.39.73-.39.927 0l2.184 4.327 4.898.696c.441.062.612.636.282.95l-3.522 3.356.83 4.73c.078.443-.36.79-.746.592L8 13.187l-4.389 2.256z">
-                                            </path>
-                                        </svg>
-                                    </a>
-                                </li>
-                                <li>
-                                    <a href="#">
-                                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor"
-                                            class="w-4 mr-1 text-yellow-600 dark:text-green-400 bi bi-star-fill" viewBox="0 0 16 16">
-                                            <path
-                                                d="M3.612 15.443c-.386.198-.824-.149-.746-.592l.83-4.73L.173 6.765c-.329-.314-.158-.888.283-.95l4.898-.696L7.538.792c.197-.39.73-.39.927 0l2.184 4.327 4.898.696c.441.062.612.636.282.95l-3.522 3.356.83 4.73c.078.443-.36.79-.746.592L8 13.187l-4.389 2.256z">
-                                            </path>
-                                        </svg>
-                                    </a>
-                                </li>
-                            </ul>
-                            <h2 class="text-sm text-white font- font-bold dark:text-green-400">Rating:<span
-                                    class="font-bold font-mono text-yellow-600 dark:text-green-400">
-                                    5.0</span>
-                            </h2>
-                        </div>
-                        <div class="flex items-center px-6 space-x-1 text-sm font-medium text-gray-500 dark:text-gray-400">
-                            <div class="flex items-center">
-                                <div class="flex mr-3 text-sm font-mono text-yellow-600 dark:text-green-400">
-                                    <a href="#">
-                                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor"
-                                            class="w-4 h-4 mr-1 text-green-400 bi bi-hand-thumbs-up-fill" viewBox="0 0 16 16">
-                                            <path
-                                                d="M6.956 1.745C7.021.81 7.908.087 8.864.325l.261.066c.463.116.874.456 1.012.965.22.816.533 2.511.062 4.51a9.84 9.84 0 0 1 .443-.051c.713-.065 1.669-.072 2.516.21.518.173.994.681 1.2 1.273.184.532.16 1.162-.234 1.733.058.119.103.242.138.363.077.27.113.567.113.856 0 .289-.036.586-.113.856-.039.135-.09.273-.16.404.169.387.107.819-.003 1.148a3.163 3.163 0 0 1-.488.901c.054.152.076.312.076.465 0 .305-.089.625-.253.912C13.1 15.522 12.437 16 11.5 16H8c-.605 0-1.07-.081-1.466-.218a4.82 4.82 0 0 1-.97-.484l-.048-.03c-.504-.307-.999-.609-2.068-.722C2.682 14.464 2 13.846 2 13V9c0-.85.685-1.432 1.357-1.615.849-.232 1.574-.787 2.132-1.41.56-.627.914-1.28 1.039-1.639.199-.575.356-1.539.428-2.59z">
-                                            </path>
-                                        </svg>
-                                    </a>
-                                    <span class="font-bold font-mono text-yellow-600 dark:text-green-300">12</span>
-                                </div>
-                                <div class="flex text-sm font-bold text-white font-mono dark:text-green-400">
-                                    <a href="#" class="inline-flex hover:underline ">
-                                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor"
-                                            class="w-4 h-4 mr-1 text-green-400 bi bi-chat" viewBox="0 0 16 16">
-                                            <path
-                                                d="M2.678 11.894a1 1 0 0 1 .287.801 10.97 10.97 0 0 1-.398 2c1.395-.323 2.247-.697 2.634-.893a1 1 0 0 1 .71-.074A8.06 8.06 0 0 0 8 14c3.996 0 7-2.807 7-6 0-3.192-3.004-6-7-6S1 4.808 1 8c0 1.468.617 2.83 1.678 3.894zm-.493 3.905a21.682 21.682 0 0 1-.713.129c-.2.032-.352-.176-.273-.362a9.68 9.68 0 0 0 .244-.637l.003-.01c.248-.72.45-1.548.524-2.319C.743 11.37 0 9.76 0 8c0-3.866 3.582-7 8-7s8 3.134 8 7-3.582 7-8 7a9.06 9.06 0 0 1-2.347-.306c-.52.263-1.639.742-3.468 1.105z">
-                                            </path>
-                                        </svg>Reply</a>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                <div class="bg-dark-green rounded-lg shadow-md dark:bg-gray-700 py-6">
-                    <div
-                        class="flex flex-wrap items-center justify-between pb-4 mb-6 space-x-2 border-b border-green-600 dark:border-gray-700">
-                        <div class="flex items-center px-6 mb-2 md:mb-0">
-                            <div class="flex mr-2 rounded-full">
-                                <img src="{{ asset('storage/uploads/emma.jpg') }}" alt=""
-                                    class="object-cover w-12 h-12 rounded-full">
-                            </div>
-                            <div>
-                            <h2 class="text-base sm:text-lg font-bold text-green-500 dark:text-green-400">
-                                Sarah Johnson</h2>
-                                <p class="text-sm sm:text-base text-white leading-relaxed font-mono dark:text-green-400">Research Analyst</p>
-                            </div>
-                        </div>
-                        {{-- <p class="px-6 text-base font-medium text-green-700 dark:text-green-400"> Joined 12, SEP , 2022
-                                                        </p> --}}
-                    </div>
-                    <p class="px-6 mb-6 text-base text-white font-mono dark:text-green-400">
-                        Using these proxies has transformed my workflow. The reliability and speed are unmatched, and I can access region-locked
-                        content seamlessly. Highly recommend!
-                    </p>
-                    <div class="flex flex-wrap justify-between pt-4 border-t border-green-600 dark:border-gray-700">
-                        <div class="flex px-6 mb-2 md:mb-0">
-                            <ul class="flex items-center justify-start mr-4">
-                                <li>
-                                    <a href="#">
-                                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor"
-                                            class="w-4 mr-1 text-yellow-600 dark:text-green-400 bi bi-star-fill" viewBox="0 0 16 16">
-                                            <path
-                                                d="M3.612 15.443c-.386.198-.824-.149-.746-.592l.83-4.73L.173 6.765c-.329-.314-.158-.888.283-.95l4.898-.696L7.538.792c.197-.39.73-.39.927 0l2.184 4.327 4.898.696c.441.062.612.636.282.95l-3.522 3.356.83 4.73c.078.443-.36.79-.746.592L8 13.187l-4.389 2.256z">
-                                            </path>
-                                        </svg>
-                                    </a>
-                                </li>
-                                <li>
-                                    <a href="#">
-                                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor"
-                                            class="w-4 mr-1 text-yellow-600 dark:text-green-400 bi bi-star-fill" viewBox="0 0 16 16">
-                                            <path
-                                                d="M3.612 15.443c-.386.198-.824-.149-.746-.592l.83-4.73L.173 6.765c-.329-.314-.158-.888.283-.95l4.898-.696L7.538.792c.197-.39.73-.39.927 0l2.184 4.327 4.898.696c.441.062.612.636.282.95l-3.522 3.356.83 4.73c.078.443-.36.79-.746.592L8 13.187l-4.389 2.256z">
-                                            </path>
-                                        </svg>
-                                    </a>
-                                </li>
-                                <li>
-                                    <a href="#">
-                                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor"
-                                            class="w-4 mr-1 text-yellow-600 dark:text-green-400 bi bi-star-fill" viewBox="0 0 16 16">
-                                            <path
-                                                d="M3.612 15.443c-.386.198-.824-.149-.746-.592l.83-4.73L.173 6.765c-.329-.314-.158-.888.283-.95l4.898-.696L7.538.792c.197-.39.73-.39.927 0l2.184 4.327 4.898.696c.441.062.612.636.282.95l-3.522 3.356.83 4.73c.078.443-.36.79-.746.592L8 13.187l-4.389 2.256z">
-                                            </path>
-                                        </svg>
-                                    </a>
-                                </li>
-                                <li>
-                                    <a href="#">
-                                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor"
-                                            class="w-4 mr-1 text-yellow-600 dark:text-green-400 bi bi-star-fill" viewBox="0 0 16 16">
-                                            <path
-                                                d="M3.612 15.443c-.386.198-.824-.149-.746-.592l.83-4.73L.173 6.765c-.329-.314-.158-.888.283-.95l4.898-.696L7.538.792c.197-.39.73-.39.927 0l2.184 4.327 4.898.696c.441.062.612.636.282.95l-3.522 3.356.83 4.73c.078.443-.36.79-.746.592L8 13.187l-4.389 2.256z">
-                                            </path>
-                                        </svg>
-                                    </a>
-                                </li>
-                            </ul>
-                            <h2 class="text-sm text-white font- font-bold dark:text-green-400">Rating:<span
-                                    class="font-bold font-mono text-yellow-600 dark:text-green-400">
-                                    5.0</span>
-                            </h2>
-                        </div>
-                        <div class="flex items-center px-6 space-x-1 text-sm font-medium text-gray-500 dark:text-gray-400">
-                            <div class="flex items-center">
-                                <div class="flex mr-3 text-sm font-mono text-yellow-600 dark:text-green-400">
-                                    <a href="#">
-                                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor"
-                                            class="w-4 h-4 mr-1 text-green-400 bi bi-hand-thumbs-up-fill" viewBox="0 0 16 16">
-                                            <path
-                                                d="M6.956 1.745C7.021.81 7.908.087 8.864.325l.261.066c.463.116.874.456 1.012.965.22.816.533 2.511.062 4.51a9.84 9.84 0 0 1 .443-.051c.713-.065 1.669-.072 2.516.21.518.173.994.681 1.2 1.273.184.532.16 1.162-.234 1.733.058.119.103.242.138.363.077.27.113.567.113.856 0 .289-.036.586-.113.856-.039.135-.09.273-.16.404.169.387.107.819-.003 1.148a3.163 3.163 0 0 1-.488.901c.054.152.076.312.076.465 0 .305-.089.625-.253.912C13.1 15.522 12.437 16 11.5 16H8c-.605 0-1.07-.081-1.466-.218a4.82 4.82 0 0 1-.97-.484l-.048-.03c-.504-.307-.999-.609-2.068-.722C2.682 14.464 2 13.846 2 13V9c0-.85.685-1.432 1.357-1.615.849-.232 1.574-.787 2.132-1.41.56-.627.914-1.28 1.039-1.639.199-.575.356-1.539.428-2.59z">
-                                            </path>
-                                        </svg>
-                                    </a>
-                                    <span class="font-bold font-mono text-yellow-600 dark:text-green-300">12</span>
-                                </div>
-                                <div class="flex text-sm font-bold text-white font-mono dark:text-green-400">
-                                    <a href="#" class="inline-flex hover:underline ">
-                                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor"
-                                            class="w-4 h-4 mr-1 text-green-400 bi bi-chat" viewBox="0 0 16 16">
-                                            <path
-                                                d="M2.678 11.894a1 1 0 0 1 .287.801 10.97 10.97 0 0 1-.398 2c1.395-.323 2.247-.697 2.634-.893a1 1 0 0 1 .71-.074A8.06 8.06 0 0 0 8 14c3.996 0 7-2.807 7-6 0-3.192-3.004-6-7-6S1 4.808 1 8c0 1.468.617 2.83 1.678 3.894zm-.493 3.905a21.682 21.682 0 0 1-.713.129c-.2.032-.352-.176-.273-.362a9.68 9.68 0 0 0 .244-.637l.003-.01c.248-.72.45-1.548.524-2.319C.743 11.37 0 9.76 0 8c0-3.866 3.582-7 8-7s8 3.134 8 7-3.582 7-8 7a9.06 9.06 0 0 1-2.347-.306c-.52.263-1.639.742-3.468 1.105z">
-                                            </path>
-                                        </svg>Reply</a>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
+            // Add scroll-triggered animations
+            const observerOptions = {
+                threshold: 0.1,
+                rootMargin: '0px 0px -50px 0px'
+            };
 
+            const observer = new IntersectionObserver((entries) => {
+                entries.forEach(entry => {
+                    if (entry.isIntersecting) {
+                        entry.target.classList.add('animate-fade-in-up');
+                    }
+                });
+            }, observerOptions);
 
+            // Observe sections for animation
+            document.querySelectorAll('section').forEach(section => {
+                observer.observe(section);
+            });
 
+            // Add hover effects for category cards
+            document.querySelectorAll('.group').forEach(card => {
+                card.addEventListener('mouseenter', function() {
+                    this.style.transform = 'translateY(-8px)';
+                });
+                
+                card.addEventListener('mouseleave', function() {
+                    this.style.transform = 'translateY(0)';
+                });
+            });
 
-            </div>
-    </section>
-    {{-- Customer Reviews End  --}}
+            // Enhanced search functionality
+            const searchInput = document.querySelector('input[wire\\:model\\.live\\.debounce\\.300ms="searchTerm"]');
+            if (searchInput) {
+                searchInput.addEventListener('focus', function() {
+                    this.parentElement.classList.add('ring-2', 'ring-blue-500');
+                });
+                
+                searchInput.addEventListener('blur', function() {
+                    this.parentElement.classList.remove('ring-2', 'ring-blue-500');
+                });
+            }
+        });
+    </script>
 
+    {{-- Custom CSS for enhanced animations and utilities --}}
+    <style>
+        /* Enhanced fade-in animations */
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(40px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @keyframes fadeInLeft {
+            from {
+                opacity: 0;
+                transform: translateX(-40px);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+
+        @keyframes fadeInRight {
+            from {
+                opacity: 0;
+                transform: translateX(40px);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+
+        @keyframes scaleIn {
+            from {
+                opacity: 0;
+                transform: scale(0.8);
+            }
+            to {
+                opacity: 1;
+                transform: scale(1);
+            }
+        }
+
+        .animate-fade-in-up {
+            animation: fadeInUp 0.8s ease-out forwards;
+        }
+
+        .animate-fade-in-left {
+            animation: fadeInLeft 0.8s ease-out forwards;
+        }
+
+        .animate-fade-in-right {
+            animation: fadeInRight 0.8s ease-out forwards;
+        }
+
+        .animate-scale-in {
+            animation: scaleIn 0.6s ease-out forwards;
+        }
+
+        .animation-delay-200 {
+            animation-delay: 200ms;
+        }
+
+        .animation-delay-400 {
+            animation-delay: 400ms;
+        }
+
+        .animation-delay-600 {
+            animation-delay: 600ms;
+        }
+
+        /* Enhanced hover effects with transform-gpu for better performance */
+        .group {
+            transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+            transform-style: preserve-3d;
+        }
+
+        .group:hover {
+            transform: translateY(-12px) scale(1.02);
+        }
+
+        /* Enhanced button hover effects */
+        .group:hover .group-hover\\:translate-x-1 {
+            transform: translateX(6px);
+        }
+
+        .group:hover .group-hover\\:translate-x-2 {
+            transform: translateX(12px);
+        }
+
+        .group:hover .group-hover\\:scale-110 {
+            transform: scale(1.1);
+        }
+
+        .group:hover .group-hover\\:scale-125 {
+            transform: scale(1.25);
+        }
+
+        .group:hover .group-hover\\:rotate-3 {
+            transform: rotate(3deg);
+        }
+
+        .group:hover .group-hover\\:rotate-12 {
+            transform: rotate(12deg);
+        }
+
+        /* Custom scrollbar styles */
+        .scrollbar-thin {
+            scrollbar-width: thin;
+        }
+
+        .scrollbar-thumb-blue-500 {
+            scrollbar-color: #3b82f6 transparent;
+        }
+
+        .scrollbar-track-gray-200 {
+            scrollbar-color: #e5e7eb transparent;
+        }
+
+        .overflow-y-auto::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .overflow-y-auto::-webkit-scrollbar-track {
+            background: #f1f5f9;
+            border-radius: 6px;
+        }
+
+        .overflow-y-auto::-webkit-scrollbar-thumb {
+            background: linear-gradient(45deg, #3b82f6, #eab308);
+            border-radius: 6px;
+        }
+
+        .overflow-y-auto::-webkit-scrollbar-thumb:hover {
+            background: linear-gradient(45deg, #2563eb, #d97706);
+        }
+
+        /* Enhanced line clamp utilities */
+        .line-clamp-2 {
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+
+        .line-clamp-3 {
+            display: -webkit-box;
+            -webkit-line-clamp: 3;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+
+        .line-clamp-4 {
+            display: -webkit-box;
+            -webkit-line-clamp: 4;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+
+        /* Enhanced responsive grid improvements */
+        @media (max-width: 640px) {
+            .grid-cols-1 {
+                grid-template-columns: 1fr;
+                gap: 1.5rem;
+            }
+        }
+
+        @media (min-width: 641px) and (max-width: 1023px) {
+            .sm\\:grid-cols-2 {
+                grid-template-columns: repeat(2, 1fr);
+                gap: 2rem;
+            }
+        }
+
+        @media (min-width: 1024px) {
+            .lg\\:grid-cols-3 {
+                grid-template-columns: repeat(3, 1fr);
+                gap: 2.5rem;
+            }
+            .lg\\:grid-cols-4 {
+                grid-template-columns: repeat(4, 1fr);
+                gap: 2.5rem;
+            }
+        }
+
+        @media (min-width: 1280px) {
+            .xl\\:grid-cols-4 {
+                grid-template-columns: repeat(4, 1fr);
+                gap: 3rem;
+            }
+        }
+
+        /* Enhanced backdrop blur effects */
+        .backdrop-blur-sm {
+            backdrop-filter: blur(4px);
+        }
+
+        .backdrop-blur-lg {
+            backdrop-filter: blur(16px);
+        }
+
+        .backdrop-blur-xl {
+            backdrop-filter: blur(24px);
+        }
+
+        /* Floating animation for hero shapes */
+        @keyframes float {
+            0%, 100% { 
+                transform: translateY(0px) rotate(0deg); 
+            }
+            25% { 
+                transform: translateY(-10px) rotate(1deg); 
+            }
+            50% { 
+                transform: translateY(-20px) rotate(2deg); 
+            }
+            75% { 
+                transform: translateY(-10px) rotate(1deg); 
+            }
+        }
+
+        @keyframes floatReverse {
+            0%, 100% { 
+                transform: translateY(0px) rotate(0deg); 
+            }
+            25% { 
+                transform: translateY(10px) rotate(-1deg); 
+            }
+            50% { 
+                transform: translateY(20px) rotate(-2deg); 
+            }
+            75% { 
+                transform: translateY(10px) rotate(-1deg); 
+            }
+        }
+
+        .animate-float {
+            animation: float 8s ease-in-out infinite;
+        }
+
+        .animate-float-reverse {
+            animation: floatReverse 10s ease-in-out infinite;
+        }
+
+        /* Pulse glow animation for status indicators */
+        @keyframes pulseGlow {
+            0%, 100% { 
+                opacity: 1;
+                box-shadow: 0 0 8px currentColor;
+            }
+            50% { 
+                opacity: 0.8;
+                box-shadow: 0 0 25px currentColor;
+            }
+        }
+
+        .animate-pulse-glow {
+            animation: pulseGlow 3s ease-in-out infinite;
+        }
+
+        /* Enhanced shadow utilities */
+        .shadow-3xl {
+            box-shadow: 0 35px 60px -12px rgba(0, 0, 0, 0.25);
+        }
+
+        .shadow-4xl {
+            box-shadow: 0 50px 100px -20px rgba(0, 0, 0, 0.25);
+        }
+
+        /* Focus ring improvements */
+        .focus\\:ring-4:focus {
+            --tw-ring-offset-shadow: var(--tw-ring-inset) 0 0 0 var(--tw-ring-offset-width) var(--tw-ring-offset-color);
+            --tw-ring-shadow: var(--tw-ring-inset) 0 0 0 calc(4px + var(--tw-ring-offset-width)) var(--tw-ring-color);
+            box-shadow: var(--tw-ring-offset-shadow), var(--tw-ring-shadow), var(--tw-shadow, 0 0 #0000);
+        }
+
+        /* Enhanced text effects */
+        .text-shadow {
+            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        .text-shadow-lg {
+            text-shadow: 0 4px 8px rgba(0, 0, 0, 0.12), 0 2px 4px rgba(0, 0, 0, 0.08);
+        }
+
+        /* Gradient text utilities */
+        .text-gradient {
+            background: linear-gradient(45deg, #3b82f6, #eab308);
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        /* Better responsive spacing */
+        @media (max-width: 768px) {
+            .responsive-padding {
+                padding-left: 1rem;
+                padding-right: 1rem;
+            }
+            
+            .responsive-spacing > * + * {
+                margin-top: 1.5rem;
+            }
+        }
+
+        @media (min-width: 769px) {
+            .responsive-padding {
+                padding-left: 2rem;
+                padding-right: 2rem;
+            }
+            
+            .responsive-spacing > * + * {
+                margin-top: 2rem;
+            }
+        }
+
+        /* Enhanced gradient effects */
+        .gradient-border {
+            background: linear-gradient(45deg, #3b82f6, #eab308);
+            border-radius: 2rem;
+            padding: 2px;
+        }
+
+        .gradient-border-inner {
+            background: white;
+            border-radius: calc(2rem - 2px);
+        }
+
+        /* Dark mode specific enhancements */
+        @media (prefers-color-scheme: dark) {
+            .gradient-border-inner {
+                background: #1f2937;
+            }
+        }
+
+        /* Smooth scroll behavior */
+        html {
+            scroll-behavior: smooth;
+        }
+
+        /* Enhanced transition utilities */
+        .transition-all-500 {
+            transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .transition-all-700 {
+            transition: all 0.7s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        /* Custom aspect ratios */
+        .aspect-w-16 {
+            position: relative;
+            padding-bottom: calc(9 / 16 * 100%);
+        }
+
+        .aspect-w-16 > * {
+            position: absolute;
+            height: 100%;
+            width: 100%;
+            top: 0;
+            right: 0;
+            bottom: 0;
+            left: 0;
+        }
+
+        /* Enhanced container queries for better responsive design */
+        @container (min-width: 640px) {
+            .card-container {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+
+        @container (min-width: 1024px) {
+            .card-container {
+                grid-template-columns: repeat(3, 1fr);
+            }
+        }
+
+        @container (min-width: 1280px) {
+            .card-container {
+                grid-template-columns: repeat(4, 1fr);
+            }
+        }
+
+        /* Performance optimizations */
+        .will-change-transform {
+            will-change: transform;
+        }
+
+        .will-change-opacity {
+            will-change: opacity;
+        }
+
+        .transform-gpu {
+            transform: translateZ(0);
+        }
+
+        /* Enhanced typography utilities */
+        .tracking-widest {
+            letter-spacing: 0.1em;
+        }
+
+        .tracking-super-wide {
+            letter-spacing: 0.15em;
+        }
+
+        /* Custom ring utilities */
+        .ring-3 {
+            --tw-ring-offset-shadow: var(--tw-ring-inset) 0 0 0 var(--tw-ring-offset-width) var(--tw-ring-offset-color);
+            --tw-ring-shadow: var(--tw-ring-inset) 0 0 0 calc(3px + var(--tw-ring-offset-width)) var(--tw-ring-color);
+            box-shadow: var(--tw-ring-offset-shadow), var(--tw-ring-shadow), var(--tw-shadow, 0 0 #0000);
+        }
+
+        .ring-4 {
+            --tw-ring-offset-shadow: var(--tw-ring-inset) 0 0 0 var(--tw-ring-offset-width) var(--tw-ring-offset-color);
+            --tw-ring-shadow: var(--tw-ring-inset) 0 0 0 calc(4px + var(--tw-ring-offset-width)) var(--tw-ring-color);
+            box-shadow: var(--tw-ring-offset-shadow), var(--tw-ring-shadow), var(--tw-shadow, 0 0 #0000);
+        }
+
+        /* Enhanced filter utilities */
+        .filter-brightness-110 {
+            filter: brightness(1.1);
+        }
+
+        .filter-brightness-125 {
+            filter: brightness(1.25);
+        }
+
+        .filter-contrast-110 {
+            filter: contrast(1.1);
+        }
+
+        .filter-saturate-110 {
+            filter: saturate(1.1);
+        }
+
+        /* Custom animation easing */
+        .ease-in-out-back {
+            transition-timing-function: cubic-bezier(0.68, -0.55, 0.265, 1.55);
+        }
+
+        .ease-out-expo {
+            transition-timing-function: cubic-bezier(0.19, 1, 0.22, 1);
+        }
+
+        .ease-in-out-quart {
+            transition-timing-function: cubic-bezier(0.77, 0, 0.175, 1);
+        }
+    </style>
 </div>
-@endsection

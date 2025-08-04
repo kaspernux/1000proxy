@@ -61,6 +61,8 @@ class ForgotPage extends Component
 
             $this->validate();
 
+            \Log::info('Password reset request', ['email' => $this->email]);
+
             // Record reset attempt
             RateLimiter::hit($key, 300); // 5 minute window
 
@@ -91,6 +93,7 @@ class ForgotPage extends Component
                 // Log failed password reset attempt
                 \Log::warning('Password reset attempted for non-existent email', [
                     'email' => $this->email,
+                    'status' => $status,
                     'ip' => request()->ip()
                 ]);
             }
@@ -104,7 +107,8 @@ class ForgotPage extends Component
             \Log::error('Password reset error', [
                 'error' => $e->getMessage(),
                 'email' => $this->email,
-                'ip' => request()->ip()
+                'ip' => request()->ip(),
+                'trace' => $e->getTraceAsString()
             ]);
             
             session()->flash('error', 'An error occurred. Please try again later.');

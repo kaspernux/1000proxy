@@ -1,6 +1,3 @@
-@extends('layouts.app')
-
-@section('content')
 @if(isset($transaction))
     <!-- Single Transaction View -->
     <section class="w-full py-10 bg-gradient-to-r from-green-900 to-green-600 min-h-screen flex items-center justify-center">
@@ -144,4 +141,3 @@
         </div>
     </section>
 @endif
-@endsection

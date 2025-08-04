@@ -1,8 +1,3 @@
-
-@extends('layouts.app')
-
-@section('content')
-
 <section class="min-h-[60vh] flex items-center justify-center py-10 px-2">
     <div class="w-full max-w-2xl bg-white/90 dark:bg-green-900 rounded-2xl shadow-xl p-8 md:p-10">
         <header class="mb-8 text-center">
@@ -31,4 +26,3 @@
         </footer>
     </div>
 </section>
-@endsection

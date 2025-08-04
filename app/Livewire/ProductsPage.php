@@ -328,4 +328,12 @@ class ProductsPage extends Component
             'servers'     => Server::where('status', 'up')->get(['id', 'country']),
         ]);
     }
+
+    /**
+     * Configure the component to use the main layout
+     */
+    public function layout()
+    {
+        return 'layouts.app';
+    }
 }

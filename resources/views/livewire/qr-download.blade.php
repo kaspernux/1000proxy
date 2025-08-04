@@ -1,7 +1,3 @@
-@extends('layouts.app')
-
-@section('content')
-
 @php
     $qrPath = $getState();
     $publicPath = $qrPath ? Storage::disk('public')->url($qrPath) : null;
@@ -28,4 +24,3 @@
         @endif
     </div>
 </section>
-@endsection

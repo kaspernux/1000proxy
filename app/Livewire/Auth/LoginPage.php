@@ -7,8 +7,10 @@ use Livewire\Component;
 use Livewire\Attributes\Title;
 use Livewire\Attributes\On;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\Session;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\ValidationException;
 use Jantinnerezo\LivewireAlert\LivewireAlert;
 
@@ -24,6 +26,7 @@ class LoginPage extends Component
     public $show_password = false;
     public $is_loading = false;
     public $redirect_after_login = '/servers';
+    public $processing = false; // Add processing flag
 
     // Security features
     public $captcha_required = false;
@@ -43,12 +46,28 @@ class LoginPage extends Component
 
     public function mount()
     {
+        Log::info('LoginPage mount started', [
+            'customer_guard_check' => Auth::guard('customer')->check(),
+            'session_id' => session()->getId()
+        ]);
+        
         // Only check customer guard
         if (Auth::guard('customer')->check()) {
-            return redirect()->route('filament.customer.pages.dashboard');
+            Log::info('Customer already authenticated, redirecting', [
+                'customer_id' => Auth::guard('customer')->id()
+            ]);
+            $this->redirect('/servers', navigate: true);
+            return;
         }
+        
         $this->redirect_after_login = session()->get('url.intended', '/servers');
         $this->checkRateLimit();
+        
+        Log::info('Login page mounted successfully', [
+            'ip' => request()->ip(),
+            'user_agent' => request()->userAgent(),
+            'redirect_after_login' => $this->redirect_after_login
+        ]);
     }
 
     private function checkRateLimit()
@@ -69,58 +88,105 @@ class LoginPage extends Component
 
     public function save()
     {
-        $this->is_loading = true;
-
-        try {
-            // Check rate limiting
-            $key = 'login.' . request()->ip();
-
-            if (RateLimiter::tooManyAttempts($key, 5)) {
-                $seconds = RateLimiter::availableAt($key) - time();
-                throw ValidationException::withMessages([
-                    'email' => ["Too many login attempts. Please try again in {$seconds} seconds."],
-                ]);
-            }
-
-            $this->validate();
-
-            // Record login attempt
-            RateLimiter::hit($key, 300); // 5 minute window
-
-            // Only allow customer login
-            if (Auth::guard('customer')->attempt(
-                ['email' => $this->email, 'password' => $this->password],
-                $this->remember
-            )) {
-                RateLimiter::clear($key);
-                request()->session()->regenerate();
-                session()->put('customer_last_login', now());
-                
-                $this->is_loading = false;
-                
-                // Direct redirect without alerts
-                return redirect('/servers');
-            }
-
-            // If authentication attempt fails
-            \Log::warning('Login failed - invalid credentials', ['email' => $this->email]);
-            throw ValidationException::withMessages([
-                'email' => ['These credentials do not match our records.'],
+        \Log::emergency('🚨 LIVEWIRE SAVE METHOD CALLED 🚨');
+        
+        Log::info('🔥 LIVEWIRE LOGIN ATTEMPT (UPDATED LOGIC) 🔥', [
+            'email' => $this->email,
+            'ip' => request()->ip(),
+            'user_agent' => request()->userAgent()
+        ]);
+        
+        // Prevent double submission
+        if ($this->processing) {
+            Log::info('Login attempt blocked - already processing', [
+                'email' => $this->email,
+                'session_id' => session()->getId()
             ]);
-
-        } catch (ValidationException $e) {
-            $this->is_loading = false;
+            return;
+        }
+        
+        $this->processing = true;
+        $this->is_loading = true;
+        
+        try {
+            // Validate input - same as CustomerLoginController
+            $this->validate([
+                'email' => 'required|email|max:255',
+                'password' => 'required|min:6|max:255',
+            ]);
             
-            // Update rate limiting status
-            $this->checkRateLimit();
-
+            Log::info('Validation passed', ['email' => $this->email]);
+            
+            // Rate limiting - same as CustomerLoginController
+            $key = 'login.' . request()->ip();
+            if (RateLimiter::tooManyAttempts($key, 5)) {
+                $seconds = RateLimiter::availableIn($key);
+                $this->processing = false;
+                $this->is_loading = false;
+                $this->addError('email', "Too many login attempts. Please try again in {$seconds} seconds.");
+                return;
+            }
+            
+            // Find customer - same as CustomerLoginController
+            $customer = \App\Models\Customer::where('email', $this->email)->first();
+            
+            if (!$customer || !\Hash::check($this->password, $customer->password)) {
+                RateLimiter::hit($key, 300);
+                
+                Log::warning('Livewire login failed', [
+                    'email' => $this->email,
+                    'customer_found' => $customer ? 'yes' : 'no'
+                ]);
+                
+                $this->processing = false;
+                $this->is_loading = false;
+                $this->dispatch('login-error', ['reason' => 'invalid_credentials']);
+                $this->addError('email', 'These credentials do not match our records.');
+                return;
+            }
+            
+            // Login the customer - same as CustomerLoginController
+            Auth::guard('customer')->login($customer, $this->remember);
+            
+            // Clear rate limiter - same as CustomerLoginController
+            RateLimiter::clear($key);
+            
+            Log::info('✅ LIVEWIRE LOGIN SUCCESS (UPDATED LOGIC) ✅', [
+                'email' => $this->email,
+                'customer_id' => $customer->id,
+                'session_id' => session()->getId()
+            ]);
+            
+            // Clear login attempts
+            session()->forget('login_attempts');
+            
+            // Dispatch success event
+            $this->dispatch('login-success', ['customer_id' => $customer->id]);
+            
+            // Use Laravel redirect like CustomerLoginController
+            return redirect()->intended('/servers');
+            
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            $this->processing = false;
+            $this->is_loading = false;
+            $this->dispatch('login-error', ['reason' => 'validation_failed']);
+            Log::info('Validation failed', ['errors' => $e->errors()]);
             throw $e;
         } catch (\Exception $e) {
+            $this->processing = false;
             $this->is_loading = false;
-            \Log::error('Login error', ['error' => $e->getMessage(), 'email' => $this->email]);
+            Log::error('Livewire login error', [
+                'error' => $e->getMessage(), 
+                'email' => $this->email,
+                'trace' => $e->getTraceAsString()
+            ]);
             
+            $this->dispatch('login-error', ['reason' => 'system_error', 'message' => $e->getMessage()]);
             $this->addError('email', 'An error occurred during login. Please try again.');
         }
+        
+        $this->processing = false;
+        Log::info('=== LIVEWIRE LOGIN ATTEMPT END ===');
     }
 
     public function loginWithGoogle()

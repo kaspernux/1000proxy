@@ -8,6 +8,7 @@ use Livewire\Attributes\Computed;
 use App\Models\ServerBrand;
 use App\Models\ServerCategory;
 use App\Models\ServerPlan;
+use App\Models\Server;
 use App\Models\Order;
 use App\Models\Customer;
 use App\Services\XUIService;
@@ -128,6 +129,58 @@ class HomePage extends Component
         $this->dispatch('searchUpdated', $this->searchTerm);
     }
 
+    public function updatedSelectedCategory()
+    {
+        // Trigger re-computation of filtered servers
+        $this->render();
+    }
+
+    public function updatedSelectedBrand()
+    {
+        // Trigger re-computation of filtered servers
+        $this->render();
+    }
+
+    #[Computed]
+    public function filteredServers()
+    {
+        $query = Server::where('is_active', true)
+            ->where('status', 'up')
+            ->with(['brand', 'category', 'plans' => function($q) {
+                $q->where('is_active', true)->orderBy('price');
+            }])
+            ->whereHas('plans', function($q) {
+                $q->where('is_active', true);
+            });
+
+        // Apply search term filter
+        if (!empty($this->searchTerm)) {
+            $searchTerm = $this->searchTerm;
+            $query->where(function($q) use ($searchTerm) {
+                $q->where('name', 'like', "%{$searchTerm}%")
+                  ->orWhere('country', 'like', "%{$searchTerm}%")
+                  ->orWhereHas('brand', function($brandQuery) use ($searchTerm) {
+                      $brandQuery->where('name', 'like', "%{$searchTerm}%");
+                  })
+                  ->orWhereHas('category', function($categoryQuery) use ($searchTerm) {
+                      $categoryQuery->where('name', 'like', "%{$searchTerm}%");
+                  });
+            });
+        }
+
+        // Apply category filter
+        if (!empty($this->selectedCategory)) {
+            $query->where('server_category_id', $this->selectedCategory);
+        }
+
+        // Apply brand filter
+        if (!empty($this->selectedBrand)) {
+            $query->where('server_brand_id', $this->selectedBrand);
+        }
+
+        return $query->orderBy('name')->get();
+    }
+
     public function selectCategory($categoryId)
     {
         $this->selectedCategory = $categoryId;
@@ -215,14 +268,10 @@ class HomePage extends Component
 
             RateLimiter::hit($key, 60); // 1-minute window
 
-            // Add to cart logic here
-            session()->push('cart.items', [
-                'plan_id' => $planId,
-                'quantity' => 1,
-                'added_at' => now(),
-            ]);
+            // Add to cart using CartManagement helper for consistency
+            $total_count = \App\Helpers\CartManagement::addItemToCart($planId);
 
-            $this->dispatch('cartUpdated');
+            $this->dispatch('update-cart-count', total_count: $total_count)->to(\App\Livewire\Partials\Navbar::class);
             $this->alert('success', 'Plan added to cart successfully!', [
                 'position' => 'bottom-end',
                 'timer' => 3000,
@@ -275,6 +324,7 @@ class HomePage extends Component
             'categories' => $this->categories,
             'featuredPlans' => $this->featuredPlans,
             'stats' => $this->platformStats,
+            'filteredServers' => $this->filteredServers,
         ]);
     }
 }

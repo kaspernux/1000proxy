@@ -152,8 +152,7 @@ class CartPage extends Component
             $this->grand_amount = CartManagement::calculateGrandTotal($this->order_items);
             $this->recalculateAmounts();
 
-            $this->dispatch('update-cart-count', total_count: count($this->order_items))->to(Navbar::class);
-            $this->dispatch('cartUpdated');
+            $this->dispatch('update-cart-count', total_count: count($this->order_items))->to(\App\Livewire\Partials\Navbar::class);
 
             $this->is_loading = false;
 
@@ -185,7 +184,7 @@ class CartPage extends Component
         $this->order_items = CartManagement::incrementQuantityToCartItem($server_plan_id);
         $this->grand_amount = CartManagement::calculateGrandTotal($this->order_items);
         $this->recalculateAmounts();
-        $this->dispatch('cartUpdated');
+        $this->dispatch('update-cart-count', total_count: count($this->order_items))->to(\App\Livewire\Partials\Navbar::class);
     }
 
     public function decreaseQty($server_plan_id)
@@ -193,7 +192,7 @@ class CartPage extends Component
         $this->order_items = CartManagement::decrementQuantityToCartItem($server_plan_id);
         $this->grand_amount = CartManagement::calculateGrandTotal($this->order_items);
         $this->recalculateAmounts();
-        $this->dispatch('cartUpdated');
+        $this->dispatch('update-cart-count', total_count: count($this->order_items))->to(\App\Livewire\Partials\Navbar::class);
     }
 
     public function updateQuantity($server_plan_id, $quantity)
@@ -406,8 +405,7 @@ class CartPage extends Component
             $this->grand_amount = 0;
             $this->recalculateAmounts();
 
-            $this->dispatch('update-cart-count', total_count: 0)->to(Navbar::class);
-            $this->dispatch('cartUpdated');
+            $this->dispatch('update-cart-count', total_count: 0)->to(\App\Livewire\Partials\Navbar::class);
 
             $this->is_loading = false;
 
@@ -437,7 +435,7 @@ class CartPage extends Component
         $total_count = CartManagement::addItemToCart($planId);
         $this->refreshCart();
 
-        $this->dispatch('update-cart-count', total_count: $total_count)->to(Navbar::class);
+        $this->dispatch('update-cart-count', total_count: $total_count)->to(\App\Livewire\Partials\Navbar::class);
 
         $this->alert('success', 'Recommended item added to cart!', [
             'position' => 'bottom-end',

@@ -1,6 +1,3 @@
-@extends('layouts.app')
-
-@section('content')
 <main class="min-h-screen bg-gradient-to-br from-green-900 to-green-600 py-10 px-2 sm:px-6 lg:px-8 flex flex-col items-center">
     <section class="w-full max-w-7xl mx-auto">
         <header class="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-8">
@@ -282,4 +279,3 @@
         @endif
     </section>
 </main>
-@endsection

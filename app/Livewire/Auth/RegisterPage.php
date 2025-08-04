@@ -41,9 +41,10 @@ class RegisterPage extends Component
 
     public function mount()
     {
-        // Check if already authenticated
+        // Check if already authenticated with customer guard
         if (Auth::guard('customer')->check()) {
-            return redirect('/servers');
+            $this->redirect('/servers', navigate: true);
+            return;
         }
         $this->checkRateLimit();
     }
@@ -76,6 +77,8 @@ class RegisterPage extends Component
 
             $this->validate();
 
+            \Log::info('Registration attempt', ['email' => $this->email]);
+
             // Record registration attempt
             RateLimiter::hit($key, 300); // 5 minute window
 
@@ -85,6 +88,7 @@ class RegisterPage extends Component
                 'email' => strtolower(trim($this->email)),
                 'password' => Hash::make($this->password),
                 'email_verified_at' => now(), // Auto-verify for now
+                'is_active' => true,
             ]);
 
             // Clear rate limiting on success
@@ -95,12 +99,15 @@ class RegisterPage extends Component
             request()->session()->regenerate();
             session()->put('customer_last_login', now());
 
+            \Log::info('Registration successful', ['email' => $this->email, 'customer_id' => $customer->id]);
+
             $this->is_loading = false;
 
             // Success notification
             session()->flash('success', 'Account created successfully! Welcome to 1000 PROXIES.');
             
-            return redirect('/servers');
+            $this->redirect('/servers', navigate: true);
+            return;
 
         } catch (ValidationException $e) {
             $this->is_loading = false;
@@ -111,7 +118,8 @@ class RegisterPage extends Component
             \Log::error('Registration error', [
                 'error' => $e->getMessage(),
                 'email' => $this->email,
-                'ip' => request()->ip()
+                'ip' => request()->ip(),
+                'trace' => $e->getTraceAsString()
             ]);
             
             $this->addError('email', 'An error occurred during registration. Please try again.');

@@ -1,6 +1,3 @@
-@extends('layouts.app')
-
-@section('content')
 <section class="min-h-screen bg-gradient-to-b from-green-50 via-white to-green-100 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 py-10 px-2 sm:px-6 lg:px-8 flex items-center justify-center">
     <div class="w-full max-w-2xl mx-auto">
         <div class="bg-white/90 dark:bg-green-900 rounded-2xl shadow-2xl p-6 sm:p-10 border border-yellow-100 dark:border-green-800" x-data="topupForm()" x-init="init()">
@@ -187,4 +184,3 @@ function topupForm() {
     }
 }
 </script>
-@endsection

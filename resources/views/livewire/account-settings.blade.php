@@ -1,6 +1,3 @@
-@extends('layouts.app')
-
-@section('content')
 <main class="min-h-screen bg-gradient-to-br from-blue-50/60 to-purple-100/60 dark:from-gray-900 dark:to-gray-800 py-8 px-2 sm:px-6 lg:px-8">
     <header class="w-full max-w-7xl mx-auto mb-8">
         <section class="flex flex-col md:flex-row md:items-center md:justify-between gap-8 bg-white/80 dark:bg-gray-900/80 rounded-2xl shadow-lg p-6 md:p-10 border border-gray-200">
@@ -694,5 +691,4 @@
             </div>
         </div>
 
-@endsection
 

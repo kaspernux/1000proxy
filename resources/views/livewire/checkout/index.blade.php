@@ -1,4 +1,6 @@
-<x-layouts.app>
+@extends('layouts.app')
+
+@section('content')
     <x-slot:title>Checkout - 1000 PROXIES</x-slot:title>
 <div class="w-full font-mono bg-gradient-to-r from-green-900 to-green-600 py-10 px-4 sm:px-6 lg:px-8 mx-auto">
     <div class="container mx-auto px-4 max-w-7xl">
@@ -276,4 +278,4 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 </script>
 @endpush
-</x-layouts.app>
+@endsection

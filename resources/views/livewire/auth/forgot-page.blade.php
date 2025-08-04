@@ -1,77 +1,108 @@
-@extends('layouts.app')
+{{-- Modern Forgot Password Page matching homepage design --}}
+<div class="relative bg-gradient-to-br from-gray-900 via-gray-800 to-blue-900 overflow-hidden min-h-screen flex items-center">
+    <!-- Animated background elements -->
+    <div class="absolute inset-0">
+        <div class="absolute inset-0 bg-gradient-to-r from-blue-600/15 to-yellow-500/15 animate-pulse"></div>
+        <div class="absolute top-0 left-0 w-full h-full bg-gradient-to-b from-transparent to-gray-900/60"></div>
+    </div>
+    
+    <!-- Floating shapes with enhanced animations -->
+    <div class="absolute inset-0 overflow-hidden">
+        <div class="absolute -top-40 -right-32 w-80 h-80 bg-gradient-to-br from-yellow-400/25 to-blue-400/25 rounded-full blur-3xl animate-bounce duration-[6000ms]"></div>
+        <div class="absolute -bottom-40 -left-32 w-80 h-80 bg-gradient-to-br from-blue-400/20 to-yellow-400/15 rounded-full blur-3xl animate-pulse duration-[8000ms]"></div>
+        <div class="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-gradient-to-r from-purple-400/10 to-pink-400/10 rounded-full blur-2xl animate-spin duration-[20000ms]"></div>
+    </div>
 
-@section('content')
-<section class="w-full bg-gradient-to-r from-green-900 to-green-600 min-h-screen py-12 px-6 sm:px-8 lg:px-10 flex items-center justify-center">
-    <div class="container mx-auto px-4 max-w-7xl">
+    <div class="relative z-10 container mx-auto px-4 max-w-7xl">
         <main class="w-full max-w-md mx-auto">
-            <div class="bg-white/10 backdrop-blur-sm border border-white/20 rounded-xl shadow-2xl">
-                <div class="p-4 sm:p-7">
+            <div class="bg-gradient-to-br from-gray-800/80 to-gray-900/80 backdrop-blur-xl border border-blue-500/30 rounded-2xl shadow-2xl">
+                <div class="p-8">
                     <!-- Header -->
                     <div class="text-center mb-8">
-                        <div class="mb-4">
-                            <svg class="w-16 h-16 mx-auto text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                            </svg>
+                        <div class="mb-6">
+                            <div class="w-20 h-20 mx-auto bg-gradient-to-br from-blue-500 to-yellow-500 rounded-2xl flex items-center justify-center shadow-2xl">
+                                <svg class="w-10 h-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                                </svg>
+                            </div>
                         </div>
-                        <h1 class="block text-3xl font-bold text-white mb-2">Forgot Password?</h1>
-                        <p class="text-white/80">
+                        <h1 class="text-4xl font-bold text-white mb-3 bg-gradient-to-r from-blue-400 to-yellow-400 bg-clip-text text-transparent">
+                            Forgot Password?
+                        </h1>
+                        <p class="text-gray-300 text-lg mb-4">
+                            No worries! Enter your email and we'll send you reset instructions.
+                        </p>
+                        <p class="text-sm text-gray-400">
                             Remember your password?
-                            <a wire:navigate href="/login" class="text-yellow-400 hover:text-yellow-300 font-medium transition duration-200">Sign in here</a>
+                            <a wire:navigate href="/login" class="text-blue-400 hover:text-blue-300 font-medium transition duration-200 hover:underline">
+                                Sign in here
+                            </a>
                         </p>
                     </div>
                     <!-- Flash Messages -->
                     @if (session()->has('success'))
-                    <div class="mb-6 bg-green-500/20 border border-green-500 text-green-100 rounded-lg p-4" role="alert">
+                    <div class="mb-6 bg-green-500/20 border border-green-500/50 text-green-100 rounded-xl p-4 backdrop-blur-sm" role="alert">
                         <div class="flex items-center">
-                            <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <svg class="w-5 h-5 mr-3 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
                             </svg>
-                            {{ session('success') }}
+                            <span>{{ session('success') }}</span>
                         </div>
                     </div>
                     @endif
                     @if (session()->has('error'))
-                    <div class="mb-6 bg-red-500/20 border border-red-500 text-red-100 rounded-lg p-4" role="alert">
+                    <div class="mb-6 bg-red-500/20 border border-red-500/50 text-red-100 rounded-xl p-4 backdrop-blur-sm" role="alert">
                         <div class="flex items-center">
-                            <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <svg class="w-5 h-5 mr-3 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
                             </svg>
-                            {{ session('error') }}
+                            <span>{{ session('error') }}</span>
                         </div>
                     </div>
                     @endif
+
                     <!-- Form -->
-                    <form wire:submit.prevent='save' class="space-y-6">
-                        @csrf
+                    <form wire:submit="save" class="space-y-6">
                         <!-- Email -->
                         <div>
-                            <label for="email" class="block text-sm font-medium text-white mb-2">Email Address</label>
+                            <label for="email" class="block text-sm font-semibold text-white mb-3">Email Address</label>
                             <div class="relative">
+                                <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                                    <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 12a4 4 0 10-8 0 4 4 0 008 0zm0 0v1.5a2.5 2.5 0 005 0V12a9 9 0 10-9 9m4.5-1.206a8.959 8.959 0 01-4.5 1.207"></path>
+                                    </svg>
+                                </div>
                                 <input type="email" id="email" wire:model="email"
-                                    class="py-3 px-4 block w-full bg-white/10 border border-white/20 rounded-lg text-white placeholder-white/50 focus:outline-none focus:border-green-400 focus:bg-white/20 transition duration-200"
+                                    class="w-full pl-12 pr-4 py-4 bg-gray-800/50 border border-gray-600 rounded-xl text-white placeholder-gray-400 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all duration-200 backdrop-blur-sm"
                                     placeholder="Enter your email address"
                                     aria-describedby="email-error">
                                 @error('email')
-                                <div class="absolute inset-y-0 end-0 flex items-center pr-3 pointer-events-none">
-                                    <svg class="h-5 w-5 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <div class="absolute inset-y-0 right-0 pr-4 flex items-center pointer-events-none">
+                                    <svg class="w-5 h-5 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
                                     </svg>
                                 </div>
                                 @enderror
                             </div>
                             @error('email')
-                            <p class="text-red-400 text-sm mt-2" id="email-error">{{$message}}</p>
+                            <p class="text-red-400 text-sm mt-2 flex items-center" id="email-error">
+                                <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                </svg>
+                                {{$message}}
+                            </p>
                             @enderror
                         </div>
+
                         <!-- Submit -->
                         <button type="submit"
-                                class="w-full py-3 px-4 bg-green-600 hover:bg-green-700 text-white font-semibold rounded-lg transition duration-200 flex items-center justify-center space-x-2">
-                            <span wire:loading.remove wire:target="save">Reset Password</span>
-                            <span wire:loading wire:target="save" class="flex items-center space-x-2">
-                                <svg class="animate-spin w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                class="w-full py-4 px-6 bg-gradient-to-r from-blue-600 to-yellow-600 hover:from-blue-700 hover:to-yellow-700 text-white font-semibold rounded-xl transition-all duration-300 flex items-center justify-center space-x-3 shadow-xl hover:shadow-2xl hover:scale-105 transform focus:outline-none focus:ring-4 focus:ring-blue-500/50">
+                            <span wire:loading.remove wire:target="save" class="text-lg">Send Reset Link</span>
+                            <span wire:loading wire:target="save" class="flex items-center space-x-3">
+                                <svg class="animate-spin w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
                                 </svg>
-                                <span>Sending...</span>
+                                <span class="text-lg">Sending...</span>
                             </span>
                         </button>
                     </form>
@@ -79,5 +110,4 @@
             </div>
         </main>
     </div>
-</section>
-@endsection
+</div>

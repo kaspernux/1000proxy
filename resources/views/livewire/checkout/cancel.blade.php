@@ -1,5 +1,6 @@
-<x-layouts.app>
-    <x-slot:title>Order Cancelled - 1000 PROXIES</x-slot:title>
+@extends('layouts.app')
+
+@section('content')
 <div class="w-full font-mono bg-gradient-to-r from-red-900 to-red-600 py-10 px-4 sm:px-6 lg:px-8 mx-auto">
     <div class="container mx-auto px-4 max-w-4xl">
         
@@ -97,4 +98,4 @@
         </div>
     </div>
 </div>
-</x-layouts.app>
+@endsection

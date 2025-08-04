@@ -1,6 +1,3 @@
-@extends('layouts.app')
-
-@section('content')
 <div class="min-h-screen bg-gradient-to-b from-green-50 via-white to-green-100 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 py-10 px-2 sm:px-6 lg:px-10 flex justify-center">
     <div class="w-full max-w-7xl">
         <h1 class="text-3xl sm:text-4xl font-extrabold text-green-700 dark:text-green-300 text-center mb-8 tracking-tight drop-shadow-lg">Order Details</h1>
@@ -126,4 +123,3 @@
         </div>
     </div>
 </div>
-@endsection
