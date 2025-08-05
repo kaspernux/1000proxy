@@ -8,7 +8,7 @@ Great news! We've successfully received your payment for Order #{{ $order->id }}
 ## Payment Details
 
 - **Order ID:** #{{ $order->id }}
-- **Amount:** ${{ number_format($order->grand_total ?? 0, 2) }}
+- **Amount:** ${{ number_format($order->grand_amount ?? 0, 2) }}
 - **Payment Method:** {{ ucfirst($paymentMethod) }}
 @if($transactionId)
 - **Transaction ID:** {{ $transactionId }}

@@ -261,7 +261,7 @@ class SuccessPage extends Component
     {
         $this->paymentDetails = [
             'payment_method' => 'Wallet Balance',
-            'amount_paid' => $this->order->grand_total,
+            'amount_paid' => $this->order->grand_amount,
         ];
 
         if ($this->order->payment_status !== 'paid') {
@@ -347,7 +347,7 @@ class SuccessPage extends Component
 
     private function awardLoyaltyPoints()
     {
-        $pointsEarned = floor($this->order->grand_total); // 1 point per dollar
+        $pointsEarned = floor($this->order->grand_amount); // 1 point per dollar
 
         if ($pointsEarned > 0) {
             $this->order->customer->increment('loyalty_points', $pointsEarned);

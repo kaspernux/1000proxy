@@ -34,7 +34,7 @@ class ProductsPage extends Component
     public $selected_countries = [];
 
     #[Url]
-    public $selected_protocols = [];
+    public $selected_protocols = '';
 
     #[Url]
     public $featured = [];
@@ -47,6 +47,9 @@ class ProductsPage extends Component
 
     #[Url]
     public $server_status = 'online'; // online, offline, all
+
+    #[Url]
+    public $search = ''; // Search functionality
 
     // Loading states
     public $is_loading = false;
@@ -62,11 +65,12 @@ class ProductsPage extends Component
         'selected_categories' => ['except' => []],
         'selected_brands' => ['except' => []],
         'selected_countries' => ['except' => []],
-        'selected_protocols' => ['except' => []],
+        'selected_protocols' => ['except' => ''],
         'featured' => ['except' => []],
         'on_sale' => ['except' => []],
         'ip_version' => ['except' => ''],
         'server_status' => ['except' => 'online'],
+        'search' => ['except' => ''],
         'price_min' => ['except' => 0],
         'price_max' => ['except' => 1000],
         'bandwidth_min' => ['except' => 0],
@@ -80,7 +84,8 @@ class ProductsPage extends Component
             'selected_categories' => 'array',
             'selected_brands' => 'array',
             'selected_countries' => 'array',
-            'selected_protocols' => 'array',
+            'selected_protocols' => 'string|max:50',
+            'search' => 'string|max:255',
             'price_min' => 'numeric|min:0|max:1000',
             'price_max' => 'numeric|min:0|max:1000',
             'bandwidth_min' => 'numeric|min:0',
@@ -175,11 +180,12 @@ class ProductsPage extends Component
         $this->selected_categories = [];
         $this->selected_brands = [];
         $this->selected_countries = [];
-        $this->selected_protocols = [];
+        $this->selected_protocols = '';
         $this->featured = [];
         $this->on_sale = [];
         $this->ip_version = '';
         $this->server_status = 'online';
+        $this->search = '';
         $this->price_min = 0;
         $this->price_max = 1000;
         $this->bandwidth_min = 0;
@@ -192,6 +198,13 @@ class ProductsPage extends Component
             'toast' => true,
             'timerProgressBar' => true,
         ]);
+    }
+
+    // Reset price filter specifically
+    public function resetPriceFilter()
+    {
+        $this->price_min = 0;
+        $this->price_max = 1000;
     }
 
     // Remove specific country filter
@@ -216,6 +229,32 @@ class ProductsPage extends Component
     {
         $serverQuery = ServerPlan::query()->where('server_plans.is_active', 1);
 
+        // Search functionality
+        if (!empty($this->search)) {
+            $searchTerm = '%' . $this->search . '%';
+            $serverQuery->where(function ($query) use ($searchTerm) {
+                $query->where('server_plans.name', 'like', $searchTerm)
+                      ->orWhere('server_plans.description', 'like', $searchTerm)
+                      ->orWhere('server_plans.type', 'like', $searchTerm)
+                      ->orWhereHas('server', function ($serverQuery) use ($searchTerm) {
+                          $serverQuery->where('country', 'like', $searchTerm)
+                                     ->orWhere('city', 'like', $searchTerm)
+                                     ->orWhere('location', 'like', $searchTerm);
+                      })
+                      ->orWhereHas('category', function ($categoryQuery) use ($searchTerm) {
+                          $categoryQuery->where('name', 'like', $searchTerm);
+                      })
+                      ->orWhereHas('brand', function ($brandQuery) use ($searchTerm) {
+                          $brandQuery->where('name', 'like', $searchTerm);
+                      });
+                      
+                // Search in protocol column (supports both cases)
+                $query->orWhere('protocol', 'like', $searchTerm)
+                      ->orWhere('protocol', strtolower($this->search))
+                      ->orWhere('protocol', strtoupper($this->search));
+            });
+        }
+
         // Location-first filtering
         if (!empty($this->selected_countries)) {
             $serverQuery->whereHas('server', function ($query) {
@@ -230,18 +269,12 @@ class ProductsPage extends Component
 
         // Brand filtering (different X-UI server instances)
         if (!empty($this->selected_brands)) {
-            $serverQuery->whereHas('server', function ($query) {
-                $query->whereIn('servers.server_brand_id', $this->selected_brands);
-            });
+            $serverQuery->whereIn('server_plans.server_brand_id', $this->selected_brands);
         }
 
         // Protocol filtering (VLESS, VMESS, TROJAN, SHADOWSOCKS)
         if (!empty($this->selected_protocols)) {
-            $serverQuery->where(function ($query) {
-                foreach ($this->selected_protocols as $protocol) {
-                    $query->orWhereJsonContains('protocols', $protocol);
-                }
-            });
+            $serverQuery->where('protocol', strtolower($this->selected_protocols));
         }
 
         // Price range filtering
@@ -316,8 +349,14 @@ class ProductsPage extends Component
                           ->sort()
                           ->values();
 
-        // Get available protocols
-        $protocols = ['VLESS', 'VMESS', 'TROJAN', 'SHADOWSOCKS'];
+        // Get available protocols from database
+        $protocols = ServerPlan::whereNotNull('protocol')
+                              ->distinct()
+                              ->pluck('protocol')
+                              ->map(function($protocol) {
+                                  return strtoupper($protocol);
+                              })
+                              ->toArray();
 
         return view('livewire.products-page', [
             'serverPlans' => $serverQuery->paginate(9),

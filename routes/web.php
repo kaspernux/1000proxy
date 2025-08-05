@@ -54,15 +54,7 @@ Route::get('/servers/{slug}', ProductDetailPage::class);
 
 Route::middleware('guest')->group(function () {
     // Test with fresh new component to avoid caching issues
-    Route::match(['GET', 'POST'], '/login', NewLoginPage::class)->name('login');
-    
-    // Keep the old Livewire for comparison
-    Route::match(['GET', 'POST'], '/login-old', LoginPage::class)->name('login.old');
-    
-    // Keep the standard controller for comparison/backup
-    Route::get('/login-standard', [CustomerLoginController::class, 'showLoginForm'])->name('customer.login');
-    Route::post('/login-standard', [CustomerLoginController::class, 'login'])->name('customer.login.submit');
-    
+    Route::match(['GET', 'POST'], '/login', LoginPage::class)->name('login');
     Route::get('/register', RegisterPage::class)->name('register'); // <-- Add ->name('register')
     Route::get('/reset-password/{token}', ResetPasswordPage::class)->name('password.reset');
     Route::get('/forgot', ForgotPage::class)->name('password.request');
@@ -75,7 +67,7 @@ Route::middleware(['auth:customer'])->group(function () {
         return redirect('/');
     })->name('logout');
 
-    Route::get('/checkout', [CheckoutController::class, 'index'])->name('checkout');
+    Route::get('/checkout', \App\Livewire\CheckoutPage::class)->name('checkout');
     Route::post('/checkout', [CheckoutController::class, 'store'])->name('checkout.store');
     Route::get('/checkout/success/{order}', [CheckoutController::class, 'success'])
         ->name('checkout.success')

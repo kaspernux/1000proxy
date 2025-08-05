@@ -10,12 +10,11 @@ use App\Models\Order;
 use App\Models\ServerPlan;
 use App\Helpers\CartManagement;
 use App\Services\PaymentGateways\StripePaymentService;
-use App\Services\PaymentGateways\PayPalPaymentService;
-use App\Services\PaymentGateways\CryptoPaymentService;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Validation\ValidationException;
 use Jantinnerezo\LivewireAlert\LivewireAlert;
 
@@ -45,11 +44,13 @@ class CheckoutPage extends Component
     public $company = '';
     public $address = '';
     public $city = '';
+    public $state = '';
     public $postal_code = '';
     public $country = '';
 
     // Payment information
-    public $payment_method = 'wallet';
+    public $payment_method = '';
+    public $crypto_currency = '';
     public $save_payment_method = false;
     public $agree_to_terms = false;
     public $subscribe_newsletter = true;
@@ -80,10 +81,13 @@ class CheckoutPage extends Component
             'company' => 'nullable|string|max:255',
             'address' => 'required|string|max:255',
             'city' => 'required|string|max:255',
+            'state' => 'required|string|max:255',
             'postal_code' => 'required|string|max:10',
             'country' => 'required|string|max:255',
             'agree_to_terms' => 'accepted',
             'coupon_code' => 'nullable|string|max:50',
+            'payment_method' => 'required|in:crypto,stripe,wallet,mir',
+            'crypto_currency' => 'required_if:payment_method,crypto|nullable|string|in:btc,eth,xmr,ltc,doge,ada,dot,sol',
         ];
     }
 
@@ -99,7 +103,7 @@ class CheckoutPage extends Component
 
         if (empty($this->cart_items)) {
             session()->flash('warning', 'Your cart is empty. Please add items before checkout.');
-            return redirect()->route('products');
+            return redirect()->route('servers.index');
         }
 
         $this->calculateOrderSummary();
@@ -228,10 +232,44 @@ class CheckoutPage extends Component
                 return $this->validateBillingInfo();
 
             case 3: // Payment
-                return $this->agree_to_terms;
+                return $this->validatePaymentInfo();
 
             default:
                 return true;
+        }
+    }
+
+    private function validatePaymentInfo()
+    {
+        try {
+            $rules = [
+                'payment_method' => 'required|in:crypto,stripe,wallet,mir',
+                'agree_to_terms' => 'accepted',
+            ];
+
+            // Add crypto currency validation if crypto is selected
+            if ($this->payment_method === 'crypto') {
+                $rules['crypto_currency'] = 'required|string|in:btc,eth,xmr,ltc,doge,ada,dot,sol';
+            }
+
+            // Add wallet balance validation if wallet is selected
+            if ($this->payment_method === 'wallet') {
+                $customer = Auth::guard('customer')->user();
+                $walletBalance = $customer->wallet ? $customer->wallet->balance : 0;
+                
+                if ($walletBalance < ($this->order_summary['total'] ?? 0)) {
+                    throw ValidationException::withMessages([
+                        'payment_method' => ['Insufficient wallet balance. Please top up your wallet or choose a different payment method.']
+                    ]);
+                }
+            }
+
+            $this->validate($rules);
+            return true;
+        } catch (ValidationException $e) {
+            throw $e;
+        } catch (\Exception $e) {
+            return false;
         }
     }
 
@@ -300,9 +338,8 @@ class CheckoutPage extends Component
             // Rate limiting
             $key = 'coupon_apply.' . Auth::guard('customer')->id();
             if (RateLimiter::tooManyAttempts($key, 5)) {
-                $seconds = RateLimiter::availableAt($key) - time();
                 throw ValidationException::withMessages([
-                    'coupon_code' => ["Too many coupon attempts. Please try again in {$seconds} seconds."],
+                    'coupon_code' => ["Too many coupon attempts. Please wait 10 minutes before trying again."],
                 ]);
             }
 
@@ -329,7 +366,7 @@ class CheckoutPage extends Component
                     'toast' => true,
                 ]);
             } else {
-                RateLimiter::hit($key, 300);
+                RateLimiter::hit($key, 600); // 10 minutes = 600 seconds
                 
                 $this->alert('error', 'Invalid or expired coupon code', [
                     'position' => 'top-end',
@@ -392,7 +429,7 @@ class CheckoutPage extends Component
         $this->alert('info', 'Coupon removed');
     }
 
-    private function processOrder()
+    public function processOrder()
     {
         if ($this->is_processing) {
             return;
@@ -401,67 +438,24 @@ class CheckoutPage extends Component
         $this->is_processing = true;
 
         try {
-            // Rate limiting for order processing
+            // Validate terms agreement before processing
+            if (!$this->agree_to_terms) {
+                throw new \Exception('You must agree to the terms and conditions to proceed.');
+            }
+
+            // Rate limiting for order processing (more lenient)
             $key = 'order_process.' . Auth::guard('customer')->id();
-            if (RateLimiter::tooManyAttempts($key, 3)) {
-                $seconds = RateLimiter::availableAt($key) - time();
-                throw new \Exception("Too many order attempts. Please try again in {$seconds} seconds.");
+            if (RateLimiter::tooManyAttempts($key, 3)) { // 3 attempts per 30 minutes
+                throw new \Exception("Too many order attempts. Please wait 30 minutes before trying again.");
             }
 
-            RateLimiter::hit($key, 600); // 10-minute window
+            // Submit form data to CheckoutController for payment processing
+            $this->submitToCheckoutController();
 
-            DB::beginTransaction();
-
-            // Create order
-            $order = $this->createOrder();
-            $this->order_created = $order;
-
-            // Process payment
-            $paymentResult = $this->processPayment($order);
-
-            if ($paymentResult['success']) {
-                // Update order status
-                $order->update([
-                    'status' => 'paid',
-                    'payment_status' => 'completed',
-                    'payment_method' => $this->payment_method,
-                    'payment_transaction_id' => $paymentResult['transaction_id'] ?? null,
-                ]);
-
-                // Clear cart
-                CartManagement::clearCartItems();
-
-                // Provision services
-                $this->provisionServices($order);
-
-                DB::commit();
-
-                // Clear rate limit on success
-                RateLimiter::clear($key);
-
-                $this->currentStep = 4; // Confirmation step
-
-                // Security logging
-                Log::info('Order completed successfully', [
-                    'order_id' => $order->id,
-                    'customer_id' => Auth::guard('customer')->id(),
-                    'amount' => $order->total_amount,
-                    'payment_method' => $this->payment_method,
-                    'ip' => request()->ip(),
-                ]);
-
-                $this->alert('success', 'Order completed successfully!', [
-                    'position' => 'center',
-                    'timer' => false,
-                    'toast' => false,
-                ]);
-
-            } else {
-                throw new \Exception($paymentResult['error'] ?? 'Payment failed');
-            }
+            // Only hit rate limiter after successful submission attempt
+            RateLimiter::hit($key, 1800); // 30 minutes = 1800 seconds
 
         } catch (\Exception $e) {
-            DB::rollBack();
             $this->error_message = $e->getMessage();
 
             Log::error('Order processing failed', [
@@ -480,6 +474,99 @@ class CheckoutPage extends Component
         } finally {
             $this->is_processing = false;
         }
+    }
+
+    /**
+     * Submit checkout data to CheckoutController
+     */
+    private function submitToCheckoutController()
+    {
+        // Transform cart items to match CheckoutController expectations
+        $transformedCartItems = [];
+        foreach ($this->cart_items as $item) {
+            $transformedCartItems[] = [
+                'server_plan_id' => $item['server_plan_id'],
+                'quantity' => $item['quantity'],
+                'unit_price' => $item['price'], // Map 'price' to 'unit_price'
+                'total_price' => $item['total_amount'], // Map 'total_amount' to 'total_price'
+            ];
+        }
+
+        // Prepare form data for submission
+        $formData = [
+            // Billing information
+            'first_name' => $this->first_name,
+            'last_name' => $this->last_name,
+            'email' => $this->email,
+            'phone' => $this->phone,
+            'company' => $this->company,
+            'address' => $this->address,
+            'city' => $this->city,
+            'state' => $this->state,
+            'postal_code' => $this->postal_code,
+            'country' => $this->country,
+            
+            // Payment information
+            'payment_method' => $this->payment_method,
+            'crypto_currency' => $this->crypto_currency,
+            'save_payment_method' => $this->save_payment_method,
+            'agree_to_terms' => $this->agree_to_terms,
+            'subscribe_newsletter' => $this->subscribe_newsletter,
+            
+            // Order information
+            'coupon_code' => $this->applied_coupon,
+            'discount_amount' => $this->discount_amount,
+            
+            // Cart items (transformed)
+            'cart_items' => $transformedCartItems,
+            'order_summary' => $this->order_summary,
+        ];
+
+        // Use HTTP client to submit to CheckoutController
+        $response = Http::asForm()->post(route('checkout.store'), $formData);
+
+        if ($response->successful()) {
+            $responseData = $response->json();
+            
+            if (isset($responseData['redirect_url'])) {
+                // External payment gateway - redirect
+                return redirect($responseData['redirect_url']);
+            } elseif (isset($responseData['success']) && $responseData['success']) {
+                // Internal payment (wallet) - show success
+                $this->handlePaymentSuccess($responseData);
+            } else {
+                throw new \Exception($responseData['error'] ?? 'Payment processing failed');
+            }
+        } else {
+            $errorData = $response->json();
+            throw new \Exception($errorData['error'] ?? 'Failed to process checkout');
+        }
+    }
+
+    /**
+     * Handle successful payment
+     */
+    private function handlePaymentSuccess($responseData)
+    {
+        // Clear cart
+        CartManagement::clearCartItems();
+
+        $this->currentStep = 4; // Confirmation step
+        $this->order_created = $responseData['order'] ?? null;
+
+        $this->alert('success', 'Order completed successfully!', [
+            'position' => 'center',
+            'timer' => false,
+            'toast' => false,
+        ]);
+
+        // Security logging
+        Log::info('Order completed successfully via Livewire', [
+            'order_id' => $responseData['order']['id'] ?? null,
+            'customer_id' => Auth::guard('customer')->id(),
+            'payment_method' => $this->payment_method,
+            'ip' => request()->ip(),
+        ]);
     }
 
     private function createOrder()
@@ -523,79 +610,6 @@ class CheckoutPage extends Component
         return $order;
     }
 
-    private function processPayment($order)
-    {
-        try {
-            switch ($this->payment_method) {
-                case 'wallet':
-                    return $this->processWalletPayment($order);
-                case 'stripe':
-                    return $this->processStripePayment($order);
-                case 'paypal':
-                    return $this->processPayPalPayment($order);
-                case 'crypto':
-                    return $this->processCryptoPayment($order);
-                default:
-                    throw new \Exception('Invalid payment method');
-            }
-        } catch (\Exception $e) {
-            return ['success' => false, 'error' => $e->getMessage()];
-        }
-    }
-
-    private function processWalletPayment($order)
-    {
-        $customer = Auth::guard('customer')->user();
-
-        if ($customer->wallet_balance < $order->total_amount) {
-            throw new \Exception('Insufficient wallet balance');
-        }
-
-        // Deduct from wallet
-        $customer->decrement('wallet_balance', $order->total_amount);
-
-        // Create transaction record
-        $customer->transactions()->create([
-            'type' => 'debit',
-            'amount' => $order->total_amount,
-            'description' => "Order payment: {$order->order_number}",
-            'reference' => $order->order_number,
-        ]);
-
-        return ['success' => true, 'transaction_id' => 'WALLET-' . uniqid()];
-    }
-
-    private function processStripePayment($order)
-    {
-        // Implement Stripe payment processing
-        $stripeService = new StripePaymentService();
-        return $stripeService->processPayment($order);
-    }
-
-    private function processPayPalPayment($order)
-    {
-        // Implement PayPal payment processing
-        $paypalService = new PayPalPaymentService();
-        return $paypalService->processPayment($order);
-    }
-
-    private function processCryptoPayment($order)
-    {
-        // Implement crypto payment processing
-        $cryptoService = new CryptoPaymentService();
-        return $cryptoService->processPayment($order);
-    }
-
-    private function provisionServices($order)
-    {
-        // Provision VPN/Proxy services for the order
-        foreach ($order->orderItems as $item) {
-            // This would integrate with XUI service to create client configurations
-            // For now, just update the item status
-            $item->update(['status' => 'active']);
-        }
-    }
-
     #[On('cartUpdated')]
     public function refreshCart()
     {
@@ -615,6 +629,16 @@ class CheckoutPage extends Component
     {
         $this->error_message = $error;
         $this->alert('error', 'Payment failed: ' . $error);
+    }
+
+    public function goToOrders()
+    {
+        return redirect()->route('my.orders');
+    }
+
+    public function continueShopping()
+    {
+        return redirect()->route('servers.index');
     }
 
     public function render()

@@ -429,10 +429,10 @@ class MyOrdersPage extends Component
                 $query->oldest();
                 break;
             case 'amount_high':
-                $query->orderBy('grand_total', 'desc');
+                $query->orderBy('grand_amount', 'desc');
                 break;
             case 'amount_low':
-                $query->orderBy('grand_total', 'asc');
+                $query->orderBy('grand_amount', 'asc');
                 break;
             case 'status':
                 $query->orderBy('status', 'asc');
@@ -455,7 +455,7 @@ class MyOrdersPage extends Component
             'pending' => Order::where('customer_id', Auth::guard('customer')->id())->where('order_status', 'pending')->count(),
             'processing' => Order::where('customer_id', Auth::guard('customer')->id())->where('order_status', 'processing')->count(),
             'delivered' => Order::where('customer_id', Auth::guard('customer')->id())->where('order_status', 'delivered')->count(),
-            'total_spent' => Order::where('customer_id', Auth::guard('customer')->id())->where('order_status', 'delivered')->sum('grand_total'),
+            'total_spent' => Order::where('customer_id', Auth::guard('customer')->id())->where('order_status', 'delivered')->sum('grand_amount'),
         ];
 
         return view('livewire.my-orders-page', [

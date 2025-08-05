@@ -10,7 +10,7 @@ Your **1000 PROXIES** service is set to expire in **{{ $daysUntilExpiry }} day{{
 - **Order ID:** #{{ $order->id }}
 - **Service:** {{ $order->orderItems->first()->serverPlan->name ?? 'Proxy Service' }}
 - **Expiry Date:** {{ $order->expires_at ? $order->expires_at->format('F j, Y \a\t g:i A') : 'N/A' }}
-- **Total Amount:** ${{ number_format($order->grand_total ?? 0, 2) }}
+- **Total Amount:** ${{ number_format($order->grand_amount ?? 0, 2) }}
 
 ## Don't Let Your Service Expire!
 

@@ -137,7 +137,7 @@ class TestMail extends Command
     private function sendTestOrderEmail(string $email): bool
     {
         $user = new User(['id' => 999999, 'name' => 'Test User', 'email' => $email]);
-        $order = new Order(['id' => 999999, 'user_id' => $user->id, 'grand_total' => 29.99, 'status' => 'completed', 'created_at' => now()]);
+        $order = new Order(['id' => 999999, 'user_id' => $user->id, 'grand_amount' => 29.99, 'status' => 'completed', 'created_at' => now()]);
         $order->setRelation('user', $user);
         return $this->mailService->sendOrderPlacedEmail($order);
     }
@@ -145,7 +145,7 @@ class TestMail extends Command
     private function sendTestPaymentReceivedEmail(string $email): bool
     {
         $user = new User(['id' => 999999, 'name' => 'Test User', 'email' => $email]);
-        $order = new Order(['id' => 999999, 'user_id' => $user->id, 'grand_total' => 29.99, 'status' => 'paid', 'created_at' => now()]);
+        $order = new Order(['id' => 999999, 'user_id' => $user->id, 'grand_amount' => 29.99, 'status' => 'paid', 'created_at' => now()]);
         $order->setRelation('user', $user);
         return $this->mailService->sendPaymentReceivedEmail($order, 'Credit Card', 'TXN_999999');
     }
@@ -159,7 +159,7 @@ class TestMail extends Command
     private function sendTestServiceActivatedEmail(string $email): bool
     {
         $user = new User(['id' => 999999, 'name' => 'Test User', 'email' => $email]);
-        $order = new Order(['id' => 999999, 'user_id' => $user->id, 'grand_total' => 29.99, 'status' => 'active', 'created_at' => now()]);
+        $order = new Order(['id' => 999999, 'user_id' => $user->id, 'grand_amount' => 29.99, 'status' => 'active', 'created_at' => now()]);
         $order->setRelation('user', $user);
 
         $serverDetails = [[
@@ -178,7 +178,7 @@ class TestMail extends Command
         $order = new Order([
             'id' => 999999,
             'user_id' => $user->id,
-            'grand_total' => 29.99,
+            'grand_amount' => 29.99,
             'status' => 'active',
             'created_at' => now(),
             'expires_at' => now()->addDays(7)

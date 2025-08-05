@@ -9,52 +9,96 @@
         ->first();
 @endphp
 
-<div class="min-h-screen bg-gradient-to-br from-gray-50 via-white to-gray-100 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 py-8 px-4 sm:px-6 lg:px-8">
-    <div class="max-w-7xl mx-auto">
+<div class="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-blue-900 py-8 px-4 sm:px-6 lg:px-8 relative overflow-hidden">
+    <!-- Animated background elements -->
+    <div class="absolute inset-0">
+        <div class="absolute inset-0 bg-gradient-to-r from-blue-600/15 to-yellow-500/15 animate-pulse"></div>
+        <div class="absolute top-0 left-0 w-full h-full bg-gradient-to-b from-transparent to-gray-900/60"></div>
+    </div>
 
-        <!-- Success Header -->
-        <div class="text-center mb-8">
-            <div class="mx-auto flex items-center justify-center w-20 h-20 bg-green-100 dark:bg-green-900/20 rounded-full mb-6">
-                <x-heroicon-s-check-circle class="w-12 h-12 text-green-600 dark:text-green-400" />
+    <!-- Floating shapes with enhanced animations -->
+    <div class="absolute inset-0 overflow-hidden">
+        <div class="absolute -top-40 -right-32 w-80 h-80 bg-gradient-to-br from-yellow-400/25 to-blue-400/25 rounded-full blur-3xl animate-bounce duration-[6000ms]"></div>
+        <div class="absolute -bottom-40 -left-32 w-80 h-80 bg-gradient-to-br from-blue-400/20 to-yellow-400/15 rounded-full blur-3xl animate-pulse duration-[8000ms]"></div>
+        <div class="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-gradient-to-r from-purple-400/10 to-pink-400/10 rounded-full blur-2xl animate-spin duration-[20000ms]"></div>
+    </div>
+
+    <div class="max-w-7xl mx-auto relative z-10">
+
+        <!-- Enhanced Success Header -->
+        <div class="text-center mb-12">
+            <!-- Success Animation -->
+            <div class="mx-auto flex items-center justify-center w-24 h-24 mb-8 relative">
+                <div class="absolute inset-0 bg-gradient-to-r from-green-400 to-blue-500 rounded-full animate-pulse"></div>
+                <div class="relative flex items-center justify-center w-20 h-20 bg-gradient-to-r from-green-500 to-green-400 rounded-full shadow-2xl">
+                    <svg class="w-12 h-12 text-white animate-bounce" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                    </svg>
+                </div>
             </div>
-            <h1 class="text-3xl md:text-4xl font-bold text-gray-900 dark:text-white mb-2">Order Successful!</h1>
-            <p class="text-lg text-gray-600 dark:text-gray-300">Thank you for your purchase. Your order has been received and is being processed.</p>
+
+            <!-- Enhanced Titles -->
+            <h1 class="text-4xl md:text-6xl lg:text-7xl font-extrabold text-white mb-4 leading-tight">
+                <span class="bg-gradient-to-r from-green-400 via-blue-400 to-green-500 bg-clip-text text-transparent animate-pulse">
+                    Order Successful!
+                </span>
+            </h1>
+            <p class="text-lg md:text-xl text-gray-300 font-light max-w-3xl mx-auto">
+                Thank you for choosing our premium proxy services. Your order has been received and is being processed with the highest priority.
+            </p>
+
+            <!-- Enhanced breadcrumb -->
+            <nav class="flex justify-center items-center space-x-2 text-sm mt-6">
+                <a href="/" wire:navigate class="text-gray-400 hover:text-white transition-colors duration-200">Home</a>
+                <svg class="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
+                </svg>
+                <a href="/checkout" wire:navigate class="text-gray-400 hover:text-white transition-colors duration-200">Checkout</a>
+                <svg class="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
+                </svg>
+                <span class="text-green-400 font-medium">Success</span>
+            </nav>
         </div>
 
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
 
-            <!-- Main Order Details -->
+            <!-- Enhanced Main Order Details -->
             <div class="lg:col-span-2 space-y-6">
 
-                <!-- Order Summary Card -->
-                <div class="backdrop-blur-sm bg-white/80 dark:bg-gray-800/80 border border-gray-200 dark:border-gray-700 rounded-2xl p-6 shadow-lg">
-                    <div class="flex items-center justify-between mb-6">
-                        <h2 class="text-2xl font-bold text-gray-900 dark:text-white">Order Summary</h2>
-                        <div class="flex items-center space-x-2">
-                            <span class="px-3 py-1 text-sm font-medium rounded-full
-                                {{ $order->payment_status === 'paid' ? 'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400' : 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-400' }}">
-                                {{ ucfirst($order->payment_status) }}
-                            </span>
+                <!-- Enhanced Order Summary Card -->
+                <div class="bg-white/5 backdrop-blur-lg border border-white/10 rounded-3xl p-8 shadow-2xl relative overflow-hidden">
+                    <!-- Background decoration -->
+                    <div class="absolute top-0 right-0 w-64 h-64 bg-gradient-to-br from-green-400/10 to-blue-400/10 rounded-full blur-3xl"></div>
+                    
+                    <div class="relative z-10">
+                        <div class="flex items-center justify-between mb-8">
+                            <h2 class="text-2xl font-bold text-white">Order Summary</h2>
+                            <div class="flex items-center space-x-2">
+                                <span class="px-4 py-2 text-sm font-medium rounded-xl shadow-lg
+                                    {{ $order->payment_status === 'paid' ? 'bg-gradient-to-r from-green-500 to-green-400 text-white' : 'bg-gradient-to-r from-yellow-500 to-yellow-400 text-white' }}">
+                                    {{ ucfirst($order->payment_status) }}
+                                </span>
+                            </div>
                         </div>
-                    </div>
 
-                    <!-- Order Info Grid -->
-                    <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-                        <div class="text-center p-4 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
-                            <p class="text-sm text-gray-500 dark:text-gray-400 mb-1">Order Number</p>
-                            <p class="font-semibold text-gray-900 dark:text-white">#{{ $order->id }}</p>
-                        </div>
-                        <div class="text-center p-4 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
-                            <p class="text-sm text-gray-500 dark:text-gray-400 mb-1">Order Date</p>
-                            <p class="font-semibold text-gray-900 dark:text-white">{{ $order->created_at->format('M d, Y') }}</p>
-                        </div>
+                        <!-- Enhanced Order Info Grid -->
+                        <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+                            <div class="group text-center p-6 bg-white/5 backdrop-blur-sm hover:bg-white/10 rounded-2xl transition-all duration-300 hover:scale-105 border border-white/10">
+                                <p class="text-sm text-gray-400 mb-2">Order Number</p>
+                                <p class="font-bold text-white text-lg group-hover:text-blue-300 transition-colors">#{{ $order->id }}</p>
+                            </div>
+                            <div class="group text-center p-6 bg-white/5 backdrop-blur-sm hover:bg-white/10 rounded-2xl transition-all duration-300 hover:scale-105 border border-white/10">
+                                <p class="text-sm text-gray-400 mb-2">Order Date</p>
+                                <p class="font-bold text-white text-lg group-hover:text-blue-300 transition-colors">{{ $order->created_at->format('M d, Y') }}</p>
+                            </div>
                         <div class="text-center p-4 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
                             <p class="text-sm text-gray-500 dark:text-gray-400 mb-1">Payment Method</p>
                             <p class="font-semibold text-gray-900 dark:text-white">{{ $order->paymentMethod?->name ?? 'N/A' }}</p>
                         </div>
                         <div class="text-center p-4 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
                             <p class="text-sm text-gray-500 dark:text-gray-400 mb-1">Total Amount</p>
-                            <p class="font-bold text-green-600 dark:text-green-400 text-lg">{{ Number::currency($order->grand_total) }}</p>
+                            <p class="font-bold text-green-600 dark:text-green-400 text-lg">{{ Number::currency($order->grand_amount) }}</p>
                         </div>
                     </div>
 

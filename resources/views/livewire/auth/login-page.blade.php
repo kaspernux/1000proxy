@@ -1,31 +1,32 @@
 
 {{-- Modern Login Page --}}
-<div class="relative bg-gradient-to-br from-gray-900 via-gray-800 to-blue-900 overflow-hidden min-h-screen flex items-center">
+<div class="relative bg-gradient-to-br from-gray-900 via-blue-900/30 to-gray-800 overflow-hidden min-h-screen flex items-center">
     <!-- Animated background elements -->
     <div class="absolute inset-0">
-        <div class="absolute inset-0 bg-gradient-to-r from-blue-600/15 to-yellow-500/15 animate-pulse"></div>
+        <div class="absolute inset-0 bg-gradient-to-r from-blue-600/15 to-purple-500/15 animate-pulse"></div>
         <div class="absolute top-0 left-0 w-full h-full bg-gradient-to-b from-transparent to-gray-900/60"></div>
     </div>
     
     <!-- Floating shapes with enhanced animations -->
     <div class="absolute inset-0 overflow-hidden">
-        <div class="absolute -top-40 -right-32 w-80 h-80 bg-gradient-to-br from-yellow-400/25 to-blue-400/25 rounded-full blur-3xl animate-bounce duration-[6000ms]"></div>
-        <div class="absolute -bottom-40 -left-32 w-80 h-80 bg-gradient-to-br from-blue-400/20 to-yellow-400/15 rounded-full blur-3xl animate-pulse duration-[8000ms]"></div>
+        <div class="absolute -top-40 -right-32 w-80 h-80 bg-gradient-to-br from-blue-500/20 to-purple-600/20 rounded-full blur-3xl animate-pulse"></div>
+        <div class="absolute -bottom-40 -left-32 w-80 h-80 bg-gradient-to-br from-yellow-500/20 to-green-500/20 rounded-full blur-3xl animate-bounce" style="animation-duration: 3s;"></div>
         <div class="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-gradient-to-r from-purple-400/10 to-pink-400/10 rounded-full blur-2xl animate-spin duration-[20000ms]"></div>
+        <div class="absolute top-1/4 left-1/4 w-32 h-32 bg-gradient-to-br from-pink-500/10 to-purple-600/10 rounded-full animate-ping" style="animation-duration: 4s;"></div>
     </div>
 
     <div class="relative z-10 container mx-auto px-4 max-w-7xl">
         <main class="w-full max-w-md mx-auto">
-            <div class="bg-gradient-to-br from-gray-800/80 to-gray-900/80 backdrop-blur-xl border border-blue-500/30 rounded-2xl shadow-2xl">
+            <div class="bg-white/10 backdrop-blur-md border border-white/20 rounded-2xl shadow-2xl hover:shadow-3xl transition-all duration-500">
                 <div class="p-8">
                     {{-- Header --}}
                     <div class="text-center mb-8">
                         <div class="mb-6">
-                            <div class="w-20 h-20 mx-auto bg-gradient-to-br from-blue-500 to-yellow-500 rounded-2xl flex items-center justify-center shadow-2xl">
+                            <div class="w-20 h-20 mx-auto bg-gradient-to-br from-blue-500/30 to-purple-600/30 backdrop-blur-md rounded-2xl flex items-center justify-center shadow-2xl border border-blue-400/30">
                                 <span class="text-white font-bold text-2xl">1K</span>
                             </div>
                         </div>
-                        <h1 class="text-4xl font-bold text-white mb-3 bg-gradient-to-r from-blue-400 to-yellow-400 bg-clip-text text-transparent">
+                        <h1 class="text-4xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-purple-400 mb-3">
                             Welcome Back
                         </h1>
                         <p class="text-gray-300 text-lg">
@@ -35,7 +36,7 @@
                             <p class="text-sm text-gray-400">
                                 Don't have an account yet?
                                 <a wire:navigate
-                                    class="text-blue-400 hover:text-blue-300 font-medium transition duration-200 hover:underline"
+                                    class="text-blue-400 hover:text-blue-300 font-medium transition duration-300 hover:underline"
                                     href="/register">
                                     Sign up here
                                 </a>

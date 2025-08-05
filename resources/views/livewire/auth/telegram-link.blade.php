@@ -1,32 +1,33 @@
 {{-- Modern Telegram Link Page matching homepage design --}}
-<div class="relative bg-gradient-to-br from-gray-900 via-gray-800 to-blue-900 overflow-hidden min-h-screen flex items-center">
+<div class="relative bg-gradient-to-br from-gray-900 via-blue-900/30 to-gray-800 overflow-hidden min-h-screen flex items-center">
     <!-- Animated background elements -->
     <div class="absolute inset-0">
-        <div class="absolute inset-0 bg-gradient-to-r from-blue-600/15 to-yellow-500/15 animate-pulse"></div>
+        <div class="absolute inset-0 bg-gradient-to-r from-blue-600/15 to-purple-500/15 animate-pulse"></div>
         <div class="absolute top-0 left-0 w-full h-full bg-gradient-to-b from-transparent to-gray-900/60"></div>
     </div>
     
     <!-- Floating shapes with enhanced animations -->
     <div class="absolute inset-0 overflow-hidden">
-        <div class="absolute -top-40 -right-32 w-80 h-80 bg-gradient-to-br from-yellow-400/25 to-blue-400/25 rounded-full blur-3xl animate-bounce duration-[6000ms]"></div>
-        <div class="absolute -bottom-40 -left-32 w-80 h-80 bg-gradient-to-br from-blue-400/20 to-yellow-400/15 rounded-full blur-3xl animate-pulse duration-[8000ms]"></div>
+        <div class="absolute -top-40 -right-32 w-80 h-80 bg-gradient-to-br from-blue-500/20 to-purple-600/20 rounded-full blur-3xl animate-pulse"></div>
+        <div class="absolute -bottom-40 -left-32 w-80 h-80 bg-gradient-to-br from-yellow-500/20 to-green-500/20 rounded-full blur-3xl animate-bounce" style="animation-duration: 3s;"></div>
         <div class="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-gradient-to-r from-purple-400/10 to-pink-400/10 rounded-full blur-2xl animate-spin duration-[20000ms]"></div>
+        <div class="absolute top-1/4 left-1/4 w-32 h-32 bg-gradient-to-br from-pink-500/10 to-purple-600/10 rounded-full animate-ping" style="animation-duration: 4s;"></div>
     </div>
 
     <div class="relative z-10 container mx-auto px-4 max-w-7xl">
         <main class="w-full max-w-lg mx-auto">
-            <div class="bg-gradient-to-br from-gray-800/80 to-gray-900/80 backdrop-blur-xl border border-blue-500/30 rounded-2xl shadow-2xl">
+            <div class="bg-white/10 backdrop-blur-md border border-white/20 rounded-2xl shadow-2xl hover:shadow-3xl transition-all duration-500">
                 <div class="p-8">
                     {{-- Header --}}
                     <div class="text-center mb-8">
                         <div class="mb-6">
-                            <div class="w-20 h-20 mx-auto bg-gradient-to-br from-blue-500 to-yellow-500 rounded-2xl flex items-center justify-center shadow-2xl">
+                            <div class="w-20 h-20 mx-auto bg-gradient-to-br from-blue-500/30 to-purple-600/30 backdrop-blur-md rounded-2xl flex items-center justify-center shadow-2xl border border-blue-400/30">
                                 <svg class="w-10 h-10 text-white" fill="currentColor" viewBox="0 0 24 24">
                                     <path d="M22.05 1.577c-.393-.016-.78.08-1.127.283L.85 8.343c-.348.204-.673.48-.953.816-.28.335-.483.719-.606 1.139-.123.42-.166.86-.12 1.296.046.436.162.86.34 1.252.178.393.407.748.677 1.053.27.305.578.556.912.742.334.186.69.305 1.056.352.367.047.737.024 1.095-.068l5.227-1.336 5.227 1.336c.358.092.728.115 1.095.068.366-.047.722-.166 1.056-.352.334-.186.642-.437.912-.742.27-.305.5-.66.677-1.053.178-.392.294-.816.34-1.252.046-.436.003-.876-.12-1.296-.123-.42-.326-.804-.606-1.139-.28-.336-.605-.612-.953-.816L22.05 1.577z"/>
                                 </svg>
                             </div>
                         </div>
-                        <h1 class="text-4xl font-bold text-white mb-3 bg-gradient-to-r from-blue-400 to-yellow-400 bg-clip-text text-transparent">
+                        <h1 class="text-4xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-purple-400 mb-3">
                             Telegram Integration
                         </h1>
                         <p class="text-gray-300 text-lg">
@@ -38,7 +39,7 @@
                     <div class="flex items-center justify-end mb-6">
                         <button 
                             wire:click="refreshStatus" 
-                            class="inline-flex items-center px-4 py-2 bg-gray-700/50 border border-gray-600 rounded-lg text-white hover:bg-gray-600/50 focus:outline-none focus:ring-2 focus:ring-blue-500/50 transition-all duration-200 backdrop-blur-sm">
+                            class="inline-flex items-center px-4 py-2 bg-white/10 backdrop-blur-md border border-white/20 rounded-lg text-white hover:bg-white/20 focus:outline-none focus:ring-2 focus:ring-blue-500/50 transition-all duration-300 shadow-lg hover:shadow-xl transform hover:scale-105">
                             <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
                             </svg>

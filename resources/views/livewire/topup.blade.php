@@ -1,53 +1,88 @@
-<section class="min-h-screen bg-gradient-to-b from-green-50 via-white to-green-100 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 py-10 px-2 sm:px-6 lg:px-8 flex items-center justify-center">
-    <div class="w-full max-w-2xl mx-auto">
-        <div class="bg-white/90 dark:bg-green-900 rounded-2xl shadow-2xl p-6 sm:p-10 border border-yellow-100 dark:border-green-800" x-data="topupForm()" x-init="init()">
+<section class="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-blue-900 py-10 px-2 sm:px-6 lg:px-8 flex items-center justify-center relative overflow-hidden">
+    <!-- Animated background elements -->
+    <div class="absolute inset-0">
+        <div class="absolute inset-0 bg-gradient-to-r from-blue-600/15 to-yellow-500/15 animate-pulse"></div>
+        <div class="absolute top-0 left-0 w-full h-full bg-gradient-to-b from-transparent to-gray-900/60"></div>
+    </div>
 
-                        {{-- Header --}}
-                        <header class="text-center mb-8">
-                            <h2 class="text-3xl sm:text-4xl font-extrabold text-green-700 dark:text-green-300 tracking-tight mb-2 drop-shadow-lg">Top-Up Wallet</h2>
-                            <p class="text-base sm:text-lg text-green-800 dark:text-green-200">Choose cryptocurrency and deposit easily.</p>
-                        </header>
+    <!-- Floating shapes with enhanced animations -->
+    <div class="absolute inset-0 overflow-hidden">
+        <div class="absolute -top-40 -right-32 w-80 h-80 bg-gradient-to-br from-yellow-400/25 to-blue-400/25 rounded-full blur-3xl animate-bounce duration-[6000ms]"></div>
+        <div class="absolute -bottom-40 -left-32 w-80 h-80 bg-gradient-to-br from-blue-400/20 to-yellow-400/15 rounded-full blur-3xl animate-pulse duration-[8000ms]"></div>
+        <div class="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-gradient-to-r from-purple-400/10 to-pink-400/10 rounded-full blur-2xl animate-spin duration-[20000ms]"></div>
+    </div>
 
-                        {{-- Alerts --}}
-                        @if (session()->has('success'))
-                            <div x-data="{show: true}" x-show="show" x-init="setTimeout(() => show = false, 4000)" 
-                                 class="bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-300 p-3 rounded mb-4 text-center font-semibold transition ease-in-out">
-                                {{ session('success') }}
-                            </div>
-                        @endif
+    <div class="w-full max-w-2xl mx-auto relative z-10">
+        <div class="bg-white/5 backdrop-blur-lg rounded-3xl shadow-2xl p-6 sm:p-10 border border-white/10 relative overflow-hidden" x-data="topupForm()" x-init="init()">
+            
+            <!-- Background decoration -->
+            <div class="absolute top-0 right-0 w-64 h-64 bg-gradient-to-br from-yellow-400/10 to-blue-400/10 rounded-full blur-3xl"></div>
+            <div class="absolute bottom-0 left-0 w-48 h-48 bg-gradient-to-tr from-blue-400/10 to-yellow-400/10 rounded-full blur-2xl"></div>
 
-                        {{-- Currency Selector --}}
-                        <nav class="flex flex-wrap justify-center mb-8 gap-2" aria-label="Currency selector">
-                            @foreach (['BTC', 'XMR', 'SOL'] as $coin)
-                                <button type="button"
-                                    class="px-4 sm:px-6 py-2 text-sm sm:text-lg rounded-full font-bold uppercase transition-all duration-300 border-2 border-double border-yellow-600 focus:outline-none"
-                                    :class="currency === '{{ $coin }}' ? 'bg-yellow-600 text-green-900' : 'bg-green-900 text-white hover:bg-yellow-600 hover:text-green-900'"
-                                    @click="switchCurrency('{{ $coin }}')">
-                                    {{ $coin }}
-                                </button>
-                            @endforeach
+            <div class="relative z-10">
+                {{-- Enhanced Header --}}
+                <header class="text-center mb-10">
+                    <!-- Breadcrumb -->
+                    <nav class="flex justify-center items-center space-x-2 text-sm mb-6">
+                        <a href="/" wire:navigate class="text-gray-400 hover:text-white transition-colors duration-200">Home</a>
+                        <svg class="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
+                        </svg>
+                        <span class="text-blue-400 font-medium">Wallet Top-up</span>
+                    </nav>
+
+                    <h2 class="text-3xl sm:text-5xl lg:text-6xl font-extrabold text-white tracking-tight mb-4 leading-tight">
+                        <span class="bg-gradient-to-r from-blue-400 via-yellow-400 to-blue-500 bg-clip-text text-transparent">
+                            Top-Up Wallet
+                        </span>
+                    </h2>
+                    <p class="text-base sm:text-lg text-gray-300 font-light">Choose your preferred cryptocurrency and deposit funds securely</p>
+                </header>
+
+                {{-- Enhanced Alerts --}}
+                @if (session()->has('success'))
+                    <div x-data="{show: true}" x-show="show" x-init="setTimeout(() => show = false, 5000)" 
+                         class="bg-gradient-to-r from-green-500/20 to-blue-500/20 border border-green-400/50 backdrop-blur-sm rounded-2xl p-4 mb-6 shadow-lg">
+                        <div class="flex items-center space-x-3">
+                            <svg class="w-6 h-6 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                            </svg>
+                            <span class="text-green-100 font-medium">{{ session('success') }}</span>
                         </div>
+                    </div>
+                @endif
 
-                        {{-- QR Code --}}
-                        <section class="flex flex-col items-center space-y-4 mb-8">
-                            <div class="relative w-40 h-40 sm:w-48 sm:h-48 group cursor-pointer" @click="downloadQr" aria-label="Deposit QR Code">
-                                <template x-if="loading">
-                                    <div class="flex justify-center items-center w-full h-full">
-                                        <svg class="animate-spin h-10 w-10 text-yellow-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
-                                        </svg>
-                                    </div>
-                                </template>
+                {{-- Enhanced Currency Selector --}}
+                <nav class="flex flex-wrap justify-center mb-10 gap-4" aria-label="Currency selector">
+                    @foreach (['BTC', 'XMR', 'SOL'] as $coin)
+                        <button type="button"
+                            class="group px-6 sm:px-8 py-3 text-sm sm:text-lg rounded-2xl font-bold uppercase transition-all duration-300 border-2 focus:outline-none shadow-lg hover:shadow-xl transform hover:scale-105"
+                            :class="currency === '{{ $coin }}' ? 'bg-gradient-to-r from-blue-500 to-yellow-500 text-white border-blue-400/50 shadow-blue-500/25' : 'bg-white/10 backdrop-blur-sm text-white border-white/20 hover:bg-white/20 hover:border-blue-400/50'"
+                            @click="switchCurrency('{{ $coin }}')">
+                            <span class="relative z-10">{{ $coin }}</span>
+                        </button>
+                    @endforeach
+                </nav>
 
-                                <div class="relative w-full h-full" x-show="qrCode">
-                                    <img 
-                                        :src="qrCode" 
-                                        alt="Deposit QR Code" 
-                                        class="w-full h-full object-cover rounded-xl border-2 border-yellow-600 shadow-lg transition duration-300 ease-in-out hover:scale-105"
-                                    />
+                {{-- Enhanced QR Code Section --}}
+                <section class="flex flex-col items-center space-y-6 mb-10">
+                    <div class="relative w-48 h-48 sm:w-56 sm:h-56 group cursor-pointer" @click="downloadQr" aria-label="Deposit QR Code">
+                        <template x-if="loading">
+                            <div class="flex justify-center items-center w-full h-full bg-white/10 backdrop-blur-sm rounded-3xl border border-white/20">
+                                <div class="relative">
+                                    <div class="animate-spin rounded-full h-12 w-12 border-4 border-blue-400 border-t-transparent"></div>
+                                    <div class="absolute inset-0 rounded-full h-12 w-12 border-4 border-yellow-400 border-t-transparent animate-spin" style="animation-direction: reverse; animation-duration: 1.5s;"></div>
                                 </div>
-                                <div class="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition bg-black bg-opacity-50 rounded-lg">
+                            </div>
+                        </template>
+
+                        <div class="relative w-full h-full" x-show="qrCode">
+                            <img 
+                                :src="qrCode" 
+                                alt="Deposit QR Code" 
+                                class="w-full h-full object-cover rounded-3xl border-2 border-blue-400/50 shadow-2xl transition duration-300 ease-in-out group-hover:scale-105 group-hover:shadow-blue-500/25"
+                            />
+                            <div class="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-300 bg-black/50 rounded-3xl backdrop-blur-sm">
                                     <span class="text-yellow-400 text-sm font-bold">Click to Download</span>
                                 </div>
                             </div>

@@ -115,14 +115,14 @@
                             Search for a Server
                         </label>
                         <p class="text-blue-200 text-sm mb-4 ml-9 leading-relaxed">
-                            Enter server names, locations, or specific features to find your ideal proxy solution
+                            Enter any proxy type, location, brand name, or use case
                         </p>
                     </div>
                     <div class="relative group">
                         <input type="text"
                                wire:model.live.debounce.300ms="searchTerm"
-                               placeholder="Search servers, locations, brands..."
-                               class="w-full px-6 py-4 pl-14 rounded-2xl border-0 bg-white backdrop-blur-sm focus:ring-4 focus:ring-blue-500/50 focus:bg-white transition-all duration-300 text-lg text-gray-900 placeholder-gray-600 shadow-lg">
+                               placeholder="Try: 'residential proxy', 'US servers', 'Instagram', 'web scraping', 'high speed datacenter'..."
+                               class="w-full px-6 py-4 pl-14 rounded-2xl border-0 bg-white backdrop-blur-sm focus:ring-4 focus:ring-blue-500/50 focus:bg-white transition-all duration-300 text-lg text-black placeholder-gray-400 placeholder:text-sm shadow-lg">
                         <svg class="absolute left-5 top-1/2 transform -translate-y-1/2 h-6 w-6 text-gray-500 group-focus-within:text-blue-500 transition-colors duration-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
                         </svg>
@@ -151,9 +151,9 @@
                             </p>
                         </div>
                         <select wire:model.live="selectedCategory" class="w-full px-4 py-3 rounded-xl border-0 bg-white backdrop-blur-sm focus:ring-4 focus:ring-yellow-500/50 transition-all duration-300 text-gray-900 font-medium shadow-lg hover:shadow-yellow-500/20">
-                            <option value="" class="text-gray-900 bg-white">All Categories</option>
+                            <option value="" class="bg-white text-black py-2">All Categories</option>
                             @foreach($this->categories as $category)
-                                <option value="{{ $category->id }}" class="text-gray-900 bg-white">{{ $category->name }}</option>
+                                <option value="{{ $category->id }}" class="bg-white text-black py-2">{{ $category->name }}</option>
                             @endforeach
                         </select>
                     </div>
@@ -170,9 +170,9 @@
                             </p>
                         </div>
                         <select wire:model.live="selectedBrand" class="w-full px-4 py-3 rounded-xl border-0 bg-white backdrop-blur-sm focus:ring-4 focus:ring-green-500/50 transition-all duration-300 text-gray-900 font-medium shadow-lg hover:shadow-green-500/20">
-                            <option value="" class="text-gray-900 bg-white">All Brands</option>
+                            <option value="" class="bg-white text-black py-2">All Brands</option>
                             @foreach($this->brands as $brand)
-                                <option value="{{ $brand->id }}" class="text-gray-900 bg-white">{{ $brand->name }}</option>
+                                <option value="{{ $brand->id }}" class="bg-white text-black py-2">{{ $brand->name }}</option>
                             @endforeach
                         </select>
                     </div>

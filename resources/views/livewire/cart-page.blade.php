@@ -1,24 +1,62 @@
-<main class="min-h-screen bg-gradient-to-br from-green-900 to-green-600 py-10 px-2 sm:px-6 lg:px-8 flex flex-col items-center">
-    <section class="w-full max-w-7xl mx-auto">
+<main class="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-blue-900 py-10 px-2 sm:px-6 lg:px-8 flex flex-col items-center relative overflow-hidden">
+    <!-- Animated background elements -->
+    <div class="absolute inset-0">
+        <div class="absolute inset-0 bg-gradient-to-r from-blue-600/15 to-yellow-500/15 animate-pulse"></div>
+        <div class="absolute top-0 left-0 w-full h-full bg-gradient-to-b from-transparent to-gray-900/60"></div>
+    </div>
+
+    <!-- Floating shapes with enhanced animations -->
+    <div class="absolute inset-0 overflow-hidden">
+        <div class="absolute -top-40 -right-32 w-80 h-80 bg-gradient-to-br from-yellow-400/25 to-blue-400/25 rounded-full blur-3xl animate-bounce duration-[6000ms]"></div>
+        <div class="absolute -bottom-40 -left-32 w-80 h-80 bg-gradient-to-br from-blue-400/20 to-yellow-400/15 rounded-full blur-3xl animate-pulse duration-[8000ms]"></div>
+        <div class="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-gradient-to-r from-purple-400/10 to-pink-400/10 rounded-full blur-2xl animate-spin duration-[20000ms]"></div>
+    </div>
+
+    <section class="w-full max-w-7xl mx-auto relative z-10">
         <header class="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-8">
-            <h1 class="text-3xl md:text-4xl font-extrabold text-white">Shopping Cart</h1>
-            @if(count($order_items) > 0)
-                <div class="text-white/80 text-lg">{{ count($order_items) }} item(s) in cart</div>
-            @endif
+            <!-- Enhanced Cart Header -->
+            <div class="text-center md:text-left">
+                <h1 class="text-4xl md:text-6xl font-extrabold text-white mb-2 leading-tight">
+                    <span class="bg-gradient-to-r from-blue-400 via-yellow-400 to-blue-500 bg-clip-text text-transparent">
+                        Shopping Cart
+                    </span>
+                </h1>
+                @if(count($order_items) > 0)
+                    <div class="text-gray-300 text-lg font-light">{{ count($order_items) }} premium proxy {{ count($order_items) === 1 ? 'item' : 'items' }} in your cart</div>
+                @endif
+            </div>
+
+            <!-- Enhanced breadcrumb -->
+            <nav class="flex items-center space-x-2 text-sm">
+                <a href="/" wire:navigate class="text-gray-400 hover:text-white transition-colors duration-200">Home</a>
+                <svg class="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
+                </svg>
+                <a href="/servers" wire:navigate class="text-gray-400 hover:text-white transition-colors duration-200">Products</a>
+                <svg class="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
+                </svg>
+                <span class="text-blue-400 font-medium">Cart</span>
+            </nav>
         </header>
 
-        {{-- Success Messages --}}
+        {{-- Enhanced Success Messages --}}
         @if (session()->has('success'))
-            <div class="bg-green-500/20 border border-green-500 text-green-100 px-4 py-3 rounded-lg mb-6">
-                {{ session('success') }}
+            <div class="bg-gradient-to-r from-green-500/20 to-blue-500/20 border border-green-400/50 backdrop-blur-sm rounded-2xl px-6 py-4 mb-8 shadow-lg">
+                <div class="flex items-center space-x-3">
+                    <svg class="w-6 h-6 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                    </svg>
+                    <span class="text-green-100 font-medium">{{ session('success') }}</span>
+                </div>
             </div>
         @endif
 
         <div class="flex flex-col lg:flex-row gap-8">
-            <!-- Cart Items -->
+            <!-- Enhanced Cart Items -->
             <section class="w-full lg:w-2/3 flex flex-col gap-6">
-                {{-- Cart Items Table --}}
-                <div class="bg-white/10 backdrop-blur-md rounded-2xl p-6 mb-6 overflow-x-auto shadow-lg">
+                {{-- Enhanced Cart Items Table --}}
+                <div class="bg-white/5 backdrop-blur-lg rounded-3xl p-6 mb-6 overflow-x-auto shadow-2xl border border-white/10">
                     @if(count($order_items) > 0)
                         {{-- Table Header --}}
                         <div class="hidden md:grid grid-cols-12 gap-4 pb-4 border-b border-white/20 text-white font-semibold">

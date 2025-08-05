@@ -48,6 +48,18 @@ class Customer extends Authenticatable implements MustVerifyEmail
         'theme_mode',
         'email_notifications',
         'timezone',
+        'date_of_birth',
+        'bio',
+        'website',
+        'company',
+        'avatar',
+        'sms_notifications',
+        'privacy_settings',
+        'two_factor_enabled',
+        'login_alerts',
+        'premium',
+        'premium_expires_at',
+        'account_stats',
         'suspended_at',
         'suspension_reason',
         'last_login_at',
@@ -75,7 +87,20 @@ class Customer extends Authenticatable implements MustVerifyEmail
             'email_verified_at' => 'datetime',
             'suspended_at' => 'datetime',
             'last_login_at' => 'datetime',
+            'first_start' => 'datetime',
+            'agent_date' => 'datetime',
+            'premium_expires_at' => 'datetime',
+            'date_of_birth' => 'date',
             'password' => 'hashed',
+            'is_active' => 'boolean',
+            'is_agent' => 'boolean',
+            'email_notifications' => 'boolean',
+            'two_factor_enabled' => 'boolean',
+            'login_alerts' => 'boolean',
+            'premium' => 'boolean',
+            'sms_notifications' => 'array',
+            'privacy_settings' => 'array',
+            'account_stats' => 'array',
         ];
     }
 
@@ -100,6 +125,7 @@ class Customer extends Authenticatable implements MustVerifyEmail
     public function referredCustomers() { return $this->hasMany(Customer::class, 'refered_by'); }
     public function clients() { return $this->hasMany(ServerClient::class); }
     public function traffics() { return $this->hasMany(ClientTraffic::class); }
+    public function addresses() { return $this->hasMany(Address::class); }
 
     public function wallet()
     {

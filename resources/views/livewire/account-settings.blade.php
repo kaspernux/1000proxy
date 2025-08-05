@@ -1,33 +1,39 @@
-<main class="min-h-screen bg-gradient-to-br from-blue-50/60 to-purple-100/60 dark:from-gray-900 dark:to-gray-800 py-8 px-2 sm:px-6 lg:px-8">
-    <header class="w-full max-w-7xl mx-auto mb-8">
-        <section class="flex flex-col md:flex-row md:items-center md:justify-between gap-8 bg-white/80 dark:bg-gray-900/80 rounded-2xl shadow-lg p-6 md:p-10 border border-gray-200">
+<main class="min-h-screen bg-gradient-to-br from-gray-900 via-blue-900/30 to-gray-800 py-8 px-2 sm:px-6 lg:px-8 relative overflow-hidden">
+    <!-- Animated Background Elements -->
+    <div class="absolute inset-0 overflow-hidden">
+        <div class="absolute -top-40 -right-32 w-80 h-80 bg-gradient-to-br from-blue-500/20 to-purple-600/20 rounded-full animate-pulse"></div>
+        <div class="absolute -bottom-32 -left-32 w-64 h-64 bg-gradient-to-tr from-yellow-500/20 to-green-500/20 rounded-full animate-bounce" style="animation-duration: 3s;"></div>
+        <div class="absolute top-1/2 left-1/3 w-32 h-32 bg-gradient-to-br from-pink-500/10 to-purple-600/10 rounded-full animate-ping" style="animation-duration: 4s;"></div>
+    </div>
+    <header class="w-full max-w-7xl mx-auto mb-8 relative z-10">
+        <section class="flex flex-col md:flex-row md:items-center md:justify-between gap-8 bg-white/10 dark:bg-gray-900/40 backdrop-blur-md rounded-2xl shadow-2xl p-6 md:p-10 border border-white/20">
             <div class="flex flex-col sm:flex-row items-center gap-6">
                 <!-- Avatar Section -->
-                <div class="relative">
+                <div class="relative group">
                     @if($current_avatar)
-                        <img class="h-24 w-24 rounded-full object-cover ring-4 ring-blue-400 shadow-lg" src="{{ Storage::url($current_avatar) }}" alt="{{ $name }}">
+                        <img class="h-24 w-24 rounded-full object-cover ring-4 ring-blue-400 shadow-2xl group-hover:scale-105 transition-transform duration-300" src="{{ Storage::url($current_avatar) }}" alt="{{ $name }}">
                     @else
-                        <div class="h-24 w-24 rounded-full bg-gradient-to-br from-blue-400 to-purple-600 flex items-center justify-center ring-4 ring-blue-400 shadow-lg">
+                        <div class="h-24 w-24 rounded-full bg-gradient-to-br from-blue-400 to-purple-600 flex items-center justify-center ring-4 ring-blue-400 shadow-2xl group-hover:scale-105 transition-transform duration-300">
                             <span class="text-2xl font-bold text-white">{{ substr($name, 0, 2) }}</span>
                         </div>
                     @endif
-                    <button wire:click="$set('activeTab', 'profile')" class="absolute -bottom-2 -right-2 bg-blue-600 text-white rounded-full p-2 hover:bg-blue-700 transition-colors shadow-lg">
+                    <button wire:click="$set('activeTab', 'profile')" class="absolute -bottom-2 -right-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-full p-2 hover:from-purple-600 hover:to-blue-600 transition-all duration-300 shadow-lg hover:shadow-xl transform hover:scale-110">
                         <x-custom-icon name="user" class="w-4 h-4" />
                     </button>
                 </div>
                 <!-- User Info -->
                 <div class="flex flex-col gap-1">
-                    <h1 class="text-2xl md:text-3xl font-extrabold text-gray-900 dark:text-white">{{ $name }}</h1>
-                    <p class="text-base md:text-lg text-gray-600 dark:text-gray-300">{{ $email }}</p>
+                    <h1 class="text-2xl md:text-3xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-purple-400">{{ $name }}</h1>
+                    <p class="text-base md:text-lg text-gray-300">{{ $email }}</p>
                     <div class="flex flex-wrap items-center gap-2 mt-2">
-                        <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                        <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-green-100/20 text-green-300 border border-green-400/30">
                             <svg class="w-4 h-4 mr-1.5" fill="currentColor" viewBox="0 0 20 20">
                                 <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
                             </svg>
                             Verified Account
                         </span>
                         @if($customer->premium)
-                            <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
+                            <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-yellow-100/20 text-yellow-300 border border-yellow-400/30">
                                 <svg class="w-4 h-4 mr-1.5" fill="currentColor" viewBox="0 0 20 20">
                                     <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
                                 </svg>
@@ -39,15 +45,15 @@
             </div>
             <!-- Account Statistics -->
             <div class="grid grid-cols-2 md:grid-cols-4 gap-4 w-full md:w-auto">
-                <div class="bg-blue-50 dark:bg-blue-900 rounded-xl p-4 text-center shadow">
-                    <div class="text-2xl font-bold text-blue-600 dark:text-blue-300">{{ $accountStats['total_orders'] }}</div>
-                    <div class="text-xs text-blue-700 dark:text-blue-200">Total Orders</div>
+                <div class="bg-blue-500/20 backdrop-blur-md rounded-xl p-4 text-center shadow-lg border border-blue-400/30 hover:border-blue-300/50 transition-all duration-300 hover:shadow-xl hover:scale-105">
+                    <div class="text-2xl font-bold text-blue-300">{{ $accountStats['total_orders'] }}</div>
+                    <div class="text-xs text-blue-200">Total Orders</div>
                 </div>
-                <div class="bg-green-50 dark:bg-green-900 rounded-xl p-4 text-center shadow">
-                    <div class="text-2xl font-bold text-green-600 dark:text-green-300">${{ number_format($accountStats['total_spent'], 2) }}</div>
-                    <div class="text-xs text-green-700 dark:text-green-200">Total Spent</div>
+                <div class="bg-green-500/20 backdrop-blur-md rounded-xl p-4 text-center shadow-lg border border-green-400/30 hover:border-green-300/50 transition-all duration-300 hover:shadow-xl hover:scale-105">
+                    <div class="text-2xl font-bold text-green-300">${{ number_format($accountStats['total_spent'], 2) }}</div>
+                    <div class="text-xs text-green-200">Total Spent</div>
                 </div>
-                <div class="bg-purple-50 dark:bg-purple-900 rounded-xl p-4 text-center shadow">
+                <div class="bg-purple-500/20 backdrop-blur-md rounded-xl p-4 text-center shadow-lg border border-purple-400/30 hover:border-purple-300/50 transition-all duration-300 hover:shadow-xl hover:scale-105">
                     <div class="text-2xl font-bold text-purple-600 dark:text-purple-300">{{ $accountStats['account_age_days'] }}</div>
                     <div class="text-xs text-purple-700 dark:text-purple-200">Days with Us</div>
                 </div>

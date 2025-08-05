@@ -139,6 +139,22 @@ class AccountSettings extends Component
         $this->loadSecuritySettings();
     }
 
+    public function getAccountStatsProperty()
+    {
+        $orders = $this->customer->orders();
+        $totalOrders = $orders->count();
+        $totalSpent = $orders->where('status', 'delivered')->sum('grand_amount');
+        $lastOrder = $orders->latest()->first();
+        $accountAgeDays = $this->customer->created_at->diffInDays(now());
+
+        return [
+            'total_orders' => $totalOrders,
+            'total_spent' => $totalSpent,
+            'last_order' => $lastOrder,
+            'account_age_days' => $accountAgeDays,
+        ];
+    }
+
     public function loadAddresses()
     {
         $this->addresses = Address::where('customer_id', $this->customer->id)->get()->toArray();
@@ -591,7 +607,7 @@ class AccountSettings extends Component
     {
         $accountStats = [
             'total_orders' => Order::where('customer_id', $this->customer->id)->count(),
-            'total_spent' => Order::where('customer_id', $this->customer->id)->where('status', 'delivered')->sum('grand_total'),
+            'total_spent' => Order::where('customer_id', $this->customer->id)->where('status', 'delivered')->sum('grand_amount'),
             'account_age_days' => $this->customer->created_at->diffInDays(now()),
             'last_order' => Order::where('customer_id', $this->customer->id)->latest()->first(),
         ];
