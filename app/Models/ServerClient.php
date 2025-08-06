@@ -151,6 +151,8 @@ class ServerClient extends Model
         'traffic_percentage_used' => 'decimal:2',
     ];
 
+
+
     public function inbound(): BelongsTo
     {
         return $this->belongsTo(ServerInbound::class, 'server_inbound_id');

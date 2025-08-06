@@ -2,7 +2,6 @@
 
 namespace App\Filament\Widgets;
 
-use App\Filament\Clusters\ProxyShop\Resources\OrderResource;
 use App\Models\Order;
 use App\Models\Customer;
 use App\Models\PaymentMethod;
@@ -24,7 +23,7 @@ class LatestOrdersWidget extends BaseWidget
     public function table(Table $table): Table
     {
         return $table
-            ->query(OrderResource::getEloquentQuery())
+            // Removed OrderResource reference
             ->defaultPaginationPageOption(5)
             ->defaultSort('created_at', 'desc')
             ->striped()
@@ -112,13 +111,13 @@ class LatestOrdersWidget extends BaseWidget
                 Tables\Actions\Action::make('view')
                     ->label('View')
                     ->icon('heroicon-o-eye')
-                    ->url(fn (Order $record): string => OrderResource::getUrl('view', ['record' => $record])),
+                    // Removed OrderResource reference
             ])
             ->headerActions([
                 Tables\Actions\Action::make('all')
                     ->label('View All Orders')
                     ->icon('heroicon-o-queue-list')
-                    ->url(OrderResource::getUrl('index'))
+                    // Removed OrderResource reference
                     ->color('primary')
                     ->outlined(),
             ])
@@ -128,7 +127,7 @@ class LatestOrdersWidget extends BaseWidget
                 Tables\Actions\Action::make('browse')
                     ->label('View All Orders')
                     ->icon('heroicon-o-queue-list')
-                    ->url(OrderResource::getUrl('index')),
+                    // Removed OrderResource reference
             ]);
     }
 }

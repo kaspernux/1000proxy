@@ -34,7 +34,7 @@ class EnhancedUserManagement extends Page implements HasTable, HasForms
     protected static ?string $navigationIcon = 'heroicon-o-users';
     protected static ?string $navigationLabel = 'Enhanced User Management';
     protected static ?string $title = 'Enhanced User Management';
-    protected static string $view = 'filament.staff-management.pages.enhanced-user-management';
+// Removed unused Blade view reference; Filament will use its own layout
 protected static ?string $cluster = \App\Filament\Clusters\StaffManagement::class;
     protected static ?int $navigationSort = 1;
 

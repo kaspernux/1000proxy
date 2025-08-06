@@ -33,7 +33,7 @@ class MyActiveServers extends Page implements HasTable
 
     protected static ?string $navigationIcon = 'heroicon-o-server-stack';
     protected static ?string $navigationLabel = 'My Active Servers';
-    protected static string $view = 'filament.customer.pages.my-active-servers';
+    // No custom Blade view reference; Filament will use its own enhanced layout
     protected static ?int $navigationSort = 3;
     // No navigation group - appears in main navigation
 
@@ -70,51 +70,61 @@ class MyActiveServers extends Page implements HasTable
                     ->searchable()
                     ->copyable()
                     ->copyableState(fn (ServerClient $record): string => "#{$record->id}")
-                    ->tooltip('Click to copy client ID'),
+                    ->tooltip('Copy client ID')
+                    ->icon('heroicon-o-identification')
+                    ->color('primary')
+                    ->extraAttributes(['class' => 'font-bold text-primary-600 dark:text-primary-400 sm:text-base text-xs']),
 
                 TextColumn::make('email')
-                    ->label('Client Email')
+                    ->label('Email')
                     ->searchable()
                     ->sortable()
                     ->copyable()
-                    ->icon('heroicon-m-envelope')
+                    ->icon('heroicon-o-envelope')
                     ->iconColor('primary')
-                    ->tooltip('Client identifier'),
+                    ->tooltip('Client Email')
+                    ->extraAttributes(['class' => 'font-semibold text-gray-800 dark:text-gray-200 sm:text-base text-xs']),
 
-                TextColumn::make('serverInbound.server.name')
+                TextColumn::make('inbound.server.name')
                     ->label('Server')
                     ->searchable()
                     ->sortable()
-                    ->badge()
-                    ->color('primary')
-                    ->icon('heroicon-m-server'),
+                    ->icon('heroicon-o-server-stack')
+                    ->color('info')
+                    ->extraAttributes(['class' => 'font-bold text-blue-700 dark:text-blue-300 sm:text-base text-xs']),
 
-                TextColumn::make('serverInbound.server.country')
+                TextColumn::make('inbound.server.country')
                     ->label('Location')
                     ->searchable()
-                    ->badge()
+                    ->icon('heroicon-o-map-pin')
                     ->color('info')
-                    ->icon('heroicon-m-map-pin'),
+                    ->extraAttributes(['class' => 'text-blue-600 dark:text-blue-400 sm:text-base text-xs']),
 
-                TextColumn::make('serverInbound.protocol')
+                TextColumn::make('inbound.protocol')
                     ->label('Protocol')
-                    ->badge()
-                    ->color('warning'),
+                    ->icon('heroicon-o-arrow-path')
+                    ->color('warning')
+                    ->extraAttributes(['class' => 'text-yellow-600 dark:text-yellow-400 sm:text-base text-xs']),
 
-                BadgeColumn::make('status')
+                TextColumn::make('status')
                     ->label('Status')
-                    ->colors([
-                        'success' => 'active',
-                        'danger' => 'inactive',
-                        'warning' => 'suspended',
-                        'gray' => 'pending',
-                    ])
-                    ->icons([
-                        'heroicon-m-check-circle' => 'active',
-                        'heroicon-m-x-circle' => 'inactive',
-                        'heroicon-m-pause-circle' => 'suspended',
-                        'heroicon-m-clock' => 'pending',
-                    ]),
+                    ->badge()
+                    ->color(fn (string $state): string => match ($state) {
+                        'active' => 'success',
+                        'inactive' => 'danger',
+                        'suspended' => 'warning',
+                        'pending' => 'gray',
+                        default => 'gray',
+                    })
+                    ->icon(fn (string $state): string => match ($state) {
+                        'active' => 'heroicon-o-check-circle',
+                        'inactive' => 'heroicon-o-x-circle',
+                        'suspended' => 'heroicon-o-pause-circle',
+                        'pending' => 'heroicon-o-clock',
+                        default => 'heroicon-o-question-mark-circle',
+                    })
+                    ->formatStateUsing(fn (string $state): string => ucfirst($state))
+                    ->extraAttributes(['class' => 'font-bold sm:text-base text-xs']),
 
                 TextColumn::make('traffic_used_mb')
                     ->label('Traffic Used')
@@ -122,7 +132,10 @@ class MyActiveServers extends Page implements HasTable
                         $state ? number_format($state / 1024, 2) . ' GB' : '0 GB'
                     )
                     ->sortable()
-                    ->color('info'),
+                    ->icon('heroicon-o-signal')
+                    ->color('info')
+                    ->alignment('right')
+                    ->extraAttributes(['class' => 'text-orange-600 dark:text-orange-400 sm:text-base text-xs']),
 
                 TextColumn::make('traffic_limit_mb')
                     ->label('Traffic Limit')
@@ -130,14 +143,19 @@ class MyActiveServers extends Page implements HasTable
                         $state ? number_format($state / 1024, 2) . ' GB' : 'Unlimited'
                     )
                     ->sortable()
-                    ->color('success'),
+                    ->icon('heroicon-o-bolt')
+                    ->color('success')
+                    ->alignment('right')
+                    ->extraAttributes(['class' => 'text-green-600 dark:text-green-400 sm:text-base text-xs']),
 
                 TextColumn::make('created_at')
                     ->label('Created')
-                    ->dateTime()
-                    ->since()
+                    ->dateTime('M j, Y H:i')
                     ->sortable()
-                    ->toggleable(isToggledHiddenByDefault: true),
+                    ->description(fn (ServerClient $record): string => $record->created_at->diffForHumans())
+                    ->color('gray')
+                    ->icon('heroicon-o-calendar-days')
+                    ->extraAttributes(['class' => 'text-xs text-gray-500 dark:text-gray-400']),
 
                 TextColumn::make('expiry_time')
                     ->label('Expires')
@@ -146,19 +164,23 @@ class MyActiveServers extends Page implements HasTable
                             return 'Never';
                         }
                         $timestamp = $state / 1000; // Convert from milliseconds
-                        return \Carbon\Carbon::createFromTimestamp($timestamp)->format('M d, Y H:i');
+                        return \Carbon\Carbon::createFromTimestamp($timestamp)->format('M j, Y');
                     })
-                    ->sortable()
-                    ->color(function ($state) {
-                        if (!$state || $state == 0) return 'success';
-                        $timestamp = $state / 1000;
-                        return $timestamp < time() ? 'danger' : 'success';
+                    ->description(function (ServerClient $record): ?string {
+                        if (!$record->expiry_time || $record->expiry_time == 0) return null;
+                        $timestamp = $record->expiry_time / 1000;
+                        return \Carbon\Carbon::createFromTimestamp($timestamp)->diffForHumans();
                     })
-                    ->tooltip(function ($state): string {
-                        if (!$state || $state == 0) return 'Never expires';
-                        $timestamp = $state / 1000;
-                        return 'Expires ' . \Carbon\Carbon::createFromTimestamp($timestamp)->diffForHumans();
-                    }),
+                    ->color(function (ServerClient $record): string {
+                        if (!$record->expiry_time || $record->expiry_time == 0) return 'gray';
+                        $timestamp = $record->expiry_time / 1000;
+                        $daysUntilExpiry = now()->diffInDays(\Carbon\Carbon::createFromTimestamp($timestamp), false);
+                        if ($daysUntilExpiry < 0) return 'danger';
+                        if ($daysUntilExpiry <= 7) return 'warning';
+                        return 'success';
+                    })
+                    ->icon('heroicon-o-calendar-days')
+                    ->extraAttributes(['class' => 'text-xs font-medium sm:text-base']),
             ])
             ->filters([
                 SelectFilter::make('status')
@@ -173,14 +195,14 @@ class MyActiveServers extends Page implements HasTable
 
                 SelectFilter::make('server_inbound_id')
                     ->label('Server')
-                    ->relationship('serverInbound.server', 'name')
+                    ->relationship('inbound.server', 'name')
                     ->searchable()
                     ->preload()
                     ->indicator('Server'),
 
                 SelectFilter::make('protocol')
                     ->label('Protocol')
-                    ->relationship('serverInbound', 'protocol')
+                    ->relationship('inbound', 'protocol')
                     ->indicator('Protocol'),
 
                 Filter::make('expires_soon')

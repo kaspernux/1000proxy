@@ -16,7 +16,7 @@ class ServerBrowsing extends Page
 {
     protected static ?string $navigationIcon = 'heroicon-o-server';
     protected static ?string $navigationLabel = 'Browse Servers';
-    protected static string $view = 'filament.customer.pages.server-browsing';
+// Removed unused Blade view reference; Filament will use its own layout
     protected static ?int $navigationSort = 2;
 
     public $filters = [

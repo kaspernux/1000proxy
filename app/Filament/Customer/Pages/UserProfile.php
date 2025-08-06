@@ -27,7 +27,7 @@ class UserProfile extends Page implements HasForms
 
     protected static ?string $navigationIcon = 'heroicon-o-user-circle';
     protected static ?string $navigationLabel = 'My Profile';
-    protected static string $view = 'filament.customer.pages.user-profile';
+// Removed unused Blade view reference; Filament will use its own layout
     protected static ?int $navigationSort = 8;
 
     public ?array $data = [];

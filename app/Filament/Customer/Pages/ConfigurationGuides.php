@@ -29,7 +29,7 @@ class ConfigurationGuides extends Page
 {
     protected static ?string $navigationIcon = 'heroicon-o-book-open';
     protected static ?string $navigationLabel = 'Setup Guides & Tutorials';
-    protected static string $view = 'filament.customer.pages.configuration-guides';
+// Removed unused Blade view reference; Filament will use its own layout
     protected static ?int $navigationSort = 6;
 
     public $selectedProtocol = 'vless';

@@ -21,7 +21,6 @@ use App\Filament\Customer\Widgets\CustomerStatsOverview;
 use App\Filament\Customer\Widgets\SupportOverviewWidget;
 use App\Filament\Customer\Widgets\DownloadOverviewWidget;
 use App\Filament\Customer\Clusters\MyWallet\Resources\WalletResource;
-use App\Filament\Customer\Clusters\MyOrders\Resources\OrderResource;
 use App\Filament\Customer\Clusters\MyTools\Resources\CustomerResource;
 use App\Filament\Customer\Resources\CustomerServerClientResource;
 use App\Http\Middleware\SyncCustomerPreferences;
@@ -97,25 +96,25 @@ class CustomerPanelProvider extends PanelProvider
                 MenuItem::make('orders_new')
                     ->label(fn () => 'New: ' . auth('customer')->user()->orders()->where('order_status', 'new')->count())
                     ->icon('heroicon-o-shopping-cart')
-                    ->url(fn (): string => OrderResource::getUrl('index', ['filters' => ['order_status' => 'new']], 'customer'))
+                    // Removed OrderResource reference
                     ->visible(fn (): bool => auth('customer')->check()),
                 // 3) Completed orders — only when logged in:
                 MenuItem::make('orders_completed')
                     ->label(fn () => 'Completed: ' . auth('customer')->user()->orders()->where('order_status', 'completed')->count())
                     ->icon('heroicon-o-check-circle')
-                    ->url(fn (): string => OrderResource::getUrl('index', ['filters' => ['order_status' => 'completed']], 'customer'))
+                    // Removed OrderResource reference
                     ->visible(fn (): bool => auth('customer')->check()),
                 // 3) Processing orders — only when logged in:
                 MenuItem::make('orders_processing')
                     ->label(fn () => 'Processing: ' . auth('customer')->user()->orders()->where('order_status', 'processing')->count())
                     ->icon('heroicon-o-arrow-path')
-                    ->url(fn (): string => OrderResource::getUrl('index', ['filters' => ['order_status' => 'processing']], 'customer'))
+                    // Removed OrderResource reference
                     ->visible(fn (): bool => auth('customer')->check()),
                 // 3) Canceled orders — only when logged in:
                 MenuItem::make('orders_disputed')
                     ->label(fn () => 'Dispute: ' . auth('customer')->user()->orders()->where('order_status', 'dispute')->count())
                     ->icon('heroicon-o-shield-exclamation')
-                    ->url(fn (): string => OrderResource::getUrl('index', ['filters' => ['order_status' => 'dispute']], 'customer'))
+                    // Removed OrderResource reference
                     ->visible(fn (): bool => auth('customer')->check()),
                 // 4) Profile (edit your own record) — keyed so Filament wires up its own “profile” logic:
                 'profile' => MenuItem::make('profile')
