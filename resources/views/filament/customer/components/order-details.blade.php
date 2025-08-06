@@ -1,56 +1,102 @@
-<div class="space-y-6">
-    <!-- Order Header -->
-    <div class="border-b border-gray-200 pb-4">
-        <div class="flex items-center justify-between">
-            <div>
-                <h3 class="text-lg font-medium text-gray-900">Order #{{ $order->id }}</h3>
-                <p class="mt-1 text-sm text-gray-500">
-                    Placed {{ $order->created_at->format('M j, Y \a\t H:i') }}
-                    ({{ $order->created_at->diffForHumans() }})
-                </p>
-            </div>
-            <div class="flex items-center space-x-2">
-                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium
-                    {{ $order->status === 'completed' ? 'bg-green-100 text-green-800' :
-                       ($order->status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
-                        ($order->status === 'processing' ? 'bg-blue-100 text-blue-800' :
-                         ($order->status === 'cancelled' ? 'bg-red-100 text-red-800' : 'bg-gray-100 text-gray-800'))) }}">
-                    {{ ucfirst($order->status) }}
-                </span>
+<div class="space-y-6 text-white">
+    <!-- Enhanced Order Header -->
+    <div class="relative bg-gradient-to-r from-blue-900/50 to-purple-900/50 backdrop-blur-lg rounded-2xl p-6 border border-blue-500/20 overflow-hidden">
+        <div class="absolute inset-0 bg-gradient-to-r from-blue-600/5 to-purple-600/5"></div>
+        <div class="relative z-10">
+            <div class="flex items-center justify-between">
+                <div>
+                    <h3 class="text-2xl font-bold text-white flex items-center">
+                        <svg class="w-7 h-7 mr-3 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path>
+                        </svg>
+                        Order #{{ $order->id }}
+                    </h3>
+                    <p class="mt-2 text-gray-300 flex items-center">
+                        <svg class="w-5 h-5 mr-2 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3a4 4 0 118 0v4m-4 8a2 2 0 100-4 2 2 0 000 4zm6-10V7a6 6 0 10-12 0v4a2 2 0 002 2h8a2 2 0 002-2z"></path>
+                        </svg>
+                        Placed {{ $order->created_at->format('M j, Y \a\t H:i') }}
+                        <span class="ml-2 text-blue-300">({{ $order->created_at->diffForHumans() }})</span>
+                    </p>
+                </div>
+                <div class="flex items-center space-x-3">
+                    <span class="inline-flex items-center px-4 py-2 rounded-xl text-sm font-semibold border
+                        {{ $order->status === 'completed' ? 'bg-green-500/20 text-green-300 border-green-500/30' :
+                           ($order->status === 'pending' ? 'bg-yellow-500/20 text-yellow-300 border-yellow-500/30' :
+                            ($order->status === 'processing' ? 'bg-blue-500/20 text-blue-300 border-blue-500/30' :
+                             ($order->status === 'cancelled' ? 'bg-red-500/20 text-red-300 border-red-500/30' : 'bg-gray-500/20 text-gray-300 border-gray-500/30'))) }}">
+                        {{ ucfirst($order->status) }}
+                    </span>
+                </div>
             </div>
         </div>
     </div>
 
-    <!-- Order Summary -->
+    <!-- Enhanced Order Summary Cards -->
     <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div class="bg-gray-50 rounded-lg p-4">
-            <h4 class="text-sm font-medium text-gray-900 mb-2">Order Total</h4>
-            <p class="text-2xl font-bold text-gray-900">${{ number_format($order->total_amount, 2) }}</p>
-            <p class="text-sm text-gray-500">{{ ucfirst($order->payment_method) }} payment</p>
+        <div class="group relative bg-gradient-to-br from-green-500/10 to-green-600/20 backdrop-blur-lg rounded-2xl p-6 border border-green-500/20 hover:border-green-400/40 transition-all duration-300 hover:scale-105 overflow-hidden">
+            <div class="absolute inset-0 bg-gradient-to-br from-green-400/5 to-transparent group-hover:from-green-400/10 transition-all duration-300"></div>
+            <div class="relative z-10">
+                <div class="flex items-center justify-between mb-4">
+                    <div class="p-3 bg-green-500/20 rounded-xl">
+                        <svg class="w-8 h-8 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1"></path>
+                        </svg>
+                    </div>
+                </div>
+                <h4 class="text-lg font-semibold text-green-300 mb-2">Order Total</h4>
+                <p class="text-3xl font-bold text-white">${{ number_format($order->total_amount, 2) }}</p>
+                <p class="text-green-300 mt-2 flex items-center">
+                    <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"></path>
+                    </svg>
+                    {{ ucfirst($order->payment_method) }} payment
+                </p>
+            </div>
         </div>
 
-        <div class="bg-gray-50 rounded-lg p-4">
-            <h4 class="text-sm font-medium text-gray-900 mb-2">Items</h4>
-            <p class="text-2xl font-bold text-gray-900">{{ $order->items->count() }}</p>
-            <p class="text-sm text-gray-500">Server access{{ $order->items->count() > 1 ? 'es' : '' }}</p>
+        <div class="group relative bg-gradient-to-br from-blue-500/10 to-blue-600/20 backdrop-blur-lg rounded-2xl p-6 border border-blue-500/20 hover:border-blue-400/40 transition-all duration-300 hover:scale-105 overflow-hidden">
+            <div class="absolute inset-0 bg-gradient-to-br from-blue-400/5 to-transparent group-hover:from-blue-400/10 transition-all duration-300"></div>
+            <div class="relative z-10">
+                <div class="flex items-center justify-between mb-4">
+                    <div class="p-3 bg-blue-500/20 rounded-xl">
+                        <svg class="w-8 h-8 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 12h14M5 12a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v4a2 2 0 01-2 2M5 12a2 2 0 00-2 2v4a2 2 0 002 2h14a2 2 0 002-2v-4a2 2 0 00-2-2m-2-4h.01M17 16h.01"></path>
+                        </svg>
+                    </div>
+                </div>
+                <h4 class="text-lg font-semibold text-blue-300 mb-2">Items</h4>
+                <p class="text-3xl font-bold text-white">{{ $order->items->count() }}</p>
+                <p class="text-blue-300 mt-2">Server access{{ $order->items->count() > 1 ? 'es' : '' }}</p>
+            </div>
         </div>
 
-        <div class="bg-gray-50 rounded-lg p-4">
-            <h4 class="text-sm font-medium text-gray-900 mb-2">Next Expiry</h4>
-            @php
-                $nextExpiry = $order->items
-                    ->map(fn($item) => $item->server_client?->expiry_time)
-                    ->filter()
-                    ->sort()
-                    ->first();
-            @endphp
-            @if($nextExpiry)
-                <p class="text-2xl font-bold text-gray-900">{{ $nextExpiry->format('M j') }}</p>
-                <p class="text-sm text-gray-500">{{ $nextExpiry->diffForHumans() }}</p>
-            @else
-                <p class="text-2xl font-bold text-gray-500">N/A</p>
-                <p class="text-sm text-gray-500">No expiry data</p>
-            @endif
+        <div class="group relative bg-gradient-to-br from-purple-500/10 to-pink-600/20 backdrop-blur-lg rounded-2xl p-6 border border-purple-500/20 hover:border-purple-400/40 transition-all duration-300 hover:scale-105 overflow-hidden">
+            <div class="absolute inset-0 bg-gradient-to-br from-purple-400/5 to-transparent group-hover:from-purple-400/10 transition-all duration-300"></div>
+            <div class="relative z-10">
+                <div class="flex items-center justify-between mb-4">
+                    <div class="p-3 bg-purple-500/20 rounded-xl">
+                        <svg class="w-8 h-8 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                        </svg>
+                    </div>
+                </div>
+                <h4 class="text-lg font-semibold text-purple-300 mb-2">Next Expiry</h4>
+                @php
+                    $nextExpiry = $order->items
+                        ->map(fn($item) => $item->server_client?->expiry_time)
+                        ->filter()
+                        ->sort()
+                        ->first();
+                @endphp
+                @if($nextExpiry)
+                    <p class="text-3xl font-bold text-white">{{ $nextExpiry->format('M j') }}</p>
+                    <p class="text-purple-300 mt-2">{{ $nextExpiry->diffForHumans() }}</p>
+                @else
+                    <p class="text-3xl font-bold text-gray-400">N/A</p>
+                    <p class="text-purple-300 mt-2">No expiry data</p>
+                @endif
+            </div>
         </div>
     </div>
 

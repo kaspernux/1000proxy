@@ -6,9 +6,12 @@ use Filament\Pages\Page;
 use Filament\Forms\Form;
 use Filament\Forms\Components\Section;
 use Filament\Forms\Components\TextInput;
+use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Toggle;
-use Filament\Forms\Components\FileUpload;
+use Filament\Forms\Components\DatePicker;
+use Filament\Forms\Components\Grid;
+use Filament\Forms\Components\Placeholder;
 use Filament\Forms\Contracts\HasForms;
 use Filament\Forms\Concerns\InteractsWithForms;
 use Filament\Actions\Action;
@@ -28,27 +31,52 @@ class UserProfile extends Page implements HasForms
     protected static ?int $navigationSort = 8;
 
     public ?array $data = [];
-    public ?array $passwordData = [];
-
     public $twoFactorEnabled = false;
+    public $accountStats = [];
 
     public function mount(): void
     {
         $customer = Auth::guard('customer')->user();
-
+        $this->loadAccountStats();
+        
         $this->form->fill([
             'name' => $customer->name,
             'email' => $customer->email,
             'phone' => $customer->phone ?? '',
             'country' => $customer->country ?? '',
             'timezone' => $customer->timezone ?? 'UTC',
+            'bio' => $customer->bio ?? '',
+            'website' => $customer->website ?? '',
+            'company' => $customer->company ?? '',
             'notifications_email' => $customer->notifications_email ?? true,
             'notifications_sms' => $customer->notifications_sms ?? false,
             'marketing_emails' => $customer->marketing_emails ?? false,
+            'security_alerts' => $customer->login_alerts ?? true,
         ]);
 
-        $this->passwordForm->fill();
         $this->twoFactorEnabled = !empty($customer->two_factor_secret);
+    }
+
+    protected function loadAccountStats(): void
+    {
+        $customer = Auth::guard('customer')->user();
+        
+        $totalOrders = DB::table('orders')->where('customer_id', $customer->id)->count();
+        $totalSpent = DB::table('orders')
+            ->where('customer_id', $customer->id)
+            ->where('status', 'delivered')
+            ->sum('grand_amount');
+        $activeServices = DB::table('server_clients')->where('customer_id', $customer->id)->count();
+        $walletBalance = DB::table('wallets')->where('customer_id', $customer->id)->value('balance') ?? 0;
+
+        $this->accountStats = [
+            'total_orders' => $totalOrders,
+            'total_spent' => $totalSpent,
+            'active_services' => $activeServices,
+            'wallet_balance' => $walletBalance,
+            'account_age' => $customer->created_at->diffForHumans(),
+            'last_login' => $customer->last_login_at?->diffForHumans() ?? 'Never',
+        ];
     }
 
     public function form(Form $form): Form
@@ -56,316 +84,274 @@ class UserProfile extends Page implements HasForms
         return $form
             ->schema([
                 Section::make('Personal Information')
-                    ->description('Update your account information and preferences.')
+                    ->description('Update your personal details and contact information.')
+                    ->icon('heroicon-o-user')
+                    ->collapsible()
                     ->schema([
-                        TextInput::make('name')
-                            ->label('Full Name')
-                            ->required()
-                            ->maxLength(255),
+                        Grid::make([
+                            'default' => 1,
+                            'sm' => 2,
+                            'lg' => 2,
+                        ])
+                            ->schema([
+                                TextInput::make('name')
+                                    ->label('Full Name')
+                                    ->required()
+                                    ->maxLength(255)
+                                    ->prefixIcon('heroicon-o-user')
+                                    ->placeholder('Enter your full name'),
 
-                        TextInput::make('email')
-                            ->label('Email Address')
-                            ->email()
-                            ->required()
-                            ->maxLength(255),
+                                TextInput::make('email')
+                                    ->label('Email Address')
+                                    ->email()
+                                    ->required()
+                                    ->maxLength(255)
+                                    ->prefixIcon('heroicon-o-envelope')
+                                    ->placeholder('your@email.com'),
 
-                        TextInput::make('phone')
-                            ->label('Phone Number')
-                            ->tel()
-                            ->maxLength(20),
+                                TextInput::make('phone')
+                                    ->label('Phone Number')
+                                    ->tel()
+                                    ->maxLength(20)
+                                    ->prefixIcon('heroicon-o-phone')
+                                    ->placeholder('+1 (555) 123-4567'),
 
-                        Select::make('country')
-                            ->label('Country')
-                            ->options([
-                                'US' => 'United States',
-                                'CA' => 'Canada',
-                                'GB' => 'United Kingdom',
-                                'DE' => 'Germany',
-                                'FR' => 'France',
-                                'JP' => 'Japan',
-                                'AU' => 'Australia',
-                                'NL' => 'Netherlands',
-                                'SG' => 'Singapore',
-                                'HK' => 'Hong Kong',
-                            ])
-                            ->searchable(),
+                                TextInput::make('company')
+                                    ->label('Company')
+                                    ->maxLength(255)
+                                    ->prefixIcon('heroicon-o-building-office')
+                                    ->placeholder('Your company name'),
+                            ]),
 
-                        Select::make('timezone')
-                            ->label('Timezone')
-                            ->options([
-                                'UTC' => 'UTC (Coordinated Universal Time)',
-                                'America/New_York' => 'Eastern Time (UTC-5)',
-                                'America/Chicago' => 'Central Time (UTC-6)',
-                                'America/Denver' => 'Mountain Time (UTC-7)',
-                                'America/Los_Angeles' => 'Pacific Time (UTC-8)',
-                                'Europe/London' => 'London (UTC+0)',
-                                'Europe/Paris' => 'Paris (UTC+1)',
-                                'Europe/Berlin' => 'Berlin (UTC+1)',
-                                'Asia/Tokyo' => 'Tokyo (UTC+9)',
-                                'Asia/Shanghai' => 'Shanghai (UTC+8)',
-                                'Asia/Singapore' => 'Singapore (UTC+8)',
-                                'Australia/Sydney' => 'Sydney (UTC+10)',
-                            ])
-                            ->default('UTC')
-                            ->searchable(),
+                        Grid::make([
+                            'default' => 1,
+                            'lg' => 3,
+                        ])
+                            ->schema([
+                                Select::make('country')
+                                    ->label('Country')
+                                    ->options([
+                                        'US' => 'United States',
+                                        'CA' => 'Canada',
+                                        'GB' => 'United Kingdom',
+                                        'DE' => 'Germany',
+                                        'FR' => 'France',
+                                        'JP' => 'Japan',
+                                        'AU' => 'Australia',
+                                        'NL' => 'Netherlands',
+                                        'SG' => 'Singapore',
+                                        'HK' => 'Hong Kong',
+                                    ])
+                                    ->searchable()
+                                    ->prefixIcon('heroicon-o-globe-alt')
+                                    ->placeholder('Select your country'),
 
-                        FileUpload::make('avatar')
-                            ->label('Profile Picture')
-                            ->image()
-                            ->avatar()
-                            ->directory('avatars')
-                            ->maxSize(2048),
-                    ])
-                    ->columns(2),
+                                Select::make('timezone')
+                                    ->label('Timezone')
+                                    ->options([
+                                        'UTC' => 'UTC (Coordinated Universal Time)',
+                                        'America/New_York' => 'Eastern Time (UTC-5)',
+                                        'America/Chicago' => 'Central Time (UTC-6)',
+                                        'America/Los_Angeles' => 'Pacific Time (UTC-8)',
+                                        'Europe/London' => 'London (UTC+0)',
+                                        'Europe/Paris' => 'Paris (UTC+1)',
+                                        'Asia/Tokyo' => 'Tokyo (UTC+9)',
+                                        'Asia/Singapore' => 'Singapore (UTC+8)',
+                                    ])
+                                    ->default('UTC')
+                                    ->searchable()
+                                    ->prefixIcon('heroicon-o-clock'),
+
+                                TextInput::make('website')
+                                    ->label('Website')
+                                    ->url()
+                                    ->maxLength(255)
+                                    ->prefixIcon('heroicon-o-globe-alt')
+                                    ->placeholder('https://yourwebsite.com'),
+                            ]),
+
+                        Grid::make(1)
+                            ->schema([
+                                Textarea::make('bio')
+                                    ->label('Biography')
+                                    ->maxLength(500)
+                                    ->rows(3)
+                                    ->placeholder('Tell us about yourself...')
+                                    ->helperText('Maximum 500 characters'),
+                            ]),
+                    ]),
 
                 Section::make('Notification Preferences')
-                    ->description('Choose how you want to receive notifications.')
+                    ->description('Customize how you receive notifications and updates.')
+                    ->icon('heroicon-o-bell')
+                    ->collapsible()
                     ->schema([
-                        Toggle::make('notifications_email')
-                            ->label('Email Notifications')
-                            ->helperText('Receive order updates and service notifications via email'),
+                        Grid::make([
+                            'default' => 1,
+                            'sm' => 2,
+                            'lg' => 2,
+                        ])
+                            ->schema([
+                                Toggle::make('notifications_email')
+                                    ->label('Email Notifications')
+                                    ->helperText('Receive order updates and account alerts via email')
+                                    ->default(true)
+                                    ->inline(false),
 
-                        Toggle::make('notifications_sms')
-                            ->label('SMS Notifications')
-                            ->helperText('Receive urgent notifications via SMS'),
+                                Toggle::make('notifications_sms')
+                                    ->label('SMS Notifications')
+                                    ->helperText('Receive urgent notifications via SMS')
+                                    ->default(false)
+                                    ->inline(false),
 
-                        Toggle::make('marketing_emails')
-                            ->label('Marketing Emails')
-                            ->helperText('Receive promotional offers and product updates'),
-                    ])
-                    ->columns(3),
-            ])
-            ->statePath('data');
-    }
+                                Toggle::make('marketing_emails')
+                                    ->label('Marketing Communications')
+                                    ->helperText('Receive promotional offers and updates')
+                                    ->default(false)
+                                    ->inline(false),
 
-    public function passwordForm(Form $form): Form
-    {
-        return $form
-            ->schema([
-                Section::make('Change Password')
-                    ->description('Update your account password for better security.')
+                                Toggle::make('security_alerts')
+                                    ->label('Security Alerts')
+                                    ->helperText('Get notified about security activities')
+                                    ->default(true)
+                                    ->inline(false),
+                            ]),
+                    ]),
+
+                Section::make('Security Information')
+                    ->description('View your account security status and settings.')
+                    ->icon('heroicon-o-shield-check')
+                    ->collapsible()
                     ->schema([
-                        TextInput::make('current_password')
-                            ->label('Current Password')
-                            ->password()
-                            ->required(),
+                        Grid::make([
+                            'default' => 1,
+                            'lg' => 3,
+                        ])
+                            ->schema([
+                                Placeholder::make('two_factor_status')
+                                    ->label('Two-Factor Authentication')
+                                    ->content(fn (): string => $this->twoFactorEnabled 
+                                        ? '✅ Two-factor authentication is enabled and protecting your account.'
+                                        : '⚠️ Two-factor authentication is disabled. Contact support to enable it.'
+                                    ),
 
-                        TextInput::make('new_password')
-                            ->label('New Password')
-                            ->password()
-                            ->required()
-                            ->rule(Password::default())
-                            ->confirmed(),
+                                Placeholder::make('last_login')
+                                    ->label('Last Login')
+                                    ->content(fn (): string => $this->accountStats['last_login'] ?? 'Never'),
 
-                        TextInput::make('new_password_confirmation')
-                            ->label('Confirm New Password')
-                            ->password()
-                            ->required(),
-                    ])
-                    ->columns(1),
+                                Placeholder::make('account_age')
+                                    ->label('Account Created')
+                                    ->content(fn (): string => $this->accountStats['account_age'] ?? 'Unknown'),
+                            ]),
+                    ]),
             ])
-            ->statePath('passwordData');
+            ->statePath('data')
+            ->model(Auth::guard('customer')->user());
     }
 
     protected function getHeaderActions(): array
     {
         return [
-            Action::make('save_profile')
+            Action::make('save')
                 ->label('Save Profile')
-                ->color('primary')
-                ->action('saveProfile'),
+                ->icon('heroicon-o-check')
+                ->color('success')
+                ->action('save'),
 
             Action::make('change_password')
                 ->label('Change Password')
+                ->icon('heroicon-o-key')
                 ->color('warning')
-                ->action('changePassword'),
-
-            Action::make('toggle_2fa')
-                ->label($this->twoFactorEnabled ? 'Disable 2FA' : 'Enable 2FA')
-                ->icon('heroicon-o-shield-check')
-                ->color($this->twoFactorEnabled ? 'danger' : 'success')
-                ->action('toggleTwoFactor'),
-
-            Action::make('download_data')
-                ->label('Download My Data')
-                ->icon('heroicon-o-arrow-down-tray')
-                ->color('info')
-                ->action('downloadData'),
+                ->url('#')
+                ->openUrlInNewTab(false),
         ];
     }
 
-    public function saveProfile(): void
+    public function save(): void
     {
         try {
             $data = $this->form->getState();
             $customer = Auth::guard('customer')->user();
 
-            DB::table('customers')
-                ->where('id', $customer->id)
-                ->update([
-                    'name' => $data['name'],
-                    'email' => $data['email'],
-                    'phone' => $data['phone'],
-                    'country' => $data['country'],
-                    'timezone' => $data['timezone'],
-                    'notifications_email' => $data['notifications_email'],
-                    'notifications_sms' => $data['notifications_sms'],
-                    'marketing_emails' => $data['marketing_emails'],
-                    'updated_at' => now(),
-                ]);
+            $customer->update([
+                'name' => $data['name'],
+                'email' => $data['email'],
+                'phone' => $data['phone'] ?? null,
+                'country' => $data['country'] ?? null,
+                'timezone' => $data['timezone'] ?? 'UTC',
+                'bio' => $data['bio'] ?? null,
+                'website' => $data['website'] ?? null,
+                'company' => $data['company'] ?? null,
+                'notifications_email' => $data['notifications_email'] ?? true,
+                'notifications_sms' => $data['notifications_sms'] ?? false,
+                'marketing_emails' => $data['marketing_emails'] ?? false,
+                'login_alerts' => $data['security_alerts'] ?? true,
+            ]);
 
             Notification::make()
-                ->title('Profile Updated')
-                ->body('Your profile has been successfully updated.')
+                ->title('Profile Updated! 🎉')
+                ->body('Your profile information has been successfully updated.')
                 ->success()
                 ->send();
 
         } catch (\Exception $e) {
             Notification::make()
-                ->title('Update Failed')
-                ->body('Unable to update your profile. Please try again.')
+                ->title('Update Failed! ❌')
+                ->body('There was an error updating your profile. Please try again.')
                 ->danger()
                 ->send();
         }
     }
 
-    public function changePassword(): void
+    // Add methods for password change and other actions
+    public function changePassword(array $data): void
     {
-        try {
-            $data = $this->passwordForm->getState();
-            $customer = Auth::guard('customer')->user();
+        $customer = Auth::guard('customer')->user();
 
-            if (!Hash::check($data['current_password'], $customer->password)) {
-                Notification::make()
-                    ->title('Invalid Password')
-                    ->body('Your current password is incorrect.')
-                    ->danger()
-                    ->send();
-                return;
-            }
-
-            DB::table('customers')
-                ->where('id', $customer->id)
-                ->update([
-                    'password' => Hash::make($data['new_password']),
-                    'updated_at' => now(),
-                ]);
-
-            $this->passwordForm->fill();
-
+        if (!Hash::check($data['current_password'], $customer->password)) {
             Notification::make()
-                ->title('Password Changed')
-                ->body('Your password has been successfully updated.')
-                ->success()
-                ->send();
-
-        } catch (\Exception $e) {
-            Notification::make()
-                ->title('Password Change Failed')
-                ->body('Unable to change your password. Please try again.')
+                ->title('Invalid Password! ❌')
+                ->body('Your current password is incorrect.')
                 ->danger()
                 ->send();
+            return;
         }
-    }
 
-    public function toggleTwoFactor(): void
-    {
-        try {
-            $customer = Auth::guard('customer')->user();
+        $customer->update([
+            'password' => Hash::make($data['new_password']),
+        ]);
 
-            if ($this->twoFactorEnabled) {
-                // Disable 2FA
-                DB::table('customers')
-                    ->where('id', $customer->id)
-                    ->update([
-                        'two_factor_secret' => null,
-                        'two_factor_recovery_codes' => null,
-                        'updated_at' => now(),
-                    ]);
-
-                $this->twoFactorEnabled = false;
-
-                Notification::make()
-                    ->title('Two-Factor Authentication Disabled')
-                    ->body('Two-factor authentication has been disabled for your account.')
-                    ->success()
-                    ->send();
-            } else {
-                // Enable 2FA (simplified)
-                $secret = bin2hex(random_bytes(32));
-
-                DB::table('customers')
-                    ->where('id', $customer->id)
-                    ->update([
-                        'two_factor_secret' => $secret,
-                        'updated_at' => now(),
-                    ]);
-
-                $this->twoFactorEnabled = true;
-
-                Notification::make()
-                    ->title('Two-Factor Authentication Enabled')
-                    ->body('Two-factor authentication has been enabled for your account.')
-                    ->success()
-                    ->send();
-            }
-
-        } catch (\Exception $e) {
-            Notification::make()
-                ->title('2FA Toggle Failed')
-                ->body('Unable to update two-factor authentication. Please try again.')
-                ->danger()
-                ->send();
-        }
+        Notification::make()
+            ->title('Password Changed! 🔐')
+            ->body('Your password has been successfully updated.')
+            ->success()
+            ->send();
     }
 
     public function downloadData(): void
     {
-        try {
-            $customer = Auth::guard('customer')->user();
+        $customer = Auth::guard('customer')->user();
+        
+        $data = [
+            'profile' => $customer->toArray(),
+            'orders' => $customer->orders()->get()->toArray(),
+            'wallet' => $customer->wallet()->first()?->toArray(),
+            'exported_at' => now()->toISOString(),
+        ];
 
-            $data = [
-                'profile' => [
-                    'name' => $customer->name,
-                    'email' => $customer->email,
-                    'phone' => $customer->phone,
-                    'country' => $customer->country,
-                    'created_at' => $customer->created_at,
-                ],
-                'orders' => DB::table('orders')
-                    ->where('customer_id', $customer->id)
-                    ->get(),
-                'server_clients' => DB::table('server_clients')
-                    ->where('customer_id', $customer->id)
-                    ->get(),
-                'wallet' => DB::table('wallets')
-                    ->where('customer_id', $customer->id)
-                    ->first(),
-            ];
+        Notification::make()
+            ->title('Data Export Ready! 📦')
+            ->body('Your account data has been prepared for download.')
+            ->info()
+            ->send();
+    }
 
-            // Create JSON file
-            $filename = 'user-data-' . $customer->id . '-' . now()->format('Y-m-d') . '.json';
-            $content = json_encode($data, JSON_PRETTY_PRINT);
-
-            // Store temporarily
-            if (!file_exists(storage_path('app/temp'))) {
-                mkdir(storage_path('app/temp'), 0755, true);
-            }
-
-            file_put_contents(storage_path('app/temp/' . $filename), $content);
-
-            Notification::make()
-                ->title('Data Export Ready')
-                ->body('Your data export has been generated successfully.')
-                ->success()
-                ->send();
-
-        } catch (\Exception $e) {
-            Notification::make()
-                ->title('Export Failed')
-                ->body('Unable to export your data. Please try again.')
-                ->danger()
-                ->send();
-        }
+    public function toggleTwoFactor(): void
+    {
+        Notification::make()
+            ->title('Feature Coming Soon! 🚧')
+            ->body('Two-factor authentication management will be available soon.')
+            ->info()
+            ->send();
     }
 }

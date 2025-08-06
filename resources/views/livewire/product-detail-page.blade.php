@@ -28,9 +28,37 @@
                 <!-- Main Product Image -->
                 <div class="relative group">
                     <div class="aspect-square bg-gradient-to-br from-blue-600/20 to-purple-600/20 backdrop-blur-md rounded-3xl overflow-hidden shadow-2xl border border-white/20 hover:shadow-3xl transition-all duration-500">
-                        <img src="{{ url('storage/'.$this->serverPlan->product_image) }}" 
-                             alt="{{ $this->serverPlan->name }}"
-                             class="w-full h-full object-contain p-8 transition-transform duration-500 group-hover:scale-110">
+                        @php
+                            $imageUrl = null;
+                            $altText = $this->serverPlan->name;
+                            
+                            // Priority 1: Plan's product image
+                            if (!empty($this->serverPlan->product_image) && file_exists(storage_path('app/public/'.$this->serverPlan->product_image))) {
+                                $imageUrl = asset('storage/'.$this->serverPlan->product_image);
+                                $altText = $this->serverPlan->name . ' - Product Image';
+                            }
+                            // Priority 2: Brand image
+                            elseif ($this->serverPlan->brand && !empty($this->serverPlan->brand->image) && file_exists(storage_path('app/public/'.$this->serverPlan->brand->image))) {
+                                $imageUrl = asset('storage/'.$this->serverPlan->brand->image);
+                                $altText = $this->serverPlan->brand->name . ' Brand Logo';
+                            }
+                            // Priority 3: Category image
+                            elseif ($this->serverPlan->category && !empty($this->serverPlan->category->image) && file_exists(storage_path('app/public/'.$this->serverPlan->category->image))) {
+                                $imageUrl = asset('storage/'.$this->serverPlan->category->image);
+                                $altText = $this->serverPlan->category->name . ' Category';
+                            }
+                            // Priority 4: Default fallback
+                            if (!$imageUrl) {
+                                $imageUrl = asset('images/default-proxy.svg');
+                                $altText = 'Default Proxy Server Image';
+                            }
+                        @endphp
+                        
+                        <img src="{{ $imageUrl }}" 
+                             alt="{{ $altText }}"
+                             class="w-full h-full object-contain p-8 transition-transform duration-500 group-hover:scale-110"
+                             loading="lazy"
+                             onerror="this.src='{{ asset('images/default-proxy.svg') }}';">
                         
                         <!-- Status Badges -->
                         @if($serverStatus)
@@ -238,6 +266,138 @@
                     </div>
                 </div>
                 @endif
+
+                <!-- Installation Guide -->
+                <div class="bg-white/10 backdrop-blur-md rounded-2xl p-6 border border-white/20 hover:border-white/30 transition-all duration-300">
+                    <h3 class="text-xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-400 mb-6 flex items-center">
+                        <x-custom-icon name="book-open" class="w-6 h-6 mr-3 text-purple-400" />
+                        Quick Setup Guide
+                    </h3>
+                    
+                    <div class="space-y-6">
+                        <!-- Step by Step Process -->
+                        <div class="space-y-4">
+                            <div class="flex items-start space-x-4 p-4 bg-white/5 rounded-lg hover:bg-white/10 transition-colors duration-300">
+                                <div class="flex-shrink-0 w-8 h-8 bg-gradient-to-r from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-white font-bold text-sm">
+                                    1
+                                </div>
+                                <div class="flex-1">
+                                    <h4 class="font-semibold text-white mb-2">Purchase & Receive Credentials</h4>
+                                    <p class="text-gray-300 text-sm">After purchase, you'll receive your proxy credentials via email and in your account dashboard within 5 minutes.</p>
+                                </div>
+                            </div>
+
+                            <div class="flex items-start space-x-4 p-4 bg-white/5 rounded-lg hover:bg-white/10 transition-colors duration-300">
+                                <div class="flex-shrink-0 w-8 h-8 bg-gradient-to-r from-purple-500 to-pink-600 rounded-full flex items-center justify-center text-white font-bold text-sm">
+                                    2
+                                </div>
+                                <div class="flex-1">
+                                    <h4 class="font-semibold text-white mb-2">Download Proxy Client</h4>
+                                    <p class="text-gray-300 text-sm mb-3">Choose the recommended client for your platform:</p>
+                                    <div class="grid grid-cols-2 gap-3">
+                                        <div class="bg-white/5 rounded-lg p-3">
+                                            <div class="flex items-center space-x-2">
+                                                <x-custom-icon name="computer-desktop" class="w-4 h-4 text-blue-400" />
+                                                <span class="text-white font-medium text-sm">Windows</span>
+                                            </div>
+                                            <p class="text-gray-400 text-xs mt-1">v2rayN, Qv2ray</p>
+                                        </div>
+                                        <div class="bg-white/5 rounded-lg p-3">
+                                            <div class="flex items-center space-x-2">
+                                                <x-custom-icon name="device-phone-mobile" class="w-4 h-4 text-green-400" />
+                                                <span class="text-white font-medium text-sm">Android</span>
+                                            </div>
+                                            <p class="text-gray-400 text-xs mt-1">V2Box, v2rayNG</p>
+                                        </div>
+                                        <div class="bg-white/5 rounded-lg p-3">
+                                            <div class="flex items-center space-x-2">
+                                                <x-custom-icon name="device-tablet" class="w-4 h-4 text-purple-400" />
+                                                <span class="text-white font-medium text-sm">iOS</span>
+                                            </div>
+                                            <p class="text-gray-400 text-xs mt-1">V2Box, ShadowRocket, Quantumult X</p>
+                                        </div>
+                                        <div class="bg-white/5 rounded-lg p-3">
+                                            <div class="flex items-center space-x-2">
+                                                <x-custom-icon name="command-line" class="w-4 h-4 text-yellow-400" />
+                                                <span class="text-white font-medium text-sm">macOS</span>
+                                            </div>
+                                            <p class="text-gray-400 text-xs mt-1">V2Box, V2RayU, Qv2ray</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="flex items-start space-x-4 p-4 bg-white/5 rounded-lg hover:bg-white/10 transition-colors duration-300">
+                                <div class="flex-shrink-0 w-8 h-8 bg-gradient-to-r from-pink-500 to-red-600 rounded-full flex items-center justify-center text-white font-bold text-sm">
+                                    3
+                                </div>
+                                <div class="flex-1">
+                                    <h4 class="font-semibold text-white mb-2">Import Configuration</h4>
+                                    <p class="text-gray-300 text-sm mb-3">Use one of these methods to configure your client:</p>
+                                    <div class="space-y-2">
+                                        <div class="flex items-center space-x-3 text-sm">
+                                            <x-custom-icon name="qr-code" class="w-5 h-5 text-green-400" />
+                                            <span class="text-gray-300">Scan QR Code (Mobile apps)</span>
+                                        </div>
+                                        <div class="flex items-center space-x-3 text-sm">
+                                            <x-custom-icon name="link" class="w-5 h-5 text-blue-400" />
+                                            <span class="text-gray-300">Copy subscription URL</span>
+                                        </div>
+                                        <div class="flex items-center space-x-3 text-sm">
+                                            <x-custom-icon name="pencil" class="w-5 h-5 text-purple-400" />
+                                            <span class="text-gray-300">Manual configuration</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="flex items-start space-x-4 p-4 bg-white/5 rounded-lg hover:bg-white/10 transition-colors duration-300">
+                                <div class="flex-shrink-0 w-8 h-8 bg-gradient-to-r from-red-500 to-orange-600 rounded-full flex items-center justify-center text-white font-bold text-sm">
+                                    4
+                                </div>
+                                <div class="flex-1">
+                                    <h4 class="font-semibold text-white mb-2">Test & Activate</h4>
+                                    <p class="text-gray-300 text-sm">Connect and test your proxy. Your connection should be active within seconds of configuration.</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Additional Support -->
+                        <div class="border-t border-white/20 pt-6">
+                            <div class="bg-gradient-to-r from-blue-500/20 to-purple-500/20 rounded-lg p-4 border border-blue-400/30">
+                                <div class="flex items-center space-x-3 mb-3">
+                                    <x-custom-icon name="academic-cap" class="w-5 h-5 text-blue-400" />
+                                    <h4 class="font-semibold text-white">Need Detailed Setup Instructions?</h4>
+                                </div>
+                                <p class="text-gray-300 text-sm mb-4">
+                                    After purchase, access our comprehensive setup guides in your customer dashboard with platform-specific tutorials, troubleshooting tips, and video guides.
+                                </p>
+                                <div class="flex flex-wrap gap-2">
+                                    <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-blue-500/20 text-blue-300 border border-blue-400/30">
+                                        <x-custom-icon name="play" class="w-3 h-3 mr-1" />
+                                        Video Tutorials
+                                    </span>
+                                    <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-green-500/20 text-green-300 border border-green-400/30">
+                                        <x-custom-icon name="chat-bubble-left-right" class="w-3 h-3 mr-1" />
+                                        24/7 Support
+                                    </span>
+                                    <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-purple-500/20 text-purple-300 border border-purple-400/30">
+                                        <x-custom-icon name="document-text" class="w-3 h-3 mr-1" />
+                                        Step-by-step Guides
+                                    </span>
+                                </div>
+                                <div class="mt-4 pt-4 border-t border-white/20">
+                                    <a href="/account/configuration-guides" 
+                                       class="inline-flex items-center justify-center w-full px-6 py-3 bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white font-semibold rounded-xl transition-all duration-300 transform hover:scale-105 shadow-lg hover:shadow-xl">
+                                        <x-custom-icon name="book-open" class="w-5 h-5 mr-2" />
+                                        View Complete Setup Guide
+                                        <x-custom-icon name="arrow-right" class="w-4 h-4 ml-2" />
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
 
                 <!-- Trust Indicators -->
                 <div class="bg-white/10 backdrop-blur-md rounded-2xl p-6 border border-white/20 hover:border-white/30 transition-all duration-300">

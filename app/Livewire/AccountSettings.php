@@ -145,13 +145,22 @@ class AccountSettings extends Component
         $totalOrders = $orders->count();
         $totalSpent = $orders->where('status', 'delivered')->sum('grand_amount');
         $lastOrder = $orders->latest()->first();
-        $accountAgeDays = $this->customer->created_at->diffInDays(now());
+        
+        // Calculate account age in days and hours
+        $created = $this->customer->created_at;
+        $now = now();
+        $totalHours = $created->diffInHours($now);
+        
+        $days = intval($totalHours / 24);
+        $hours = $totalHours % 24;
+        
+        $accountAgeFormatted = sprintf('%d days %d hours', $days, $hours);
 
         return [
             'total_orders' => $totalOrders,
             'total_spent' => $totalSpent,
             'last_order' => $lastOrder,
-            'account_age_days' => $accountAgeDays,
+            'account_age_days' => $accountAgeFormatted,
         ];
     }
 

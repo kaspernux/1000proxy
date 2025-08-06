@@ -17,16 +17,13 @@ sudo -u proxy1000 npm install
 # 6. Build frontend assets as proxy1000
 sudo -u proxy1000 npm run build --force
 
-# 7. Clear all Laravel caches as proxy1000
 sudo -u proxy1000 php artisan optimize:clear
 sudo -u proxy1000 php artisan config:clear
 sudo -u proxy1000 php artisan route:clear
 sudo -u proxy1000 php artisan view:clear
 sudo -u proxy1000 php artisan event:clear
 sudo -u proxy1000 php artisan queue:flush
-
-# 8. Re-cache config, routes, and views as proxy1000
-sudo -u proxy1000 php artisan optimize:clear
+sudo -u proxy1000 php artisan optimize
 sudo -u proxy1000 php artisan config:cache
 sudo -u proxy1000 php artisan route:cache
 sudo -u proxy1000 php artisan view:cache

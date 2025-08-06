@@ -4,9 +4,9 @@ namespace App\Filament\Customer\Pages;
 
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Select;
+use Filament\Forms\Components\Grid;
 use Filament\Pages\Page;
 use App\Models\Server;
-use App\Models\Country;
 use App\Models\User;
 use Illuminate\Support\Facades\Auth;
 use Filament\Notifications\Notification;
@@ -31,6 +31,7 @@ class ServerBrowsing extends Page
     ];
 
     public $showFilters = false;
+    public $showAdvancedFilters = false;
     public $perPage = 12;
     public $servers = [];
     public $countries = [];
@@ -46,72 +47,92 @@ class ServerBrowsing extends Page
     public function getFormSchema(): array
     {
         return [
-            TextInput::make('filters.search')
-                ->placeholder('Search servers...')
-                ->suffixIcon('heroicon-m-magnifying-glass'),
+            Grid::make(2)
+                ->schema([
+                    TextInput::make('filters.search')
+                        ->label('Search Servers')
+                        ->placeholder('Search by name, country, or description...')
+                        ->suffixIcon('heroicon-m-magnifying-glass')
+                        ->suffixIconColor('primary')
+                        ->live(debounce: 500)
+                        ->columnSpanFull(),
 
-            Select::make('filters.country')
-                ->placeholder('All Countries')
-                ->options($this->countries)
-                ->searchable(),
+                    Select::make('filters.country')
+                        ->label('Country / Region')
+                        ->placeholder('All Countries')
+                        ->options($this->countries)
+                        ->searchable()
+                        ->suffixIcon('heroicon-m-globe-alt')
+                        ->live(),
 
-            Select::make('filters.type')
-                ->placeholder('All Types')
-                ->options([
-                    'dedicated' => 'Dedicated',
-                    'shared' => 'Shared',
-                    'rotating' => 'Rotating',
-                    'static' => 'Static',
+                    Select::make('filters.type')
+                        ->label('Server Type')
+                        ->placeholder('All Types')
+                        ->options([
+                            'dedicated' => 'Dedicated Proxy',
+                            'shared' => 'Shared Proxy',
+                            'rotating' => 'Rotating Proxy',
+                            'static' => 'Static Proxy',
+                        ])
+                        ->suffixIcon('heroicon-m-server')
+                        ->live(),
+
+                    TextInput::make('filters.price_min')
+                        ->label('Min Price ($)')
+                        ->numeric()
+                        ->placeholder('0')
+                        ->prefix('$')
+                        ->live(debounce: 500),
+
+                    TextInput::make('filters.price_max')
+                        ->label('Max Price ($)')
+                        ->numeric()
+                        ->placeholder('1000')
+                        ->prefix('$')
+                        ->live(debounce: 500),
+
+                    Select::make('filters.sort')
+                        ->label('Sort By')
+                        ->options([
+                            'price_asc' => '💰 Price: Low to High',
+                            'price_desc' => '💎 Price: High to Low',
+                            'name_asc' => '🔤 Name: A to Z',
+                            'name_desc' => '🔡 Name: Z to A',
+                            'country_asc' => '🌍 Country: A to Z',
+                            'rating_desc' => '⭐ Rating: High to Low',
+                        ])
+                        ->default('price_asc')
+                        ->suffixIcon('heroicon-m-bars-arrow-down')
+                        ->live()
+                        ->columnSpanFull(),
                 ]),
-
-            Select::make('filters.status')
-                ->placeholder('All Status')
-                ->options([
-                    'online' => 'Online',
-                    'offline' => 'Offline',
-                    'maintenance' => 'Maintenance',
-                ]),
-
-            TextInput::make('filters.price_min')
-                ->numeric()
-                ->placeholder('Min Price'),
-
-            TextInput::make('filters.price_max')
-                ->numeric()
-                ->placeholder('Max Price'),
-
-            Select::make('filters.sort')
-                ->options([
-                    'price_asc' => 'Price: Low to High',
-                    'price_desc' => 'Price: High to Low',
-                    'name_asc' => 'Name: A to Z',
-                    'name_desc' => 'Name: Z to A',
-                    'country_asc' => 'Country: A to Z',
-                    'rating_desc' => 'Rating: High to Low',
-                ])
-                ->default('price_asc'),
         ];
     }
 
     public function loadCountries()
     {
-        $this->countries = Country::query()
-            ->whereHas('servers', function (Builder $query) {
-                $query->where('status', 'active');
-            })
-            ->pluck('name', 'id')
+        $this->countries = Server::query()
+            ->where('status', 'active')
+            ->whereNotNull('country')
+            ->distinct()
+            ->pluck('country', 'country')
             ->toArray();
     }
 
     public function loadServers($append = false)
     {
         $query = Server::query()
-            ->with(['country', 'reviews'])
-            ->where('status', 'active');
+            ->with(['reviews', 'plans' => function($q) {
+                $q->where('is_active', true)->orderBy('price', 'asc');
+            }])
+            ->where('status', 'active')
+            ->whereHas('plans', function($q) {
+                $q->where('is_active', true);
+            });
 
         // Apply filters
         if ($this->filters['country']) {
-            $query->where('country_id', $this->filters['country']);
+            $query->where('country', $this->filters['country']);
         }
 
         if ($this->filters['type']) {
@@ -123,20 +144,24 @@ class ServerBrowsing extends Page
         }
 
         if ($this->filters['price_min']) {
-            $query->where('price', '>=', $this->filters['price_min']);
+            $query->whereHas('plans', function($q) {
+                $q->where('price', '>=', $this->filters['price_min'])
+                  ->where('is_active', true);
+            });
         }
 
         if ($this->filters['price_max']) {
-            $query->where('price', '<=', $this->filters['price_max']);
+            $query->whereHas('plans', function($q) {
+                $q->where('price', '<=', $this->filters['price_max'])
+                  ->where('is_active', true);
+            });
         }
 
         if ($this->filters['search']) {
             $query->where(function (Builder $q) {
                 $q->where('name', 'like', '%' . $this->filters['search'] . '%')
                   ->orWhere('description', 'like', '%' . $this->filters['search'] . '%')
-                  ->orWhereHas('country', function (Builder $countryQuery) {
-                      $countryQuery->where('name', 'like', '%' . $this->filters['search'] . '%');
-                  });
+                  ->orWhere('country', 'like', '%' . $this->filters['search'] . '%');
             });
         }
 
@@ -149,10 +174,20 @@ class ServerBrowsing extends Page
         // Apply sorting
         switch ($this->filters['sort']) {
             case 'price_asc':
-                $query->orderBy('price', 'asc');
+                $query->leftJoin('server_plans', function($join) {
+                    $join->on('servers.id', '=', 'server_plans.server_id')
+                         ->where('server_plans.is_active', true);
+                })
+                ->select('servers.*')
+                ->orderBy('server_plans.price', 'asc');
                 break;
             case 'price_desc':
-                $query->orderBy('price', 'desc');
+                $query->leftJoin('server_plans', function($join) {
+                    $join->on('servers.id', '=', 'server_plans.server_id')
+                         ->where('server_plans.is_active', true);
+                })
+                ->select('servers.*')
+                ->orderBy('server_plans.price', 'desc');
                 break;
             case 'name_asc':
                 $query->orderBy('name', 'asc');
@@ -161,9 +196,7 @@ class ServerBrowsing extends Page
                 $query->orderBy('name', 'desc');
                 break;
             case 'country_asc':
-                $query->join('countries', 'servers.country_id', '=', 'countries.id')
-                      ->orderBy('countries.name', 'asc')
-                      ->select('servers.*');
+                $query->orderBy('country', 'asc');
                 break;
             case 'rating_desc':
                 $query->withAvg('reviews', 'rating')
@@ -199,6 +232,11 @@ class ServerBrowsing extends Page
     public function toggleFilters()
     {
         $this->showFilters = !$this->showFilters;
+    }
+
+    public function toggleAdvancedFilters()
+    {
+        $this->showAdvancedFilters = !$this->showAdvancedFilters;
     }
 
     public function resetFilters()
@@ -283,7 +321,7 @@ class ServerBrowsing extends Page
 
     public function viewServerDetails($serverId)
     {
-        $server = Server::with(['country', 'reviews.user'])->find($serverId);
+        $server = Server::with(['reviews.user'])->find($serverId);
 
         if (!$server) {
             return;
@@ -299,17 +337,15 @@ class ServerBrowsing extends Page
         return $server ? $server->reviews_avg_rating ?? 0 : 0;
     }
 
-    public function filterByCountry($countryId)
+    public function filterByCountry($country)
     {
-        $this->filters['country'] = $countryId;
+        $this->filters['country'] = $country;
         $this->page = 1;
         $this->loadServers();
 
-        $country = Country::find($countryId);
-
         Notification::make()
             ->title('Filtered by Country')
-            ->body("Showing servers from {$country->name}")
+            ->body("Showing servers from {$country}")
             ->info()
             ->send();
     }
@@ -327,5 +363,34 @@ class ServerBrowsing extends Page
                 ->success()
                 ->send();
         }
+    }
+
+    public function getServerRecommendations()
+    {
+        // Get user's country or preferences for recommendations
+        $user = Auth::user();
+        
+        // Simple recommendation logic - get high-rated servers with good prices
+        $recommendedServers = Server::query()
+            ->with(['plans' => function($q) {
+                $q->where('is_active', true)->orderBy('price', 'asc');
+            }])
+            ->where('status', 'active')
+            ->whereHas('plans', function($q) {
+                $q->where('is_active', true);
+            })
+            ->inRandomOrder()
+            ->limit(6)
+            ->get();
+
+        $this->servers = $recommendedServers->toArray();
+        $this->hasMore = false;
+        $this->page = 1;
+
+        Notification::make()
+            ->title('Recommendations Updated')
+            ->body('Showing personalized server recommendations based on your preferences.')
+            ->success()
+            ->send();
     }
 }

@@ -73,9 +73,58 @@
                                 {{-- Product Info --}}
                                 <div class="col-span-1 md:col-span-6">
                                     <div class="flex items-center space-x-4">
-                                        <img class="h-16 w-16 object-cover rounded-lg"
-                                             src="{{ url('storage/' . $item['product_image']) }}"
-                                             alt="{{ $item['name'] }}">
+                                        <!-- Enhanced Product Image with Products Page Style -->
+                                        <div class="relative flex-shrink-0">
+                                            <div class="relative group-hover:scale-105 transition-transform duration-300">
+                                                @php
+                                                    $imageUrl = null;
+                                                    $altText = $item['name'];
+                                                    
+                                                    // Priority 1: Product image from cart item
+                                                    if (!empty($item['product_image']) && file_exists(storage_path('app/public/'.$item['product_image']))) {
+                                                        $imageUrl = asset('storage/'.$item['product_image']);
+                                                        $altText = $item['name'] . ' - Product Image';
+                                                    }
+                                                    // Priority 2: Try to get plan details if server_plan_id exists
+                                                    elseif(isset($item['server_plan_id'])) {
+                                                        $plan = \App\Models\ServerPlan::find($item['server_plan_id']);
+                                                        if($plan) {
+                                                            // Priority 2a: Plan's product image
+                                                            if (!empty($plan->product_image) && file_exists(storage_path('app/public/'.$plan->product_image))) {
+                                                                $imageUrl = asset('storage/'.$plan->product_image);
+                                                                $altText = $plan->name . ' - Product Image';
+                                                            }
+                                                            // Priority 2b: Brand image
+                                                            elseif ($plan->brand && !empty($plan->brand->image) && file_exists(storage_path('app/public/'.$plan->brand->image))) {
+                                                                $imageUrl = asset('storage/'.$plan->brand->image);
+                                                                $altText = $plan->brand->name . ' Brand Logo';
+                                                            }
+                                                            // Priority 2c: Category image
+                                                            elseif ($plan->category && !empty($plan->category->image) && file_exists(storage_path('app/public/'.$plan->category->image))) {
+                                                                $imageUrl = asset('storage/'.$plan->category->image);
+                                                                $altText = $plan->category->name . ' Category';
+                                                            }
+                                                        }
+                                                    }
+                                                    // Priority 3: Default fallback
+                                                    if (!$imageUrl) {
+                                                        $imageUrl = asset('images/default-proxy.svg');
+                                                        $altText = 'Default Proxy Server Image';
+                                                    }
+                                                @endphp
+                                                
+                                                <div class="w-16 h-16 rounded-xl overflow-hidden shadow-xl border-2 border-yellow-400/50 hover:border-yellow-400 transition-all duration-300 bg-gray-800">
+                                                    <img class="w-full h-full object-cover" 
+                                                         src="{{ $imageUrl }}" 
+                                                         alt="{{ $altText }}"
+                                                         loading="lazy"
+                                                         onerror="this.src='{{ asset('images/default-proxy.svg') }}';">
+                                                </div>
+                                                
+                                                <!-- Enhanced Glow Effect -->
+                                                <div class="absolute inset-0 w-16 h-16 rounded-xl bg-gradient-to-br from-yellow-400/20 to-green-400/20 blur-sm hover:blur-md hover:from-yellow-400/30 hover:to-green-400/30 transition-all duration-300"></div>
+                                            </div>
+                                        </div>
                                         <div class="flex-1">
                                             <h3 class="text-white font-semibold">{{ $item['name'] }}</h3>
                                             <p class="text-white/70 text-sm">{{ $item['plan_type'] ?? 'Server Plan' }}</p>

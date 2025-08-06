@@ -82,6 +82,9 @@ Route::middleware(['auth:customer'])->group(function () {
     Route::get('/account-settings', AccountSettings::class)->name('account.settings');
     Route::get('/telegram-link', \App\Livewire\Auth\TelegramLink::class)->name('telegram.link');
 
+    // Add transactions Livewire route
+    Route::get('/transactions', \App\Livewire\Transactions::class)->name('transactions.index');
+
     // Nowpayments Routes
     Route::post('/create-invoice/nowpayments/{order}', [PaymentController::class, 'createCryptoPayment'])->name('create.invoice.nowpay');
     Route::get('/payment-status/{orderId}', [PaymentController::class, 'getPaymentStatusByOrder'])->name('payment.status');
@@ -101,33 +104,17 @@ Route::middleware(['auth:customer'])->group(function () {
 
         // Insufficient balance redirect
         Route::get('/{currency}/insufficient', [WalletController::class, 'insufficient'])->name('wallet.insufficient');
-
-    // Transactions
-    Route::get('/transactions', [WalletTransactionController::class, 'index'])->name('wallet.transactions.index');
+    });
+    
+    // Individual transaction routes (keep these separate)
     Route::get('/transactions/{transaction}', [WalletTransactionController::class, 'show'])->name('wallet.transactions.show');
     Route::get('/transactions/{transaction}/download', [WalletTransactionController::class, 'download'])->name('wallet.transactions.download');
-    // End of wallet group
 
-// Customer dashboard: redirect to Filament customer panel
-Route::middleware('auth:customer')->get('/customer', function () {
-    return redirect()->route('filament.customer.pages.dashboard');
-})->name('customer.dashboard');
-});
+    // Customer dashboard: redirect to Filament customer panel
+    Route::get('/customer', function () {
+        return redirect()->route('filament.customer.pages.dashboard');
+    })->name('customer.dashboard');
     
-    
-
-    // Horizon Jobs
-    Horizon::routeMailNotificationsTo('you@example.com');
-        Horizon::routeSlackNotificationsTo('your-slack-webhook');
-        Horizon::auth(function ($request) {
-            return true; // 🔒 you can secure with Gate, e.g., auth()->user()->isAdmin()
-        });
-
-
-    // Payment Methods Webhook
-    Route::post('/webhook/stripe', [StripeWebhookController::class, 'handle'])->name('webhook.stripe');
-    Route::post('/webhook/nowpayments', [NowPaymentsWebhookController::class, 'handle'])->name('webhook.nowpay');
-
     Route::get('/account/orders/{order}/invoice', function (Order $order) {
         $invoice = $order->invoice;
         if (!$invoice) {
@@ -140,10 +127,20 @@ Route::middleware('auth:customer')->get('/customer', function () {
         ]);
         return $pdf->download('Invoice-' . $invoice->id . '.pdf');
     })->name('customer.order.invoice.download');
+});
 
-    Route::post('/webhook/btc', [DepositWebhookController::class, 'handleBtc']);
-    Route::post('/webhook/xmr', [DepositWebhookController::class, 'handleXmr']);
-    Route::post('/webhook/sol', [DepositWebhookController::class, 'handleSol']);
+// Webhook routes (outside auth middleware)
+Route::post('/webhook/stripe', [StripeWebhookController::class, 'handle'])->name('webhook.stripe');
+Route::post('/webhook/nowpayments', [NowPaymentsWebhookController::class, 'handle'])->name('webhook.nowpay');
+Route::post('/webhook/btc', [DepositWebhookController::class, 'handleBtc']);
+Route::post('/webhook/xmr', [DepositWebhookController::class, 'handleXmr']);
+Route::post('/webhook/sol', [DepositWebhookController::class, 'handleSol']);
+
+// Horizon Jobs
+Horizon::routeMailNotificationsTo('you@example.com');
+Horizon::routeSlackNotificationsTo('your-slack-webhook');
+Horizon::auth(function ($request) {
+    return true; // 🔒 you can secure with Gate, e.g., auth()->user()->isAdmin()
 });
 
 // Telegram Bot Routes
