@@ -37,7 +37,7 @@ class AutomatedRenewals extends Page implements HasTable, HasForms
     protected static ?string $navigationIcon = 'heroicon-o-arrow-path';
     protected static ?string $navigationLabel = 'Auto Renewals';
     protected static string $view = 'filament.customer.pages.automated-renewals';
-    protected static ?int $navigationSort = 4;
+    protected static ?int $navigationSort = 7;
 
     public $renewalSettings = [
         'auto_renew_enabled' => false,

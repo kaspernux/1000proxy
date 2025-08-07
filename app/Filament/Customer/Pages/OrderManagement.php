@@ -28,6 +28,7 @@ class OrderManagement extends Page implements HasTable
 
     protected static ?string $navigationIcon = 'heroicon-o-shopping-bag';
     protected static ?string $navigationLabel = 'My Orders';
+    protected static string $view = 'filament.customer.pages.order-management';
     protected static ?int $navigationSort = 3;
 
     public function table(Table $table): Table

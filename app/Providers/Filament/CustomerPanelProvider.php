@@ -20,9 +20,6 @@ use App\Http\Middleware\AuthenticateCustomer;
 use App\Filament\Customer\Widgets\CustomerStatsOverview;
 use App\Filament\Customer\Widgets\SupportOverviewWidget;
 use App\Filament\Customer\Widgets\DownloadOverviewWidget;
-use App\Filament\Customer\Clusters\MyWallet\Resources\WalletResource;
-use App\Filament\Customer\Clusters\MyTools\Resources\CustomerResource;
-use App\Filament\Customer\Resources\CustomerServerClientResource;
 use App\Http\Middleware\SyncCustomerPreferences;
 use App\Http\Middleware\SetLocaleFromSession;
 use App\Http\Middleware\Authenticate;
@@ -55,9 +52,7 @@ class CustomerPanelProvider extends PanelProvider
                 'light' => ThemeMode::Light,
                 default => ThemeMode::System,
             })
-            ->discoverResources(in: app_path('Filament/Customer/Resources'), for: 'App\\Filament\\Customer\\Resources')
             ->discoverPages(   in: app_path('Filament/Customer/Pages'),       for: 'App\\Filament\\Customer\\Pages')
-            ->discoverClusters(in: app_path('Filament/Customer/Clusters'),    for: 'App\\Filament\\Customer\\Clusters')
             ->authGuard('customer')
             ->middleware([
                 EncryptCookies::class,
@@ -80,16 +75,14 @@ class CustomerPanelProvider extends PanelProvider
             ->userMenuItems([
                 // 1) Active clients — only when logged in as a customer:
                 MenuItem::make('Proxys')
-                    ->label(fn () => 'Active Proxies: ' . auth('customer')->user()->hasclients()->count())
+                    ->label(fn () => 'Active Clients: ' . \App\Models\ServerClient::where('customer_id', auth('customer')->id())->where('status', 'active')->count())
                     ->icon('heroicon-o-server-stack')
-                    ->url(fn (): string => CustomerServerClientResource::getUrl('index', [], 'customer'))
                     ->visible(fn (): bool => auth('customer')->check()),
 
                 // 2) Wallet balance — only when logged in:
                 MenuItem::make('wallet')
                     ->label(fn () => 'Wallet: $' . number_format(auth('customer')->user()->getWallet()->balance, 2))
                     ->icon('heroicon-o-currency-dollar')
-                    ->url(fn (): string => WalletResource::getUrl('index', [], 'customer'))
                     ->visible(fn (): bool => auth('customer')->check()),
 
                 // 3) New orders — only when logged in:
@@ -120,7 +113,7 @@ class CustomerPanelProvider extends PanelProvider
                 'profile' => MenuItem::make('profile')
                     ->label('Settings')
                     ->icon('heroicon-o-cog-6-tooth')
-                    ->url(fn () => CustomerResource::getUrl('edit', parameters: [], panel: 'customer'))
+                    ->url(fn () => route('filament.customer.pages.user-profile'))
                     ->visible(fn (): bool => auth('customer')->check()),
 
                 // 5) Logout — wired up automatically by Filament when keyed “logout”

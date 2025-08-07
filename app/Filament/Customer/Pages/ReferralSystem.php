@@ -36,7 +36,7 @@ class ReferralSystem extends Page implements HasTable, HasForms
     protected static ?string $navigationIcon = 'heroicon-o-gift';
     protected static ?string $navigationLabel = 'Referral Program';
     protected static string $view = 'filament.customer.pages.referral-system';
-    protected static ?int $navigationSort = 5;
+    protected static ?int $navigationSort = 8;
 
     public $referralCode;
     public $referralStats = [];

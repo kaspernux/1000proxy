@@ -20,7 +20,7 @@ class ProxyStatusMonitoring extends Page
     protected static ?string $navigationIcon = 'heroicon-o-signal';
     protected static ?string $navigationLabel = 'Proxy Status Monitor';
     protected static string $view = 'filament.customer.pages.proxy-status-monitoring';
-    protected static ?int $navigationSort = 4;
+    protected static ?int $navigationSort = 6;
 
     protected static ?string $pollingInterval = '30s';
 

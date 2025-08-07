@@ -40,7 +40,7 @@ class ServerMetrics extends Page implements HasTable, HasForms
     protected static ?string $navigationIcon = 'heroicon-o-chart-bar';
     protected static ?string $navigationLabel = 'Server Metrics';
     protected static string $view = 'filament.customer.pages.server-metrics';
-    protected static ?int $navigationSort = 3;
+    protected static ?int $navigationSort = 6;
 
     public $selectedTimeRange = '7d';
     public $selectedServer = null;

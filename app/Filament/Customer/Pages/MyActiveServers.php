@@ -33,9 +33,8 @@ class MyActiveServers extends Page implements HasTable
 
     protected static ?string $navigationIcon = 'heroicon-o-server-stack';
     protected static ?string $navigationLabel = 'My Active Servers';
-    // No custom Blade view reference; Filament will use its own enhanced layout
-    protected static ?int $navigationSort = 3;
-    // No navigation group - appears in main navigation
+    protected static string $view = 'filament.customer.pages.my-active-servers';
+    protected static ?int $navigationSort = 2;
 
     public static function getNavigationBadge(): ?string
     {
