@@ -20,7 +20,7 @@ class Navbar extends Component
 
     public function mount()
     {
-        $this->refreshCartCount();
+        $this->total_count = count(CartManagement::getCartItemsFromCookie());
     }
     
     #[On('update-cart-count')]
@@ -38,12 +38,17 @@ class Navbar extends Component
 
     public function refreshCartCount()
     {
-        $this->total_count = count(CartManagement::getCartItemsFromCookie());
+        // Only update if count has changed
+        $new_count = count(CartManagement::getCartItemsFromCookie());
+        if ($new_count !== $this->total_count) {
+            $this->total_count = $new_count;
+            $this->dispatch('cart-count-updated', count: $this->total_count);
+        }
     }
 
     public function render()
     {
-        $this->refreshCartCount();
+        // Do not refresh cart count on every render to avoid unnecessary calls
         return view('livewire.partials.navbar');
     }
 }
