@@ -10,7 +10,7 @@ use App\Models\WalletTransaction;
 use App\Http\Resources\WalletTransactionResource;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
-use App\Filament\Customer\Clusters\MyWallet\Resources\WalletResource;
+
 use Illuminate\Support\Facades\Redirect;
 
 class WalletController extends Controller
@@ -18,12 +18,14 @@ class WalletController extends Controller
     public function index()
     {
         $wallet = Auth::guard('customer')->user()->wallet()->with('transactions')->first();
-        return Redirect::to(WalletResource::getUrl(panel: 'customer'));
+        // Redirect to wallet management Filament page (fallback)
+        return redirect()->route('filament.customer.pages.wallet-management');
     }
 
     public function show()
     {
-        return Redirect::to(WalletResource::getUrl(name: 'view', parameters: ['record' => Auth::guard('customer')->user()->wallet->getKey()], panel: 'customer'));
+        // Redirect to wallet management Filament page (fallback)
+        return redirect()->route('filament.customer.pages.wallet-management');
     }
 
     public function topUp(Request $request, $currency)

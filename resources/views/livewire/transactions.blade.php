@@ -123,7 +123,7 @@
                             <span class="px-3 text-xs text-gray-400 font-medium">OR</span>
                             <div class="h-px bg-gradient-to-r from-transparent via-gray-400 to-transparent w-8"></div>
                         </div>
-                        <a href="{{ route('filament.customer.my-wallet.resources.wallet-transactions.index') }}" 
+                        <a href="/account/wallet-management"
                            class="group inline-flex items-center gap-3 bg-gradient-to-r from-green-600/20 to-emerald-600/20 hover:from-green-600/30 hover:to-emerald-600/30 backdrop-blur-md text-green-300 hover:text-green-200 font-semibold px-6 py-3 rounded-xl border border-green-400/30 hover:border-green-400/50 transition-all duration-300 transform hover:scale-105 shadow-lg hover:shadow-xl">
                             <svg class="w-5 h-5 group-hover:scale-110 transition-transform duration-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 00-2-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v4"></path>

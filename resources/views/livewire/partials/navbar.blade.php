@@ -60,7 +60,7 @@
                         @endif
                     </a>
 
-                    <a href="/categories" wire:navigate class="group relative px-4 py-2 rounded-xl transition-all duration-300 {{ request()->is('categories*') ? 'bg-yellow-600/20 text-yellow-400' : 'text-gray-300 hover:text-white hover:bg-white/5' }}">
+                    <!-- <a href="/categories" wire:navigate class="group relative px-4 py-2 rounded-xl transition-all duration-300 {{ request()->is('categories*') ? 'bg-yellow-600/20 text-yellow-400' : 'text-gray-300 hover:text-white hover:bg-white/5' }}">
                         <span class="relative z-10 font-medium flex items-center">
                             <x-heroicon-o-squares-2x2 class="mr-2 h-4 w-4" />
                             Categories
@@ -68,7 +68,7 @@
                         @if(request()->is('categories*'))
                             <div class="absolute inset-0 bg-gradient-to-r from-yellow-500/20 to-orange-500/20 rounded-xl"></div>
                         @endif
-                    </a>
+                    </a> -->
                 </nav>
             </div>
 
@@ -154,29 +154,29 @@
 
                             <!-- Menu Items -->
                             <div class="py-2 bg-white md:bg-gray-800 mobile-force-dark-text md:text-white">
+                                <!-- Dashboard/Profile -->
+                                <a href="/account" class="group flex items-center px-4 py-3 text-sm mobile-force-dark-text hover:bg-gradient-to-r hover:from-blue-50 hover:to-blue-100 md:hover:from-blue-600/40 md:hover:to-blue-700/40 hover:text-blue-900 md:hover:text-white transition-all duration-200">
+                                    <div class="w-8 h-8 bg-gradient-to-br from-blue-100 to-blue-200 md:from-blue-500/40 md:to-blue-600/40 rounded-lg flex items-center justify-center mr-3 group-hover:scale-110 transition-transform duration-200">
+                                        <x-heroicon-o-window class="w-4 h-4 text-blue-600 md:text-blue-300" />
+                                    </div>
+                                    <span class="group-hover:text-blue-900 md:group-hover:text-blue-200 transition-colors">Dashboard</span>
+                                </a>
+
+                                <!-- <a href="/categories" class="group flex items-center px-4 py-3 text-sm mobile-force-dark-text hover:bg-gradient-to-r hover:from-yellow-50 hover:to-orange-100 md:hover:from-yellow-600/40 md:hover:to-orange-700/40 hover:text-yellow-900 md:hover:text-white transition-all duration-200">
+                                    <div class="w-8 h-8 bg-gradient-to-br from-yellow-100 to-orange-200 md:from-yellow-500/40 md:to-orange-600/40 rounded-lg flex items-center justify-center mr-3 group-hover:scale-110 transition-transform duration-200">
+                                        <x-heroicon-o-squares-2x2 class="w-4 h-4 text-yellow-600 md:text-yellow-300" />
+                                    </div>
+                                    <span class="group-hover:text-yellow-900 md:group-hover:text-orange-200 transition-colors">Categories</span>
+                                </a> -->
+
+                                <div class="border-t border-gray-300 md:border-gray-600/80 my-2"></div>
+
                                 <!-- Navigation Links -->
                                 <a href="/servers" class="group flex items-center px-4 py-3 text-sm mobile-force-dark-text hover:bg-gradient-to-r hover:from-blue-50 hover:to-blue-100 md:hover:from-blue-600/40 md:hover:to-blue-700/40 hover:text-blue-900 md:hover:text-white transition-all duration-200">
                                     <div class="w-8 h-8 bg-gradient-to-br from-blue-100 to-blue-200 md:from-blue-500/40 md:to-blue-600/40 rounded-lg flex items-center justify-center mr-3 group-hover:scale-110 transition-transform duration-200">
                                         <x-heroicon-o-server class="w-4 h-4 text-blue-600 md:text-blue-300" />
                                     </div>
                                     <span class="group-hover:text-blue-900 md:group-hover:text-blue-200 transition-colors">Servers</span>
-                                </a>
-
-                                <a href="/categories" class="group flex items-center px-4 py-3 text-sm mobile-force-dark-text hover:bg-gradient-to-r hover:from-yellow-50 hover:to-orange-100 md:hover:from-yellow-600/40 md:hover:to-orange-700/40 hover:text-yellow-900 md:hover:text-white transition-all duration-200">
-                                    <div class="w-8 h-8 bg-gradient-to-br from-yellow-100 to-orange-200 md:from-yellow-500/40 md:to-orange-600/40 rounded-lg flex items-center justify-center mr-3 group-hover:scale-110 transition-transform duration-200">
-                                        <x-heroicon-o-squares-2x2 class="w-4 h-4 text-yellow-600 md:text-yellow-300" />
-                                    </div>
-                                    <span class="group-hover:text-yellow-900 md:group-hover:text-orange-200 transition-colors">Categories</span>
-                                </a>
-
-                                <div class="border-t border-gray-300 md:border-gray-600/80 my-2"></div>
-
-                                <!-- Dashboard/Profile -->
-                                <a href="/account-settings" class="group flex items-center px-4 py-3 text-sm mobile-force-dark-text hover:bg-gradient-to-r hover:from-purple-50 hover:to-purple-100 md:hover:from-purple-600/40 md:hover:to-purple-700/40 hover:text-purple-900 md:hover:text-white transition-all duration-200">
-                                    <div class="w-8 h-8 bg-gradient-to-br from-purple-100 to-purple-200 md:from-purple-500/40 md:to-purple-600/40 rounded-lg flex items-center justify-center mr-3 group-hover:scale-110 transition-transform duration-200">
-                                        <x-heroicon-o-user-circle class="w-4 h-4 text-purple-600 md:text-purple-300" />
-                                    </div>
-                                    <span class="group-hover:text-purple-900 md:group-hover:text-purple-200 transition-colors">Account Settings</span>
                                 </a>
 
                                 <a href="/my-orders" class="group flex items-center px-4 py-3 text-sm mobile-force-dark-text hover:bg-gradient-to-r hover:from-blue-50 hover:to-blue-100 md:hover:from-blue-600/40 md:hover:to-blue-700/40 hover:text-blue-900 md:hover:text-white transition-all duration-200">
@@ -208,6 +208,13 @@
                                 </a>
 
                                 <div class="border-t border-gray-300 md:border-gray-600/80 my-2"></div>
+
+                                <a href="/account-settings" class="group flex items-center px-4 py-3 text-sm mobile-force-dark-text hover:bg-gradient-to-r hover:from-purple-50 hover:to-purple-100 md:hover:from-purple-600/40 md:hover:to-purple-700/40 hover:text-purple-900 md:hover:text-white transition-all duration-200">
+                                    <div class="w-8 h-8 bg-gradient-to-br from-purple-100 to-purple-200 md:from-purple-500/40 md:to-purple-600/40 rounded-lg flex items-center justify-center mr-3 group-hover:scale-110 transition-transform duration-200">
+                                        <x-heroicon-o-user-circle class="w-4 h-4 text-purple-600 md:text-purple-300" />
+                                    </div>
+                                    <span class="group-hover:text-purple-900 md:group-hover:text-purple-200 transition-colors">Account Settings</span>
+                                </a>
 
                                 <!-- Support & Help -->
                                 <a href="#" class="group flex items-center px-4 py-3 text-sm mobile-force-dark-text hover:bg-gradient-to-r hover:from-indigo-50 hover:to-indigo-100 md:hover:from-indigo-600/40 md:hover:to-indigo-700/40 hover:text-indigo-900 md:hover:text-white transition-all duration-200">

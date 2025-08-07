@@ -173,7 +173,12 @@ class ServerClient extends Model
         return $this->belongsTo(Customer::class, 'customer_id');
     }
 
-    public function orders(): \Illuminate\Database\Eloquent\Relations\BelongsToMany
+    public function server(): BelongsTo
+    {
+        return $this->belongsTo(Server::class, 'server_id');
+    }
+    
+    public function orders(): BelongsToMany
     {
         return $this->belongsToMany(Order::class, 'order_server_clients')
                     ->withPivot(['provision_status', 'provision_error', 'provision_attempts'])

@@ -10,8 +10,6 @@ use Illuminate\Support\Facades\Auth;
 use App\Filament\Customer\Widgets\CustomerStatsOverview;
 use App\Filament\Customer\Widgets\SupportOverviewWidget;
 use App\Filament\Customer\Widgets\DownloadOverviewWidget;
-use App\Filament\Customer\Clusters\MySupport\Resources\ServerReviewResource;
-use App\Filament\Customer\Clusters\MySupport\Resources\ServerRatingResource;
 use App\Models\Wallet;
 use App\Models\Order;
 use App\Models\ServerClient;
@@ -43,23 +41,35 @@ class Dashboard extends BaseDashboard
     protected function getHeaderActions(): array
     {
         return [
-            Action::make('submitReview')
-                ->label('📝 Submit a Review')
-                ->icon('heroicon-o-chat-bubble-left-ellipsis')
-                ->url(fn (): string => ServerReviewResource::getUrl('create', [
-                    'server' => request()->query('server'),
-                ]))
-                ->color('primary')
-                ->outlined(),
+            Action::make('home')
+                ->label('Home')
+                ->icon('heroicon-o-home')
+                ->color('gray')
+                ->url(fn (): string => url('/')),
 
-            Action::make('rateServer')
-                ->label('⭐ Rate a Server')
-                ->icon('heroicon-o-star')
-                ->url(fn (): string => ServerRatingResource::getUrl('create', [
-                    'server' => request()->query('server'),
-                ]))
-                ->color('warning')
-                ->outlined(),
+            Action::make('myActiveServers')
+                ->label('My Active Servers')
+                ->icon('heroicon-o-server-stack')
+                ->color('primary')
+                ->url(fn (): string => route('filament.customer.pages.my-active-servers')),
+
+            Action::make('browseServers')
+                ->label('Browse Servers')
+                ->icon('heroicon-o-server')
+                ->color('info')
+                ->url(fn (): string => route('filament.customer.pages.server-browsing')),
+        ];
+    }
+
+    public static function getNavigationItems(): array
+    {
+        return [
+            \Filament\Navigation\NavigationItem::make()
+                ->label('Home')
+                ->icon('heroicon-o-home')
+                ->url(url('/'))
+                ->group('Back to Home page')
+                ->sort(0),
         ];
     }
 }

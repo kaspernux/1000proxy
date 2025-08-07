@@ -29,16 +29,12 @@ class SupportOverviewWidget extends BaseWidget
             Stat::make('Reviews', $reviews)
                 ->icon('heroicon-o-chat-bubble-left-ellipsis')
                 ->description('Feedback submitted')
-                ->color('info')
-                // account/my-support/server-reviews
-                ->url(route('filament.customer.my-support.resources.server-reviews.index')),
+                ->color('info'),
 
             Stat::make('Ratings', $ratings)
                 ->icon('heroicon-o-star')
                 ->description('Servers rated')
-                ->color('success')
-                // account/my-support/server-ratings
-                ->url(route('filament.customer.my-support.resources.server-ratings.index')),
+                ->color('success'),
 
             Stat::make('Avg Rating', "⭐ {$avgFmt}")
                 ->icon('heroicon-o-adjustments-horizontal')

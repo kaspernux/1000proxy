@@ -1,7 +1,7 @@
 <x-filament-panels::page>
-    <div class="space-y-6">
+    <div class="space-y-8 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <!-- Auto-Renewal Status Card -->
-        <div class="bg-gradient-to-r from-blue-500 to-purple-600 rounded-lg p-6 text-white">
+        <div class="bg-gradient-to-r from-blue-500 to-purple-600 rounded-lg p-6 text-white my-16">
             <div class="flex items-center justify-between">
                 <div>
                     <h2 class="text-2xl font-bold">Auto-Renewal Status</h2>
@@ -10,7 +10,7 @@
                         {{ count($this->getUpcomingRenewals()) }} services expiring soon
                     </p>
                 </div>
-                <div class="text-right">
+                <div class="text-right flex flex-col items-end gap-2">
                     <div class="p-3 bg-white/20 rounded-lg">
                         @if($this->getRenewalSettings()['auto_renew_enabled'])
                             <x-heroicon-o-check-circle class="w-8 h-8" />
@@ -18,12 +18,28 @@
                             <x-heroicon-o-x-circle class="w-8 h-8" />
                         @endif
                     </div>
+                    <!-- Auto-Renewal Toggle Button -->
+                    <div class="mt-2">
+                        <label class="inline-flex items-center cursor-pointer group" title="Toggle Auto-Renewal">
+                            <input
+                                type="checkbox"
+                                class="sr-only peer"
+                                {{ $this->getRenewalSettings()['auto_renew_enabled'] ? 'checked' : '' }}
+                                wire:change="$set('renewalSettings.auto_renew_enabled', $event.target.checked)"
+                            >
+                            <div class="w-12 h-7 bg-white/30 rounded-full flex items-center transition-colors duration-300 peer-checked:bg-green-500 peer-focus:ring-2 peer-focus:ring-blue-300 dark:peer-focus:ring-blue-800 relative">
+                                <div class="absolute left-1 top-1 w-5 h-5 bg-white rounded-full shadow transition-transform duration-300 peer-checked:translate-x-5"></div>
+                                <span class="absolute left-2 text-xs text-gray-700 font-semibold">OFF</span>
+                                <span class="absolute right-2 text-xs text-green-700 font-semibold">ON</span>
+                            </div>
+                        </label>
+                    </div>
                 </div>
             </div>
         </div>
 
         <!-- Quick Stats -->
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 my-16">
             <div class="bg-white dark:bg-gray-800 rounded-lg p-6 shadow">
                 <div class="flex items-center">
                     <div class="p-2 bg-green-100 dark:bg-green-900 rounded-lg">
@@ -69,7 +85,7 @@
 
         <!-- Upcoming Renewals -->
         @if(count($this->getUpcomingRenewals()) > 0)
-            <div class="bg-white dark:bg-gray-800 rounded-lg p-6 shadow">
+            <div class="bg-white dark:bg-gray-800 rounded-lg p-6 shadow my-16">
                 <h3 class="text-lg font-medium text-gray-900 dark:text-white mb-4">Upcoming Renewals</h3>
                 <div class="space-y-3">
                     @foreach($this->getUpcomingRenewals() as $renewal)
@@ -97,7 +113,7 @@
         @endif
 
         <!-- Renewal Settings -->
-        <div class="bg-white dark:bg-gray-800 rounded-lg p-6 shadow">
+        <div class="bg-white dark:bg-gray-800 rounded-lg p-6 shadow my-16">
             <div class="flex items-center justify-between mb-4">
                 <h3 class="text-lg font-medium text-gray-900 dark:text-white">Renewal Preferences</h3>
                 <div class="flex items-center space-x-2">
@@ -154,15 +170,18 @@
         </div>
 
         <!-- Services Table -->
-        <div class="bg-white dark:bg-gray-800 rounded-lg shadow">
-            <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+        <div class="bg-white dark:bg-gray-800 rounded-lg shadow overflow-x-auto my-16">
+            <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700 flex items-center gap-2">
+                <x-heroicon-o-arrow-path class="w-5 h-5 text-green-500" />
                 <h3 class="text-lg font-medium text-gray-900 dark:text-white">Service Renewals</h3>
             </div>
-            {{ $this->table }}
+            <div class="px-2 py-4">
+                {{ $this->table }}
+            </div>
         </div>
 
         <!-- Renewal Tips -->
-        <div class="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-6">
+        <div class="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-6 my-16">
             <h4 class="text-lg font-medium text-blue-900 dark:text-blue-100 mb-3">💡 Renewal Tips</h4>
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm text-blue-800 dark:text-blue-200">
                 <div class="flex items-start">

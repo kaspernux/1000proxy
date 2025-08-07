@@ -100,11 +100,6 @@ class AutomatedRenewals extends Page implements HasTable, HasForms
                         ]),
                 ])
                 ->action('saveRenewalSettings'),
-
-            PageAction::make('renewal_history')
-                ->label('Renewal History')
-                ->icon('heroicon-o-clock')
-                ->url(route('filament.customer.pages.renewal-history')),
         ];
     }
 
@@ -140,10 +135,7 @@ class AutomatedRenewals extends Page implements HasTable, HasForms
         return $table
             ->query(
                 Order::where('customer_id', Auth::guard('customer')->id())
-                    ->whereHas('orderItems', function (Builder $query) {
-                        $query->whereNotNull('expires_at');
-                    })
-                    ->with(['orderItems.serverClient.server'])
+                    ->with(['items.serverClient.server'])
             )
             ->columns([
                 TextColumn::make('id')
@@ -152,13 +144,13 @@ class AutomatedRenewals extends Page implements HasTable, HasForms
                     ->searchable()
                     ->prefix('#'),
 
-                TextColumn::make('orderItems.serverClient.server.name')
+                TextColumn::make('items.serverClient.server.name')
                     ->label('Service')
                     ->sortable()
                     ->searchable()
                     ->weight(FontWeight::Bold),
 
-                TextColumn::make('orderItems.expires_at')
+                TextColumn::make('items.expires_at')
                     ->label('Expires')
                     ->dateTime()
                     ->sortable()
@@ -167,7 +159,7 @@ class AutomatedRenewals extends Page implements HasTable, HasForms
                 TextColumn::make('days_until_expiry')
                     ->label('Days Left')
                     ->getStateUsing(function ($record) {
-                        $expiresAt = $record->orderItems->first()?->expires_at;
+                        $expiresAt = $record->items->first()?->expires_at;
                         return $expiresAt ? now()->diffInDays($expiresAt) : 'N/A';
                     })
                     ->badge()
@@ -188,7 +180,7 @@ class AutomatedRenewals extends Page implements HasTable, HasForms
                 TextColumn::make('renewal_status')
                     ->label('Status')
                     ->getStateUsing(function ($record) {
-                        $expiresAt = $record->orderItems->first()?->expires_at;
+                        $expiresAt = $record->items->first()?->expires_at;
                         if (!$expiresAt) return 'No expiration';
 
                         $daysLeft = now()->diffInDays($expiresAt);
@@ -217,7 +209,7 @@ class AutomatedRenewals extends Page implements HasTable, HasForms
                             return 'N/A';
                         }
 
-                        $expiresAt = $record->orderItems->first()?->expires_at;
+                        $expiresAt = $record->items->first()?->expires_at;
                         if (!$expiresAt) return 'N/A';
 
                         $renewalDate = Carbon::parse($expiresAt)->subDays($this->renewalSettings['renewal_buffer_days']);
@@ -318,13 +310,13 @@ class AutomatedRenewals extends Page implements HasTable, HasForms
                             ->send();
                     }),
             ])
-            ->defaultSort('orderItems.expires_at', 'asc')
+            // Remove defaultSort on orderItems.expires_at, as this column does not exist on orders table
             ->poll('60s'); // Refresh every minute
     }
 
     protected function getExpirationColor($record): string
     {
-        $expiresAt = $record->orderItems->first()?->expires_at;
+        $expiresAt = $record->items->first()?->expires_at;
         if (!$expiresAt) return 'gray';
 
         $daysLeft = now()->diffInDays($expiresAt);
@@ -338,7 +330,7 @@ class AutomatedRenewals extends Page implements HasTable, HasForms
 
     protected function canRenewNow(Order $record): bool
     {
-        $expiresAt = $record->orderItems->first()?->expires_at;
+        $expiresAt = $record->items->first()?->expires_at;
         if (!$expiresAt) return false;
 
         $daysLeft = now()->diffInDays($expiresAt);
@@ -355,13 +347,12 @@ class AutomatedRenewals extends Page implements HasTable, HasForms
         $customer = Auth::guard('customer')->user();
 
         return Order::where('customer_id', $customer->id)
-            ->whereHas('orderItems', function (Builder $query) {
+            ->with(['items' => function ($query) {
                 $query->whereBetween('expires_at', [
                     now(),
                     now()->addDays($this->renewalSettings['renewal_buffer_days'])
                 ]);
-            })
-            ->with(['orderItems.serverClient.server'])
+            }, 'items.serverClient.server'])
             ->get();
     }
 }

@@ -267,7 +267,8 @@ class CartPage extends Component
             $item = $saveForLater[$index];
 
             // Add back to cart
-            CartManagement::addItemToCartWithQty($item['server_plan_id'], $item['quantity']);
+            $total_count = CartManagement::addItemToCartWithQty($item['server_plan_id'], $item['quantity']);
+            $this->dispatch('update-cart-count', total_count: $total_count)->to(\App\Livewire\Partials\Navbar::class);
 
             // Remove from saved items
             unset($saveForLater[$index]);

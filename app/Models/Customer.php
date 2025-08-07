@@ -123,6 +123,8 @@ class Customer extends Authenticatable implements MustVerifyEmail
     public function paymentMethods() { return $this->hasMany(PaymentMethod::class); }
     public function referrer() { return $this->belongsTo(Customer::class, 'refered_by'); }
     public function referredCustomers() { return $this->hasMany(Customer::class, 'refered_by'); }
+    // For ReferralSystem page compatibility
+    public function referrals() { return $this->hasMany(Customer::class, 'refered_by'); }
     public function clients() { return $this->hasMany(ServerClient::class); }
     public function traffics() { return $this->hasMany(ClientTraffic::class); }
     public function addresses() { return $this->hasMany(Address::class); }

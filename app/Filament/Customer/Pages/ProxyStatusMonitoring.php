@@ -234,10 +234,10 @@ class ProxyStatusMonitoring extends Page
         }
 
         $this->proxyStatuses = Cache::remember($cacheKey, 300, function () use ($customer) {
-            return ServerClient::whereHas('orderItem.order', function ($query) use ($customer) {
+            return ServerClient::whereHas('order', function ($query) use ($customer) {
                 $query->where('customer_id', $customer->id);
             })
-            ->with(['server.brand', 'server.category', 'orderItem.order'])
+            ->with(['server.brand', 'server.category', 'order'])
             ->where('status', 'active')
             ->get()
             ->map(function ($client) {
@@ -266,10 +266,10 @@ class ProxyStatusMonitoring extends Page
                         'uuid' => $client->uuid
                     ],
                     'order_info' => [
-                        'order_id' => $client->orderItem->order->id,
-                        'expires_at' => $client->orderItem->order->expires_at,
-                        'days_remaining' => $client->orderItem->order->expires_at
-                            ? Carbon::parse($client->orderItem->order->expires_at)->diffInDays(now(), false)
+                        'order_id' => $client->order->id ?? null,
+                        'expires_at' => $client->order->expires_at ?? null,
+                        'days_remaining' => $client->order && $client->order->expires_at
+                            ? Carbon::parse($client->order->expires_at)->diffInDays(now(), false)
                             : null
                     ]
                 ];
@@ -562,7 +562,7 @@ class ProxyStatusMonitoring extends Page
     {
         $customer = Auth::guard('customer')->user();
 
-        return ServerClient::whereHas('orderItem.order', function ($query) use ($customer) {
+        return ServerClient::whereHas('order', function ($query) use ($customer) {
             $query->where('customer_id', $customer->id);
         })
         ->with(['server'])

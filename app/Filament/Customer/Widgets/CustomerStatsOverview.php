@@ -33,22 +33,19 @@ class CustomerStatsOverview extends BaseWidget
                 ->icon('heroicon-o-banknotes')
                 ->description('Top-up via BTC, XMR, SOL')
                 ->color($balance > 0 ? 'success' : 'danger')
-                // account/my-wallet/wallets
-                ->url(route('filament.customer.my-wallet.resources.wallets.index')),
+                ->url(route('filament.customer.pages.wallet-management')),
 
             Stat::make('My Orders', $orders)
                 ->icon('heroicon-o-receipt-refund')
                 ->description('Total orders placed')
                 ->color('info')
-                // account/orders
-                ->url(route('filament.customer.resources.orders.index')),
+                ->url(route('filament.customer.pages.order-management')),
 
             Stat::make('Active Services', $services)
                 ->icon('heroicon-o-server-stack')
                 ->description('Active subscriptions')
                 ->color('primary')
-                // account/customer-server-clients
-                ->url(route('filament.customer.resources.customer-server-clients.index')),
+                ->url(route('filament.customer.pages.my-active-servers')),
         ];
     }
 }

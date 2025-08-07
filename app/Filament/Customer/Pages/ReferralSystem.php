@@ -251,44 +251,13 @@ class ReferralSystem extends Page implements HasTable, HasForms
 
     public function table(Table $table): Table
     {
+        // Use Eloquent Builder for referred customers to avoid type error
+        $customer = Auth::guard('customer')->user();
         return $table
             ->query(
-                // In real implementation, this would be a referrals table or related customers
-                collect([
-                    (object) [
-                        'id' => 1,
-                        'name' => 'John Doe',
-                        'email' => 'john@example.com',
-                        'joined_at' => now()->subDays(30),
-                        'status' => 'Active',
-                        'orders_count' => 3,
-                        'total_spent' => 150.00,
-                        'commission_earned' => 15.00,
-                        'commission_status' => 'Paid',
-                    ],
-                    (object) [
-                        'id' => 2,
-                        'name' => 'Jane Smith',
-                        'email' => 'jane@example.com',
-                        'joined_at' => now()->subDays(15),
-                        'status' => 'Active',
-                        'orders_count' => 1,
-                        'total_spent' => 50.00,
-                        'commission_earned' => 5.00,
-                        'commission_status' => 'Pending',
-                    ],
-                    (object) [
-                        'id' => 3,
-                        'name' => 'Bob Wilson',
-                        'email' => 'bob@example.com',
-                        'joined_at' => now()->subDays(60),
-                        'status' => 'Inactive',
-                        'orders_count' => 0,
-                        'total_spent' => 0.00,
-                        'commission_earned' => 0.00,
-                        'commission_status' => 'None',
-                    ],
-                ])->toQuery()
+                Customer::query()
+                    ->where('refered_by', $customer->id)
+                    ->with(['orders'])
             )
             ->columns([
                 TextColumn::make('name')

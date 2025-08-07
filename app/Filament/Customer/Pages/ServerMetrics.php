@@ -92,10 +92,10 @@ class ServerMetrics extends Page implements HasTable, HasForms
         $timeRange = $this->getTimeRange();
 
         // Get user's active server clients with enhanced metrics
-        $clients = ServerClient::whereHas('orderItem.order', function (Builder $query) use ($customer) {
+        $clients = ServerClient::whereHas('order', function (Builder $query) use ($customer) {
             $query->where('customer_id', $customer->id);
         })
-        ->with(['server.brand', 'server.category', 'orderItem.order'])
+        ->with(['server.brand', 'server.category', 'order'])
         ->where('created_at', '>=', $timeRange['start'])
         ->where('created_at', '<=', $timeRange['end'])
         ->get();
@@ -107,9 +107,9 @@ class ServerMetrics extends Page implements HasTable, HasForms
             'usage' => $this->calculateUsageMetrics($clients, $timeRange),
             'reliability' => $this->calculateReliabilityMetrics($clients),
             'geographic' => $this->calculateGeographicMetrics($clients),
-            'trends' => $this->calculateTrendMetrics($serverClients, $timeRange),
-            'alerts' => $this->calculateAlerts($serverClients),
-            'recommendations' => $this->generateRecommendations($serverClients),
+            'trends' => $this->calculateTrendMetrics($clients, $timeRange),
+            'alerts' => $this->calculateAlerts($clients),
+            'recommendations' => $this->generateRecommendations($clients),
         ];
     }
 
@@ -209,11 +209,12 @@ class ServerMetrics extends Page implements HasTable, HasForms
             ];
         }
 
+        $avgUptime = collect($serverUptime)->avg('uptime_percentage');
         return [
             'overall_success_rate' => round($connectionSuccessRate, 2),
-            'average_uptime' => round(collect($serverUptime)->avg('uptime_percentage'), 2),
+            'average_uptime' => round($avgUptime ?? 0.0, 2),
             'server_uptime' => collect($serverUptime)->sortByDesc('uptime_percentage')->values()->all(),
-            'reliability_score' => $this->calculateReliabilityScore($connectionSuccessRate, collect($serverUptime)->avg('uptime_percentage')),
+            'reliability_score' => $this->calculateReliabilityScore($connectionSuccessRate, floatval($avgUptime ?? 0.0)),
         ];
     }
 
@@ -482,11 +483,11 @@ class ServerMetrics extends Page implements HasTable, HasForms
     {
         return $table
             ->query(
-                ServerClient::whereHas('orderItem.order', function (Builder $query) {
+                ServerClient::whereHas('order', function (Builder $query) {
                     $customer = Auth::guard('customer')->user();
                     $query->where('customer_id', $customer->id);
                 })
-                ->with(['server', 'orderItem.order'])
+                ->with(['server', 'order'])
             )
             ->columns([
                 TextColumn::make('server.name')

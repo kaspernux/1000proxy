@@ -43,6 +43,7 @@ class Navbar extends Component
 
     public function render()
     {
+        $this->refreshCartCount();
         return view('livewire.partials.navbar');
     }
 }
