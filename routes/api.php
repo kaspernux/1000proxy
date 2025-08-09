@@ -47,6 +47,18 @@ Route::middleware(['throttle:api'])->group(function () {
             Route::post('/initialize-setup', [AdvancedProxyController::class, 'initializeSetup']);
             Route::get('/dashboard', [AdvancedProxyController::class, 'getDashboard']);
             Route::post('/enable-auto-rotation', [AdvancedProxyController::class, 'enableAutoRotation']);
+                // Payment API routes (Sanctum protected)
+                Route::prefix('payment')->group(function () {
+                    Route::post('/create', [\App\Http\Controllers\PaymentController::class, 'createPayment']);
+                    Route::post('/topup', [\App\Http\Controllers\PaymentController::class, 'topUpWallet']);
+                    Route::post('/refund', [\App\Http\Controllers\PaymentController::class, 'refundPayment']);
+                    Route::get('/status/{orderId}', [\App\Http\Controllers\PaymentController::class, 'getPaymentStatusByOrder']);
+                    Route::get('/status-by-id/{paymentId}', [\App\Http\Controllers\PaymentController::class, 'getPaymentStatus']);
+                    Route::get('/gateways', [\App\Http\Controllers\PaymentController::class, 'getAvailableGateways']);
+                    Route::get('/currencies', [\App\Http\Controllers\PaymentController::class, 'getCurrencies']);
+                    Route::get('/invoice/{order}', [\App\Http\Controllers\PaymentController::class, 'showInvoice']);
+                    Route::post('/webhook/{gateway}', [\App\Http\Controllers\PaymentController::class, 'handleWebhook']);
+                });
             Route::post('/setup-load-balancer', [AdvancedProxyController::class, 'setupLoadBalancer']);
             Route::post('/setup-health-monitoring', [AdvancedProxyController::class, 'setupHealthMonitoring']);
             Route::get('/performance-analytics', [AdvancedProxyController::class, 'getPerformanceAnalytics']);

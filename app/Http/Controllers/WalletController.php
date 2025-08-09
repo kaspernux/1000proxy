@@ -28,6 +28,7 @@ class WalletController extends Controller
         return redirect()->route('filament.customer.pages.wallet-management');
     }
 
+    // Remove wallet top-up logic; call PaymentController for top-ups
     public function topUp(Request $request, $currency)
     {
         $request->validate([
@@ -35,13 +36,22 @@ class WalletController extends Controller
             'reference' => 'required|string|unique:wallet_transactions,reference',
         ]);
 
-        $wallet = Auth::guard('customer')->user()->wallet;
-
-        $wallet->deposit($request->amount, $request->reference, [
-            'description' => "Top-up using " . strtoupper($currency),
+        // Call PaymentController for wallet top-up
+        $paymentController = app(PaymentController::class);
+        $topupRequest = Request::create(route('payment.topup'), 'POST', [
+            'amount' => $request->amount,
+            'currency' => $currency,
+            'gateway' => 'wallet',
+            'reference' => $request->reference,
         ]);
+        $topupResponse = $paymentController->topUpWallet($topupRequest);
+        $result = $topupResponse->getData(true);
 
-        return redirect()->route('wallet.topup', $currency)->with('success', 'Wallet topped up successfully.');
+        if ($result['success'] ?? false) {
+            return redirect()->route('wallet.topup', $currency)->with('success', 'Wallet topped up successfully.');
+        } else {
+            return redirect()->route('wallet.topup', $currency)->with('error', $result['error'] ?? 'Wallet top-up failed.');
+        }
     }
 
     public function process(Request $request)
@@ -51,13 +61,22 @@ class WalletController extends Controller
             'amount' => 'required|numeric|min:0.00001',
         ]);
 
-        $wallet = Auth::guard('customer')->user()->wallet;
-
-        $wallet->deposit($request->amount, 'manual_' . now()->timestamp, [
-            'description' => 'Manual crypto top-up',
+        // Call PaymentController for wallet top-up
+        $paymentController = app(PaymentController::class);
+        $topupRequest = Request::create(route('payment.topup'), 'POST', [
+            'amount' => $request->amount,
+            'currency' => $request->currency,
+            'gateway' => 'wallet',
+            'reference' => 'manual_' . now()->timestamp,
         ]);
+        $topupResponse = $paymentController->topUpWallet($topupRequest);
+        $result = $topupResponse->getData(true);
 
-        return redirect()->route('wallet.topup', $request->currency)->with('success', 'Top-up successful!');
+        if ($result['success'] ?? false) {
+            return redirect()->route('wallet.topup', $request->currency)->with('success', 'Top-up successful!');
+        } else {
+            return redirect()->route('wallet.topup', $request->currency)->with('error', $result['error'] ?? 'Top-up failed.');
+        }
     }
 
     public function sync()

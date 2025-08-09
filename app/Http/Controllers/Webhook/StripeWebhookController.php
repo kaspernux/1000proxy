@@ -9,19 +9,17 @@ use App\Jobs\ProcessXuiOrder;
 use Illuminate\Support\Facades\Log;
 use Stripe\Stripe;
 use Stripe\Webhook as StripeWebhook;
+use App\Http\Controllers\PaymentController;
 
 class StripeWebhookController extends Controller
 {
     public function __invoke(Request $request)
     {
         Log::info('Stripe Webhook Received', $request->all());
-
         Stripe::setApiKey(env('STRIPE_SECRET'));
         $endpointSecret = env('STRIPE_WEBHOOK_SECRET');
-
         $payload = $request->getContent();
         $sigHeader = $request->header('Stripe-Signature');
-
         try {
             $event = StripeWebhook::constructEvent($payload, $sigHeader, $endpointSecret);
         } catch (\UnexpectedValueException $e) {
@@ -31,23 +29,9 @@ class StripeWebhookController extends Controller
             Log::error('Stripe webhook invalid signature', ['error' => $e->getMessage()]);
             return response('Invalid signature', 400);
         }
-
-        if ($event->type === 'checkout.session.completed') {
-            $session = $event->data->object;
-            $orderId = $session->metadata->order_id ?? null;
-
-            if ($orderId) {
-                $order = Order::find($orderId);
-
-                if ($order) {
-                    \App\Services\OrderService::payAndProcessClients($order);
-                }
-                
-                Log::info('✅ Stripe: Order marked paid and client creation job dispatched.', ['order_id' => $order->id]);
-            }
-        }
-
-
-        return response('Webhook Handled', 200);
+        // Delegate to PaymentController for unified processing
+        $paymentController = app(PaymentController::class);
+        $result = $paymentController->handleWebhook($request, 'stripe');
+        return response()->json($result);
     }
 }

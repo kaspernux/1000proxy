@@ -14,7 +14,7 @@ return [
     |
     */
 
-    'default' => env('MAIL_MAILER', 'log'),
+    'default' => env('MAIL_MAILER', 'mailcoach'),
 
     /*
     |--------------------------------------------------------------------------
@@ -82,6 +82,11 @@ return [
             ],
         ],
 
+        'mailcoach' => [
+            'transport' => 'mailcoach',
+            'api_token' => env('MAILCOACH_API_TOKEN'),
+            'endpoint' => env('MAILCOACH_API_ENDPOINT'),
+        ],
         'roundrobin' => [
             'transport' => 'roundrobin',
             'mailers' => [

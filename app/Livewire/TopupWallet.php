@@ -82,27 +82,22 @@ class TopupWallet extends Component
 
     public function mount($currency = 'btc')
     {
-        // Check authentication
-        if (!Auth::guard('customer')->check()) {
+        // Check authentication using customer guard
+        if (!\Illuminate\Support\Facades\Auth::guard('customer')->check()) {
             return redirect('/login');
         }
 
         $currency = strtolower($currency);
-
         $supportedCurrencies = ['btc', 'eth', 'usdt', 'xmr', 'sol', 'bnb'];
         if (!in_array($currency, $supportedCurrencies)) {
             $currency = 'btc'; // Default fallback
         }
-
         $this->currency = $currency;
-
         // Get customer's wallet (only customers have wallets)
-        $customer = Auth::guard('customer')->user();
+        $customer = \Illuminate\Support\Facades\Auth::guard('customer')->user();
         $this->wallet = $customer->wallet ?? $customer->getWallet();
-
         // Load user's transaction history
         $this->loadTransactionHistory();
-
         // Load active promotions
         $this->loadActivePromotions();
     }
@@ -329,7 +324,6 @@ class TopupWallet extends Component
         $this->is_submitting = true;
 
         try {
-            // Rate limiting
             $key = 'topup_submit.' . Auth::guard('customer')->id();
             if (RateLimiter::tooManyAttempts($key, 3)) {
                 $seconds = RateLimiter::availableAt($key) - time();
@@ -337,9 +331,7 @@ class TopupWallet extends Component
                     'amount' => ["Too many topup attempts. Please try again in {$seconds} seconds."],
                 ]);
             }
-
             $this->validate();
-
             if (!$this->wallet) {
                 $this->alert('error', 'Wallet not found. Please contact support.', [
                     'position' => 'bottom-end',
@@ -349,72 +341,70 @@ class TopupWallet extends Component
                 $this->is_submitting = false;
                 return;
             }
-
-            RateLimiter::hit($key, 300); // 5-minute window
-
+            RateLimiter::hit($key, 300);
             $this->reference = $this->reference ?: 'topup_' . strtoupper(Str::random(10));
-
-            // Calculate final amount with bonus
             $bonus = $this->calculateBonus();
             $finalAmount = $this->amount + $bonus;
-
-            // Handle payment proof upload
             $proofPath = null;
             if ($this->paymentProof) {
                 $proofPath = $this->paymentProof->store('payment-proofs', 'private');
             }
-
-            // Create transaction record
-            $transaction = WalletTransaction::create([
-                'wallet_id' => $this->wallet->id,
-                'type' => 'deposit',
+            // Prepare payload for PaymentController
+            $payload = [
                 'amount' => $this->amount,
+                'currency' => $this->currency,
+                'gateway' => $this->selectedMethod,
+                'reference' => $this->reference,
                 'bonus_amount' => $bonus,
                 'final_amount' => $finalAmount,
-                'currency' => strtoupper($this->currency),
-                'status' => 'pending',
-                'reference' => $this->reference,
-                'description' => 'Wallet top-up using ' . strtoupper($this->currency),
-                'meta' => [
-                    'payment_method' => $this->selectedMethod,
-                    'crypto_address' => $this->cryptoAddress,
-                    'payment_proof_path' => $proofPath,
-                    'promotion_applied' => $this->selectedPromotion,
-                    'notes' => $this->notes,
-                    'notify_on_completion' => $this->notifyOnCompletion,
-                ],
-            ]);
-
-            // Setup recurring topup if enabled
-            if ($this->recurringTopup) {
-                $this->setupRecurringTopup($transaction);
-            }
-
-            // Clear rate limit on success
-            RateLimiter::clear($key);
-
-            $this->currentStep = 4;
-            $this->loadTransactionHistory();
-            $this->is_submitting = false;
-
-            $this->alert('success', '✅ Deposit request submitted successfully! We will process it within 1-24 hours.', [
-                'position' => 'bottom-end',
-                'timer' => 5000,
-                'toast' => true,
-            ]);
-
-            // Security logging
-            Log::info('Wallet top-up initiated', [
-                'customer_id' => Auth::guard('customer')->id(),
-                'amount' => $this->amount,
                 'promo_code' => $this->promoCode,
-                'payment_method' => $this->paymentMethod,
-                'ip' => request()->ip(),
-            ]);
-
-            $this->dispatch('submitEnded');
-            $this->dispatch('refreshWallet');
-
+                'notes' => $this->notes,
+                'payment_proof_path' => $proofPath,
+                'promotion_applied' => $this->selectedPromotion,
+                'notify_on_completion' => $this->notifyOnCompletion,
+            ];
+            // Call PaymentController API
+            $response = \Http::withToken(Auth::user()->api_token ?? session('api_token'))
+                ->post(url('/api/payment/top-up-wallet'), $payload);
+            $result = $response->json();
+            if ($response->successful() && isset($result['success']) && $result['success']) {
+                // If redirect_url, go to gateway
+                if (isset($result['redirect_url'])) {
+                    return redirect()->away($result['redirect_url']);
+                }
+                $this->currentStep = 4;
+                $this->loadTransactionHistory();
+                $this->is_submitting = false;
+                $this->alert('success', '✅ Deposit request submitted successfully!', [
+                    'position' => 'bottom-end',
+                    'timer' => 5000,
+                    'toast' => true,
+                ]);
+                Log::info('Wallet top-up initiated via PaymentController', [
+                    'customer_id' => Auth::guard('customer')->id(),
+                    'amount' => $this->amount,
+                    'promo_code' => $this->promoCode,
+                    'gateway' => $this->selectedMethod,
+                    'ip' => request()->ip(),
+                ]);
+                $this->dispatch('submitEnded');
+                $this->dispatch('refreshWallet');
+            } else {
+                $this->is_submitting = false;
+                $errorMsg = $result['error'] ?? 'An error occurred while submitting your topup request. Please try again.';
+                $this->alert('error', $errorMsg, [
+                    'position' => 'bottom-end',
+                    'timer' => 5000,
+                    'toast' => true,
+                ]);
+                Log::error('Topup submission error via PaymentController', [
+                    'error' => $errorMsg,
+                    'customer_id' => Auth::guard('customer')->id(),
+                    'amount' => $this->amount,
+                    'gateway' => $this->selectedMethod,
+                    'ip' => request()->ip()
+                ]);
+            }
         } catch (ValidationException $e) {
             $this->is_submitting = false;
             throw $e;
@@ -424,9 +414,9 @@ class TopupWallet extends Component
                 'error' => $e->getMessage(),
                 'customer_id' => Auth::guard('customer')->id(),
                 'amount' => $this->amount,
+                'gateway' => $this->selectedMethod,
                 'ip' => request()->ip()
             ]);
-            
             $this->alert('error', 'An error occurred while submitting your topup request. Please try again.', [
                 'position' => 'bottom-end',
                 'timer' => 5000,

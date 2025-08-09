@@ -12,7 +12,6 @@ class CustomerSeeder extends Seeder
     {
         // Create the specific demo customer or find existing
         $customer = Customer::where('email', 'demo@1000proxy.io')->first();
-
         if (!$customer) {
             $customer = Customer::create([
                 'is_active' => true,
@@ -36,6 +35,31 @@ class CustomerSeeder extends Seeder
             ]);
         }
 
-        $this->command->info('Created demo customer successfully!');
+        // Create a test user for payment system testing
+        $testUser = Customer::where('email', 'testuser@1000proxy.io')->first();
+        if (!$testUser) {
+            $testUser = Customer::create([
+                'is_active' => true,
+                'image' => 'https://via.placeholder.com/640x480.png/00dd77?text=test-user',
+                'name' => 'Test User',
+                'email' => 'testuser@1000proxy.io',
+                'password' => bcrypt('password123'),
+                'telegram_chat_id' => '761184039',
+                'refcode' => 'TEST2025',
+                'date' => '1995-01-01',
+                'phone' => '+1-800-2345-001',
+                'refered_by' => null,
+                'step' => 1,
+                'freetrial' => true,
+                'first_start' => now()->subDays(1),
+                'temp' => 20,
+                'is_agent' => false,
+                'discount_percent' => 0,
+                'agent_date' => now()->subDays(1),
+                'spam_info' => 'Test user account for payment system testing.',
+            ]);
+        }
+
+        $this->command->info('Created demo customer and test user successfully!');
     }
 }

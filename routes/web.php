@@ -45,6 +45,8 @@ use Laravel\Horizon\Horizon;
 use Barryvdh\DomPDF\Facade\Pdf;
 use App\Http\Controllers\DepositWebhookController;
 
+use App\Livewire\Components\PaymentProcessor;
+
 
 Route::get('/', HomePage::class);
 Route::get('/categories', CategoriesPage::class);
@@ -82,59 +84,52 @@ Route::middleware(['auth:customer'])->group(function () {
     Route::get('/account-settings', AccountSettings::class)->name('account.settings');
     Route::get('/telegram-link', \App\Livewire\Auth\TelegramLink::class)->name('telegram.link');
 
-    // Add transactions Livewire route
-    Route::get('/transactions', \App\Livewire\Transactions::class)->name('transactions.index');
+    // Payment routes for web UI (session/customer only)
+    Route::prefix('payment')->group(function () {
+        // Use Livewire component for payment processor UI
+        Route::get('/processor', PaymentProcessor::class)->name('payment.processor');
+        Route::get('/invoice/{order}', [PaymentController::class, 'showInvoice'])->name('payment.invoice');
+    });
 
-    // Nowpayments Routes
-    Route::post('/create-invoice/nowpayments/{order}', [PaymentController::class, 'createCryptoPayment'])->name('create.invoice.nowpay');
-    Route::get('/payment-status/{orderId}', [PaymentController::class, 'getPaymentStatusByOrder'])->name('payment.status');
-    Route::get('/payments', [PaymentController::class, 'listPayments'])->name('payments');
-    Route::get('/invoice/{order}', [PaymentController::class, 'showInvoice'])->name('invoice');
-    Route::get('/currencies', [PaymentController::class, 'getCurrencies'])->name('currencies');
-    Route::post('/create-invoice/stripe/{order}', [PaymentMethodController::class, 'createInvoice'])->name('create.invoice.stripe');
-    Route::get('/partial/{order}', [PaymentController::class, 'orderPartial'])->name('order.partial');
+    // Invoice routes
+    // Route::get('/invoice/{order}', [PaymentController::class, 'showInvoice'])->name('payment.invoice');
+    // Remove duplicate route name if present
+    // Route::post('/create-invoice/nowpayments/{order}', [PaymentController::class, 'createPayment'])->name('payment.create.invoice.nowpay');
+    // Route::post('/create-invoice/stripe/{order}', [PaymentController::class, 'createPayment'])->name('payment.create.invoice.stripe');
 
-    // Wallet Routes
+
+    // Wallet routes (use PaymentController for top-up)
     Route::prefix('wallet')->group(function () {
         Route::get('/', [WalletController::class, 'index'])->name('wallet.index');
         Route::get('/{currency}', [WalletController::class, 'show'])->name('wallet.show');
-        // Top-up Routes
-        Route::get('/{currency}/top-up', [WalletController::class, 'topUpForm'])->name('wallet.topup'); // view form
-        Route::post('/{currency}/top-up', [WalletController::class, 'topUp'])->name('wallet.topup.submit'); // submit form
-
-        // Insufficient balance redirect
+        Route::get('/{currency}/top-up', [WalletController::class, 'topUpForm'])->name('wallet.topup');
+        Route::post('/{currency}/top-up', [WalletController::class, 'topUp'])->name('wallet.topup.submit');
         Route::get('/{currency}/insufficient', [WalletController::class, 'insufficient'])->name('wallet.insufficient');
     });
-    
-    // Individual transaction routes (keep these separate)
-    Route::get('/transactions/{transaction}', [WalletTransactionController::class, 'show'])->name('wallet.transactions.show');
-    Route::get('/transactions/{transaction}/download', [WalletTransactionController::class, 'download'])->name('wallet.transactions.download');
 
-    // Customer dashboard: redirect to Filament customer panel
-    Route::get('/customer', function () {
-        return redirect()->route('filament.customer.pages.dashboard');
-    })->name('customer.dashboard');
-    
-    Route::get('/account/orders/{order}/invoice', function (Order $order) {
-        $invoice = $order->invoice;
-        if (!$invoice) {
-            abort(404, 'Invoice not found.');
-        }
-        $pdf = Pdf::loadView('pdf.invoice', [
-            'invoice' => $invoice,
-            'order' => $order,
-            'customer' => $order->customer,
-        ]);
-        return $pdf->download('Invoice-' . $invoice->id . '.pdf');
-    })->name('customer.order.invoice.download');
+    // Transaction routes
+    Route::get('/transactions', \App\Livewire\Transactions::class)->name('transactions.index');
+    Route::get('/transactions/{transaction}', [WalletTransactionController::class, 'show'])->name('wallet.transactions.show');
+
+    // Webhook routes (outside auth middleware)
+    Route::post('/webhook/stripe', [StripeWebhookController::class, '__invoke'])->name('webhook.stripe');
+    Route::post('/webhook/nowpayments', [NowPaymentsWebhookController::class, '__invoke'])->name('webhook.nowpay');
+    Route::post('/webhook/btc', [DepositWebhookController::class, 'handleBtc']);
+    Route::post('/webhook/xmr', [DepositWebhookController::class, 'handleXmr']);
+    Route::post('/webhook/sol', [DepositWebhookController::class, 'handleSol']);
+
+    // Payment Method routes
+    Route::get('/payment-methods', [PaymentMethodController::class, 'index'])->name('payment.methods.index');
+    Route::post('/payment-methods', [PaymentMethodController::class, 'store'])->name('payment.methods.store');
+    Route::put('/payment-methods/{method}', [PaymentMethodController::class, 'update'])->name('payment.methods.update');
+    Route::delete('/payment-methods/{method}', [PaymentMethodController::class, 'destroy'])->name('payment.methods.destroy');
 });
 
-// Webhook routes (outside auth middleware)
-Route::post('/webhook/stripe', [StripeWebhookController::class, 'handle'])->name('webhook.stripe');
-Route::post('/webhook/nowpayments', [NowPaymentsWebhookController::class, 'handle'])->name('webhook.nowpay');
-Route::post('/webhook/btc', [DepositWebhookController::class, 'handleBtc']);
-Route::post('/webhook/xmr', [DepositWebhookController::class, 'handleXmr']);
-Route::post('/webhook/sol', [DepositWebhookController::class, 'handleSol']);
+
+// Horizon routes
+Route::get('/horizon', function () {
+    return view('horizon');
+})->middleware(['auth:sanctum', 'can:viewHorizon']);
 
 // Horizon Jobs
 Horizon::routeMailNotificationsTo('you@example.com');

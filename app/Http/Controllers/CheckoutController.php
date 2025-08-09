@@ -60,13 +60,22 @@ class CheckoutController extends Controller
 
         try {
             // Get cart items from request data (sent by Livewire)
-            $cart_items = $validatedData['cart_items'];
-            $order_summary = $validatedData['order_summary'];
-            
-            if (count($cart_items) === 0) {
+            $cart_items = $validatedData['cart_items'] ?? [];
+            $order_summary = $validatedData['order_summary'] ?? [];
+
+            // Robust cart validation
+            if (empty($cart_items) || count($cart_items) === 0) {
                 return response()->json([
                     'success' => false,
-                    'error' => 'Your cart is empty.'
+                    'error' => 'Your cart is empty or could not be loaded. Please refresh and try again.'
+                ], 400);
+            }
+
+            // Payment method validation
+            if (!isset($validatedData['payment_method']) || empty($validatedData['payment_method'])) {
+                return response()->json([
+                    'success' => false,
+                    'error' => 'No payment method selected. Please choose a payment method.'
                 ], 400);
             }
 
@@ -79,35 +88,41 @@ class CheckoutController extends Controller
                 'status' => 'pending',
                 'payment_status' => 'pending',
                 'payment_method' => $validatedData['payment_method'],
-                'subtotal' => $order_summary['subtotal'],
-                'tax_amount' => $order_summary['tax'],
-                'shipping_amount' => $order_summary['shipping'],
-                'discount_amount' => $order_summary['discount'],
-                'total_amount' => $order_summary['total'],
+                'subtotal' => $order_summary['subtotal'] ?? 0,
+                'tax_amount' => $order_summary['tax'] ?? 0,
+                'shipping_amount' => $order_summary['shipping'] ?? 0,
+                'discount_amount' => $order_summary['discount'] ?? 0,
+                'total_amount' => $order_summary['total'] ?? 0,
                 'currency' => 'USD',
-                'billing_first_name' => $validatedData['first_name'],
-                'billing_last_name' => $validatedData['last_name'],
-                'billing_email' => $validatedData['email'],
-                'billing_phone' => $validatedData['phone'],
+                'billing_first_name' => $validatedData['first_name'] ?? '',
+                'billing_last_name' => $validatedData['last_name'] ?? '',
+                'billing_email' => $validatedData['email'] ?? '',
+                'billing_phone' => $validatedData['phone'] ?? '',
                 'billing_company' => $validatedData['company'] ?? null,
-                'billing_address' => $validatedData['address'],
-                'billing_city' => $validatedData['city'],
-                'billing_state' => $validatedData['state'],
-                'billing_postal_code' => $validatedData['postal_code'],
-                'billing_country' => $validatedData['country'],
+                'billing_address' => $validatedData['address'] ?? '',
+                'billing_city' => $validatedData['city'] ?? '',
+                'billing_state' => $validatedData['state'] ?? '',
+                'billing_postal_code' => $validatedData['postal_code'] ?? '',
+                'billing_country' => $validatedData['country'] ?? '',
                 'coupon_code' => $validatedData['coupon_code'] ?? null,
                 'notes' => 'Order placed via enhanced checkout system',
             ]);
 
             // Create order items
             foreach ($cart_items as $item) {
+                if (!isset($item['server_plan_id'])) {
+                    DB::rollBack();
+                    return response()->json([
+                        'success' => false,
+                        'error' => 'Cart item missing server plan. Please refresh and try again.'
+                    ], 400);
+                }
                 $plan = ServerPlan::findOrFail($item['server_plan_id']);
-                
                 $order->orderItems()->create([
                     'server_plan_id' => $item['server_plan_id'],
-                    'quantity' => $item['quantity'],
-                    'unit_price' => $item['unit_price'],
-                    'total_price' => $item['total_price'],
+                    'quantity' => $item['quantity'] ?? 1,
+                    'unit_price' => $item['unit_price'] ?? $plan->price,
+                    'total_price' => $item['total_price'] ?? ($plan->price * ($item['quantity'] ?? 1)),
                     'product_name' => $plan->name,
                     'product_description' => $plan->description,
                 ]);
@@ -134,10 +149,7 @@ class CheckoutController extends Controller
 
             if ($paymentResult['success']) {
                 DB::commit();
-
-                // Return appropriate response based on payment type
                 if (isset($paymentResult['redirect_url'])) {
-                    // External payment (crypto, stripe, mir) - return redirect URL
                     return response()->json([
                         'success' => true,
                         'redirect_url' => $paymentResult['redirect_url'],
@@ -145,7 +157,6 @@ class CheckoutController extends Controller
                         'payment_type' => 'external'
                     ]);
                 } else {
-                    // Internal payment (wallet) - return success
                     return response()->json([
                         'success' => true,
                         'order' => $order->toArray(),
@@ -159,14 +170,12 @@ class CheckoutController extends Controller
 
         } catch (Exception $e) {
             DB::rollBack();
-            
             Log::error('Enhanced checkout failed', [
                 'error' => $e->getMessage(),
                 'customer_id' => Auth::guard('customer')->id(),
                 'payment_method' => $validatedData['payment_method'] ?? null,
                 'ip' => request()->ip()
             ]);
-
             return response()->json([
                 'success' => false,
                 'error' => $e->getMessage()
@@ -182,23 +191,20 @@ class CheckoutController extends Controller
         $customer = Auth::guard('customer')->user();
         $wallet = $customer->wallet;
 
-        switch ($validatedData['payment_method']) {
-            case 'wallet':
-                return $this->processEnhancedWalletPayment($customer, $wallet, $order, $invoice);
-                
-            case 'stripe':
-                return $this->processEnhancedStripePayment($customer, $order, $invoice, $validatedData);
-                
-            case 'crypto':
-                return $this->processEnhancedCryptoPayment($customer, $order, $invoice, $validatedData);
-                
-            case 'mir':
-                return $this->processEnhancedMirPayment($customer, $order, $invoice, $validatedData);
-                
-            default:
-                throw new \Exception('Invalid payment method selected.');
-        }
+            switch ($validatedData['payment_method']) {
+                case 'wallet':
+                    return $this->processEnhancedWalletPayment($customer, $wallet, $order, $invoice);
+                case 'stripe':
+                    return $this->processEnhancedStripePayment($customer, $order, $invoice, $validatedData);
+                case 'crypto':
+                    return $this->processEnhancedCryptoPayment($customer, $order, $invoice, $validatedData);
+                case 'mir':
+                    return $this->processEnhancedMirPayment($customer, $order, $invoice, $validatedData);
+                default:
+                    throw new \Exception('Invalid payment method selected.');
+            }
     }
+    
 
     /**
      * Process enhanced wallet payment

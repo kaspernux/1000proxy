@@ -48,23 +48,25 @@ class NowPaymentsService implements PaymentGatewayInterface
 
             Log::error('NowPayments payment creation failed', [
                 'response' => $payment,
-                'order_id' => $paymentData['order_id']
+                'order_id' => $paymentData['order_id'],
+                'error' => $payment['message'] ?? null,
             ]);
 
             return [
                 'success' => false,
-                'error' => 'Failed to create payment'
+                'error' => $payment['message'] ?? 'Failed to create payment',
             ];
 
         } catch (Exception $e) {
             Log::error('NowPayments payment creation exception', [
                 'error' => $e->getMessage(),
-                'order_id' => $paymentData['order_id'] ?? null
+                'order_id' => $paymentData['order_id'] ?? null,
+                'error' => $e->getMessage(),
             ]);
 
             return [
                 'success' => false,
-                'error' => $e->getMessage()
+                'error' => $e->getMessage(),
             ];
         }
     }

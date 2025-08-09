@@ -157,27 +157,31 @@ class WalletManagement extends Page implements HasForms
                 ->color('primary')
                 ->form([
                     TextInput::make('amount')
-                        ->label('Amount')
+                        ->label('Top-up Amount')
                         ->numeric()
                         ->prefix('$')
                         ->required()
                         ->minValue(5)
-                        ->maxValue(1000),
+                        ->maxValue(10000)
+                        ->placeholder('50.00'),
 
                     Select::make('payment_method')
                         ->label('Payment Method')
-                        ->options([
-                            'bitcoin' => '₿ Bitcoin',
-                            'monero' => 'ⓧ Monero',
-                            'solana' => '◎ Solana',
-                            'ethereum' => 'Ξ Ethereum',
-                            'usdt' => '₮ USDT (TRC20)',
-                            'paypal' => 'PayPal',
-                            'stripe' => 'Credit Card',
-                        ])
-                        ->required(),
+                        ->options(self::getAvailableGatewaysForForm())
+                        ->required()
+                        ->default('stripe'),
                 ])
-                ->action('createTopUpOrder'),
+                ->action(function (array $data) {
+                    // Redirect to PaymentProcessor Livewire component with selected payment method and amount
+                    $query = http_build_query([
+                        'type' => 'wallet_topup',
+                        'amount' => $data['amount'],
+                        'currency' => 'USD', // or dynamic if needed
+                        'selectedGateway' => $data['payment_method'],
+                    ]);
+                    $url = route('payment.processor', [], false) . '?' . $query;
+                    return redirect()->to($url);
+                }),
 
             PageAction::make('request_withdrawal')
                 ->label('Withdraw Funds')
@@ -215,51 +219,7 @@ class WalletManagement extends Page implements HasForms
                 ->icon('heroicon-o-document-text')
                 ->color('info')
                 ->url(fn (): string => route('filament.customer.pages.wallet-management') . '?tab=transactions'),
-        ];    }
-
-    public function createTopUpOrder(array $data): void
-    {
-        try {
-            $customer = Auth::guard('customer')->user();
-
-            // Create wallet transaction record
-            $transactionId = DB::table('wallet_transactions')->insertGetId([
-                'customer_id' => $customer->id,
-                'wallet_id' => $this->walletId,
-                'type' => 'deposit',
-                'amount' => $data['amount'],
-                'status' => 'pending',
-                'payment_method' => $data['payment_method'],
-                'description' => "Wallet top-up via " . ucfirst($data['payment_method']),
-                'reference_id' => 'TXN-' . strtoupper(uniqid()),
-                'created_at' => now(),
-                'updated_at' => now(),
-            ]);
-
-            // Generate payment details based on method
-            $paymentDetails = $this->generatePaymentDetails($data['payment_method'], $data['amount'], $transactionId);
-
-            Notification::make()
-                ->title('Payment Created')
-                ->body("Your {$data['payment_method']} payment has been generated. Complete the payment to add funds.")
-                ->success()
-                ->actions([
-                    \Filament\Notifications\Actions\Action::make('view_payment')
-                        ->label('View Payment Details')
-                        ->url('#') // Would redirect to payment page
-                ])
-                ->send();
-
-            // Refresh balance
-            $this->mount();
-
-        } catch (\Exception $e) {
-            Notification::make()
-                ->title('Payment Creation Failed')
-                ->body('Unable to create payment. Please try again.')
-                ->danger()
-                ->send();
-        }
+        ];
     }
 
     public function requestWithdrawal(array $data): void
@@ -327,32 +287,23 @@ class WalletManagement extends Page implements HasForms
             ->send();
     }
 
-    private function generatePaymentDetails(string $method, float $amount, int $transactionId): array
+     /**
+     * Get available gateways for the top-up form, aligned with PaymentProcessor and PaymentController
+     */
+    public static function getAvailableGatewaysForForm(): array
     {
-        switch ($method) {
-            case 'bitcoin':
-                return [
-                    'address' => 'bc1qxy2kgdygjrsqtzq2n0yrf2493p83kkfjhx0wlh',
-                    'amount_btc' => $amount / 45000, // Rough BTC conversion
-                    'network' => 'Bitcoin',
-                ];
-            case 'monero':
-                return [
-                    'address' => '4AdUdXHHZ44E1hHKuQiGWvVANdwu3RnNUKt8TYhm4VUc3LJhdTXzV6dJQCqSVcpFJ6FkPJn4kJtJjbdqPJd4k1jBFHVrLKd',
-                    'amount_xmr' => $amount / 160, // Rough XMR conversion
-                    'network' => 'Monero',
-                ];
-            case 'solana':
-                return [
-                    'address' => 'DYw8jCTfKHYCJUQV8vDDsD2TqB5SJJQTXjQTXjQTXjQT',
-                    'amount_sol' => $amount / 20, // Rough SOL conversion
-                    'network' => 'Solana',
-                ];
-            default:
-                return [
-                    'redirect_url' => '/payment/' . $transactionId,
-                    'amount' => $amount,
-                ];
-        }
+        // Ideally fetch from PaymentController::getAvailableGateways()
+        // For now, hardcode or fetch from config
+        return [
+            'stripe' => 'Credit Card',
+            'paypal' => 'PayPal',
+            'mir' => 'Mir',
+            'nowpayments' => 'Cryptocurrency',
+            'bitcoin' => '₿ Bitcoin',
+            'monero' => 'ⓧ Monero',
+            'solana' => '◎ Solana',
+            'wallet' => 'Wallet Balance',
+        ];
     }
+
 }

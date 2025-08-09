@@ -18,6 +18,8 @@ return new class extends Migration
             $table->string('image')->nullable();
             $table->text('notes')->nullable();
             $table->string('type')->nullable(); // Type of payment method (e.g., Credit Card, PayPal, Bitcoin, Ethereum)
+            $table->string('gateway')->nullable(); // Payment gateway (e.g., Stripe, PayPal)
+            $table->string('reference')->nullable(); // Unique reference for the payment method
             $table->boolean('is_active')->default(true);
             $table->timestamps();
         });

@@ -18,6 +18,7 @@ return new class extends Migration {
             $table->string('payment_id')->nullable();
             $table->json('metadata')->nullable();
             $table->string('description')->nullable(); // ✅ safe
+            $table->string('gateway')->nullable(); 
             $table->string('qr_code_path')->nullable(); // Path to the QR code image
             $table->timestamps();
         });

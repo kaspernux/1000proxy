@@ -19,18 +19,8 @@ class PaymentGatewayService
     protected $gateways = [
         'stripe' => 'App\Services\PaymentGateways\StripePaymentService',
         'paypal' => 'App\Services\PaymentGateways\PayPalPaymentService',
-        'nowpayments' => 'App\Services\Payment\NowPaymentsService', // Keep existing
-        'coinbase' => 'App\Services\Payment\CoinbasePaymentService',
-        'binance' => 'App\Services\Payment\BinancePaymentService',
-        'razorpay' => 'App\Services\Payment\RazorpayPaymentService',
-        'mollie' => 'App\Services\Payment\MolliePaymentService',
-        'adyen' => 'App\Services\Payment\AdyenPaymentService',
-        'bitcoin' => 'App\Services\Payment\BitcoinPaymentService',
-        'ethereum' => 'App\Services\Payment\EthereumPaymentService',
-        'perfectmoney' => 'App\Services\Payment\PerfectMoneyService',
-        'webmoney' => 'App\Services\Payment\WebMoneyService',
-        'yandex' => 'App\Services\Payment\YandexMoneyService',
-        'qiwi' => 'App\Services\Payment\QiwiWalletService',
+        'mir' => 'App\Services\PaymentGateways\MirPaymentService',
+        'nowpayments' => 'App\Services\PaymentGateways\NowPaymentsService',
     ];
 
     private $fraudDetectionRules = [];
@@ -49,28 +39,28 @@ class PaymentGatewayService
      */
     public function getAvailablePaymentMethods(User $user, string $currency = 'USD'): array
     {
-        $availableMethods = [];
-
-        foreach ($this->gateways as $gateway => $serviceClass) {
-            if ($this->isGatewayAvailable($gateway, $user->location ?? null)) {
+        try {
+            $availableMethods = [];
+            foreach ($this->gateways as $gateway => $serviceClass) {
                 $service = app($serviceClass);
-
-                if ($service->isEnabled() && $service->supportsCurrency($currency)) {
+                if (method_exists($service, 'isEnabled') && $service->isEnabled() && method_exists($service, 'supportsCurrency') && $service->supportsCurrency($currency)) {
                     $availableMethods[] = [
                         'id' => $gateway,
-                        'name' => $service->getName(),
-                        'icon' => $service->getIcon(),
-                        'description' => $service->getDescription(),
-                        'supported_currencies' => $service->getSupportedCurrencies(),
-                        'fees' => $service->getFees(),
-                        'processing_time' => $service->getProcessingTime(),
-                        'is_instant' => $service->isInstant(),
+                        'name' => method_exists($service, 'getName') ? $service->getName() : $gateway,
+                        'icon' => method_exists($service, 'getIcon') ? $service->getIcon() : null,
+                        'description' => method_exists($service, 'getDescription') ? $service->getDescription() : '',
+                        'supported_currencies' => method_exists($service, 'getSupportedCurrencies') ? $service->getSupportedCurrencies() : [],
+                        'fees' => method_exists($service, 'getFees') ? $service->getFees() : [],
+                        'processing_time' => method_exists($service, 'getProcessingTime') ? $service->getProcessingTime() : null,
+                        'is_instant' => method_exists($service, 'isInstant') ? $service->isInstant() : false,
                     ];
                 }
             }
+            return ['success' => true, 'data' => $availableMethods, 'error' => null];
+        } catch (\Exception $e) {
+            Log::error('getAvailablePaymentMethods error', ['error' => $e->getMessage()]);
+            return ['success' => false, 'data' => [], 'error' => $e->getMessage()];
         }
-
-        return $availableMethods;
     }
 
     /**
@@ -79,30 +69,38 @@ class PaymentGatewayService
     public function processPayment(string $gateway, array $paymentData): array
     {
         if (!isset($this->gateways[$gateway])) {
-            throw new \InvalidArgumentException("Unsupported payment gateway: {$gateway}");
+            Log::error('processPayment: Unsupported payment gateway', ['gateway' => $gateway]);
+            return [
+                'success' => false,
+                'error' => "Unsupported payment gateway: {$gateway}",
+                'data' => []
+            ];
         }
-
-        $service = app($this->gateways[$gateway]);
-
         try {
-            $result = $service->processPayment($paymentData);
-
-            Log::info('Payment processed successfully', [
+            $service = app($this->gateways[$gateway]);
+            $result = $service->createPayment($paymentData);
+            Log::info('Payment processed', [
                 'gateway' => $gateway,
-                'payment_id' => $result['payment_id'] ?? null,
-                'amount' => $paymentData['amount'] ?? null,
-                'currency' => $paymentData['currency'] ?? null,
+                'result' => $result
             ]);
-
-            return $result;
+            return [
+                'success' => $result['success'] ?? false,
+                'data' => $result['data'] ?? [],
+                'error' => $result['error'] ?? null,
+                'payment_id' => $result['payment_id'] ?? null,
+                'client_secret' => $result['client_secret'] ?? null
+            ];
         } catch (\Exception $e) {
-            Log::error('Payment processing failed', [
+            Log::error('processPayment error', [
                 'gateway' => $gateway,
                 'error' => $e->getMessage(),
                 'payment_data' => $paymentData,
             ]);
-
-            throw $e;
+            return [
+                'success' => false,
+                'error' => $e->getMessage(),
+                'data' => []
+            ];
         }
     }
 
@@ -112,18 +110,40 @@ class PaymentGatewayService
     public function createPaymentIntent(string $gateway, Order $order): array
     {
         if (!isset($this->gateways[$gateway])) {
-            throw new \InvalidArgumentException("Unsupported payment gateway: {$gateway}");
+            return [
+                'success' => false,
+                'error' => "Unsupported payment gateway: {$gateway}",
+                'data' => []
+            ];
         }
-
         $service = app($this->gateways[$gateway]);
-
-        return $service->createPaymentIntent([
-            'amount' => $order->total_amount,
-            'currency' => $order->currency,
-            'order_id' => $order->id,
-            'customer_email' => $order->user->email,
-            'description' => "Order #{$order->id} - 1000proxy",
-        ]);
+        try {
+            $result = $service->createPaymentIntent([
+                'amount' => $order->total_amount,
+                'currency' => $order->currency,
+                'order_id' => $order->id,
+                'customer_email' => $order->user->email,
+                'description' => "Order #{$order->id} - 1000proxy",
+            ]);
+            return [
+                'success' => $result['success'] ?? false,
+                'data' => $result['data'] ?? [],
+                'error' => $result['error'] ?? null,
+                'payment_intent_id' => $result['payment_intent_id'] ?? null,
+                'client_secret' => $result['client_secret'] ?? null
+            ];
+        } catch (\Exception $e) {
+            Log::error('Create payment intent failed', [
+                'gateway' => $gateway,
+                'error' => $e->getMessage(),
+                'order_id' => $order->id,
+            ]);
+            return [
+                'success' => false,
+                'error' => $e->getMessage(),
+                'data' => []
+            ];
+        }
     }
 
     /**
@@ -132,26 +152,47 @@ class PaymentGatewayService
     public function verifyWebhook(string $gateway, array $payload, string $signature): bool
     {
         if (!isset($this->gateways[$gateway])) {
+            Log::error('verifyWebhook: Unsupported gateway', ['gateway' => $gateway]);
             return false;
         }
-
         $service = app($this->gateways[$gateway]);
-
-        return $service->verifyWebhook($payload, $signature);
+        try {
+            return $service->verifyWebhook($payload, $signature);
+        } catch (\Exception $e) {
+            Log::error('verifyWebhook exception', ['gateway' => $gateway, 'error' => $e->getMessage()]);
+            return false;
+        }
     }
 
     /**
      * Handle payment webhook
      */
-    public function handleWebhook(string $gateway, array $payload): void
+    public function handleWebhook(string $gateway, array $payload): array
     {
         if (!isset($this->gateways[$gateway])) {
-            throw new \InvalidArgumentException("Unsupported payment gateway: {$gateway}");
+            Log::error('handleWebhook: Unsupported gateway', ['gateway' => $gateway]);
+            return ['success' => false, 'error' => 'Gateway not supported', 'data' => []];
         }
-
-        $service = app($this->gateways[$gateway]);
-
-        $service->handleWebhook($payload);
+        try {
+            $service = app($this->gateways[$gateway]);
+            $result = $service->processWebhook($payload);
+            Log::info('Webhook processed', [
+                'gateway' => $gateway,
+                'result' => $result
+            ]);
+            if (!is_array($result) || !array_key_exists('success', $result)) {
+                Log::error('Webhook response not standardized', ['gateway' => $gateway, 'result' => $result]);
+                return ['success' => false, 'error' => 'Non-standard webhook response', 'data' => $result];
+            }
+            return $result;
+        } catch (\Exception $e) {
+            Log::error('handleWebhook error', [
+                'gateway' => $gateway,
+                'error' => $e->getMessage(),
+                'payload' => $payload,
+            ]);
+            return ['success' => false, 'error' => $e->getMessage(), 'data' => []];
+        }
     }
 
     /**

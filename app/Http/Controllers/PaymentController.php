@@ -15,74 +15,564 @@ use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\RateLimiter;
 use PrevailExcel\Nowpayments\Facades\Nowpayments;
 
+
 class PaymentController extends Controller
 {
-    public function __construct()
-    {
-        $this->middleware('auth');
-        $this->middleware('throttle:60,1')->only(['createCryptoPayment', 'createInvoice']);
-        $this->middleware('throttle:30,1')->only(['getEstimatePrice']);
-    }
+    protected $middleware = [
+        'auth',
+        ['throttle:60,1', ['only' => ['createCryptoPayment', 'createInvoice']]],
+        ['throttle:30,1', ['only' => ['getEstimatePrice']]],
+    ];
 
     /**
-     * Create a crypto payment
+     * Unified payment creation endpoint
      */
-    public function createCryptoPayment(CreatePaymentRequest $request): JsonResponse
+    public function createPayment(Request $request): JsonResponse
     {
+        // Validate request: amount, currency, gateway, order_id, etc.
+        $validated = $request->validate([
+            'amount' => 'required|numeric|min:0.01',
+            'currency' => 'required|string',
+            'gateway' => 'required|string',
+            'order_id' => 'nullable|integer',
+            'wallet_topup' => 'nullable|boolean',
+        ]);
+
         try {
-            $order = Order::findOrFail($request->validated()['order_id']);
-            
-            // Ensure user owns the order
-            if ($order->user_id !== Auth::id()) {
-                abort(403, 'Unauthorized access to order.');
+            $gateway = strtolower($validated['gateway']);
+            $amount = $validated['amount'];
+            $currency = strtolower($validated['currency']);
+            $orderId = $validated['order_id'] ?? null;
+            $walletTopup = $validated['wallet_topup'] ?? false;
+            $user = Auth::user();
+
+            // Wallet top-up logic
+            if ($walletTopup) {
+                $wallet = $user->wallet ?? $user->getWallet();
+                $transaction = $wallet->transactions()->create([
+                    'type' => 'deposit',
+                    'amount' => $amount,
+                    'status' => 'pending',
+                    'payment_method' => $gateway,
+                    'currency' => $currency,
+                    'reference' => 'WalletTopup_' . strtoupper(uniqid()),
+                ]);
+                // Call gateway for payment URL
+                switch ($gateway) {
+                    case 'stripe':
+                        $stripeService = app(\App\Services\PaymentGateways\StripePaymentService::class);
+                        $result = $stripeService->createPayment([
+                            'amount' => $amount,
+                            'currency' => $currency,
+                            'metadata' => [
+                                'wallet_topup' => true,
+                                'user_id' => $user->id,
+                                'transaction_id' => $transaction->id
+                            ]
+                        ]);
+                        break;
+                    case 'paypal':
+                        $paypalService = app(\App\Services\PaymentGateways\PayPalPaymentService::class);
+                        $result = $paypalService->createPayment([
+                            'amount' => $amount,
+                            'currency' => $currency,
+                            'metadata' => [
+                                'wallet_topup' => true,
+                                'user_id' => $user->id,
+                                'transaction_id' => $transaction->id
+                            ]
+                        ]);
+                        break;
+                    case 'mir':
+                        $mirService = app(\App\Services\PaymentGateways\MirPaymentService::class);
+                        $result = $mirService->createPayment([
+                            'amount' => $amount,
+                            'currency' => $currency,
+                            'metadata' => [
+                                'wallet_topup' => true,
+                                'user_id' => $user->id,
+                                'transaction_id' => $transaction->id
+                            ]
+                        ]);
+                        break;
+                    case 'nowpayments':
+                        $nowService = app(\App\Services\PaymentGateways\NowPaymentsService::class);
+                        $result = $nowService->createPayment([
+                            'amount' => $amount,
+                            'currency' => $currency,
+                            'metadata' => [
+                                'wallet_topup' => true,
+                                'user_id' => $user->id,
+                                'transaction_id' => $transaction->id
+                            ]
+                        ]);
+                        break;
+                    default:
+                        return response()->json(['success' => false, 'error' => 'Unsupported gateway for wallet top-up'], 400);
+                }
+                return response()->json(['success' => true, 'data' => $result, 'transaction_id' => $transaction->id]);
             }
 
-            // Check if order already has a payment
-            if ($order->payment_status === 'paid') {
-                return response()->json(['error' => 'Order already paid'], 422);
+            // Order payment logic
+            if ($orderId) {
+                $order = Order::findOrFail($orderId);
+                if ($order->user_id !== $user->id) {
+                    abort(403, 'Unauthorized access to order.');
+                }
+                if ($order->payment_status === 'paid') {
+                    return response()->json(['error' => 'Order already paid'], 422);
+                }
+                // Create invoice if not exists
+                if (!$order->invoice) {
+                    $invoice = Invoice::create([
+                        'order_id' => $order->id,
+                        'amount' => $amount,
+                        'currency' => $currency,
+                        'status' => 'pending',
+                    ]);
+                } else {
+                    $invoice = $order->invoice;
+                }
+                // Call gateway for payment URL
+                switch ($gateway) {
+                    case 'stripe':
+                        $stripeService = app(\App\Services\PaymentGateways\StripePaymentService::class);
+                        $result = $stripeService->createPayment([
+                            'amount' => $amount,
+                            'currency' => $currency,
+                            'metadata' => [
+                                'order_id' => $order->id,
+                                'invoice_id' => $invoice->id,
+                                'user_id' => $user->id
+                            ]
+                        ]);
+                        break;
+                    case 'paypal':
+                        $paypalService = app(\App\Services\PaymentGateways\PayPalPaymentService::class);
+                        $result = $paypalService->createPayment([
+                            'amount' => $amount,
+                            'currency' => $currency,
+                            'metadata' => [
+                                'order_id' => $order->id,
+                                'invoice_id' => $invoice->id,
+                                'user_id' => $user->id
+                            ]
+                        ]);
+                        break;
+                    case 'mir':
+                        $mirService = app(\App\Services\PaymentGateways\MirPaymentService::class);
+                        $result = $mirService->createPayment([
+                            'amount' => $amount,
+                            'currency' => $currency,
+                            'metadata' => [
+                                'order_id' => $order->id,
+                                'invoice_id' => $invoice->id,
+                                'user_id' => $user->id
+                            ]
+                        ]);
+                        break;
+                    case 'nowpayments':
+                        $nowService = app(\App\Services\PaymentGateways\NowPaymentsService::class);
+                        $result = $nowService->createPayment([
+                            'amount' => $amount,
+                            'currency' => $currency,
+                            'metadata' => [
+                                'order_id' => $order->id,
+                                'invoice_id' => $invoice->id,
+                                'user_id' => $user->id
+                            ]
+                        ]);
+                        break;
+                    case 'wallet':
+                        // Direct wallet payment
+                        $wallet = $user->wallet ?? $user->getWallet();
+                        if ($wallet->balance < $amount) {
+                            return response()->json(['success' => false, 'error' => 'Insufficient wallet balance'], 422);
+                        }
+                        $wallet->decrement('balance', $amount);
+                        $wallet->transactions()->create([
+                            'type' => 'debit',
+                            'amount' => -$amount,
+                            'status' => 'completed',
+                            'payment_method' => 'wallet',
+                            'currency' => $currency,
+                            'reference' => 'Order_' . $order->id,
+                        ]);
+                        $order->update(['payment_status' => 'paid']);
+                        $invoice->update(['status' => 'paid']);
+                        // Dispatch order processing job
+                        \App\Jobs\ProcessXuiOrder::dispatch($order);
+                        $result = ['success' => true, 'message' => 'Order paid with wallet'];
+                        break;
+                    default:
+                        return response()->json(['success' => false, 'error' => 'Unsupported gateway for order payment'], 400);
+                }
+                return response()->json(['success' => true, 'data' => $result, 'invoice_id' => $invoice->id]);
             }
 
-            $data = [
-                'price_amount' => $order->grand_amount,
-                'price_currency' => 'usd',
-                'order_id' => (string) $order->id,
-                'order_description' => 'Order #' . $order->id,
-                'pay_currency' => strtolower($request->validated()['currency']),
-                'ipn_callback_url' => config('app.url') . '/api/webhooks/nowpayments',
-                'success_url' => route('success', ['order' => $order->id]),
-                'cancel_url' => route('cancel', ['order' => $order->id]),
-                'partially_paid_url' => route('cancel', ['order' => $order->id]),
-                'is_fixed_rate' => true,
-                'is_fee_paid_by_user' => true,
-            ];
-
-            $paymentDetails = Nowpayments::createPayment($data);
-
-            // Log payment creation
-            Log::info('Crypto payment created', [
-                'order_id' => $order->id,
-                'user_id' => Auth::id(),
-                'amount' => $order->grand_amount,
-                'payment_id' => $paymentDetails['payment_id'] ?? null,
-            ]);
-
-            return response()->json([
-                'success' => true,
-                'data' => $paymentDetails
-            ]);
-
+            // Standalone gateway payment (no wallet/order)
+            switch ($gateway) {
+                case 'stripe':
+                    $stripeService = app(\App\Services\PaymentGateways\StripePaymentService::class);
+                    $result = $stripeService->createPayment([
+                        'amount' => $amount,
+                        'currency' => $currency,
+                        'metadata' => [
+                            'user_id' => $user->id
+                        ]
+                    ]);
+                    break;
+                case 'paypal':
+                    $paypalService = app(\App\Services\PaymentGateways\PayPalPaymentService::class);
+                    $result = $paypalService->createPayment([
+                        'amount' => $amount,
+                        'currency' => $currency,
+                        'metadata' => [
+                            'user_id' => $user->id
+                        ]
+                    ]);
+                    break;
+                case 'mir':
+                    $mirService = app(\App\Services\PaymentGateways\MirPaymentService::class);
+                    $result = $mirService->createPayment([
+                        'amount' => $amount,
+                        'currency' => $currency,
+                        'metadata' => [
+                            'user_id' => $user->id
+                        ]
+                    ]);
+                    break;
+                case 'nowpayments':
+                    $nowService = app(\App\Services\PaymentGateways\NowPaymentsService::class);
+                    $result = $nowService->createPayment([
+                        'amount' => $amount,
+                        'currency' => $currency,
+                        'metadata' => [
+                            'user_id' => $user->id
+                        ]
+                    ]);
+                    break;
+                case 'wallet':
+                    $wallet = $user->wallet ?? $user->getWallet();
+                    if ($wallet->balance < $amount) {
+                        return response()->json(['success' => false, 'error' => 'Insufficient wallet balance'], 422);
+                    }
+                    $wallet->decrement('balance', $amount);
+                    $wallet->transactions()->create([
+                        'type' => 'debit',
+                        'amount' => -$amount,
+                        'status' => 'completed',
+                        'payment_method' => 'wallet',
+                        'currency' => $currency,
+                        'reference' => 'Standalone_' . strtoupper(uniqid()),
+                    ]);
+                    $result = ['success' => true, 'message' => 'Standalone payment with wallet'];
+                    break;
+                default:
+                    return response()->json(['success' => false, 'error' => 'Unsupported payment gateway'], 400);
+            }
+            return response()->json(['success' => true, 'data' => $result]);
         } catch (\Exception $e) {
-            Log::error('Crypto payment creation failed', [
-                'order_id' => $request->validated()['order_id'] ?? null,
+            Log::error('Unified payment creation failed', [
                 'user_id' => Auth::id(),
                 'error' => $e->getMessage(),
             ]);
-
             return response()->json([
                 'success' => false,
                 'error' => 'Payment creation failed. Please try again.'
             ], 500);
         }
+    }
+    /**
+     * Unified wallet top-up endpoint
+     */
+    public function topUpWallet(Request $request): JsonResponse
+    {
+        // Validate request: amount, currency, gateway
+        $validated = $request->validate([
+            'amount' => 'required|numeric|min:0.01',
+            'currency' => 'required|string',
+            'gateway' => 'required|string',
+        ]);
+
+        try {
+            $user = Auth::user();
+            $wallet = $user->wallet ?? $user->getWallet();
+            $amount = $validated['amount'];
+            $currency = strtolower($validated['currency']);
+            $gateway = strtolower($validated['gateway']);
+            $transaction = $wallet->transactions()->create([
+                'type' => 'deposit',
+                'amount' => $amount,
+                'status' => 'pending',
+                'payment_method' => $gateway,
+                'currency' => $currency,
+                'reference' => 'WalletTopup_' . strtoupper(uniqid()),
+            ]);
+            // Call gateway for payment URL
+            switch ($gateway) {
+                case 'stripe':
+                    $stripeService = app(\App\Services\PaymentGateways\StripePaymentService::class);
+                    $result = $stripeService->createPayment([
+                        'amount' => $amount,
+                        'currency' => $currency,
+                        'metadata' => [
+                            'wallet_topup' => true,
+                            'user_id' => $user->id,
+                            'transaction_id' => $transaction->id
+                        ]
+                    ]);
+                    break;
+                case 'paypal':
+                    $paypalService = app(\App\Services\PaymentGateways\PayPalPaymentService::class);
+                    $result = $paypalService->createPayment([
+                        'amount' => $amount,
+                        'currency' => $currency,
+                        'metadata' => [
+                            'wallet_topup' => true,
+                            'user_id' => $user->id,
+                            'transaction_id' => $transaction->id
+                        ]
+                    ]);
+                    break;
+                case 'mir':
+                    $mirService = app(\App\Services\PaymentGateways\MirPaymentService::class);
+                    $result = $mirService->createPayment([
+                        'amount' => $amount,
+                        'currency' => $currency,
+                        'metadata' => [
+                            'wallet_topup' => true,
+                            'user_id' => $user->id,
+                            'transaction_id' => $transaction->id
+                        ]
+                    ]);
+                    break;
+                case 'nowpayments':
+                    $nowService = app(\App\Services\PaymentGateways\NowPaymentsService::class);
+                    $result = $nowService->createPayment([
+                        'amount' => $amount,
+                        'currency' => $currency,
+                        'metadata' => [
+                            'wallet_topup' => true,
+                            'user_id' => $user->id,
+                            'transaction_id' => $transaction->id
+                        ]
+                    ]);
+                    break;
+                default:
+                    return response()->json(['success' => false, 'error' => 'Unsupported gateway for wallet top-up'], 400);
+            }
+            return response()->json(['success' => true, 'data' => $result, 'transaction_id' => $transaction->id]);
+        } catch (\Exception $e) {
+            Log::error('Wallet top-up failed', [
+                'user_id' => Auth::id(),
+                'error' => $e->getMessage(),
+            ]);
+            return response()->json([
+                'success' => false,
+                'error' => 'Wallet top-up failed. Please try again.'
+            ], 500);
+        }
+    }
+    /**
+     * Unified webhook handler for all gateways
+     */
+    public function handleWebhook(Request $request, $gateway): JsonResponse
+    {
+        try {
+            $payload = $request->all();
+            $gateway = strtolower($gateway);
+            // Stripe webhook
+            if ($gateway === 'stripe') {
+                $eventType = $payload['type'] ?? null;
+                if ($eventType === 'checkout.session.completed') {
+                    $session = $payload['data']['object'] ?? [];
+                    $orderId = $session['metadata']['order_id'] ?? null;
+                    $invoiceId = $session['metadata']['invoice_id'] ?? null;
+                    $transactionId = $session['metadata']['transaction_id'] ?? null;
+                    if ($orderId) {
+                        $order = Order::find($orderId);
+                        if ($order) {
+                            $order->update(['payment_status' => 'paid']);
+                            $order->invoice?->update(['status' => 'paid']);
+                            \App\Jobs\ProcessXuiOrder::dispatch($order);
+                        }
+                    }
+                    if ($transactionId) {
+                        $transaction = \App\Models\WalletTransaction::find($transactionId);
+                        if ($transaction) {
+                            $transaction->update(['status' => 'completed']);
+                            $wallet = $transaction->wallet;
+                            $wallet->increment('balance', $transaction->amount);
+                        }
+                    }
+                }
+            }
+            // NowPayments webhook
+            elseif ($gateway === 'nowpayments') {
+                $orderId = $payload['order_id'] ?? null;
+                $paymentStatus = $payload['payment_status'] ?? null;
+                $transactionId = $payload['transaction_id'] ?? null;
+                if ($orderId) {
+                    $order = Order::find($orderId);
+                    if ($order) {
+                        switch ($paymentStatus) {
+                            case 'finished':
+                            case 'confirmed':
+                                $order->update(['payment_status' => 'paid']);
+                                $order->invoice?->update(['status' => 'paid']);
+                                \App\Jobs\ProcessXuiOrder::dispatch($order);
+                                break;
+                            case 'failed':
+                            case 'expired':
+                                $order->update(['payment_status' => 'failed']);
+                                $order->invoice?->update(['status' => 'failed']);
+                                break;
+                            case 'waiting':
+                            case 'confirming':
+                                $order->update(['payment_status' => 'pending']);
+                                $order->invoice?->update(['status' => 'pending']);
+                                break;
+                        }
+                    }
+                }
+                if ($transactionId) {
+                    $transaction = \App\Models\WalletTransaction::find($transactionId);
+                    if ($transaction && in_array($paymentStatus, ['finished', 'confirmed'])) {
+                        $transaction->update(['status' => 'completed']);
+                        $wallet = $transaction->wallet;
+                        $wallet->increment('balance', $transaction->amount);
+                    }
+                }
+            }
+            // PayPal webhook (stub)
+            elseif ($gateway === 'paypal') {
+                // Implement PayPal webhook logic as needed
+            }
+            // Mir webhook (stub)
+            elseif ($gateway === 'mir') {
+                // Implement Mir webhook logic as needed
+            }
+            return response()->json(['success' => true, 'message' => 'Webhook processed.']);
+        } catch (\Exception $e) {
+            Log::error('Webhook processing failed', [
+                'gateway' => $gateway,
+                'error' => $e->getMessage(),
+            ]);
+            return response()->json(['success' => false, 'error' => 'Webhook processing failed.'], 500);
+        }
+    }
+    /**
+     * Unified refund endpoint
+     */
+    public function refundPayment(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'transaction_id' => 'required|string',
+            'amount' => 'nullable|numeric',
+        ]);
+        try {
+            $transactionId = $validated['transaction_id'];
+            $amount = $validated['amount'] ?? null;
+            $transaction = \App\Models\WalletTransaction::find($transactionId);
+            if (!$transaction) {
+                return response()->json(['success' => false, 'error' => 'Transaction not found'], 404);
+            }
+            $gateway = $transaction->payment_method;
+            switch ($gateway) {
+                case 'stripe':
+                    $stripeService = app(\App\Services\PaymentGateways\StripePaymentService::class);
+                    $result = $stripeService->refundPayment($transaction->reference, $amount);
+                    break;
+                case 'paypal':
+                    $paypalService = app(\App\Services\PaymentGateways\PayPalPaymentService::class);
+                    $result = $paypalService->refundPayment($transaction->reference, $amount);
+                    break;
+                case 'mir':
+                    $mirService = app(\App\Services\PaymentGateways\MirPaymentService::class);
+                    $result = $mirService->refundPayment($transaction->reference, $amount);
+                    break;
+                case 'nowpayments':
+                    $nowService = app(\App\Services\PaymentGateways\NowPaymentsService::class);
+                    $result = $nowService->refundPayment($transaction->reference, $amount);
+                    break;
+                case 'wallet':
+                    $wallet = $transaction->wallet;
+                    $wallet->increment('balance', abs($transaction->amount));
+                    $transaction->update(['status' => 'refunded']);
+                    $result = ['success' => true, 'message' => 'Wallet refund processed'];
+                    break;
+                default:
+                    return response()->json(['success' => false, 'error' => 'Unsupported gateway for refund'], 400);
+            }
+            return response()->json(['success' => true, 'data' => $result]);
+        } catch (\Exception $e) {
+            Log::error('Refund failed', [
+                'transaction_id' => $validated['transaction_id'],
+                'error' => $e->getMessage(),
+            ]);
+            return response()->json(['success' => false, 'error' => 'Refund failed.'], 500);
+        }
+    }
+    /**
+     * Get all available gateways and payment methods
+     */
+    public function getAvailableGateways(): JsonResponse
+    {
+        $gateways = [
+            'stripe' => [
+                'enabled' => !empty(config('services.stripe.secret')),
+                'name' => 'Stripe',
+                'icon' => '<svg class="inline w-6 h-6 text-blue-500"><!-- Stripe SVG --></svg>',
+                'description' => 'Pay securely with your credit or debit card',
+                'fee' => 0.0,
+            ],
+            'paypal' => [
+                'enabled' => !empty(config('services.paypal.client_id')),
+                'name' => 'PayPal',
+                'icon' => '<svg class="inline w-6 h-6 text-blue-700"><!-- PayPal SVG --></svg>',
+                'description' => 'Pay easily using your PayPal account',
+                'fee' => 0.0,
+            ],
+            'mir' => [
+                'enabled' => !empty(config('services.mir.api_key')),
+                'name' => 'Mir',
+                'icon' => '<svg class="inline w-6 h-6 text-green-600"><!-- Mir SVG --></svg>',
+                'description' => 'Pay with Mir card (Russia only)',
+                'fee' => 0.0,
+            ],
+            'nowpayments' => [
+                'enabled' => !empty(config('services.nowpayments.key')),
+                'name' => 'Cryptocurrency',
+                'icon' => '<svg class="inline w-6 h-6 text-yellow-500"><!-- Crypto SVG --></svg>',
+                'description' => 'Pay with Bitcoin, Ethereum, and other cryptocurrencies',
+                'fee' => 0.0,
+            ],
+            'wallet' => [
+                'enabled' => true,
+                'name' => 'Wallet Balance',
+                'icon' => '<svg class="inline w-6 h-6 text-gray-500"><!-- Wallet SVG --></svg>',
+                'description' => 'Pay directly from your wallet balance',
+                'fee' => 0.0,
+            ],
+        ];
+
+        // Always enable nowpayments if all others are disabled
+        $allDisabled = true;
+        foreach ($gateways as $key => $gateway) {
+            if ($key !== 'nowpayments' && $key !== 'wallet' && $gateway['enabled']) {
+                $allDisabled = false;
+                break;
+            }
+        }
+        if ($allDisabled) {
+            $gateways['nowpayments']['enabled'] = true;
+        }
+
+        // Log the gateway response for debugging
+        \Log::info('Payment gateways response', ['gateways' => $gateways]);
+
+        return response()->json(['success' => true, 'data' => $gateways]);
     }
 
     /**
@@ -112,10 +602,10 @@ class PaymentController extends Controller
                 'order_id' => (string) $order->id,
                 'order_description' => 'Payment for Order #' . $order->id,
                 'pay_currency' => strtolower($request->validated()['currency']),
-                'ipn_callback_url' => config('app.url') . '/api/webhooks/nowpayments',
-                'success_url' => route('success', ['order' => $order->id]),
-                'cancel_url' => route('cancel', ['order' => $order->id]),
-                'partially_paid_url' => route('cancel', ['order' => $order->id]),
+                'ipn_callback_url' => config('app.url') . '/api/payment/webhooks/nowpayments',
+                'success_url' => url('/api/payment/success?order=' . $order->id),
+                'cancel_url' => url('/api/payment/cancel?order=' . $order->id),
+                'partially_paid_url' => url('/api/payment/cancel?order=' . $order->id),
                 'is_fixed_rate' => true,
                 'is_fee_paid_by_user' => true,
             ];
@@ -395,7 +885,7 @@ class PaymentController extends Controller
                     'ip' => $request->ip(),
                     'payload' => $payload,
                 ]);
-                return response()->json(['error' => 'Invalid signature'], 401);
+                return response()->json(['success' => false, 'error' => 'Invalid signature'], 401);
             }
 
             $data = $request->json()->all();
@@ -403,13 +893,13 @@ class PaymentController extends Controller
             // Validate required fields
             if (!isset($data['order_id']) || !isset($data['payment_status'])) {
                 Log::warning('Invalid webhook payload', ['data' => $data]);
-                return response()->json(['error' => 'Invalid payload'], 400);
+                return response()->json(['success' => false, 'error' => 'Invalid payload'], 400);
             }
 
             $order = Order::find($data['order_id']);
             if (!$order) {
                 Log::warning('Webhook for non-existent order', ['order_id' => $data['order_id']]);
-                return response()->json(['error' => 'Order not found'], 404);
+                return response()->json(['success' => false, 'error' => 'Order not found'], 404);
             }
 
             // Update order status based on payment status
@@ -447,7 +937,7 @@ class PaymentController extends Controller
                     break;
             }
 
-            return response()->json(['status' => 'success']);
+            return response()->json(['success' => true, 'status' => 'success']);
 
         } catch (\Exception $e) {
             Log::error('Webhook processing failed', [
@@ -455,7 +945,7 @@ class PaymentController extends Controller
                 'payload' => $request->getContent(),
             ]);
 
-            return response()->json(['error' => 'Internal server error'], 500);
+            return response()->json(['success' => false, 'error' => 'Internal server error'], 500);
         }
     }
 
@@ -516,6 +1006,32 @@ class PaymentController extends Controller
                 'error' => 'Unable to retrieve invoice'
             ], 500);
         }
+    }
+
+    /**
+     * Show the payment processor UI
+     */
+    public function showPaymentProcessor(Request $request)
+    {
+        // Pass type, amount, currency, and order_id to the Livewire component/view
+        $type = $request->input('type', 'fiat');
+        $amount = $request->input('amount', 0);
+        $currency = $request->input('currency', 'USD');
+        $orderId = $request->input('order_id');
+
+        // Optionally fetch order if order_id is present
+        $order = null;
+        if ($orderId) {
+            $order = \App\Models\Order::find($orderId);
+        }
+
+        // Render the Livewire payment processor component
+        return view('livewire.components.payment-processor', [
+            'order' => $order,
+            'type' => $type,
+            'amount' => $amount,
+            'currency' => $currency,
+        ]);
     }
 
     /**

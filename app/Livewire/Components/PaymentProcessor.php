@@ -5,11 +5,10 @@ namespace App\Livewire\Components;
 use Livewire\Component;
 use App\Models\Customer;
 use App\Models\Order;
-use App\Services\PaymentGateways\StripePaymentService;
-use App\Services\PaymentGateways\PayPalPaymentService;
 use Livewire\Attributes\On;
 use Livewire\Attributes\Reactive;
 use Jantinnerezo\LivewireAlert\LivewireAlert;
+use Illuminate\Support\Facades\Http;
 
 class PaymentProcessor extends Component
 {
@@ -18,7 +17,6 @@ class PaymentProcessor extends Component
     #[Reactive]
     public $order;
 
-    #[Reactive]
     public $customer;
 
     public $selectedGateway = 'wallet';
@@ -59,11 +57,33 @@ class PaymentProcessor extends Component
         'cardholderName' => 'required_if:selectedGateway,stripe|string|min:2|max:100',
     ];
 
-    public function mount(Order $order = null, Customer $customer = null)
+    // Accept query params via mount for Livewire route
+    public $type = 'fiat';
+    public $amount = 0;
+    public $currency = 'USD';
+    public $order_id = null;
+
+    public function mount($type = 'fiat', $amount = 0, $currency = 'USD', $order_id = null)
     {
-        $this->order = $order;
-        $this->customer = $customer ?? \Illuminate\Support\Facades\Auth::guard('customer')->user();
-        $this->paymentAmount = $order ? $order->total_amount : 0;
+        // Retrieve query params from request if available
+        $request = request();
+        $this->type = $request->input('type', $type);
+        $this->amount = $request->input('amount', $amount);
+        $this->currency = $request->input('currency', $currency);
+        $this->order_id = $request->input('order_id', $order_id);
+        $this->selectedGateway = $request->input('selectedGateway', $this->selectedGateway);
+
+        // Optionally fetch order if order_id is present
+        if ($this->order_id) {
+            $this->order = \App\Models\Order::find($this->order_id);
+            $this->paymentAmount = $this->order ? $this->order->total_amount : $this->amount;
+        } else {
+            $this->paymentAmount = $this->amount;
+        }
+
+        if (!$this->customer) {
+            $this->customer = \Illuminate\Support\Facades\Auth::guard('customer')->user();
+        }
         $this->loadWalletBalance();
     }
 
@@ -75,6 +95,9 @@ class PaymentProcessor extends Component
             'paymentProgress' => $this->getPaymentProgress()
         ]);
     }
+    /**
+     * Fetch available gateways from backend and handle errors gracefully
+     */
 
     public function selectGateway($gateway)
     {
@@ -98,123 +121,150 @@ class PaymentProcessor extends Component
     public function processPayment()
     {
         $this->validate();
-
         $this->processingPayment = true;
         $this->paymentStep = 'processing';
-
         try {
-            switch ($this->selectedGateway) {
-                case 'stripe':
-                    $result = $this->processStripePayment();
-                    break;
-                case 'paypal':
-                    $result = $this->processPayPalPayment();
-                    break;
-                case 'nowpayments':
-                    $result = $this->processNowPayment();
-                    break;
-                case 'wallet':
-                    $result = $this->processWalletPayment();
-                    break;
-                default:
-                    throw new \Exception('Invalid payment gateway selected');
-            }
-
-            if ($result['success']) {
-                $this->handlePaymentCompleted($result);
+            // For nowpayments, use selectedCrypto for crypto, else use selected currency for fiat
+            $currency = $this->selectedGateway === 'nowpayments' ? $this->selectedCrypto : $this->currency;
+            $payload = [
+                'amount' => $this->paymentAmount,
+                'currency' => $currency,
+                'gateway' => $this->selectedGateway,
+                'order_id' => $this->order->id ?? null,
+                'wallet_topup' => $this->isWalletTopup ?? false,
+                'metadata' => [
+                    'user_id' => $this->customer ? $this->customer->id : null,
+                    'email' => $this->customer ? $this->customer->email : null
+                ]
+            ];
+            $response = Http::post(url('/api/payment/create'), $payload);
+            $result = $response->json();
+            if (is_array($result) && isset($result['success']) && $result['success']) {
+                $this->handlePaymentCompleted($result['data'] ?? []);
             } else {
-                $this->handlePaymentFailed($result);
+                $this->handlePaymentFailed(['error' => $result['error'] ?? 'Unknown error']);
             }
         } catch (\Exception $e) {
             $this->handlePaymentFailed(['error' => $e->getMessage()]);
         }
     }
 
-    private function processStripePayment()
+    public function topUpWallet()
     {
-        $stripeService = app(StripePaymentService::class);
-
-        return $stripeService->createPayment([
-            'amount' => $this->paymentAmount * 100, // Convert to cents
-            'currency' => 'usd',
-            'payment_method' => [
-                'card' => [
-                    'number' => $this->cardNumber,
-                    'exp_month' => $this->expiryMonth,
-                    'exp_year' => $this->expiryYear,
-                    'cvc' => $this->cvc
-                ],
-                'billing_details' => [
-                    'name' => $this->cardholderName,
-                    'email' => $this->user->email
-                ]
-            ],
-            'confirm' => true,
-            'metadata' => [
-                'order_id' => $this->order->id ?? '',
-                'user_id' => $this->user->id
-            ]
-        ]);
-    }
-
-    private function processPayPalPayment()
-    {
-        $paypalService = app(PayPalPaymentService::class);
-
-        return $paypalService->createPayment([
-            'amount' => $this->paymentAmount,
-            'currency' => 'USD',
-            'description' => $this->order ? "Order #{$this->order->id}" : 'Wallet Top-up',
-            'return_url' => route('payment.success'),
-            'cancel_url' => route('payment.cancel'),
-            'metadata' => [
-                'order_id' => $this->order->id ?? '',
-                'user_id' => $this->user->id
-            ]
-        ]);
-    }
-
-    private function processNowPayment()
-    {
-        // For now, simulate crypto payment creation
-        // This would integrate with NowPayments API when available
-        return [
-            'success' => true,
-            'payment_url' => 'https://nowpayments.io/payment/demo',
-            'payment_id' => 'np_' . uniqid(),
-            'crypto_amount' => $this->cryptoAmount,
-            'crypto_currency' => $this->selectedCrypto,
-            'payment_address' => $this->generateDemoCryptoAddress()
-        ];
-    }
-
-    private function processWalletPayment()
-    {
-        if (!$this->walletSufficient) {
-            return [
-                'success' => false,
-                'error' => 'Insufficient wallet balance'
-            ];
-        }
-
+        $this->validate();
+        $this->is_submitting = true;
         try {
-            // Simple wallet debit - in production this would use a proper wallet service
-            $newBalance = $this->user->balance - $this->paymentAmount;
-            $this->user->update(['balance' => $newBalance]);
-
-            // Create transaction record (assuming a transactions table exists)
-            $transactionId = 'TxID_' . uniqid();
-
-            return [
-                'success' => true,
-                'transaction_id' => $transactionId,
-                'payment_method' => 'wallet',
-                'amount' => $this->paymentAmount
+            $payload = [
+                'amount' => $this->amount,
+                'currency' => $this->currency,
+                'gateway' => $this->selectedMethod,
             ];
+            $response = Http::post(url('/api/payment/topup'), $payload);
+            $result = $response->json();
+            if (is_array($result) && isset($result['success']) && $result['success']) {
+                $this->alert('success', 'Wallet top-up initiated!');
+                $this->refreshWallet();
+            } else {
+                $this->alert('error', $result['error'] ?? 'Top-up failed');
+            }
         } catch (\Exception $e) {
+            $this->alert('error', $e->getMessage());
+        }
+        $this->is_submitting = false;
+    }
+
+    public function refundPayment($transactionId, $amount = null)
+    {
+        try {
+            $payload = [
+                'transaction_id' => $transactionId,
+                'amount' => $amount
+            ];
+            $response = Http::post(url('/api/payment/refund'), $payload);
+            $result = $response->json();
+            if (is_array($result) && isset($result['success']) && $result['success']) {
+                $this->alert('success', 'Refund processed!');
+                $this->refreshWallet();
+            } else {
+                $this->alert('error', $result['error'] ?? 'Refund failed');
+            }
+        } catch (\Exception $e) {
+            $this->alert('error', $e->getMessage());
+        }
+    }
+
+    public function getPaymentStatus($orderId)
+    {
+        try {
+            $response = Http::get(url('/api/payment/status/' . $orderId));
+            $result = $response->json();
+            if (is_array($result) && isset($result['success']) && $result['success']) {
+                return $result['data'] ?? null;
+            } else {
+                $this->alert('error', $result['error'] ?? 'Unable to fetch payment status');
+                return null;
+            }
+        } catch (\Exception $e) {
+            $this->alert('error', $e->getMessage());
+            return null;
+        }
+    }
+
+    // Merge duplicate getAvailableGateways into one method
+    public function getAvailableGateways()
+    {
+        static $lastError = null;
+        try {
+            $response = \Illuminate\Support\Facades\Http::get(url('/api/payment/gateways'));
+            $result = $response->json();
+            if (is_array($result)) {
+                if ((isset($result['success']) && $result['success'] && isset($result['data'])) || (!isset($result['success']) && !empty($result))) {
+                    $gateways = $result['data'] ?? $result;
+                    return !empty($gateways) ? $gateways : [
+                        'stripe' => ['enabled' => true, 'name' => 'Stripe', 'fee' => 0.0],
+                        'paypal' => ['enabled' => true, 'name' => 'PayPal', 'fee' => 0.0],
+                        'mir' => ['enabled' => true, 'name' => 'Mir', 'fee' => 0.0],
+                        'nowpayments' => ['enabled' => true, 'name' => 'Cryptocurrency', 'fee' => 0.0],
+                        'wallet' => ['enabled' => true, 'name' => 'Wallet Balance', 'fee' => 0.0],
+                    ];
+                } else {
+                    // Only alert once per session if error repeats
+                    if ($lastError !== ($result['error'] ?? 'Unable to fetch gateways')) {
+                        $this->alert('error', $result['error'] ?? 'Unable to fetch gateways');
+                        $lastError = $result['error'] ?? 'Unable to fetch gateways';
+                    }
+                    return [
+                        'stripe' => ['enabled' => true, 'name' => 'Stripe', 'fee' => 0.0],
+                        'paypal' => ['enabled' => true, 'name' => 'PayPal', 'fee' => 0.0],
+                        'mir' => ['enabled' => true, 'name' => 'Mir', 'fee' => 0.0],
+                        'nowpayments' => ['enabled' => true, 'name' => 'Cryptocurrency', 'fee' => 0.0],
+                        'wallet' => ['enabled' => true, 'name' => 'Wallet Balance', 'fee' => 0.0],
+                    ];
+                }
+            } else {
+                if ($lastError !== 'Unable to fetch gateways') {
+                    $this->alert('error', 'Unable to fetch gateways');
+                    $lastError = 'Unable to fetch gateways';
+                }
+                return [
+                    'stripe' => ['enabled' => true, 'name' => 'Stripe', 'fee' => 0.0],
+                    'paypal' => ['enabled' => true, 'name' => 'PayPal', 'fee' => 0.0],
+                    'mir' => ['enabled' => true, 'name' => 'Mir', 'fee' => 0.0],
+                    'nowpayments' => ['enabled' => true, 'name' => 'Cryptocurrency', 'fee' => 0.0],
+                    'wallet' => ['enabled' => true, 'name' => 'Wallet Balance', 'fee' => 0.0],
+                ];
+            }
+        } catch (\Exception $e) {
+            if ($lastError !== $e->getMessage()) {
+                $this->alert('error', $e->getMessage());
+                $lastError = $e->getMessage();
+            }
             return [
-                'success' => false,
-                'error' => $e->getMessage()
+                'stripe' => ['enabled' => true, 'name' => 'Stripe', 'fee' => 0.0],
+                'paypal' => ['enabled' => true, 'name' => 'PayPal', 'fee' => 0.0],
+                'mir' => ['enabled' => true, 'name' => 'Mir', 'fee' => 0.0],
+                'nowpayments' => ['enabled' => true, 'name' => 'Cryptocurrency', 'fee' => 0.0],
+                'wallet' => ['enabled' => true, 'name' => 'Wallet Balance', 'fee' => 0.0],
             ];
         }
     }
@@ -306,8 +356,8 @@ class PaymentProcessor extends Component
 
     private function loadWalletBalance()
     {
-        if ($this->user) {
-            $this->walletBalance = $this->user->balance ?? 0;
+        if ($this->customer) {
+            $this->walletBalance = $this->customer->balance ?? 0;
             $this->walletSufficient = $this->walletBalance >= $this->paymentAmount;
         }
     }
@@ -328,40 +378,6 @@ class PaymentProcessor extends Component
 
         // Reset PayPal data
         $this->paypalOrderId = '';
-    }
-
-    private function getAvailableGateways()
-    {
-        return [
-            'wallet' => [
-                'name' => 'Wallet Balance',
-                'icon' => '💰',
-                'description' => 'Pay with your account balance',
-                'enabled' => true,
-                'fee' => 0
-            ],
-            'stripe' => [
-                'name' => 'Credit/Debit Card',
-                'icon' => '💳',
-                'description' => 'Visa, Mastercard, American Express',
-                'enabled' => config('services.stripe.key') !== null,
-                'fee' => 2.9
-            ],
-            'paypal' => [
-                'name' => 'PayPal',
-                'icon' => '🏛️',
-                'description' => 'Pay with PayPal account or card',
-                'enabled' => config('services.paypal.client_id') !== null,
-                'fee' => 3.4
-            ],
-            'nowpayments' => [
-                'name' => 'Cryptocurrency',
-                'icon' => '₿',
-                'description' => 'Bitcoin, Ethereum, and more',
-                'enabled' => config('services.nowpayments.api_key') !== null,
-                'fee' => 1.0
-            ]
-        ];
     }
 
     private function getCryptoCurrencies()

@@ -93,8 +93,8 @@ class CheckoutPage extends Component
 
     public function mount()
     {
-        // Check authentication
-        if (!Auth::guard('customer')->check()) {
+        // Check authentication using customer guard
+        if (!\Illuminate\Support\Facades\Auth::guard('customer')->check()) {
             return redirect('/login');
         }
 
@@ -118,8 +118,8 @@ class CheckoutPage extends Component
 
     private function prefillUserData()
     {
-        if (Auth::guard('customer')->check()) {
-            $customer = Auth::guard('customer')->user();
+        if (\Illuminate\Support\Facades\Auth::guard('customer')->check()) {
+            $customer = \Illuminate\Support\Facades\Auth::guard('customer')->user();
             $this->first_name = $customer->first_name ?? '';
             $this->last_name = $customer->last_name ?? '';
             $this->email = $customer->email ?? '';
@@ -254,9 +254,8 @@ class CheckoutPage extends Component
 
             // Add wallet balance validation if wallet is selected
             if ($this->payment_method === 'wallet') {
-                $customer = Auth::guard('customer')->user();
+                $customer = \Illuminate\Support\Facades\Auth::guard('customer')->user();
                 $walletBalance = $customer->wallet ? $customer->wallet->balance : 0;
-                
                 if ($walletBalance < ($this->order_summary['total'] ?? 0)) {
                     throw ValidationException::withMessages([
                         'payment_method' => ['Insufficient wallet balance. Please top up your wallet or choose a different payment method.']
@@ -522,15 +521,15 @@ class CheckoutPage extends Component
             'order_summary' => $this->order_summary,
         ];
 
-        // Use HTTP client to submit to CheckoutController
-        $response = Http::asForm()->post(route('checkout.store'), $formData);
+        // Use HTTP client to submit to PaymentController API
+        $response = \Http::withToken(Auth::user()->api_token ?? session('api_token'))
+            ->post(url('/api/payment/create-payment'), $formData);
 
         if ($response->successful()) {
             $responseData = $response->json();
-            
             if (isset($responseData['redirect_url'])) {
                 // External payment gateway - redirect
-                return redirect($responseData['redirect_url']);
+                return redirect()->away($responseData['redirect_url']);
             } elseif (isset($responseData['success']) && $responseData['success']) {
                 // Internal payment (wallet) - show success
                 $this->handlePaymentSuccess($responseData);
@@ -627,8 +626,8 @@ class CheckoutPage extends Component
     #[On('paymentFailed')]
     public function handlePaymentFailed($error)
     {
-        $this->error_message = $error;
-        $this->alert('error', 'Payment failed: ' . $error);
+    $this->error_message = is_array($error) ? ($error['error'] ?? 'Payment failed. Please try again.') : (string)$error;
+    $this->alert('error', $this->error_message);
     }
 
     public function goToOrders()

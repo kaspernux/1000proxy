@@ -21,6 +21,8 @@ class PaymentMethod extends Model
         'type',
         'notes',
         'is_active',
+        'gateway',
+        'reference',
     ];
 
     protected static function boot()
