@@ -20,6 +20,13 @@ use Illuminate\View\Middleware\ShareErrorsFromSession;
 use App\Filament\Clusters\ProxyShop\Resources\OrderResource\Widgets\OrderStats;
 use App\Http\Middleware\RedirectIfCustomer;
 use App\Filament\Widgets\AdminDashboardStatsWidget;
+use App\Filament\Widgets\InfrastructureHealthWidget;
+use App\Filament\Widgets\RevenueAnalyticsWidget;
+use App\Filament\Widgets\AdminChartsWidget;
+use App\Filament\Widgets\LatestOrdersWidget;
+use App\Filament\Widgets\EnhancedPerformanceStatsWidget;
+use App\Filament\Widgets\AdminMonitoringWidget;
+use App\Filament\Widgets\UserActivityMonitoringWidget;
 
 class AdminPanelProvider extends PanelProvider
 {
@@ -43,10 +50,20 @@ class AdminPanelProvider extends PanelProvider
             ->pages([
                 Pages\Dashboard::class,
             ])
-            ->discoverWidgets(in: app_path('Filament/Widgets'), for: 'App\\Filament\\Widgets')
             ->widgets([
+                // Unified primary stats overview
                 AdminDashboardStatsWidget::class,
-                // Widgets\AccountWidget::class,
+                // Infrastructure & health
+                InfrastructureHealthWidget::class,
+                // Revenue & financial analytics
+                RevenueAnalyticsWidget::class,
+                // Charts & trends
+                AdminChartsWidget::class,
+                // Recent activity / operational monitoring
+                LatestOrdersWidget::class,
+                EnhancedPerformanceStatsWidget::class,
+                AdminMonitoringWidget::class,
+                UserActivityMonitoringWidget::class,
             ])
             ->middleware([
                 EncryptCookies::class,
