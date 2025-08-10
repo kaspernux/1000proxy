@@ -151,9 +151,34 @@ class ServerClient extends Model
         'traffic_percentage_used' => 'decimal:2',
     ];
 
+    protected $appends = [
+        'bandwidth_used_mb'
+    ];
+
+    /**
+     * Computed bandwidth used in MB (prefers traffic_used_mb, fallback to remote_up+remote_down).
+     */
+    public function getBandwidthUsedMbAttribute(): float
+    {
+        $direct = $this->traffic_used_mb;
+        if (is_numeric($direct) && $direct >= 0) {
+            return (float) $direct;
+        }
+        $sumBytes = (int) ($this->remote_up ?? 0) + (int) ($this->remote_down ?? 0);
+        return round($sumBytes / 1048576, 2); // bytes -> MB
+    }
+
 
 
     public function inbound(): BelongsTo
+    {
+        return $this->belongsTo(ServerInbound::class, 'server_inbound_id');
+    }
+
+    /**
+     * Alias relationship for compatibility where 'serverInbound' is referenced instead of 'inbound'.
+     */
+    public function serverInbound(): BelongsTo
     {
         return $this->belongsTo(ServerInbound::class, 'server_inbound_id');
     }
@@ -251,13 +276,15 @@ class ServerClient extends Model
 
     public static function fromRemoteClient(array $client, int $inboundId, ?string $clientLink = null): self
     {
-        if (empty($client['subId']) || empty($client['id'])) {
-            throw new \InvalidArgumentException('subId and id are required for QR generation.');
+        // Normalize subscription ID key from remote payload
+        $subIdKey = $client['subId'] ?? $client['sub_id'] ?? null;
+        if (empty($subIdKey) || empty($client['id'])) {
+            throw new \InvalidArgumentException('subId/sub_id and id are required for client creation.');
         }
 
         $inbound = ServerInbound::with('server')->findOrFail($inboundId);
         $server = $inbound->server;
-        $subId = $client['subId'];
+    $subId = $subIdKey;
 
         $link = $clientLink ?: self::buildXuiClientLink($client, $inbound, $server);
         $subLink = $client['sub_link'] ?? "http://{$server->getPanelHost()}:{$server->getSubscriptionPort()}/sub_proxy/{$subId}";
@@ -312,7 +339,7 @@ class ServerClient extends Model
         parse_str($query, $params);
 
         return self::updateOrCreate(
-            ['subId' => $subId],
+            ['sub_id' => $subId],
             [
                 'server_inbound_id' => $inboundId,
                 'email' => $client['email'] ?? null,
@@ -602,7 +629,7 @@ class ServerClient extends Model
             'expiry_time' => $this->expiry_time ?? 0, // 3X-UI uses milliseconds
             'enable' => $this->enable,
             'tg_id' => $this->tg_id ?? '',
-            'subId' => $this->sub_id ?? '',
+                'subId' => $this->sub_id ?? '',
             'reset' => $this->reset ?? 0,
         ];
     }

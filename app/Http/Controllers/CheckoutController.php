@@ -81,13 +81,27 @@ class CheckoutController extends Controller
 
             $customer = Auth::guard('customer')->user();
 
+            // Resolve payment method model (required for invoice FK & order column expects id NOT slug)
+            $paymentMethodModel = PaymentMethod::where('slug', $validatedData['payment_method'])->first();
+            if (!$paymentMethodModel) {
+                DB::rollBack();
+                return response()->json([
+                    'success' => false,
+                    'error' => 'Invalid payment method selected.'
+                ], 400);
+            }
+
             // Create Order
-            $order = Order::create([
+            try {
+                $order = Order::create([
                 'customer_id' => $customer->id,
                 'order_number' => 'ORD-' . strtoupper(uniqid()),
                 'status' => 'pending',
                 'payment_status' => 'pending',
-                'payment_method' => $validatedData['payment_method'],
+                // Store the numeric id (column is unsignedBigInteger)
+                'payment_method' => $paymentMethodModel->id,
+                // Original schema requires grand_amount (NOT NULL)
+                'grand_amount' => $order_summary['total'] ?? 0,
                 'subtotal' => $order_summary['subtotal'] ?? 0,
                 'tax_amount' => $order_summary['tax'] ?? 0,
                 'shipping_amount' => $order_summary['shipping'] ?? 0,
@@ -106,9 +120,18 @@ class CheckoutController extends Controller
                 'billing_country' => $validatedData['country'] ?? '',
                 'coupon_code' => $validatedData['coupon_code'] ?? null,
                 'notes' => 'Order placed via enhanced checkout system',
-            ]);
+                ]);
+            } catch (\Throwable $t) {
+                Log::error('Order model create failed', [
+                    'error' => $t->getMessage(),
+                    'trace' => str_starts_with($t->getMessage(), 'SQLSTATE') ? null : $t->getTraceAsString(),
+                    'summary' => $order_summary,
+                    'payment_method_id' => $paymentMethodModel->id,
+                ]);
+                throw $t; // bubble up to outer catch
+            }
 
-            // Create order items
+            // Create order items (relation is items())
             foreach ($cart_items as $item) {
                 if (!isset($item['server_plan_id'])) {
                     DB::rollBack();
@@ -118,19 +141,20 @@ class CheckoutController extends Controller
                     ], 400);
                 }
                 $plan = ServerPlan::findOrFail($item['server_plan_id']);
-                $order->orderItems()->create([
+                $quantity = $item['quantity'] ?? 1;
+                $unitAmount = $item['unit_price'] ?? $item['unit_amount'] ?? $plan->price;
+                $order->items()->create([
                     'server_plan_id' => $item['server_plan_id'],
-                    'quantity' => $item['quantity'] ?? 1,
-                    'unit_price' => $item['unit_price'] ?? $plan->price,
-                    'total_price' => $item['total_price'] ?? ($plan->price * ($item['quantity'] ?? 1)),
-                    'product_name' => $plan->name,
-                    'product_description' => $plan->description,
+                    'quantity' => $quantity,
+                    'unit_amount' => $unitAmount,
+                    'total_amount' => $item['total_price'] ?? $item['total_amount'] ?? ($unitAmount * $quantity),
                 ]);
             }
 
-            // Create Invoice
+            // Create Invoice (payment_method_id required and not nullable)
             $invoice = Invoice::create([
                 'customer_id' => $order->customer_id,
+                'payment_method_id' => $paymentMethodModel->id,
                 'order_id' => $order->id,
                 'price_amount' => $order->total_amount,
                 'price_currency' => 'USD',
@@ -250,13 +274,14 @@ class CheckoutController extends Controller
         $invoice->update([
             'wallet_transaction_id' => $transaction->id,
             'invoice_url' => route('checkout.success', ['order' => $order->id]),
-            'payment_status' => 'completed',
+            // Normalize to 'paid' for internal consistency
+            'payment_status' => 'paid',
         ]);
 
         // Mark order as paid
         $order->update([
             'status' => 'paid',
-            'payment_status' => 'completed',
+            'payment_status' => 'paid',
             'payment_transaction_id' => $transaction->id,
         ]);
 

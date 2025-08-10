@@ -9,15 +9,17 @@ use Exception;
 
 class MirPaymentService implements PaymentGatewayInterface
 {
-    private string $apiKey;
+    private ?string $apiKey;
     private string $apiUrl;
-    private string $merchantId;
+    private ?string $merchantId;
+    private bool $enabled = false;
 
     public function __construct()
     {
         $this->apiKey = config('services.mir.api_key');
         $this->apiUrl = config('services.mir.api_url', 'https://api.mir-pay.ru/v1');
         $this->merchantId = config('services.mir.merchant_id');
+        $this->enabled = !empty($this->apiKey) && !empty($this->merchantId);
     }
 
     /**
@@ -58,14 +60,17 @@ class MirPaymentService implements PaymentGatewayInterface
 
                 return [
                     'success' => true,
-                    'payment_id' => $data['payment_id'],
-                    'payment_url' => $data['payment_url'],
-                    'amount' => $rubAmount,
-                    'currency' => 'RUB',
-                    'usd_amount' => $paymentData['amount'],
-                    'exchange_rate' => $usdToRub,
-                    'status' => $data['status'] ?? 'pending',
-                    'expires_at' => $data['expires_at'] ?? null,
+                    'error' => null,
+                    'data' => [
+                        'payment_id' => $data['payment_id'],
+                        'payment_url' => $data['payment_url'],
+                        'amount' => $rubAmount,
+                        'currency' => 'RUB',
+                        'usd_amount' => $paymentData['amount'],
+                        'exchange_rate' => $usdToRub,
+                        'status' => $data['status'] ?? 'pending',
+                        'expires_at' => $data['expires_at'] ?? null,
+                    ]
                 ];
             }
 
@@ -77,7 +82,8 @@ class MirPaymentService implements PaymentGatewayInterface
 
             return [
                 'success' => false,
-                'error' => 'Failed to create MIR payment: ' . $response->body()
+                'error' => 'Failed to create MIR payment: ' . $response->body(),
+                'data' => []
             ];
 
         } catch (Exception $e) {
@@ -88,7 +94,8 @@ class MirPaymentService implements PaymentGatewayInterface
 
             return [
                 'success' => false,
-                'error' => $e->getMessage()
+                'error' => $e->getMessage(),
+                'data' => []
             ];
         }
     }
@@ -109,17 +116,21 @@ class MirPaymentService implements PaymentGatewayInterface
 
                 return [
                     'success' => true,
-                    'status' => $data['status'],
-                    'amount' => $data['amount'],
-                    'currency' => $data['currency'],
-                    'order_id' => $data['order_id'] ?? null,
-                    'paid_at' => $data['paid_at'] ?? null,
+                    'error' => null,
+                    'data' => [
+                        'status' => $data['status'],
+                        'amount' => $data['amount'],
+                        'currency' => $data['currency'],
+                        'order_id' => $data['order_id'] ?? null,
+                        'paid_at' => $data['paid_at'] ?? null,
+                    ]
                 ];
             }
 
             return [
                 'success' => false,
-                'error' => 'Payment verification failed: ' . $response->body()
+                'error' => 'Payment verification failed: ' . $response->body(),
+                'data' => []
             ];
 
         } catch (Exception $e) {
@@ -130,7 +141,8 @@ class MirPaymentService implements PaymentGatewayInterface
 
             return [
                 'success' => false,
-                'error' => $e->getMessage()
+                'error' => $e->getMessage(),
+                'data' => []
             ];
         }
     }
@@ -148,15 +160,19 @@ class MirPaymentService implements PaymentGatewayInterface
             if (!$paymentId || !$paymentStatus || !$orderId) {
                 return [
                     'success' => false,
-                    'error' => 'Missing required webhook data'
+                    'error' => 'Missing required webhook data',
+                    'data' => []
                 ];
             }
 
             return [
                 'success' => true,
-                'status' => $paymentStatus,
-                'payment_id' => $paymentId,
-                'order_id' => $orderId
+                'error' => null,
+                'data' => [
+                    'status' => $paymentStatus,
+                    'payment_id' => $paymentId,
+                    'order_id' => $orderId
+                ]
             ];
 
         } catch (Exception $e) {
@@ -167,7 +183,8 @@ class MirPaymentService implements PaymentGatewayInterface
 
             return [
                 'success' => false,
-                'error' => $e->getMessage()
+                'error' => $e->getMessage(),
+                'data' => []
             ];
         }
     }
@@ -179,8 +196,11 @@ class MirPaymentService implements PaymentGatewayInterface
     {
         return [
             'success' => true,
-            'currencies' => [
-                'rub' => 'Russian Ruble'
+            'error' => null,
+            'data' => [
+                'currencies' => [
+                    'rub' => 'Russian Ruble'
+                ]
             ]
         ];
     }
@@ -218,15 +238,19 @@ class MirPaymentService implements PaymentGatewayInterface
 
                 return [
                     'success' => true,
-                    'refund_id' => $data['refund_id'],
-                    'amount' => $data['amount'],
-                    'status' => $data['status']
+                    'error' => null,
+                    'data' => [
+                        'refund_id' => $data['refund_id'],
+                        'amount' => $data['amount'],
+                        'status' => $data['status']
+                    ]
                 ];
             }
 
             return [
                 'success' => false,
-                'error' => 'Refund failed: ' . $response->body()
+                'error' => 'Refund failed: ' . $response->body(),
+                'data' => []
             ];
 
         } catch (Exception $e) {
@@ -237,7 +261,8 @@ class MirPaymentService implements PaymentGatewayInterface
 
             return [
                 'success' => false,
-                'error' => $e->getMessage()
+                'error' => $e->getMessage(),
+                'data' => []
             ];
         }
     }
@@ -248,14 +273,24 @@ class MirPaymentService implements PaymentGatewayInterface
     public function getGatewayInfo(): array
     {
         return [
-            'name' => 'MIR Payment System',
-            'type' => 'card_payment',
-            'supports_refunds' => true,
-            'supports_webhooks' => true,
-            'requires_kyc' => false,
-            'processing_time' => 'Instant',
-            'supported_currencies' => ['RUB'],
-            'supported_countries' => ['RU'],
+            'success' => true,
+            'error' => null,
+            'data' => [
+                'id' => 'mir',
+                'name' => 'MIR Payment System',
+                'type' => 'card_payment',
+                'supports_refunds' => true,
+                'supports_webhooks' => true,
+                'requires_kyc' => false,
+                'processing_time' => 'Instant',
+                'supported_currencies' => ['RUB'],
+                'supported_countries' => ['RU'],
+                'enabled' => $this->enabled,
+                'missing_configuration' => $this->enabled ? [] : array_values(array_filter([
+                    empty($this->apiKey) ? 'api_key' : null,
+                    empty($this->merchantId) ? 'merchant_id' : null,
+                ])),
+            ]
         ];
     }
 }

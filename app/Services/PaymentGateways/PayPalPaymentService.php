@@ -84,11 +84,14 @@ class PayPalPaymentService implements PaymentGatewayInterface
 
                 return [
                     'success' => true,
-                    'payment_id' => $data['id'],
-                    'approval_url' => $approvalUrl,
-                    'status' => $data['status'],
-                    'amount' => $paymentData['amount'],
-                    'currency' => $paymentData['currency'] ?? 'USD'
+                    'error' => null,
+                    'data' => [
+                        'payment_id' => $data['id'],
+                        'approval_url' => $approvalUrl,
+                        'status' => $data['status'],
+                        'amount' => $paymentData['amount'],
+                        'currency' => $paymentData['currency'] ?? 'USD'
+                    ]
                 ];
             }
 
@@ -97,7 +100,9 @@ class PayPalPaymentService implements PaymentGatewayInterface
             return [
                 'success' => false,
                 'error' => 'Payment creation failed',
-                'details' => $response->json()
+                'data' => [
+                    'details' => $response->json()
+                ]
             ];
 
         } catch (\Exception $e) {
@@ -106,7 +111,9 @@ class PayPalPaymentService implements PaymentGatewayInterface
             return [
                 'success' => false,
                 'error' => 'Payment processing error',
-                'details' => $e->getMessage()
+                'data' => [
+                    'details' => $e->getMessage()
+                ]
             ];
         }
     }
@@ -123,17 +130,21 @@ class PayPalPaymentService implements PaymentGatewayInterface
 
                 return [
                     'success' => true,
-                    'payment_id' => $data['id'],
-                    'status' => $data['status'],
-                    'amount' => $data['purchase_units'][0]['amount']['value'] ?? 0,
-                    'currency' => $data['purchase_units'][0]['amount']['currency_code'] ?? 'USD',
-                    'verified' => $data['status'] === 'COMPLETED'
+                    'error' => null,
+                    'data' => [
+                        'payment_id' => $data['id'],
+                        'status' => $data['status'],
+                        'amount' => $data['purchase_units'][0]['amount']['value'] ?? 0,
+                        'currency' => $data['purchase_units'][0]['amount']['currency_code'] ?? 'USD',
+                        'verified' => $data['status'] === 'COMPLETED'
+                    ]
                 ];
             }
 
             return [
                 'success' => false,
-                'error' => 'Payment verification failed'
+                'error' => 'Payment verification failed',
+                'data' => []
             ];
 
         } catch (\Exception $e) {
@@ -142,7 +153,9 @@ class PayPalPaymentService implements PaymentGatewayInterface
             return [
                 'success' => false,
                 'error' => 'Verification error',
-                'details' => $e->getMessage()
+                'data' => [
+                    'details' => $e->getMessage()
+                ]
             ];
         }
     }
@@ -160,17 +173,22 @@ class PayPalPaymentService implements PaymentGatewayInterface
 
                 return [
                     'success' => true,
-                    'payment_id' => $data['id'],
-                    'status' => $data['status'],
-                    'capture_id' => $data['purchase_units'][0]['payments']['captures'][0]['id'] ?? null,
-                    'amount' => $data['purchase_units'][0]['payments']['captures'][0]['amount']['value'] ?? 0
+                    'error' => null,
+                    'data' => [
+                        'payment_id' => $data['id'],
+                        'status' => $data['status'],
+                        'capture_id' => $data['purchase_units'][0]['payments']['captures'][0]['id'] ?? null,
+                        'amount' => $data['purchase_units'][0]['payments']['captures'][0]['amount']['value'] ?? 0
+                    ]
                 ];
             }
 
             return [
                 'success' => false,
                 'error' => 'Payment capture failed',
-                'details' => $response->json()
+                'data' => [
+                    'details' => $response->json()
+                ]
             ];
 
         } catch (\Exception $e) {
@@ -179,7 +197,9 @@ class PayPalPaymentService implements PaymentGatewayInterface
             return [
                 'success' => false,
                 'error' => 'Capture processing error',
-                'details' => $e->getMessage()
+                'data' => [
+                    'details' => $e->getMessage()
+                ]
             ];
         }
     }
@@ -206,7 +226,10 @@ class PayPalPaymentService implements PaymentGatewayInterface
                 default:
                     return [
                         'success' => true,
-                        'message' => 'Event processed but no action taken'
+                        'error' => null,
+                        'data' => [
+                            'message' => 'Event processed but no action taken'
+                        ]
                     ];
             }
 
@@ -215,7 +238,8 @@ class PayPalPaymentService implements PaymentGatewayInterface
 
             return [
                 'success' => false,
-                'error' => 'Webhook processing error'
+                'error' => 'Webhook processing error',
+                'data' => []
             ];
         }
     }
@@ -226,8 +250,11 @@ class PayPalPaymentService implements PaymentGatewayInterface
 
         return [
             'success' => true,
-            'action' => 'order_approved',
-            'payment_id' => $resource['id']
+            'error' => null,
+            'data' => [
+                'action' => 'order_approved',
+                'payment_id' => $resource['id']
+            ]
         ];
     }
 
@@ -237,9 +264,12 @@ class PayPalPaymentService implements PaymentGatewayInterface
 
         return [
             'success' => true,
-            'action' => 'payment_completed',
-            'payment_id' => $resource['id'],
-            'amount' => $resource['amount']['value'] ?? 0
+            'error' => null,
+            'data' => [
+                'action' => 'payment_completed',
+                'payment_id' => $resource['id'],
+                'amount' => $resource['amount']['value'] ?? 0
+            ]
         ];
     }
 
@@ -249,9 +279,12 @@ class PayPalPaymentService implements PaymentGatewayInterface
 
         return [
             'success' => true,
-            'action' => 'payment_denied',
-            'payment_id' => $resource['id'],
-            'reason' => $resource['status_details']['reason'] ?? 'Payment denied'
+            'error' => null,
+            'data' => [
+                'action' => 'payment_denied',
+                'payment_id' => $resource['id'],
+                'reason' => $resource['status_details']['reason'] ?? 'Payment denied'
+            ]
         ];
     }
 
@@ -261,9 +294,12 @@ class PayPalPaymentService implements PaymentGatewayInterface
 
         return [
             'success' => true,
-            'action' => 'dispute_created',
-            'dispute_id' => $resource['dispute_id'],
-            'amount' => $resource['disputed_transactions'][0]['gross_amount']['value'] ?? 0
+            'error' => null,
+            'data' => [
+                'action' => 'dispute_created',
+                'dispute_id' => $resource['dispute_id'],
+                'amount' => $resource['disputed_transactions'][0]['gross_amount']['value'] ?? 0
+            ]
         ];
     }
 
@@ -341,7 +377,8 @@ class PayPalPaymentService implements PaymentGatewayInterface
             if (!$orderResponse->successful()) {
                 return [
                     'success' => false,
-                    'error' => 'Could not retrieve order details'
+                    'error' => 'Could not retrieve order details',
+                    'data' => []
                 ];
             }
 
@@ -351,7 +388,8 @@ class PayPalPaymentService implements PaymentGatewayInterface
             if (!$captureId) {
                 return [
                     'success' => false,
-                    'error' => 'No capture found for this payment'
+                    'error' => 'No capture found for this payment',
+                    'data' => []
                 ];
             }
 
@@ -374,16 +412,21 @@ class PayPalPaymentService implements PaymentGatewayInterface
 
                 return [
                     'success' => true,
-                    'refund_id' => $refundResponse['id'],
-                    'amount' => $refundResponse['amount']['value'] ?? $amount,
-                    'status' => $refundResponse['status']
+                    'error' => null,
+                    'data' => [
+                        'refund_id' => $refundResponse['id'],
+                        'amount' => $refundResponse['amount']['value'] ?? $amount,
+                        'status' => $refundResponse['status']
+                    ]
                 ];
             }
 
             return [
                 'success' => false,
                 'error' => 'Refund failed',
-                'details' => $response->json()
+                'data' => [
+                    'details' => $response->json()
+                ]
             ];
 
         } catch (\Exception $e) {
@@ -392,7 +435,9 @@ class PayPalPaymentService implements PaymentGatewayInterface
             return [
                 'success' => false,
                 'error' => 'Refund processing error',
-                'details' => $e->getMessage()
+                'data' => [
+                    'details' => $e->getMessage()
+                ]
             ];
         }
     }
@@ -400,21 +445,26 @@ class PayPalPaymentService implements PaymentGatewayInterface
     public function getGatewayInfo(): array
     {
         return [
-            'name' => 'PayPal',
-            'type' => 'redirect',
-            'supports' => [
-                'payments' => true,
-                'refunds' => true,
-                'webhooks' => true,
-                'recurring' => true,
-                'multi_currency' => true
-            ],
-            'fees' => [
-                'percentage' => 2.9,
-                'fixed' => 0.30
-            ],
-            'processing_time' => 'instant',
-            'settlement_time' => '1-3 business days'
+            'success' => true,
+            'error' => null,
+            'data' => [
+                'id' => 'paypal',
+                'name' => 'PayPal',
+                'type' => 'redirect',
+                'supports' => [
+                    'payments' => true,
+                    'refunds' => true,
+                    'webhooks' => true,
+                    'recurring' => true,
+                    'multi_currency' => true
+                ],
+                'fees' => [
+                    'percentage' => 2.9,
+                    'fixed' => 0.30
+                ],
+                'processing_time' => 'instant',
+                'settlement_time' => '1-3 business days'
+            ]
         ];
     }
 

@@ -615,7 +615,9 @@ class TelegramBotService
             $wallet->decrement('balance', $server->price);
 
             // Queue job for proxy creation
-            ProcessXuiOrder::dispatch($order);
+            if ($order->payment_status === 'paid') {
+                ProcessXuiOrder::dispatch($order);
+            }
 
             $message = "✅ Order Created Successfully!\n\n";
             $message .= "📋 Order ID: #{$order->id}\n";

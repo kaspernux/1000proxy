@@ -9,6 +9,8 @@ use Livewire\Attributes\On;
 use Livewire\Attributes\Reactive;
 use Jantinnerezo\LivewireAlert\LivewireAlert;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log;
 
 class PaymentProcessor extends Component
 {
@@ -62,6 +64,8 @@ class PaymentProcessor extends Component
     public $amount = 0;
     public $currency = 'USD';
     public $order_id = null;
+    public $isWalletTopup = false;
+    public $selectedCurrency = 'USD';
 
     public function mount($type = 'fiat', $amount = 0, $currency = 'USD', $order_id = null)
     {
@@ -85,6 +89,9 @@ class PaymentProcessor extends Component
             $this->customer = \Illuminate\Support\Facades\Auth::guard('customer')->user();
         }
         $this->loadWalletBalance();
+    // Determine wallet topup context
+    $this->isWalletTopup = ($this->type === 'wallet_topup');
+    $this->selectedCurrency = $this->currency; // initialize
     }
 
     public function render()
@@ -113,9 +120,20 @@ class PaymentProcessor extends Component
                 $this->loadWalletBalance();
                 break;
             case 'nowpayments':
-                $this->calculateCryptoAmount();
+                $this->refreshCryptoEstimate();
                 break;
         }
+        $this->dispatch('updateUrlParam', params: ['selectedGateway' => $this->selectedGateway]);
+    }
+
+    public function selectCurrency($currency)
+    {
+        $this->selectedCurrency = $currency;
+        $this->currency = $currency; // unify
+        if ($this->selectedGateway === 'nowpayments') {
+            $this->refreshCryptoEstimate();
+        }
+        $this->dispatch('updateUrlParam', params: ['currency' => $this->selectedCurrency]);
     }
 
     public function processPayment()
@@ -123,24 +141,73 @@ class PaymentProcessor extends Component
         $this->validate();
         $this->processingPayment = true;
         $this->paymentStep = 'processing';
+        // Route wallet top-up through dedicated flow for strict separation
+        if ($this->isWalletTopup) {
+            $this->processWalletTopup();
+            return;
+        }
         try {
             // For nowpayments, use selectedCrypto for crypto, else use selected currency for fiat
-            $currency = $this->selectedGateway === 'nowpayments' ? $this->selectedCrypto : $this->currency;
+            // For NowPayments, price currency remains fiat (selectedCurrency) and crypto currency is selectedCrypto
+            $currency = $this->selectedGateway === 'nowpayments' ? $this->selectedCurrency : $this->currency;
+            // Use direct service to avoid cross-request auth issues
+            $service = null;
+            switch ($this->selectedGateway) {
+                case 'stripe':
+                    $service = app(\App\Services\PaymentGateways\StripePaymentService::class); break;
+                case 'paypal':
+                    $service = app(\App\Services\PaymentGateways\PayPalPaymentService::class); break;
+                case 'mir':
+                    $service = app(\App\Services\PaymentGateways\MirPaymentService::class); break;
+                case 'nowpayments':
+                    $service = app(\App\Services\PaymentGateways\NowPaymentsService::class); break;
+                case 'wallet':
+                    // Direct wallet debit
+                    if ($this->walletSufficient) {
+                        $this->handlePaymentCompleted([
+                            'status' => 'completed',
+                            'payment_method' => 'wallet'
+                        ]);
+                        return;
+                    }
+                    $this->handlePaymentFailed(['error' => 'Insufficient wallet balance']);
+                    return;
+            }
+            if (!$service) {
+                $this->handlePaymentFailed(['error' => 'Unsupported gateway']);
+                return;
+            }
             $payload = [
                 'amount' => $this->paymentAmount,
                 'currency' => $currency,
-                'gateway' => $this->selectedGateway,
                 'order_id' => $this->order->id ?? null,
-                'wallet_topup' => $this->isWalletTopup ?? false,
-                'metadata' => [
-                    'user_id' => $this->customer ? $this->customer->id : null,
-                    'email' => $this->customer ? $this->customer->email : null
-                ]
+                'description' => $this->isWalletTopup ? 'Wallet Top-up' : 'Order Payment',
+                'crypto_currency' => $this->selectedGateway === 'nowpayments' ? strtolower($this->selectedCrypto) : null,
             ];
-            $response = Http::post(url('/api/payment/create'), $payload);
-            $result = $response->json();
-            if (is_array($result) && isset($result['success']) && $result['success']) {
-                $this->handlePaymentCompleted($result['data'] ?? []);
+            if ($this->isWalletTopup && empty($payload['order_id'])) {
+                $payload['order_id'] = 'WTU-' . now()->format('YmdHis') . '-' . substr(md5(uniqid('', true)),0,6);
+            }
+            $result = $service->createPayment($payload);
+            if (isset($result['success']) && $result['success']) {
+                $paymentPayload = $result['data'] ?? [];
+                // For NowPayments we must redirect user to hosted invoice instead of marking as completed immediately
+                if ($this->selectedGateway === 'nowpayments') {
+                    if (!empty($paymentPayload['payment_url'])) {
+                        // Persist invoice URL on order (if applicable) for later viewing
+                        if ($this->order) {
+                            try { $this->order->markAsProcessing($paymentPayload['payment_url']); } catch (\Throwable $e) { \Log::warning('Failed to mark order processing with invoice URL', ['error'=>$e->getMessage()]); }
+                        }
+                        $this->alert('info', 'Redirecting to crypto invoice...');
+                        $this->dispatch('redirectAfterPayment', url: $paymentPayload['payment_url'], delay: 400);
+                        // Leave step as 'processing'; webhook will emit paymentCompleted/paymentFailed events
+                        return;
+                    }
+                    // If no payment_url returned treat as failure
+                    $this->handlePaymentFailed(['error' => 'Failed to obtain NowPayments invoice URL']);
+                    return;
+                }
+                // Non-crypto gateways: mark completed immediately; crypto handled by webhook
+                $this->handlePaymentCompleted($paymentPayload);
             } else {
                 $this->handlePaymentFailed(['error' => $result['error'] ?? 'Unknown error']);
             }
@@ -151,26 +218,64 @@ class PaymentProcessor extends Component
 
     public function topUpWallet()
     {
-        $this->validate();
-        $this->is_submitting = true;
-        try {
-            $payload = [
-                'amount' => $this->amount,
-                'currency' => $this->currency,
-                'gateway' => $this->selectedMethod,
-            ];
-            $response = Http::post(url('/api/payment/topup'), $payload);
-            $result = $response->json();
-            if (is_array($result) && isset($result['success']) && $result['success']) {
-                $this->alert('success', 'Wallet top-up initiated!');
-                $this->refreshWallet();
-            } else {
-                $this->alert('error', $result['error'] ?? 'Top-up failed');
-            }
-        } catch (\Exception $e) {
-            $this->alert('error', $e->getMessage());
+        $this->processWalletTopup();
+    }
+
+    private function processWalletTopup()
+    {
+        if ($this->selectedGateway === 'wallet') {
+            $this->handlePaymentFailed(['error' => 'Select an external gateway to top up your wallet.']);
+            return;
         }
-        $this->is_submitting = false;
+        try {
+            $customer = Auth::guard('customer')->user();
+            if (!$customer) {
+                $this->handlePaymentFailed(['error' => 'Not authenticated']);
+                return;
+            }
+            $gateway = $this->selectedGateway === 'nowpayments' ? 'nowpayments' : $this->selectedGateway;
+            switch ($gateway) {
+                case 'stripe':
+                    $service = app(\App\Services\PaymentGateways\StripePaymentService::class); break;
+                case 'paypal':
+                    $service = app(\App\Services\PaymentGateways\PayPalPaymentService::class); break;
+                case 'mir':
+                    $service = app(\App\Services\PaymentGateways\MirPaymentService::class); break;
+                case 'nowpayments':
+                    $service = app(\App\Services\PaymentGateways\NowPaymentsService::class); break;
+                default:
+                    $this->handlePaymentFailed(['error' => 'Unsupported gateway']); return;
+            }
+            $amount = $this->paymentAmount ?: $this->amount;
+            $syntheticOrderId = 'WTU-' . now()->format('YmdHis') . '-' . substr(md5(uniqid('', true)),0,6);
+            $payload = [
+                'amount' => $amount,
+                'currency' => $this->currency,
+                'order_id' => $syntheticOrderId,
+                'description' => 'Wallet Top-up',
+                'crypto_currency' => $gateway === 'nowpayments' ? strtolower($this->selectedCrypto) : null,
+                'metadata' => [
+                    'wallet_topup' => true,
+                    'customer_id' => $customer->id,
+                ],
+            ];
+            $result = $service->createPayment($payload);
+            if (empty($result['success'])) {
+                $this->handlePaymentFailed(['error' => $result['error'] ?? 'Top-up failed']);
+                return;
+            }
+            $data = $result['data'] ?? [];
+            $redirectUrl = $data['payment_url'] ?? $data['invoice_url'] ?? $data['approval_url'] ?? null;
+            if ($redirectUrl) {
+                $this->alert('info', 'Redirecting to top-up invoice...');
+                $this->dispatch('redirectAfterPayment', url: $redirectUrl, delay: 400);
+                return;
+            }
+            $this->handlePaymentCompleted($data);
+        } catch (\Throwable $e) {
+            Log::error('Wallet top-up internal flow failed', ['error' => $e->getMessage()]);
+            $this->handlePaymentFailed(['error' => $e->getMessage()]);
+        }
     }
 
     public function refundPayment($transactionId, $amount = null)
@@ -182,7 +287,7 @@ class PaymentProcessor extends Component
             ];
             $response = Http::post(url('/api/payment/refund'), $payload);
             $result = $response->json();
-            if (is_array($result) && isset($result['success']) && $result['success']) {
+            if (isset($result['success']) && $result['success']) {
                 $this->alert('success', 'Refund processed!');
                 $this->refreshWallet();
             } else {
@@ -198,7 +303,7 @@ class PaymentProcessor extends Component
         try {
             $response = Http::get(url('/api/payment/status/' . $orderId));
             $result = $response->json();
-            if (is_array($result) && isset($result['success']) && $result['success']) {
+            if (isset($result['success']) && $result['success']) {
                 return $result['data'] ?? null;
             } else {
                 $this->alert('error', $result['error'] ?? 'Unable to fetch payment status');
@@ -213,52 +318,42 @@ class PaymentProcessor extends Component
     // Merge duplicate getAvailableGateways into one method
     public function getAvailableGateways()
     {
-        static $lastError = null;
+        static $cached = null;
+        // Do not cache across different top-up contexts
+        if ($cached !== null && !$this->isWalletTopup) {
+            return $cached;
+        }
         try {
-            $response = \Illuminate\Support\Facades\Http::get(url('/api/payment/gateways'));
-            $result = $response->json();
-            if (is_array($result)) {
-                if ((isset($result['success']) && $result['success'] && isset($result['data'])) || (!isset($result['success']) && !empty($result))) {
-                    $gateways = $result['data'] ?? $result;
-                    return !empty($gateways) ? $gateways : [
-                        'stripe' => ['enabled' => true, 'name' => 'Stripe', 'fee' => 0.0],
-                        'paypal' => ['enabled' => true, 'name' => 'PayPal', 'fee' => 0.0],
-                        'mir' => ['enabled' => true, 'name' => 'Mir', 'fee' => 0.0],
-                        'nowpayments' => ['enabled' => true, 'name' => 'Cryptocurrency', 'fee' => 0.0],
-                        'wallet' => ['enabled' => true, 'name' => 'Wallet Balance', 'fee' => 0.0],
-                    ];
-                } else {
-                    // Only alert once per session if error repeats
-                    if ($lastError !== ($result['error'] ?? 'Unable to fetch gateways')) {
-                        $this->alert('error', $result['error'] ?? 'Unable to fetch gateways');
-                        $lastError = $result['error'] ?? 'Unable to fetch gateways';
-                    }
-                    return [
-                        'stripe' => ['enabled' => true, 'name' => 'Stripe', 'fee' => 0.0],
-                        'paypal' => ['enabled' => true, 'name' => 'PayPal', 'fee' => 0.0],
-                        'mir' => ['enabled' => true, 'name' => 'Mir', 'fee' => 0.0],
-                        'nowpayments' => ['enabled' => true, 'name' => 'Cryptocurrency', 'fee' => 0.0],
-                        'wallet' => ['enabled' => true, 'name' => 'Wallet Balance', 'fee' => 0.0],
-                    ];
-                }
-            } else {
-                if ($lastError !== 'Unable to fetch gateways') {
-                    $this->alert('error', 'Unable to fetch gateways');
-                    $lastError = 'Unable to fetch gateways';
-                }
-                return [
-                    'stripe' => ['enabled' => true, 'name' => 'Stripe', 'fee' => 0.0],
-                    'paypal' => ['enabled' => true, 'name' => 'PayPal', 'fee' => 0.0],
-                    'mir' => ['enabled' => true, 'name' => 'Mir', 'fee' => 0.0],
-                    'nowpayments' => ['enabled' => true, 'name' => 'Cryptocurrency', 'fee' => 0.0],
-                    'wallet' => ['enabled' => true, 'name' => 'Wallet Balance', 'fee' => 0.0],
+            $service = app(\App\Services\PaymentGatewayService::class);
+            $res = $service->getAvailableGateways();
+            $data = $res['data'] ?? [];
+            $mapped = [];
+            foreach ($data as $key => $info) {
+                $mapped[$key] = [
+                    'enabled' => true,
+                    'name' => $info['name'] ?? ucfirst($key),
+                    'fee' => 0.0,
+                    'description' => $info['description'] ?? ($info['type'] ?? ''),
                 ];
             }
-        } catch (\Exception $e) {
-            if ($lastError !== $e->getMessage()) {
-                $this->alert('error', $e->getMessage());
-                $lastError = $e->getMessage();
+            // Ensure baseline gateways present even if service returns none
+            foreach (['stripe'=>'Stripe','paypal'=>'PayPal','mir'=>'Mir','nowpayments'=>'Cryptocurrency','wallet'=>'Wallet Balance'] as $k=>$n) {
+                if (!isset($mapped[$k])) {
+                    $mapped[$k] = ['enabled' => true, 'name' => $n, 'fee' => 0.0];
+                }
             }
+            // If wallet top-up, remove wallet as a payment option
+            if ($this->isWalletTopup && isset($mapped['wallet'])) {
+                unset($mapped['wallet']);
+                if ($this->selectedGateway === 'wallet') {
+                    // pick a default available gateway
+                    $this->selectedGateway = array_key_first($mapped);
+                }
+            }
+            $cached = $mapped;
+            return $mapped;
+        } catch (\Exception $e) {
+            \Log::warning('Gateway retrieval fallback', ['error' => $e->getMessage()]);
             return [
                 'stripe' => ['enabled' => true, 'name' => 'Stripe', 'fee' => 0.0],
                 'paypal' => ['enabled' => true, 'name' => 'PayPal', 'fee' => 0.0],
@@ -267,6 +362,16 @@ class PaymentProcessor extends Component
                 'wallet' => ['enabled' => true, 'name' => 'Wallet Balance', 'fee' => 0.0],
             ];
         }
+    }
+
+    private function getFiatCurrencies(): array
+    {
+        return [
+            'USD' => 'US Dollar',
+            'EUR' => 'Euro',
+            'GBP' => 'British Pound',
+            'CAD' => 'Canadian Dollar',
+        ];
     }
 
     #[On('paymentCompleted')]
@@ -298,10 +403,7 @@ class PaymentProcessor extends Component
         $this->loadWalletBalance();
 
         // Redirect after a delay
-        $this->dispatch('redirectAfterPayment', [
-            'url' => $this->order ? route('orders.show', $this->order) : route('dashboard'),
-            'delay' => 2000
-        ]);
+    $this->dispatch('redirectAfterPayment', url: ($this->order ? route('my-orders.show', ['order_id' => $this->order->id]) : route('dashboard')), delay: 2000);
     }
 
     #[On('paymentFailed')]
@@ -336,22 +438,47 @@ class PaymentProcessor extends Component
     public function selectCrypto($crypto)
     {
         $this->selectedCrypto = $crypto;
-        $this->calculateCryptoAmount();
+        $this->refreshCryptoEstimate();
     }
 
-    private function calculateCryptoAmount()
+    private function refreshCryptoEstimate()
     {
-        // This would normally call a crypto price API
-        $rates = [
-            'BTC' => 45000,
-            'ETH' => 3000,
-            'LTC' => 150,
-            'XMR' => 200,
-            'SOL' => 100
-        ];
-
-        $rate = $rates[$this->selectedCrypto] ?? 1;
-        $this->cryptoAmount = round($this->paymentAmount / $rate, 8);
+        try {
+            $service = app(\App\Services\PaymentGateways\NowPaymentsService::class);
+            // We want to estimate how much selectedCrypto is needed to cover fiat amount
+            $estimate = $service->estimatePrice(
+                amount: $this->paymentAmount,
+                currencyFrom: $this->selectedCurrency, // fiat
+                currencyTo: $this->selectedCrypto     // crypto
+            );
+            if (($estimate['success'] ?? false) && isset($estimate['data']['amount_to'])) {
+                $this->cryptoAmount = (float) $estimate['data']['amount_to'];
+                // Check minimum amount
+                $min = $service->getMinimumAmount($this->selectedCurrency, $this->selectedCrypto);
+                if (($min['success'] ?? false) && isset($min['data']['min_amount'])) {
+                    if ($this->paymentAmount < (float)$min['data']['min_amount']) {
+                        $this->alert('warning', 'Minimum amount for this pair is '. $min['data']['min_amount'] .' '. strtoupper($this->selectedCurrency));
+                    }
+                }
+            } else {
+                // Fallback: keep previous or simple placeholder
+                if ($this->cryptoAmount == 0) {
+                    $this->cryptoAmount = 0.0;
+                }
+                if (isset($estimate['error'])) {
+                    $msg = $estimate['error'];
+                    // Shorten overly long messages
+                    if (strlen($msg) > 160) {
+                        $msg = substr($msg, 0, 157) . '...';
+                    }
+                    $this->alert('error', $msg);
+                }
+            }
+        } catch (\Throwable $e) {
+            \Log::warning('Failed to estimate crypto amount', [
+                'error' => $e->getMessage(),
+            ]);
+        }
     }
 
     private function loadWalletBalance()

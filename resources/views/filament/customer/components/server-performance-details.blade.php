@@ -7,7 +7,7 @@
         <li><span class="font-semibold">Status:</span> {{ $record->status ?? 'N/A' }}</li>
         <li><span class="font-semibold">Uptime:</span> {{ $record->uptime ?? 'N/A' }}</li>
         <li><span class="font-semibold">Latency:</span> {{ $record->latency ?? 'N/A' }}</li>
-        <li><span class="font-semibold">Bandwidth Used:</span> {{ $record->bandwidth_used ?? 'N/A' }}</li>
+    <li><span class="font-semibold">Bandwidth Used:</span> {{ isset($record->bandwidth_used_mb) ? number_format($record->bandwidth_used_mb, 2) . ' MB' : 'N/A' }}</li>
         <li><span class="font-semibold">Last Check:</span> {{ $record->last_check ?? 'N/A' }}</li>
     </ul>
 </div>

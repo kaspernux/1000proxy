@@ -58,8 +58,10 @@ class CacheService
                 'active_clients' => ServerClient::where('server_id', $serverId)
                     ->where('is_active', true)
                     ->count(),
-                'total_bandwidth' => ServerClient::where('server_id', $serverId)
-                    ->sum('bandwidth_used'),
+                // Sum computed bandwidth (traffic_used_mb OR derived from remote_up/down)
+                'total_bandwidth_mb' => ServerClient::where('server_id', $serverId)
+                    ->selectRaw('SUM(COALESCE(traffic_used_mb, (remote_up + remote_down)/1048576)) as agg')
+                    ->value('agg') ?? 0,
                 'last_updated' => now()->toISOString(),
             ];
         });

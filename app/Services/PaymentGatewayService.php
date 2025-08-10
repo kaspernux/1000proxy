@@ -16,12 +16,7 @@ use Carbon\Carbon;
 
 class PaymentGatewayService
 {
-    protected $gateways = [
-        'stripe' => 'App\Services\PaymentGateways\StripePaymentService',
-        'paypal' => 'App\Services\PaymentGateways\PayPalPaymentService',
-        'mir' => 'App\Services\PaymentGateways\MirPaymentService',
-        'nowpayments' => 'App\Services\PaymentGateways\NowPaymentsService',
-    ];
+    protected $gateways = [];
 
     private $fraudDetectionRules = [];
     private $retryStrategies = [];
@@ -30,6 +25,13 @@ class PaymentGatewayService
     public function __construct(EnhancedMailService $mailService)
     {
         $this->mailService = $mailService;
+        // Load gateways from config allowing extension without code edits
+        $this->gateways = config('payment_gateways.gateways', [
+            'stripe' => 'App\\Services\\PaymentGateways\\StripePaymentService',
+            'paypal' => 'App\\Services\\PaymentGateways\\PayPalPaymentService',
+            'mir' => 'App\\Services\\PaymentGateways\\MirPaymentService',
+            'nowpayments' => 'App\\Services\\PaymentGateways\\NowPaymentsService',
+        ]);
         $this->initializeFraudDetectionRules();
         $this->initializeRetryStrategies();
     }
@@ -85,10 +87,16 @@ class PaymentGatewayService
             ]);
             return [
                 'success' => $result['success'] ?? false,
-                'data' => $result['data'] ?? [],
                 'error' => $result['error'] ?? null,
-                'payment_id' => $result['payment_id'] ?? null,
-                'client_secret' => $result['client_secret'] ?? null
+                'data' => array_merge(
+                    $result['data'] ?? [],
+                    [
+                        // Backward-compatible aliases if older consumers expected these
+                        'payment_id' => $result['data']['payment_id'] ?? ($result['payment_id'] ?? null),
+                        'client_secret' => $result['data']['client_secret'] ?? ($result['client_secret'] ?? null),
+                        'gateway' => $gateway,
+                    ]
+                )
             ];
         } catch (\Exception $e) {
             Log::error('processPayment error', [
@@ -127,10 +135,16 @@ class PaymentGatewayService
             ]);
             return [
                 'success' => $result['success'] ?? false,
-                'data' => $result['data'] ?? [],
                 'error' => $result['error'] ?? null,
-                'payment_intent_id' => $result['payment_intent_id'] ?? null,
-                'client_secret' => $result['client_secret'] ?? null
+                'data' => array_merge(
+                    $result['data'] ?? [],
+                    [
+                        'payment_intent_id' => $result['data']['payment_intent_id'] ?? ($result['payment_intent_id'] ?? null),
+                        'client_secret' => $result['data']['client_secret'] ?? ($result['client_secret'] ?? null),
+                        'gateway' => $gateway,
+                        'order_id' => $order->id,
+                    ]
+                )
             ];
         } catch (\Exception $e) {
             Log::error('Create payment intent failed', [
@@ -1589,6 +1603,147 @@ class PaymentGatewayService
                 'Consider A/B testing payment flows'
             ]
         ];
+    }
+
+    /**
+     * Get available gateways (aggregated gateway info) in standardized format.
+     */
+    public function getAvailableGateways(): array
+    {
+        $data = [];
+        foreach ($this->gateways as $key => $class) {
+            try {
+                $service = app($class);
+                if (method_exists($service, 'getGatewayInfo')) {
+                    $info = $service->getGatewayInfo();
+                    // Accept either standardized {success,error,data} or legacy raw array
+                    if (is_array($info) && array_key_exists('success', $info) && array_key_exists('data', $info)) {
+                        $data[$key] = $info['data'];
+                    } else {
+                        $data[$key] = $info; // legacy raw
+                    }
+                }
+            } catch (\Exception $e) {
+                Log::warning('Failed to load gateway info', ['gateway' => $key, 'error' => $e->getMessage()]);
+                $data[$key] = [
+                    'id' => $key,
+                    'name' => ucfirst($key),
+                    'error' => 'Unavailable'
+                ];
+            }
+        }
+        // Always include wallet pseudo-gateway
+        $data['wallet'] = [
+            'id' => 'wallet',
+            'name' => 'Wallet Balance',
+            'type' => 'internal',
+            'supports_refunds' => true,
+            'supports_webhooks' => false,
+            'processing_time' => 'Instant'
+        ];
+        return [
+            'success' => true,
+            'error' => null,
+            'data' => $data
+        ];
+    }
+
+    /**
+     * Configure a gateway (persist basic runtime configuration; placeholder implementation).
+     */
+    public function configureGateway(string $gateway, array $config): array
+    {
+        if (!isset($this->gateways[$gateway])) {
+            return [
+                'success' => false,
+                'error' => 'Unsupported gateway',
+                'data' => []
+            ];
+        }
+        try {
+            // Store in cache for now (could be replaced by DB persisted model or settings table)
+            $cacheKey = "gateway_config_{$gateway}";
+            $existing = Cache::get($cacheKey, []);
+            $merged = array_merge($existing, $config);
+            Cache::put($cacheKey, $merged, 86400); // 1 day
+            return [
+                'success' => true,
+                'error' => null,
+                'data' => [
+                    'gateway' => $gateway,
+                    'config' => $merged
+                ]
+            ];
+        } catch (\Exception $e) {
+            Log::error('configureGateway error', ['gateway' => $gateway, 'error' => $e->getMessage()]);
+            return [
+                'success' => false,
+                'error' => $e->getMessage(),
+                'data' => []
+            ];
+        }
+    }
+
+    /**
+     * Basic analytics wrapper returning standardized response.
+     */
+    public function getAnalytics(): array
+    {
+        try {
+            $analytics = $this->implementPaymentAnalytics();
+            return [
+                'success' => true,
+                'error' => null,
+                'data' => $analytics
+            ];
+        } catch (\Exception $e) {
+            return [
+                'success' => false,
+                'error' => $e->getMessage(),
+                'data' => []
+            ];
+        }
+    }
+
+    /**
+     * Generate time-period report (day|week|month) summary; standardized response.
+     */
+    public function generateReport(string $period = 'day'): array
+    {
+        $period = strtolower($period);
+        $allowed = ['day','week','month'];
+        if (!in_array($period, $allowed)) {
+            return [
+                'success' => false,
+                'error' => 'Invalid period',
+                'data' => []
+            ];
+        }
+        try {
+            $base = $this->getAnalytics();
+            $range = match($period) {
+                'day' => Carbon::now()->subDay(),
+                'week' => Carbon::now()->subWeek(),
+                'month' => Carbon::now()->subMonth(),
+                default => Carbon::now()->subDay(),
+            };
+            return [
+                'success' => true,
+                'error' => null,
+                'data' => [
+                    'generated_at' => Carbon::now()->toISOString(),
+                    'period' => $period,
+                    'since' => $range->toISOString(),
+                    'analytics' => $base['data'] ?? [],
+                ]
+            ];
+        } catch (\Exception $e) {
+            return [
+                'success' => false,
+                'error' => $e->getMessage(),
+                'data' => []
+            ];
+        }
     }
 
     /**

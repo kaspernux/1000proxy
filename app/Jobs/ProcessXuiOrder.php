@@ -29,6 +29,15 @@ class ProcessXuiOrder implements ShouldQueue
         Log::info("🚀 Starting enhanced XUI processing for Order #{$this->order->id}");
 
         try {
+            // Safety guard: only proceed if order payment_status is 'paid'
+            $this->order->refresh();
+            if ($this->order->payment_status !== 'paid') {
+                Log::warning('⏸ Skipping XUI provisioning for unpaid order', [
+                    'order_id' => $this->order->id,
+                    'payment_status' => $this->order->payment_status,
+                ]);
+                return; // Exit without error so job won't retry prematurely
+            }
             // Use the enhanced provisioning service
             $results = $provisioningService->provisionOrder($this->order);
 

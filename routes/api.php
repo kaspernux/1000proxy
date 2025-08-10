@@ -42,7 +42,19 @@ Route::middleware(['throttle:api'])->group(function () {
         Route::get('/server-plans', [ServerPlanFilterController::class, 'index']);
         Route::get('/server-plans/filters', [ServerPlanFilterController::class, 'getFilters']);
 
-        // Advanced Proxy Management API Routes
+        // Direct Payment API routes (new root-level group to satisfy unified endpoint requirements)
+        Route::prefix('payment')->middleware(['auth:sanctum,customer','throttle:60,1'])->group(function () {
+            Route::post('/create', [\App\Http\Controllers\PaymentController::class, 'createPayment']);
+            Route::post('/topup', [\App\Http\Controllers\PaymentController::class, 'topUpWallet']);
+            Route::post('/refund', [\App\Http\Controllers\PaymentController::class, 'refundPayment']);
+            Route::get('/status/{orderId}', [\App\Http\Controllers\PaymentController::class, 'getPaymentStatusByOrder']);
+            Route::get('/status-by-id/{paymentId}', [\App\Http\Controllers\PaymentController::class, 'getPaymentStatus']);
+            Route::get('/gateways', [\App\Http\Controllers\PaymentController::class, 'getAvailableGateways']);
+            Route::get('/currencies', [\App\Http\Controllers\PaymentController::class, 'getCurrencies']);
+            Route::post('/webhook/{gateway}', [\App\Http\Controllers\PaymentController::class, 'handleWebhook']);
+        });
+
+        // Advanced Proxy Management API Routes (legacy grouping retained for backward compatibility)
         Route::prefix('advanced-proxy')->group(function () {
             Route::post('/initialize-setup', [AdvancedProxyController::class, 'initializeSetup']);
             Route::get('/dashboard', [AdvancedProxyController::class, 'getDashboard']);

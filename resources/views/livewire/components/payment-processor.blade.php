@@ -161,21 +161,22 @@
                 </div>
             @elseif($selectedGateway === 'nowpayments')
                 <div class="mt-6 p-4 border border-yellow-400/30 bg-gradient-to-r from-yellow-900/20 to-blue-900/10 rounded-xl">
-                    <h5 class="font-semibold text-yellow-300 mb-4 drop-shadow">Select Cryptocurrency</h5>
-                    <div class="grid grid-cols-2 md:grid-cols-3 gap-3">
+                    <label class="block text-sm font-medium text-blue-200 mb-2">Select Cryptocurrency</label>
+                    <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
                         @foreach($cryptoCurrencies as $crypto => $details)
                             <div
                                 wire:click="selectCrypto('{{ $crypto }}')"
-                                class="crypto-option p-3 border-2 rounded-lg cursor-pointer transition-all duration-200 {{ $selectedCrypto === $crypto ? 'border-yellow-400 bg-gradient-to-r from-yellow-900/40 to-yellow-400/10' : 'border-blue-900/30 bg-gradient-to-r from-gray-900/40 to-blue-900/10 hover:border-blue-400' }}"
+                                type="button"
+                                class="crypto-option px-3 py-3 text-sm rounded-lg border flex flex-col items-center justify-center cursor-pointer transition-all duration-200 {{ $selectedCrypto === $crypto ? 'bg-yellow-400 text-gray-900 border-yellow-400' : 'bg-gray-800 text-blue-200 border-blue-900/40 hover:border-blue-400' }}"
                             >
-                                <div class="text-center">
-                                    <div class="text-2xl mb-1">{{ $details['symbol'] }}</div>
-                                    <div class="text-sm font-semibold">{{ $crypto }}</div>
-                                    <div class="text-xs text-gray-500">{{ $details['name'] }}</div>
-                                </div>
+                                <div class="text-2xl mb-1">{{ $details['symbol'] }}</div>
+                                <div class="text-sm font-semibold">{{ $crypto }}</div>
+                                <div class="text-xs text-gray-500">{{ $details['name'] }}</div>
                             </div>
                         @endforeach
                     </div>
+                    
+                    
                     @if($selectedCrypto && $cryptoAmount > 0)
                         <div class="mt-4 p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
                             <div class="text-center">

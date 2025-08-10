@@ -1149,7 +1149,7 @@ class DatabaseSeeder extends Seeder
         // Create admin user
         User::factory()->create([
             'name' => 'Admin User',
-            'email' => 'admin@1000proxy.com',
+            'email' => 'admin@1000proxy.io',
             'email_verified_at' => now(),
             'is_admin' => true,
         ]);
@@ -1537,7 +1537,7 @@ info:
   version: 1.0.0
   contact:
     name: API Support
-    email: api-support@1000proxy.com
+    email: api-support@1000proxy.io
 
 paths:
   /api/services:

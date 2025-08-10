@@ -140,12 +140,14 @@ class OrderController extends Controller
             // Update order status
             $order->update([
                 'status' => 'paid',
-                'payment_status' => 'completed',
+                'payment_status' => 'paid',
                 'paid_at' => now(),
             ]);
 
             // Dispatch job to process order
-            ProcessXuiOrder::dispatch($order);
+            if ($order->payment_status === 'paid') {
+                ProcessXuiOrder::dispatch($order);
+            }
 
             DB::commit();
 

@@ -359,7 +359,8 @@ class OrderManagement extends Page implements HasTable
         $customer = Auth::guard('customer')->user();
 
         return Order::query()
-            ->with(['items.server', 'items.server_client'])
+            // Eager load server via serverPlan relationship and related serverClients
+            ->with(['items.serverPlan.server', 'items.serverClients'])
             ->where('customer_id', $customer->id)
             ->latest();
     }

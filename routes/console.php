@@ -44,3 +44,8 @@ Schedule::command('log:clear')
     ->weekly()
     ->sundays()
     ->at('03:00');
+
+// Cleanup unused dedicated inbounds hourly
+Schedule::command('inbounds:cleanup-dedicated')
+    ->hourly()
+    ->withoutOverlapping();

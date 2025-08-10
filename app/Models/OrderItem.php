@@ -21,6 +21,11 @@ class OrderItem extends Model
         'unit_amount',
         'total_amount',
         'agent_bought',
+        'expires_at',
+    ];
+
+    protected $casts = [
+        'expires_at' => 'datetime',
     ];
 
     public function order(): BelongsTo
@@ -43,6 +48,26 @@ class OrderItem extends Model
         return $this->belongsToMany(ServerClient::class, 'order_server_clients')
                     ->withPivot(['provision_status', 'provision_error', 'provision_attempts'])
                     ->withTimestamps();
+    }
+
+    /**
+     * Virtual accessor to the related Server model via the ServerPlan relationship.
+     * This is NOT a true Eloquent relationship (so it cannot be eager loaded directly as items.server),
+     * but provides convenient $orderItem->server usage in UI code.
+     */
+    public function getServerAttribute(): ?Server
+    {
+        return $this->serverPlan?->server;
+    }
+
+    /**
+     * Virtual accessor returning the first associated ServerClient (if any) for backward compatibility
+     * with legacy code referencing $orderItem->server_client. For multiple clients, consider using
+     * the serverClients() relation directly.
+     */
+    public function getServerClientAttribute(): ?ServerClient
+    {
+        return $this->serverClients()->first();
     }
 
     // Enhanced methods

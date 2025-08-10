@@ -32,7 +32,9 @@ class OrderService
             Log::info('✅ Order marked as paid.', ['order_id' => $order->id]);
 
             // ✅ Dispatch job to create clients from order
-            dispatch(new ProcessXuiOrder($order->load('items.serverPlan')));
+            if ($order->payment_status === 'paid') {
+                dispatch(new ProcessXuiOrder($order->load('items.serverPlan')));
+            }
 
             Log::info('✅ Client creation job dispatched for Order.', ['order_id' => $order->id]);
 

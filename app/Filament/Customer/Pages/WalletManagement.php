@@ -163,13 +163,19 @@ class WalletManagement extends Page implements HasForms
                         ->required()
                         ->minValue(5)
                         ->maxValue(10000)
-                        ->placeholder('50.00'),
+                        ->placeholder('50.00')
+                        ->extraAttributes([
+                            'class' => 'bg-slate-900 text-slate-100 placeholder-slate-500 dark:bg-slate-900 dark:text-slate-100 border-slate-600 focus:border-indigo-500 focus:ring-indigo-500 rounded-lg',
+                        ]),
 
                     Select::make('payment_method')
                         ->label('Payment Method')
                         ->options(self::getAvailableGatewaysForForm())
                         ->required()
-                        ->default('stripe'),
+                        ->default('nowpayments')
+                        ->extraAttributes([
+                            'class' => 'bg-slate-900 text-slate-100 dark:bg-slate-900 dark:text-slate-100 border-slate-600 focus:border-indigo-500 focus:ring-indigo-500 rounded-lg',
+                        ]),
                 ])
                 ->action(function (array $data) {
                     // Redirect to PaymentProcessor Livewire component with selected payment method and amount
@@ -292,18 +298,57 @@ class WalletManagement extends Page implements HasForms
      */
     public static function getAvailableGatewaysForForm(): array
     {
-        // Ideally fetch from PaymentController::getAvailableGateways()
-        // For now, hardcode or fetch from config
-        return [
-            'stripe' => 'Credit Card',
-            'paypal' => 'PayPal',
-            'mir' => 'Mir',
-            'nowpayments' => 'Cryptocurrency',
-            'bitcoin' => '₿ Bitcoin',
-            'monero' => 'ⓧ Monero',
-            'solana' => '◎ Solana',
-            'wallet' => 'Wallet Balance',
-        ];
+        // Dynamically load only active ("live") payment methods from DB
+        try {
+            $methods = \App\Models\PaymentMethod::query()
+                ->where('is_active', true)
+                ->orderBy('name')
+                ->get(['slug','name','gateway','type']);
+
+            // Map known crypto slugs to nicer labels / symbols
+            $iconMap = [
+                'bitcoin' => '₿',
+                'btc' => '₿',
+                'monero' => 'ⓧ',
+                'xmr' => 'ⓧ',
+                'solana' => '◎',
+                'sol' => '◎',
+                'ethereum' => 'Ξ',
+                'eth' => 'Ξ',
+                'usdt' => '₮',
+            ];
+
+            $options = [];
+            foreach ($methods as $m) {
+                // Exclude wallet itself as a funding source for top-up
+                if (in_array($m->slug, ['wallet','internal-wallet'])) {
+                    continue;
+                }
+                $symbol = $iconMap[$m->slug] ?? '';
+                $label = trim(($symbol ? $symbol.' ' : '').$m->name);
+                // Fallback if name missing
+                if (!$label) {
+                    $label = ucfirst($m->slug);
+                }
+                $options[$m->slug] = $label;
+            }
+
+            // If nothing configured yet, fall back to safe defaults
+            if (empty($options)) {
+                $options = [
+                    'stripe' => 'Credit Card',
+                    'paypal' => 'PayPal',
+                ];
+            }
+
+            return $options;
+        } catch (\Throwable $e) {
+            // On any DB error, return minimal safe set so UI still works
+            return [
+                'stripe' => 'Credit Card',
+                'paypal' => 'PayPal',
+            ];
+        }
     }
 
 }

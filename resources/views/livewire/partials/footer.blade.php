@@ -160,7 +160,7 @@
                         </a>
                     </li>
                     <li>
-                        <a href="mailto:support@1000proxy.com" class="group flex items-center text-gray-300 hover:text-green-400 transition-all duration-300 py-2">
+                        <a href="mailto:support@1000proxy.io" class="group flex items-center text-gray-300 hover:text-green-400 transition-all duration-300 py-2">
                             <svg class="w-4 h-4 mr-3 text-green-400 group-hover:scale-110 transition-transform duration-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 4.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
                             </svg>

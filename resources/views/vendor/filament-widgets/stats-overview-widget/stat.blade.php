@@ -27,7 +27,7 @@
     ]);
 @endphp
 
-<{!! $tag !!}
+<div
     @if ($url)
         {{ \Filament\Support\generate_href_html($url, $shouldOpenUrlInNewTab()) }}
     @endif
@@ -156,4 +156,4 @@
             </div>
         </div>
     @endif
-</{!! $tag !!}>
+</div>

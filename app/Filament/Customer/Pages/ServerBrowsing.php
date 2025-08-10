@@ -35,12 +35,14 @@ class ServerBrowsing extends Page
     public $perPage = 12;
     public $servers = [];
     public $countries = [];
+    public $topCountries = [];
     public $page = 1;
     public $hasMore = true;
 
     public function mount()
     {
         $this->loadCountries();
+    $this->loadTopCountries();
         $this->loadServers();
     }
 
@@ -119,12 +121,26 @@ class ServerBrowsing extends Page
             ->toArray();
     }
 
+    public function loadTopCountries(): void
+    {
+        $this->topCountries = Server::query()
+            ->select('country', \DB::raw('COUNT(*) as total'))
+            ->where('status', 'active')
+            ->whereNotNull('country')
+            ->groupBy('country')
+            ->orderByDesc('total')
+            ->limit(6)
+            ->pluck('country')
+            ->toArray();
+    }
+
     public function loadServers($append = false)
     {
         $query = Server::query()
             ->with(['reviews', 'plans' => function($q) {
                 $q->where('is_active', true)->orderBy('price', 'asc');
             }])
+            ->withAvg('reviews', 'rating')
             ->where('status', 'active')
             ->whereHas('plans', function($q) {
                 $q->where('is_active', true);
@@ -199,8 +215,7 @@ class ServerBrowsing extends Page
                 $query->orderBy('country', 'asc');
                 break;
             case 'rating_desc':
-                $query->withAvg('reviews', 'rating')
-                      ->orderBy('reviews_avg_rating', 'desc');
+                $query->orderBy('reviews_avg_rating', 'desc');
                 break;
         }
 
@@ -375,6 +390,7 @@ class ServerBrowsing extends Page
             ->with(['plans' => function($q) {
                 $q->where('is_active', true)->orderBy('price', 'asc');
             }])
+            ->withAvg('reviews', 'rating')
             ->where('status', 'active')
             ->whereHas('plans', function($q) {
                 $q->where('is_active', true);
@@ -392,5 +408,24 @@ class ServerBrowsing extends Page
             ->body('Showing personalized server recommendations based on your preferences.')
             ->success()
             ->send();
+    }
+
+    /**
+     * Helper to format rating to one decimal.
+     */
+    public function formatRating($server): string
+    {
+        $rating = $server->reviews_avg_rating ?? 0;
+        return number_format($rating, 1);
+    }
+
+    /**
+     * Return an array of bools for filled stars based on average rating.
+     */
+    public function starArray($server): array
+    {
+        $rating = (float) ($server->reviews_avg_rating ?? 0);
+        $filled = floor($rating);
+        return array_map(function($i) use ($filled) { return $i <= $filled; }, range(1,5));
     }
 }

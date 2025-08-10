@@ -28,18 +28,31 @@ class PaymentMethodController extends Controller
 
     public function createInvoiceNowPayments(Order $order)
     {
-        $response = Http::withHeaders([
-            'x-api-key' => $this->api_nowPay,
-            'Content-Type' => 'application/json',
-        ])->post('https://api.nowpayments.io/v1/invoice', [
-            'price_amount' => $order->grand_amount,
-            'price_currency' => 'usd',
+        $currency = strtoupper(env('NOWPAYMENTS_CURRENCY', 'USD'));
+        $env = env('NOWPAYMENTS_ENV', 'sandbox');
+        $base = $env === 'live'
+            ? rtrim(env('NOWPAYMENTS_LIVE_URL', 'https://api.nowpayments.io/v1'), '/')
+            : rtrim(env('NOWPAYMENTS_SANDBOX_URL', 'https://api-sandbox.nowpayments.io/v1'), '/');
+        $callback = env('NOWPAYMENTS_CALLBACK_URL') ?: route('webhook.nowpay');
+        $successUrl = rtrim(config('app.url'), '/') . env('NOWPAYMENTS_SUCCESS_URL', '/payment/success');
+        $cancelUrl = rtrim(config('app.url'), '/') . env('NOWPAYMENTS_CANCEL_URL', '/payment/cancel');
+
+        $payload = [
+            'price_amount' => (float)$order->grand_amount,
+            'price_currency' => strtolower($currency), // API expects lowercase
             'order_id' => (string) $order->id,
             'order_description' => $order->notes,
-            'ipn_callback_url' => route('webhook.nowpay'),
-            'success_url' => route('success', ['order' => $order->id]),
-            'cancel_url' => route('cancel', ['order' => $order->id]),
-        ]);
+            'ipn_callback_url' => $callback,
+            'success_url' => $successUrl,
+            'cancel_url' => $cancelUrl,
+        ];
+        Log::info('NowPayments invoice payload', [ 'env' => $env, 'base' => $base, 'payload' => $payload ]);
+
+        $response = Http::withHeaders([
+            'x-api-key' => $this->api_nowPay,
+            'Accept' => 'application/json',
+            'Content-Type' => 'application/json',
+        ])->post($base . '/invoice', $payload);
 
         if ($response->successful()) {
             return [
@@ -54,16 +67,7 @@ class PaymentMethodController extends Controller
             ];
         }
 
-        Log::info('NowPayments Request Payload:', [
-            'price_amount' => $order->grand_amount,
-            'price_currency' => 'usd',
-            'order_id' => $order->id,
-            'order_description' => $order->notes,
-            'ipn_callback_url' => route('webhook.nowpay'),
-            'success_url' => route('success', ['order' => $order->id]),
-            'cancel_url' => route('cancel', ['order' => $order->id]),
-        ]);
-
+        // (Detailed payload already logged above)
     }
 
     public function handleWebhookNowPayments(Request $request)

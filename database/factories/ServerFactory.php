@@ -53,10 +53,8 @@ class ServerFactory extends Factory
             ],
             'type' => $this->faker->randomElement(['proxy', 'vpn']),
             'port_type' => $this->faker->randomElement(['tcp', 'udp']),
-            'reality' => [
-                'enabled' => $this->faker->boolean(),
-                'dest' => $this->faker->domainName() . ':443',
-            ],
+            // 'reality' column is a string in schema; store destination host when enabled, else empty
+            'reality' => $this->faker->boolean() ? ($this->faker->domainName() . ':443') : null,
             'xui_config' => [
                 'api_enabled' => true,
                 'sync_interval' => 300,
@@ -76,12 +74,10 @@ class ServerFactory extends Factory
             ],
             'total_clients' => $this->faker->numberBetween(0, 1000),
             'active_clients' => $this->faker->numberBetween(0, 500),
-            'max_capacity' => $this->faker->numberBetween(100, 2000),
+            // Removed: max_capacity / subscription_port / subscription_path (not in schema)
             'session_cookie' => $this->faker->optional(0.7)->sha256(),
             'last_login_at' => $this->faker->optional(0.8)->dateTimeBetween('-1 week', 'now'),
-            'api_url' => 'http://' . $this->faker->ipv4() . ':' . $this->faker->numberBetween(8000, 9999) . '/panel/api',
-            'subscription_port' => $this->faker->numberBetween(2080, 2090),
-            'subscription_path' => '/sub',
+            // Removed api_url (not in schema)
             'total_inbounds' => $this->faker->numberBetween(1, 10),
             'active_inbounds' => $this->faker->numberBetween(1, 5),
             'is_active' => $this->faker->boolean(85),

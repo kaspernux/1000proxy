@@ -35,7 +35,7 @@ class ServerPerformanceWidget extends BaseWidget
                 ->descriptionIcon('heroicon-m-x-circle')
                 ->color($healthMetrics['servers_offline'] > 0 ? 'danger' : 'success'),
 
-            Stat::make('Bandwidth Usage', number_format(($healthMetrics['total_bandwidth_used'] ?? 0) / 1024, 1) . ' GB')
+            Stat::make('Bandwidth Usage', number_format(($healthMetrics['total_bandwidth_used_gb'] ?? (($healthMetrics['total_bandwidth_used_mb'] ?? 0)/1024)), 1) . ' GB')
                 ->description('Total usage')
                 ->descriptionIcon('heroicon-m-arrow-up-down')
                 ->color('info'),

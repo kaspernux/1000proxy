@@ -264,7 +264,7 @@ echo "=== Update Check Complete - Review before applying ==="
 #!/bin/bash
 # system-monitor.sh
 
-ALERT_EMAIL="admin@1000proxy.com"
+ALERT_EMAIL="admin@1000proxy.io"
 HOSTNAME=$(hostname)
 
 # CPU usage threshold (80%)
@@ -814,7 +814,7 @@ echo "Database backup process completed"
 #!/bin/bash
 # security-monitor.sh
 
-ALERT_EMAIL="security@1000proxy.com"
+ALERT_EMAIL="security@1000proxy.io"
 LOG_FILE="/var/www/html/storage/logs/laravel.log"
 
 # Monitor failed login attempts
@@ -859,7 +859,7 @@ done
 
 BASELINE_DIR="/var/backups/integrity"
 WEB_ROOT="/var/www/html"
-ALERT_EMAIL="security@1000proxy.com"
+ALERT_EMAIL="security@1000proxy.io"
 
 # Create baseline if it doesn't exist
 if [ ! -f ${BASELINE_DIR}/file_hashes.txt ]; then
@@ -890,8 +890,8 @@ fi
 #!/bin/bash
 # ssl-certificate-monitor.sh
 
-DOMAINS=("1000proxy.com" "www.1000proxy.com" "api.1000proxy.com")
-ALERT_EMAIL="admin@1000proxy.com"
+DOMAINS=("1000proxy.io" "www.1000proxy.io" "api.1000proxy.io")
+ALERT_EMAIL="admin@1000proxy.io"
 WARNING_DAYS=30
 
 for domain in "${DOMAINS[@]}"; do
@@ -1223,7 +1223,7 @@ echo "-------------" >> $REPORT_FILE
 grep "slow query" ${LOG_DIR}/*.log | tail -10 >> $REPORT_FILE
 
 # Send report
-mail -s "Daily Log Analysis Report" admin@1000proxy.com < $REPORT_FILE
+mail -s "Daily Log Analysis Report" admin@1000proxy.io < $REPORT_FILE
 ```
 
 ## Update Procedures
@@ -1331,7 +1331,7 @@ unattended-upgrade -d
 if [ -f /var/run/reboot-required ]; then
     echo "Reboot required after security updates"
     echo "Reboot recommended for security updates" | \
-    mail -s "Security Updates: Reboot Required" admin@1000proxy.com
+    mail -s "Security Updates: Reboot Required" admin@1000proxy.io
 fi
 
 # Update PHP packages
@@ -1478,7 +1478,7 @@ curl -I http://localhost/health
 
 # 7. Notify team
 echo "Emergency response completed" | \
-mail -s "EMERGENCY: System Response Executed" admin@1000proxy.com
+mail -s "EMERGENCY: System Response Executed" admin@1000proxy.io
 
 echo "=== EMERGENCY RESPONSE COMPLETED ==="
 ```

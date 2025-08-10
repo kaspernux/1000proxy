@@ -135,7 +135,7 @@ class AutomatedRenewals extends Page implements HasTable, HasForms
         return $table
             ->query(
                 Order::where('customer_id', Auth::guard('customer')->id())
-                    ->with(['items.serverClient.server'])
+                    ->with(['items.serverPlan.server'])
             )
             ->columns([
                 TextColumn::make('id')
@@ -150,21 +150,32 @@ class AutomatedRenewals extends Page implements HasTable, HasForms
                     ->searchable()
                     ->weight(FontWeight::Bold),
 
-                TextColumn::make('items.expires_at')
+                TextColumn::make('expires_at_display')
                     ->label('Expires')
-                    ->dateTime()
-                    ->sortable()
+                    ->sortable(query: function (Builder $query, string $direction) {
+                        $query->orderBy(
+                            OrderItem::query()->select('expires_at')
+                                ->whereColumn('order_items.order_id', 'orders.id')
+                                ->orderBy('expires_at', 'asc')
+                                ->limit(1),
+                            $direction
+                        );
+                    })
+                    ->getStateUsing(function ($record) {
+                        $expiresAt = $record->items->first()?->expires_at;
+                        return $expiresAt ? $expiresAt->format('M j, Y') : '—';
+                    })
                     ->color(fn ($record) => $this->getExpirationColor($record)),
 
                 TextColumn::make('days_until_expiry')
                     ->label('Days Left')
                     ->getStateUsing(function ($record) {
                         $expiresAt = $record->items->first()?->expires_at;
-                        return $expiresAt ? now()->diffInDays($expiresAt) : 'N/A';
+                        return $expiresAt ? now()->diffInDays($expiresAt) : '—';
                     })
                     ->badge()
                     ->color(fn (string $state): string => match (true) {
-                        $state === 'N/A' => 'gray',
+                        $state === '—' => 'gray',
                         intval($state) <= 1 => 'danger',
                         intval($state) <= 7 => 'warning',
                         default => 'success',
@@ -206,16 +217,13 @@ class AutomatedRenewals extends Page implements HasTable, HasForms
                     ->label('Next Renewal')
                     ->getStateUsing(function ($record) {
                         if (!$this->renewalSettings['auto_renew_enabled']) {
-                            return 'N/A';
+                            return '—';
                         }
-
                         $expiresAt = $record->items->first()?->expires_at;
-                        if (!$expiresAt) return 'N/A';
-
+                        if (!$expiresAt) return '—';
                         $renewalDate = Carbon::parse($expiresAt)->subDays($this->renewalSettings['renewal_buffer_days']);
                         return $renewalDate->format('M j, Y');
-                    })
-                    ->date(),
+                    }),
             ])
             ->filters([
                 SelectFilter::make('expiration')
@@ -227,10 +235,10 @@ class AutomatedRenewals extends Page implements HasTable, HasForms
                     ])
                     ->query(function (Builder $query, array $data): Builder {
                         return match ($data['value'] ?? null) {
-                            'expired' => $query->whereHas('orderItems', fn ($q) => $q->where('expires_at', '<', now())),
-                            'expiring_soon' => $query->whereHas('orderItems', fn ($q) => $q->whereBetween('expires_at', [now(), now()->addWeek()])),
-                            'expiring_month' => $query->whereHas('orderItems', fn ($q) => $q->whereBetween('expires_at', [now(), now()->addMonth()])),
-                            'active' => $query->whereHas('orderItems', fn ($q) => $q->where('expires_at', '>', now())),
+                            'expired' => $query->whereHas('items', fn ($q) => $q->where('expires_at', '<', now())),
+                            'expiring_soon' => $query->whereHas('items', fn ($q) => $q->whereBetween('expires_at', [now(), now()->addWeek()])),
+                            'expiring_month' => $query->whereHas('items', fn ($q) => $q->whereBetween('expires_at', [now(), now()->addMonth()])),
+                            'active' => $query->whereHas('items', fn ($q) => $q->where('expires_at', '>', now())),
                             default => $query,
                         };
                     }),
@@ -347,12 +355,13 @@ class AutomatedRenewals extends Page implements HasTable, HasForms
         $customer = Auth::guard('customer')->user();
 
         return Order::where('customer_id', $customer->id)
-            ->with(['items' => function ($query) {
-                $query->whereBetween('expires_at', [
+            ->whereHas('items', function ($q) {
+                $q->whereBetween('expires_at', [
                     now(),
                     now()->addDays($this->renewalSettings['renewal_buffer_days'])
                 ]);
-            }, 'items.serverClient.server'])
+            })
+            ->with(['items' => function ($q) { $q->whereBetween('expires_at', [now(), now()->addDays($this->renewalSettings['renewal_buffer_days'])]); }, 'items.serverPlan.server'])
             ->get();
     }
 }

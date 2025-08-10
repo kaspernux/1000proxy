@@ -435,4 +435,34 @@ class ReferralSystem extends Page implements HasTable, HasForms
 
         return null;
     }
+
+    /**
+     * Progress (0-100) toward next referral tier.
+     */
+    public function getTierProgress(): array
+    {
+        $current = $this->getCurrentTier();
+        $next = $this->getNextTier();
+        $total = $this->referralStats['total_referrals'] ?? 0;
+
+        if (!$next) {
+            return [
+                'percentage' => 100,
+                'remaining' => 0,
+                'label' => 'Max tier reached',
+            ];
+        }
+
+        $neededForCurrent = $current['min_referrals'];
+        $neededForNext = $next['min_referrals'];
+        $range = max(1, $neededForNext - $neededForCurrent);
+        $progressInRange = max(0, $total - $neededForCurrent);
+        $percentage = min(100, round(($progressInRange / $range) * 100));
+
+        return [
+            'percentage' => $percentage,
+            'remaining' => max(0, $neededForNext - $total),
+            'label' => $next['name'] . ' in ' . max(0, $neededForNext - $total) . ' referrals',
+        ];
+    }
 }

@@ -1,363 +1,250 @@
 <x-filament-panels::page>
-    <div class="space-y-4 md:space-y-6">
-        {{-- Row 1: Server Statistics and Server Filters --}}
-        <div class="grid grid-cols-1 lg:grid-cols-3 gap-4 md:gap-6">
-            {{-- Server Statistics --}}
-            <x-filament::section class="lg:col-span-2">
-                <x-slot name="heading">
-                    <div class="flex items-center gap-2">
-                        <x-heroicon-o-chart-bar-square class="w-5 h-5 text-primary-600" />
-                        Server Statistics
-                    </div>
-                </x-slot>
-                
-                <div class="grid grid-cols-2 md:grid-cols-4 gap-2 md:gap-3">
-                    <div class="text-center p-2 md:p-3 bg-primary-50 dark:bg-primary-900/20 rounded-lg border border-primary-100 dark:border-primary-800">
-                        <div class="flex flex-col items-center gap-1 md:gap-2">
-                            <div class="p-2 bg-primary-100 dark:bg-primary-800 rounded-full">
-                                <x-heroicon-o-server class="w-4 h-4 md:w-5 md:h-5 text-primary-600 dark:text-primary-400" />
+    <div class="fi-section-content-ctn" wire:ignore.self>
+        <!-- Hero Header -->
+        <div class="fi-section-header mb-12 pb-6">
+            <div class="fi-section-header-wrapper">
+                <div class="flex flex-col space-y-4 sm:flex-row sm:items-center sm:justify-between sm:space-y-0">
+                    <div class="flex-1 min-w-0">
+                        <h1 class="fi-section-header-heading text-2xl font-bold tracking-tight text-gray-950 dark:text-white sm:text-3xl">
+                            <div class="flex items-center">
+                                <div class="flex h-10 w-10 items-center justify-center rounded-lg bg-primary-50 dark:bg-primary-900/20 mr-3 flex-shrink-0">
+                                    <x-heroicon-s-server-stack class="h-6 w-6 text-primary-600 dark:text-primary-400" />
+                                </div>
+                                <span class="truncate">Advanced Server Marketplace</span>
                             </div>
-                            <div>
-                                <p class="text-xs font-medium text-gray-600 dark:text-gray-400">Total Servers</p>
-                                <p class="text-sm md:text-lg font-bold text-gray-900 dark:text-white">
-                                    {{ \App\Models\Server::where('is_active', true)->count() }}
-                                </p>
-                            </div>
-                        </div>
+                        </h1>
+                        <p class="fi-section-header-description mt-2 text-sm text-gray-500 dark:text-gray-400 leading-6">
+                            Browse, filter, and select optimized proxy servers with real-time insights & smart tools.
+                        </p>
                     </div>
+                </div>
+            </div>
+        </div>
 
-                    <div class="text-center p-2 md:p-3 bg-success-50 dark:bg-success-900/20 rounded-lg border border-success-100 dark:border-success-800">
-                        <div class="flex flex-col items-center gap-1 md:gap-2">
-                            <div class="p-2 bg-success-100 dark:bg-success-800 rounded-full">
-                                <x-heroicon-o-check-circle class="w-4 h-4 md:w-5 md:h-5 text-success-600 dark:text-success-400" />
-                            </div>
-                            <div>
-                                <p class="text-xs font-medium text-gray-600 dark:text-gray-400">Active Now</p>
-                                <p class="text-sm md:text-lg font-bold text-gray-900 dark:text-white">
-                                    {{ \App\Models\Server::where('is_active', true)->where('status', 'active')->count() }}
-                                </p>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="text-center p-2 md:p-3 bg-info-50 dark:bg-info-900/20 rounded-lg border border-info-100 dark:border-info-800">
-                        <div class="flex flex-col items-center gap-1 md:gap-2">
-                            <div class="p-2 bg-info-100 dark:bg-info-800 rounded-full">
-                                <x-heroicon-o-map-pin class="w-4 h-4 md:w-5 md:h-5 text-info-600 dark:text-info-400" />
-                            </div>
-                            <div>
-                                <p class="text-xs font-medium text-gray-600 dark:text-gray-400">Countries</p>
-                                <p class="text-sm md:text-lg font-bold text-gray-900 dark:text-white">
-                                    {{ \App\Models\Server::where('is_active', true)->distinct('country')->count('country') }}
-                                </p>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="text-center p-2 md:p-3 bg-warning-50 dark:bg-warning-900/20 rounded-lg border border-warning-100 dark:border-warning-800">
-                        <div class="flex flex-col items-center gap-1 md:gap-2">
-                            <div class="p-2 bg-warning-100 dark:bg-warning-800 rounded-full">
-                                <x-heroicon-o-currency-dollar class="w-4 h-4 md:w-5 md:h-5 text-warning-600 dark:text-warning-400" />
-                            </div>
-                            <div>
-                                <p class="text-xs font-medium text-gray-600 dark:text-gray-400">From</p>
-                                <p class="text-sm md:text-lg font-bold text-gray-900 dark:text-white">
-                                    ${{ \App\Models\ServerPlan::whereHas('server', function($query) { $query->where('is_active', true); })->where('is_active', true)->min('price') ?? '0' }}
-                                </p>
-                            </div>
-                        </div>
+        <!-- Gradient Statistic Cards -->
+        <div class="grid gap-6 md:gap-8 grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 mb-12">
+            <!-- Total Servers -->
+            <x-filament::section class="p-5 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl shadow-sm">
+                <div class="flex items-start justify-between">
+                    <div>
+                        <p class="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400 mb-1">Total Servers</p>
+                        <p class="text-3xl font-bold text-gray-900 dark:text-white">{{ \App\Models\Server::where('is_active', true)->count() }}</p>
+                        <p class="mt-2 flex items-center text-xs text-gray-500 dark:text-gray-400">
+                            <x-heroicon-o-arrow-trending-up class="h-4 w-4 mr-1 text-primary-500" /> Active lineup
+                        </p>
                     </div>
                 </div>
             </x-filament::section>
 
-            {{-- Enhanced Server Filters --}}
-            <x-filament::section class="lg:col-span-1">
+            <!-- Active Servers -->
+            <x-filament::section class="p-5 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl shadow-sm">
+                <div class="flex items-start justify-between">
+                    <div>
+                        <p class="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400 mb-1">Active Now</p>
+                        <p class="text-3xl font-bold text-gray-900 dark:text-white">{{ \App\Models\Server::where('is_active', true)->where('status', 'active')->count() }}</p>
+                        <p class="mt-2 flex items-center text-xs text-success-600 dark:text-success-400">
+                            <span class="w-2 h-2 bg-success-500 rounded-full mr-1 animate-pulse"></span> Online capacity
+                        </p>
+                    </div>
+                </div>
+            </x-filament::section>
+
+            <!-- Countries -->
+            <x-filament::section class="p-5 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl shadow-sm">
+                <div class="flex items-start justify-between">
+                    <div>
+                        <p class="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400 mb-1">Countries</p>
+                        <p class="text-3xl font-bold text-gray-900 dark:text-white">{{ \App\Models\Server::where('is_active', true)->distinct('country')->count('country') }}</p>
+                        <p class="mt-2 text-xs text-gray-500 dark:text-gray-400">Global coverage</p>
+                    </div>
+                </div>
+            </x-filament::section>
+
+            <!-- Starting Price -->
+            <x-filament::section class="p-5 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl shadow-sm">
+                <div class="flex items-start justify-between">
+                    <div>
+                        <p class="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400 mb-1">Starting At</p>
+                        <p class="text-3xl font-bold text-gray-900 dark:text-white">${{ \App\Models\ServerPlan::whereHas('server', function($query) { $query->where('is_active', true); })->where('is_active', true)->min('price') ?? '0' }}</p>
+                        <p class="mt-2 text-xs text-gray-500 dark:text-gray-400">Entry pricing</p>
+                    </div>
+                </div>
+            </x-filament::section>
+        </div>
+
+        {{-- Main Grid: Filters + (existing secondary panels remain) --}}
+        <div class="grid py-4 grid-cols-1 lg:grid-cols-3 gap-4 md:gap-6 mb-16">
+            {{-- Enhanced Server Filters (simplified neutral design) --}}
+            <x-filament::section class="lg:col-start-3 lg:row-span-2 order-last lg:order-none py-6">
                 <x-slot name="heading">
                     <div class="flex items-center justify-between w-full">
                         <div class="flex items-center gap-2">
-                            <x-heroicon-o-funnel class="w-5 h-5 text-primary-600" />
-                            Server Filters
+                            <x-heroicon-o-funnel class="w-5 h-5 text-gray-500" />
+                            <span class="font-medium">Server Filters</span>
                         </div>
-                        <x-filament::button
-                            color="gray"
-                            icon="heroicon-o-arrow-path"
-                            size="xs"
-                            wire:click="resetFilters()"
-                            class="text-xs"
-                        >
-                            Reset
-                        </x-filament::button>
+                        <button type="button" wire:click="resetFilters()" class="inline-flex items-center gap-1 text-xs font-medium text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200">
+                            <x-heroicon-o-arrow-path class="w-4 h-4" /> Reset
+                        </button>
                     </div>
                 </x-slot>
-                
-                <div class="space-y-4">
-                    {{-- Enhanced Search Form --}}
-                    <div class="p-4 bg-gradient-to-r from-primary-50 to-blue-50 dark:from-primary-900/20 dark:to-blue-900/20 rounded-lg border border-primary-100 dark:border-primary-800">
+                <div class="space-y-5">
+                    <div class="p-4 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
                         <div class="flex items-center gap-2 mb-3">
-                            <div class="p-1 bg-primary-100 dark:bg-primary-800 rounded-full">
-                                <x-heroicon-o-magnifying-glass class="w-4 h-4 text-primary-600" />
+                            <div class="h-7 w-7 flex items-center justify-center rounded-md bg-gray-100 dark:bg-gray-700">
+                                <x-heroicon-o-magnifying-glass class="w-4 h-4 text-gray-500" />
                             </div>
-                            <span class="text-sm font-semibold text-gray-900 dark:text-white">Smart Search</span>
+                            <span class="text-sm font-semibold text-gray-900 dark:text-white">Search & Refine</span>
                         </div>
-                        
-                        {{-- Main Form --}}
                         <div class="space-y-3">
                             {{ $this->form }}
                         </div>
                     </div>
 
-                    {{-- Quick Location Filter --}}
-                    <div class="p-3 bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
+                    {{-- Top Locations --}}
+                    <div class="p-4 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
                         <div class="flex items-center gap-2 mb-3">
-                            <x-heroicon-o-globe-alt class="w-4 h-4 text-gray-600" />
-                            <span class="text-sm font-medium text-gray-900 dark:text-white">Popular Locations</span>
+                            <x-heroicon-o-globe-alt class="w-4 h-4 text-gray-500" />
+                            <span class="text-sm font-medium text-gray-900 dark:text-white">Top Locations</span>
                         </div>
-                        <div class="grid grid-cols-3 gap-2">
-                            <x-filament::button
-                                color="primary"
-                                size="xs"
-                                class="text-xs justify-center"
-                                wire:click="$set('filters.country', 'us')"
-                            >
-                                🇺🇸 US
-                            </x-filament::button>
-                            <x-filament::button
-                                color="success"
-                                size="xs"
-                                class="text-xs justify-center"
-                                wire:click="$set('filters.country', 'eu')"
-                            >
-                                🇪🇺 EU
-                            </x-filament::button>
-                            <x-filament::button
-                                color="info"
-                                size="xs"
-                                class="text-xs justify-center"
-                                wire:click="$set('filters.country', 'asia')"
-                            >
-                                🌏 Asia
-                            </x-filament::button>
+                        <div class="flex flex-wrap gap-2">
+                            @forelse($topCountries as $c)
+                                @php($active = $filters['country'] === $c)
+                                <button type="button" wire:click="$set('filters.country', '{{ $c }}')" class="px-2.5 py-1 rounded-md text-xs font-medium border transition {{ $active ? 'bg-primary-600 text-white border-primary-600' : 'bg-gray-50 dark:bg-gray-700 text-gray-600 dark:text-gray-300 border-gray-200 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-600' }}">
+                                    <span class="inline-flex items-center gap-1"><x-heroicon-o-map-pin class="w-3 h-3" /> {{ strtoupper($c) }}</span>
+                                </button>
+                            @empty
+                                <p class="text-xs text-gray-500">No data</p>
+                            @endforelse
                         </div>
                     </div>
 
-                    {{-- Quick Price Filter --}}
-                    <div class="p-3 bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
+                    {{-- Budget Shortcuts --}}
+                    <div class="p-4 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
                         <div class="flex items-center gap-2 mb-3">
-                            <x-heroicon-o-currency-dollar class="w-4 h-4 text-gray-600" />
-                            <span class="text-sm font-medium text-gray-900 dark:text-white">Budget Range</span>
+                            <x-heroicon-o-currency-dollar class="w-4 h-4 text-gray-500" />
+                            <span class="text-sm font-medium text-gray-900 dark:text-white">Budget</span>
                         </div>
-                        <div class="grid grid-cols-2 gap-2">
-                            <x-filament::button
-                                color="warning"
-                                size="xs"
-                                class="text-xs justify-center"
-                                wire:click="$set('filters.max_price', 10)"
-                            >
-                                Under $10
-                            </x-filament::button>
-                            <x-filament::button
-                                color="danger"
-                                size="xs"
-                                class="text-xs justify-center"
-                                wire:click="$set('filters.max_price', 25)"
-                            >
-                                Under $25
-                            </x-filament::button>
-                        </div>
-                    </div>
-
-                    {{-- Filter Status Display --}}
-                    @if(array_filter($this->filters))
-                    <div class="p-3 bg-info-50 dark:bg-info-900/20 rounded-lg border border-info-200 dark:border-info-800">
-                        <div class="flex items-center gap-2 mb-2">
-                            <x-heroicon-o-check-circle class="w-4 h-4 text-info-600" />
-                            <span class="text-sm font-medium text-info-900 dark:text-info-100">Active Filters</span>
-                        </div>
-                        <div class="flex flex-wrap gap-1">
-                            @foreach($this->filters as $key => $value)
-                                @if($value && $key !== 'sort')
-                                    <x-filament::badge color="info" size="xs">
-                                        {{ ucfirst(str_replace('_', ' ', $key)) }}: {{ $value }}
-                                    </x-filament::badge>
-                                @endif
+                        <div class="flex flex-wrap gap-2">
+                            @foreach([[10,'Under $10'],[25,'Under $25'],[50,'Under $50']] as $b)
+                                @php($active = (int)($filters['price_max'] ?? 0) === $b[0])
+                                <button type="button" wire:click="$set('filters.price_max', {{ $b[0] }})" class="px-3 py-1.5 rounded-md text-xs font-medium border transition {{ $active ? 'bg-primary-600 text-white border-primary-600' : 'bg-gray-50 dark:bg-gray-700 text-gray-600 dark:text-gray-300 border-gray-200 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-600' }}">{{ $b[1] }}</button>
                             @endforeach
                         </div>
                     </div>
+
+                    {{-- Active Filters Summary --}}
+                    @php($activeFilters = collect($filters)->filter(fn($v,$k)=>$v && $k !== 'sort'))
+                    @if($activeFilters->isNotEmpty())
+                        <div class="p-4 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
+                            <div class="flex items-center gap-2 mb-3">
+                                <x-heroicon-o-adjustments-horizontal class="w-4 h-4 text-gray-500" />
+                                <span class="text-sm font-medium text-gray-900 dark:text-white">Active Filters</span>
+                            </div>
+                            <div class="flex flex-wrap gap-1">
+                                @foreach($activeFilters as $k => $v)
+                                    <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-xs bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-600">
+                                        <x-heroicon-o-tag class="w-3 h-3" /> {{ ucfirst(str_replace('_',' ',$k)) }}: {{ $v }}
+                                    </span>
+                                @endforeach
+                            </div>
+                        </div>
                     @endif
 
                     {{-- Quick Actions --}}
-                    <div class="grid grid-cols-2 gap-2">
-                        <x-filament::button
-                            color="primary"
-                            icon="heroicon-o-sparkles"
-                            size="sm"
-                            class="justify-center"
-                            wire:click="getServerRecommendations"
-                        >
-                            Recommend
-                        </x-filament::button>
-                        
-                        <x-filament::button
-                            color="{{ $this->filters['favorites_only'] ? 'danger' : 'gray' }}"
-                            icon="heroicon-o-heart"
-                            size="sm"
-                            class="justify-center"
-                            wire:click="showOnlyFavorites"
-                        >
-                            Favorites
-                        </x-filament::button>
+                    <div class="flex gap-2">
+                        <button type="button" wire:click="getServerRecommendations" class="flex-1 inline-flex items-center justify-center gap-1 px-3 py-2 rounded-md text-xs font-medium border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700 transition">
+                            <x-heroicon-o-sparkles class="w-4 h-4" /> Recommend
+                        </button>
+                        @php($fav = $filters['favorites_only'])
+                        <button type="button" wire:click="showOnlyFavorites" class="flex-1 inline-flex items-center justify-center gap-1 px-3 py-2 rounded-md text-xs font-medium border transition {{ $fav ? 'bg-primary-600 text-white border-primary-600' : 'border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700' }}">
+                            <x-heroicon-o-heart class="w-4 h-4" /> Favorites
+                        </button>
                     </div>
                 </div>
             </x-filament::section>
         </div>
 
+        {{-- Retain remaining original content sections below --}}
+
         {{-- Row 2: Quick Filters, Protocol Comparison, and Featured Banner --}}
-        <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 md:gap-6">
-            {{-- Quick Filters --}}
-            <x-filament::section>
+        <div class="grid py-4 grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 md:gap-6 mb-16">
+            {{-- Quick Filters (neutral buttons) --}}
+            <x-filament::section class="py-6">
                 <x-slot name="heading">
                     <div class="flex items-center gap-2">
-                        <x-heroicon-o-adjustments-horizontal class="w-5 h-5 text-primary-600" />
-                        Quick Filters
+                        <x-heroicon-o-adjustments-horizontal class="w-5 h-5 text-gray-500" />
+                        <span class="font-medium">Quick Filters</span>
                     </div>
                 </x-slot>
-                
-                <div class="grid grid-cols-2 md:grid-cols-1 gap-2">
-                    <x-filament::button
-                        color="primary"
-                        icon="heroicon-o-flag"
-                        size="sm"
-                        class="justify-start"
-                        wire:click="$set('filters.country', 'us')"
-                    >
-                        🇺🇸 US
-                    </x-filament::button>
-                    
-                    <x-filament::button
-                        color="success"
-                        icon="heroicon-o-flag" 
-                        size="sm"
-                        class="justify-start"
-                        wire:click="$set('filters.country', 'eu')"
-                    >
-                        🇪🇺 EU
-                    </x-filament::button>
-                    
-                    <x-filament::button
-                        color="info"
-                        icon="heroicon-o-flag"
-                        size="sm"
-                        class="justify-start"
-                        wire:click="$set('filters.country', 'asia')"
-                    >
-                        🌏 Asia
-                    </x-filament::button>
-                    
-                    <x-filament::button
-                        color="warning"
-                        icon="heroicon-o-currency-dollar"
-                        size="sm"
-                        class="justify-start"
-                        wire:click="$set('filters.max_price', 10)"
-                    >
-                        Under $10
-                    </x-filament::button>
-                    
-                    <x-filament::button
-                        color="danger"
-                        icon="heroicon-o-bolt"
-                        size="sm"
-                        class="justify-start"
-                        wire:click="$set('filters.features', ['high_speed'])"
-                    >
-                        High Speed
-                    </x-filament::button>
-                    
-                    <x-filament::button
-                        color="gray"
-                        icon="heroicon-o-arrow-path"
-                        size="sm"
-                        class="justify-start"
-                        wire:click="resetFilters()"
-                    >
-                        Reset All
-                    </x-filament::button>
+                <div class="flex flex-wrap gap-2">
+                    @foreach([
+                        ['country','us','US','heroicon-o-flag'],
+                        ['country','eu','EU','heroicon-o-flag'],
+                        ['country','asia','Asia','heroicon-o-flag'],
+                        ['price_max',10,'Under $10','heroicon-o-currency-dollar'],
+                        ['price_max',25,'Under $25','heroicon-o-currency-dollar'],
+                    ] as $q)
+                        @php($active = ($filters[$q[0]] ?? null) === $q[1])
+                        <button type="button" wire:click="$set('filters.'.$q[0], '{{ $q[1] }}')" class="inline-flex items-center gap-1 px-3 py-1.5 rounded-md text-xs font-medium border transition {{ $active ? 'bg-primary-600 text-white border-primary-600' : 'bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700' }}">
+                            <x-filament::icon :icon="$q[3]" class="w-4 h-4" /> {{ $q[2] }}
+                        </button>
+                    @endforeach
+                    <button type="button" wire:click="resetFilters()" class="inline-flex items-center gap-1 px-3 py-1.5 rounded-md text-xs font-medium border bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700">
+                        <x-heroicon-o-arrow-path class="w-4 h-4" /> Reset
+                    </button>
                 </div>
             </x-filament::section>
 
-            {{-- Protocol Comparison --}}
-            <x-filament::section>
+            {{-- Protocols (clean list) --}}
+            <x-filament::section class="py-6">
                 <x-slot name="heading">
                     <div class="flex items-center gap-2">
-                        <x-heroicon-o-chart-bar class="w-5 h-5 text-primary-600" />
-                        Protocols
+                        <x-heroicon-o-chart-bar class="w-5 h-5 text-gray-500" />
+                        <span class="font-medium">Protocols</span>
                     </div>
                 </x-slot>
-                
-                <div class="space-y-2">
-                    <div class="flex items-center justify-between p-2 bg-gray-50 dark:bg-gray-800 rounded-lg">
-                        <div class="flex items-center gap-2">
-                            <x-heroicon-o-bolt class="w-4 h-4 text-gray-600" />
-                            <span class="text-sm font-medium text-gray-900 dark:text-white">VLESS</span>
-                        </div>
-                        <x-filament::badge color="success" size="xs">Fastest</x-filament::badge>
-                    </div>
-                    
-                    <div class="flex items-center justify-between p-2 bg-gray-50 dark:bg-gray-800 rounded-lg">
-                        <div class="flex items-center gap-2">
-                            <x-heroicon-o-shield-check class="w-4 h-4 text-gray-600" />
-                            <span class="text-sm font-medium text-gray-900 dark:text-white">VMess</span>
-                        </div>
-                        <x-filament::badge color="primary" size="xs">Secure</x-filament::badge>
-                    </div>
-                    
-                    <div class="flex items-center justify-between p-2 bg-gray-50 dark:bg-gray-800 rounded-lg">
-                        <div class="flex items-center gap-2">
-                            <x-heroicon-o-eye-slash class="w-4 h-4 text-gray-600" />
-                            <span class="text-sm font-medium text-gray-900 dark:text-white">Trojan</span>
-                        </div>
-                        <x-filament::badge color="info" size="xs">Stealth</x-filament::badge>
-                    </div>
-                    
-                    <div class="flex items-center justify-between p-2 bg-gray-50 dark:bg-gray-800 rounded-lg">
-                        <div class="flex items-center gap-2">
-                            <x-heroicon-o-bolt-slash class="w-4 h-4 text-gray-600" />
-                            <span class="text-sm font-medium text-gray-900 dark:text-white">Shadowsocks</span>
-                        </div>
-                        <x-filament::badge color="warning" size="xs">Light</x-filament::badge>
-                    </div>
-                    
-                    <div class="flex items-center justify-between p-2 bg-gray-50 dark:bg-gray-800 rounded-lg">
-                        <div class="flex items-center gap-2">
-                            <x-heroicon-o-globe-alt class="w-4 h-4 text-gray-600" />
-                            <span class="text-sm font-medium text-gray-900 dark:text-white">SOCKS5</span>
-                        </div>
-                        <x-filament::badge color="gray" size="xs">Universal</x-filament::badge>
-                    </div>
-                </div>
+                <ul class="divide-y divide-gray-200 dark:divide-gray-700 text-sm">
+                    @foreach([
+                        ['VLESS','heroicon-o-bolt','Fastest'],
+                        ['VMess','heroicon-o-shield-check','Secure'],
+                        ['Trojan','heroicon-o-eye-slash','Stealth'],
+                        ['Shadowsocks','heroicon-o-bolt-slash','Light'],
+                        ['SOCKS5','heroicon-o-globe-alt','Universal'],
+                    ] as $p)
+                        <li class="flex items-center justify-between py-2">
+                            <div class="flex items-center gap-2">
+                                <x-filament::icon :icon="$p[1]" class="w-4 h-4 text-gray-500" />
+                                <span class="text-gray-900 dark:text-gray-200 font-medium">{{ $p[0] }}</span>
+                            </div>
+                            <span class="text-xs text-gray-500 dark:text-gray-400">{{ $p[2] }}</span>
+                        </li>
+                    @endforeach
+                </ul>
             </x-filament::section>
 
-            {{-- Featured Banner --}}
-            <x-filament::section class="md:col-span-2 xl:col-span-1 bg-gradient-to-br from-primary-500 to-purple-600 text-white">
-                <div class="text-center">
-                    <div class="flex items-center justify-center gap-2 mb-2">
-                        <x-heroicon-o-star class="w-5 h-5" />
-                        <h3 class="text-lg font-bold">Featured</h3>
+            {{-- Featured (subtle callout) --}}
+            <x-filament::section class="md:col-span-2 xl:col-span-1 py-6">
+                <x-slot name="heading">
+                    <div class="flex items-center gap-2">
+                        <x-heroicon-o-star class="w-5 h-5 text-gray-500" />
+                        <span class="font-medium">Featured</span>
                     </div>
-                    <p class="text-primary-100 text-sm mb-3">High-performance servers with 99.9% uptime</p>
-                    <div class="flex items-center justify-center gap-2 mb-2">
-                        <x-heroicon-o-gift class="w-4 h-4" />
-                        <span class="text-sm font-bold">Special Offers</span>
+                </x-slot>
+                <div class="space-y-3 text-sm">
+                    <p class="text-gray-600 dark:text-gray-400">High-performance servers selected for reliability & uptime.</p>
+                    <div class="flex items-center gap-2">
+                        <x-heroicon-o-gift class="w-4 h-4 text-gray-500" />
+                        <span class="text-gray-700 dark:text-gray-300">Intro discounts available.</span>
                     </div>
-                    <div class="text-primary-200 text-xs">Up to 50% off first month</div>
+                    <div class="text-xs text-gray-500 dark:text-gray-500">Updated daily.</div>
                 </div>
             </x-filament::section>
         </div>
 
         {{-- Row 3: Main Content Area - Servers --}}
-        <div class="space-y-4 md:space-y-6">
+    <div class="py-4 space-y-4 md:space-y-6 mt-12">
             {{-- Servers Grid --}}
-            <x-filament::section>
+            <x-filament::section class="py-6">
                 <x-slot name="heading">
                     <div class="flex items-center justify-between w-full">
                         <div class="flex items-center gap-2">
@@ -439,10 +326,11 @@
                                             <span>Rating</span>
                                         </div>
                                         <div class="flex items-center gap-1">
-                                            @for($i = 1; $i <= 5; $i++)
-                                                <x-heroicon-s-star class="w-2.5 h-2.5 {{ $i <= 4 ? 'text-warning-400' : 'text-gray-300' }}" />
-                                            @endfor
-                                            <span class="text-xs text-gray-500 ml-1">4.0</span>
+                                            @php($stars = $this->starArray($server))
+                                            @foreach($stars as $filled)
+                                                <x-heroicon-s-star class="w-2.5 h-2.5 {{ $filled ? 'text-warning-400' : 'text-gray-300 dark:text-gray-600' }}" />
+                                            @endforeach
+                                            <span class="text-xs text-gray-500 ml-1">{{ $this->formatRating($server) }}</span>
                                         </div>
                                     </div>
                                 </div>
@@ -461,18 +349,24 @@
                         @endforeach
                     </div>
                     
-                    @if($hasMore)
-                    <div class="mt-6 text-center">
-                        <x-filament::button
-                            color="gray"
-                            icon="heroicon-o-plus"
-                            size="sm"
-                            wire:click="loadMore"
-                        >
-                            Load More Servers
-                        </x-filament::button>
+                    <div class="mt-6 flex flex-col items-center gap-2">
+                        @if($hasMore)
+                            <x-filament::button
+                                color="gray"
+                                icon="heroicon-o-plus"
+                                size="sm"
+                                wire:click="loadMore"
+                                wire:loading.attr="disabled"
+                            >
+                                <span wire:loading.remove>Load More Servers</span>
+                                <span wire:loading.flex class="items-center gap-1">
+                                    <x-heroicon-o-arrow-path class="w-4 h-4 animate-spin" /> Loading...
+                                </span>
+                            </x-filament::button>
+                        @else
+                            <p class="text-xs text-gray-500">End of results</p>
+                        @endif
                     </div>
-                    @endif
                 @else
                     <div class="text-center py-12">
                         <div class="flex flex-col items-center gap-4">
@@ -497,9 +391,9 @@
             </x-filament::section>
 
             {{-- Row 4: Enhanced Help Section and System Status --}}
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6 mt-16">
                 {{-- Enhanced Help Section --}}
-                <x-filament::section>
+                <x-filament::section class="py-6">
                     <x-slot name="heading">
                         <div class="flex items-center gap-2">
                             <x-heroicon-o-question-mark-circle class="w-5 h-5 text-primary-600" />
@@ -566,7 +460,7 @@
                 </x-filament::section>
 
                 {{-- Enhanced System Status --}}
-                <x-filament::section>
+                <x-filament::section class="py-6">
                     <x-slot name="heading">
                         <div class="flex items-center justify-between w-full">
                             <div class="flex items-center gap-2">
@@ -644,22 +538,11 @@
                 </x-filament::section>
             </div>
         </div>
+        {{-- Auto-refresh JavaScript --}}
+        @script
+        <script>
+            setInterval(function() { $wire.call('loadServers'); }, 30000);
+        </script>
+        @endscript
     </div>
-
-    {{-- Auto-refresh JavaScript --}}
-    @script
-    <script>
-        // Auto-refresh functionality
-        setInterval(function() {
-            $wire.call('loadServers');
-        }, 30000); // 30 seconds
-        
-        // Add smooth transitions for interactive elements
-        Alpine.magic('smoothTransition', () => {
-            return (element) => {
-                element.style.transition = 'all 0.2s ease-in-out';
-            }
-        });
-    </script>
-    @endscript
 </x-filament-panels::page>

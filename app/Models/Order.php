@@ -45,7 +45,12 @@ class Order extends Model
         'coupon_code',
         'payment_transaction_id',
         'payment_invoice_url',
+    'payment_details',
         'notes',
+    ];
+
+    protected $casts = [
+        'payment_details' => 'array',
     ];
 
     public function markAsPaid(string $url): void

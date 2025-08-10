@@ -1,4 +1,38 @@
 <x-filament-panels::page>
+    {{-- Custom style overrides for Add Funds modal (payment method select placeholder background) --}}
+    <style>
+        /* Dark, consistent background and readable text for Add Funds modal fields */
+        .fi-modal [data-field-name="payment_method"] .fi-input,
+        .fi-modal [data-field-name="payment_method"] .fi-select-trigger,
+        .fi-modal [data-field-name="payment_method"] select,
+        .fi-modal [data-field-name="payment_method"] .fi-fo-select,
+        .fi-modal [data-field-name="payment_method"] .choices__inner,
+        .fi-modal [data-field-name="amount"] .fi-input {
+            background-color: #0f172a !important; /* slate-900 */
+            color: #f1f5f9 !important; /* slate-100 */
+            border-color: #334155 !important; /* slate-600 */
+        }
+        .fi-modal [data-field-name="payment_method"] .fi-input:focus,
+        .fi-modal [data-field-name="payment_method"] .fi-select-trigger:focus,
+        .fi-modal [data-field-name="payment_method"] select:focus,
+        .fi-modal [data-field-name="amount"] .fi-input:focus {
+            border-color: #6366f1 !important; /* indigo-500 */
+            box-shadow: 0 0 0 1px #6366f1;
+        }
+        .fi-modal [data-field-name="payment_method"] .fi-input::placeholder,
+        .fi-modal [data-field-name="payment_method"] .fi-select-trigger[data-placeholder],
+        .fi-modal [data-field-name="amount"] .fi-input::placeholder {
+            color: #64748b !important; /* slate-500 */
+            opacity: 1;
+        }
+        .dark .fi-modal [data-field-name="payment_method"] .fi-input::placeholder,
+        .dark .fi-modal [data-field-name="payment_method"] .fi-select-trigger[data-placeholder],
+        .dark .fi-modal [data-field-name="amount"] .fi-input::placeholder {
+            color: #94a3b8 !important; /* slate-400 */
+        }
+        .fi-modal [data-field-name="payment_method"] .fi-select-options { background-color: #1e293b; }
+        .fi-modal [data-field-name="payment_method"] .choices__inner { min-height: 2.75rem; }
+    </style>
     <div class="fi-section-content-ctn">
         <!-- Mobile-First Header Section -->
         <div class="fi-section-header mb-12 pb-6">

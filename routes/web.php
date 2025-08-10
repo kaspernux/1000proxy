@@ -82,6 +82,12 @@ Route::middleware(['auth:customer'])->group(function () {
     Route::get('/success', SuccessPage::class)->name('success');
     Route::get('/cancel', CancelPage::class)->name('cancel');
     Route::get('/account-settings', AccountSettings::class)->name('account.settings');
+    // Explicit redirect for /account root to Filament customer dashboard page
+    Route::get('/account', function () {
+        return redirect()->route('filament.customer.pages.dashboard');
+    })->name('customer.account.redirect');
+    // Redirect /account to Filament customer panel dashboard instead of account settings
+    // Removed explicit /account route so Filament customer panel root can serve the dashboard
     Route::get('/telegram-link', \App\Livewire\Auth\TelegramLink::class)->name('telegram.link');
 
     // Payment routes for web UI (session/customer only)
@@ -89,6 +95,8 @@ Route::middleware(['auth:customer'])->group(function () {
         // Use Livewire component for payment processor UI
         Route::get('/processor', PaymentProcessor::class)->name('payment.processor');
         Route::get('/invoice/{order}', [PaymentController::class, 'showInvoice'])->name('payment.invoice');
+    // Session (customer) authenticated JSON gateway list for Livewire (avoids Sanctum token requirement on /api route)
+    Route::get('/gateways', [PaymentController::class, 'getAvailableGateways'])->name('payment.gateways');
     });
 
     // Invoice routes

@@ -20,6 +20,8 @@ use App\Http\Middleware\AuthenticateCustomer;
 use App\Filament\Customer\Widgets\CustomerStatsOverview;
 use App\Filament\Customer\Widgets\SupportOverviewWidget;
 use App\Filament\Customer\Widgets\DownloadOverviewWidget;
+use App\Filament\Customer\Widgets\ConfigurationOverviewWidget;
+use App\Filament\Customer\Widgets\CustomerRecentOrdersWidget;
 use App\Http\Middleware\SyncCustomerPreferences;
 use App\Http\Middleware\SetLocaleFromSession;
 use App\Http\Middleware\Authenticate;
@@ -46,6 +48,8 @@ class CustomerPanelProvider extends PanelProvider
                 CustomerStatsOverview::class,
                 SupportOverviewWidget::class,
                 DownloadOverviewWidget::class,
+                ConfigurationOverviewWidget::class,
+                CustomerRecentOrdersWidget::class,
             ])
             ->defaultThemeMode(match (session('theme_mode', 'system')) {
                 'dark' => ThemeMode::Dark,

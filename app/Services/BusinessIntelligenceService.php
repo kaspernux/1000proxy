@@ -244,7 +244,7 @@ class BusinessIntelligenceService
                 COUNT(CASE WHEN status = "active" THEN 1 END) as active_connections,
                 AVG(cpu_usage) as avg_cpu,
                 AVG(memory_usage) as avg_memory,
-                AVG(bandwidth_usage) as avg_bandwidth,
+                AVG(total_traffic_mb) as avg_bandwidth_mb,
                 AVG(uptime_percentage) as uptime
             ')
             ->whereBetween('updated_at', [$period['start'], $period['end']])
@@ -275,7 +275,8 @@ class BusinessIntelligenceService
                 'servers_online' => Server::where('status', 'online')->count(),
                 'servers_offline' => Server::where('status', 'offline')->count(),
                 'servers_maintenance' => Server::where('status', 'maintenance')->count(),
-                'total_bandwidth_used' => Server::sum('bandwidth_usage') ?? 0
+                'total_bandwidth_used_mb' => Server::sum('total_traffic_mb') ?? 0,
+                'total_bandwidth_used_gb' => round((Server::sum('total_traffic_mb') ?? 0) / 1024, 2)
             ];
 
             return [

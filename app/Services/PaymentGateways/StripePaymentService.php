@@ -35,14 +35,16 @@ class StripePaymentService implements PaymentGatewayInterface
 
             if ($response->successful()) {
                 $data = $response->json();
-
                 return [
                     'success' => true,
-                    'payment_id' => $data['id'],
-                    'client_secret' => $data['client_secret'],
-                    'status' => $data['status'],
-                    'amount' => $data['amount'] / 100,
-                    'currency' => $data['currency']
+                    'error' => null,
+                    'data' => [
+                        'payment_id' => $data['id'],
+                        'client_secret' => $data['client_secret'],
+                        'status' => $data['status'],
+                        'amount' => $data['amount'] / 100,
+                        'currency' => $data['currency']
+                    ]
                 ];
             }
 
@@ -51,7 +53,9 @@ class StripePaymentService implements PaymentGatewayInterface
             return [
                 'success' => false,
                 'error' => 'Payment creation failed',
-                'details' => $response->json()
+                'data' => [
+                    'details' => $response->json()
+                ]
             ];
 
         } catch (\Exception $e) {
@@ -60,7 +64,9 @@ class StripePaymentService implements PaymentGatewayInterface
             return [
                 'success' => false,
                 'error' => 'Payment processing error',
-                'details' => $e->getMessage()
+                'data' => [
+                    'details' => $e->getMessage()
+                ]
             ];
         }
     }
@@ -77,17 +83,21 @@ class StripePaymentService implements PaymentGatewayInterface
 
                 return [
                     'success' => true,
-                    'payment_id' => $data['id'],
-                    'status' => $data['status'],
-                    'amount' => $data['amount'] / 100,
-                    'currency' => $data['currency'],
-                    'verified' => $data['status'] === 'succeeded'
+                    'error' => null,
+                    'data' => [
+                        'payment_id' => $data['id'],
+                        'status' => $data['status'],
+                        'amount' => $data['amount'] / 100,
+                        'currency' => $data['currency'],
+                        'verified' => $data['status'] === 'succeeded'
+                    ]
                 ];
             }
 
             return [
                 'success' => false,
-                'error' => 'Payment verification failed'
+                'error' => 'Payment verification failed',
+                'data' => []
             ];
 
         } catch (\Exception $e) {
@@ -96,7 +106,9 @@ class StripePaymentService implements PaymentGatewayInterface
             return [
                 'success' => false,
                 'error' => 'Verification error',
-                'details' => $e->getMessage()
+                'data' => [
+                    'details' => $e->getMessage()
+                ]
             ];
         }
     }
@@ -120,7 +132,10 @@ class StripePaymentService implements PaymentGatewayInterface
                 default:
                     return [
                         'success' => true,
-                        'message' => 'Event processed but no action taken'
+                        'error' => null,
+                        'data' => [
+                            'message' => 'Event processed but no action taken'
+                        ]
                     ];
             }
 
@@ -129,7 +144,8 @@ class StripePaymentService implements PaymentGatewayInterface
 
             return [
                 'success' => false,
-                'error' => 'Webhook processing error'
+                'error' => 'Webhook processing error',
+                'data' => []
             ];
         }
     }
@@ -140,9 +156,12 @@ class StripePaymentService implements PaymentGatewayInterface
 
         return [
             'success' => true,
-            'action' => 'payment_confirmed',
-            'payment_id' => $data['id'],
-            'amount' => $data['amount'] / 100
+            'error' => null,
+            'data' => [
+                'action' => 'payment_confirmed',
+                'payment_id' => $data['id'],
+                'amount' => $data['amount'] / 100
+            ]
         ];
     }
 
@@ -152,9 +171,12 @@ class StripePaymentService implements PaymentGatewayInterface
 
         return [
             'success' => true,
-            'action' => 'payment_failed',
-            'payment_id' => $data['id'],
-            'error' => $data['last_payment_error']['message'] ?? 'Payment failed'
+            'error' => null,
+            'data' => [
+                'action' => 'payment_failed',
+                'payment_id' => $data['id'],
+                'failure_message' => $data['last_payment_error']['message'] ?? 'Payment failed'
+            ]
         ];
     }
 
@@ -164,9 +186,12 @@ class StripePaymentService implements PaymentGatewayInterface
 
         return [
             'success' => true,
-            'action' => 'dispute_created',
-            'dispute_id' => $data['id'],
-            'amount' => $data['amount'] / 100
+            'error' => null,
+            'data' => [
+                'action' => 'dispute_created',
+                'dispute_id' => $data['id'],
+                'amount' => $data['amount'] / 100
+            ]
         ];
     }
 
@@ -237,16 +262,21 @@ class StripePaymentService implements PaymentGatewayInterface
 
                 return [
                     'success' => true,
-                    'refund_id' => $refundData['id'],
-                    'amount' => $refundData['amount'] / 100,
-                    'status' => $refundData['status']
+                    'error' => null,
+                    'data' => [
+                        'refund_id' => $refundData['id'],
+                        'amount' => $refundData['amount'] / 100,
+                        'status' => $refundData['status']
+                    ]
                 ];
             }
 
             return [
                 'success' => false,
                 'error' => 'Refund failed',
-                'details' => $response->json()
+                'data' => [
+                    'details' => $response->json()
+                ]
             ];
 
         } catch (\Exception $e) {
@@ -255,7 +285,9 @@ class StripePaymentService implements PaymentGatewayInterface
             return [
                 'success' => false,
                 'error' => 'Refund processing error',
-                'details' => $e->getMessage()
+                'data' => [
+                    'details' => $e->getMessage()
+                ]
             ];
         }
     }
@@ -263,21 +295,26 @@ class StripePaymentService implements PaymentGatewayInterface
     public function getGatewayInfo(): array
     {
         return [
-            'name' => 'Stripe',
-            'type' => 'card',
-            'supports' => [
-                'payments' => true,
-                'refunds' => true,
-                'webhooks' => true,
-                'recurring' => true,
-                'multi_currency' => true
-            ],
-            'fees' => [
-                'percentage' => 2.9,
-                'fixed' => 0.30
-            ],
-            'processing_time' => 'instant',
-            'settlement_time' => '2-7 business days'
+            'success' => true,
+            'error' => null,
+            'data' => [
+                'id' => 'stripe',
+                'name' => 'Stripe',
+                'type' => 'card',
+                'supports' => [
+                    'payments' => true,
+                    'refunds' => true,
+                    'webhooks' => true,
+                    'recurring' => true,
+                    'multi_currency' => true
+                ],
+                'fees' => [
+                    'percentage' => 2.9,
+                    'fixed' => 0.30
+                ],
+                'processing_time' => 'instant',
+                'settlement_time' => '2-7 business days'
+            ]
         ];
     }
 

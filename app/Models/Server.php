@@ -128,6 +128,15 @@ class Server extends Model
         return $this->hasMany(ServerReview::class);
     }
 
+    /**
+     * Alias relationship matching generic 'reviews' naming used in browsing page queries.
+     * Provides backward compatibility while retaining the existing serverReviews() method.
+     */
+    public function reviews(): HasMany
+    {
+        return $this->hasMany(ServerReview::class);
+    }
+
     public function serverRatings(): HasMany
     {
         return $this->hasMany(ServerRating::class, 'server_id');

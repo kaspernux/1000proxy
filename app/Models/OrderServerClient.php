@@ -16,6 +16,8 @@ class OrderServerClient extends Model
         'order_id',
         'server_client_id',
         'order_item_id',
+    'server_inbound_id',
+    'dedicated_inbound_id',
         'provision_status',
         'provision_error',
         'provision_attempts',
@@ -38,6 +40,11 @@ class OrderServerClient extends Model
         'provision_duration_seconds' => 'decimal:2',
         'qa_passed' => 'boolean',
     ];
+
+    public function inbound(): BelongsTo
+    {
+        return $this->belongsTo(ServerInbound::class, 'server_inbound_id');
+    }
 
     public function order(): BelongsTo
     {
@@ -64,6 +71,8 @@ class OrderServerClient extends Model
             'provision_started_at' => now(),
             'provision_config' => $config,
             'provision_attempts' => $this->provision_attempts + 1,
+            'server_inbound_id' => $config['inbound_id'] ?? $this->server_inbound_id,
+            'dedicated_inbound_id' => $config['dedicated_inbound_id'] ?? $this->dedicated_inbound_id,
         ]);
     }
 
@@ -82,6 +91,8 @@ class OrderServerClient extends Model
             'provision_log' => array_merge($this->provision_log ?? [], $log),
             'provision_duration_seconds' => $duration,
             'provision_error' => null,
+            'server_inbound_id' => $log['inbound_id'] ?? $this->server_inbound_id,
+            'dedicated_inbound_id' => $log['dedicated_inbound_id'] ?? $this->dedicated_inbound_id,
         ]);
     }
 

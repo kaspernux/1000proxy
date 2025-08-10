@@ -293,7 +293,9 @@ class SuccessPage extends Component
     {
         try {
             // Process XUI Order
-            ProcessXuiOrder::dispatch($this->order);
+            if ($this->order->payment_status === 'paid') {
+                ProcessXuiOrder::dispatch($this->order);
+            }
 
             // Update order status
             $this->order->update([

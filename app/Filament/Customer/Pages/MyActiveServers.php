@@ -353,7 +353,7 @@ class MyActiveServers extends Page implements HasTable
         $customer = Auth::guard('customer')->user();
 
         return ServerClient::query()
-            ->with(['serverInbound.server', 'subscription'])
+            ->with(['serverInbound.server'])
             ->where('customer_id', $customer->id)
             ->latest();
     }

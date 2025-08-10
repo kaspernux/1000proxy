@@ -59,16 +59,6 @@
                             <div class="absolute inset-0 bg-gradient-to-r from-blue-500/20 to-yellow-500/20 rounded-xl"></div>
                         @endif
                     </a>
-
-                    <!-- <a href="/categories" wire:navigate class="group relative px-4 py-2 rounded-xl transition-all duration-300 {{ request()->is('categories*') ? 'bg-yellow-600/20 text-yellow-400' : 'text-gray-300 hover:text-white hover:bg-white/5' }}">
-                        <span class="relative z-10 font-medium flex items-center">
-                            <x-heroicon-o-squares-2x2 class="mr-2 h-4 w-4" />
-                            Categories
-                        </span>
-                        @if(request()->is('categories*'))
-                            <div class="absolute inset-0 bg-gradient-to-r from-yellow-500/20 to-orange-500/20 rounded-xl"></div>
-                        @endif
-                    </a> -->
                 </nav>
             </div>
 
@@ -155,7 +145,7 @@
                             <!-- Menu Items -->
                             <div class="py-2 bg-white md:bg-gray-800 mobile-force-dark-text md:text-white">
                                 <!-- Dashboard/Profile -->
-                                <a href="/account" class="group flex items-center px-4 py-3 text-sm mobile-force-dark-text hover:bg-gradient-to-r hover:from-blue-50 hover:to-blue-100 md:hover:from-blue-600/40 md:hover:to-blue-700/40 hover:text-blue-900 md:hover:text-white transition-all duration-200">
+                                <a href="/account/dashboard" class="group flex items-center px-4 py-3 text-sm mobile-force-dark-text hover:bg-gradient-to-r hover:from-blue-50 hover:to-blue-100 md:hover:from-blue-600/40 md:hover:to-blue-700/40 hover:text-blue-900 md:hover:text-white transition-all duration-200">
                                     <div class="w-8 h-8 bg-gradient-to-br from-blue-100 to-blue-200 md:from-blue-500/40 md:to-blue-600/40 rounded-lg flex items-center justify-center mr-3 group-hover:scale-110 transition-transform duration-200">
                                         <x-heroicon-o-window class="w-4 h-4 text-blue-600 md:text-blue-300" />
                                     </div>

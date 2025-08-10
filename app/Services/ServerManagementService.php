@@ -702,7 +702,9 @@ class ServerManagementService
     protected function getTotalBandwidthUsage(): float
     {
         return Cache::remember('total_bandwidth_usage', now()->addMinutes(5), function() {
-            return Server::where('is_active', true)->sum('bandwidth_used_gb') ?? 0;
+            // Convert total_traffic_mb (aggregate MB) to GB
+            $totalMb = Server::where('is_active', true)->sum('total_traffic_mb') ?? 0;
+            return round($totalMb / 1024, 2);
         });
     }
 

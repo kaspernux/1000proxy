@@ -98,7 +98,12 @@ class ServerInbound extends Model
         'current_clients' => 'integer',
 
         // Note: settings, streamSettings, sniffing, allocate are stored as TEXT (JSON strings)
-        // for 3X-UI API compatibility - they are NOT cast to arrays here
+    // for 3X-UI API compatibility - but in our schema they are JSON columns so we cast them
+    // to arrays to allow factories and code to assign arrays directly without conversion errors.
+    'settings' => 'array',
+    'streamSettings' => 'array',
+    'sniffing' => 'array',
+    'allocate' => 'array',
     ];
 
     public function clients(): HasMany
@@ -287,6 +292,7 @@ class ServerInbound extends Model
                 'port' => $inbound->port,
             ],
             [
+                'remote_id' => $inbound->id ?? ($inbound->remote_id ?? null),
                 'protocol' => $inbound->protocol ?? null,
                 'remark' => $inbound->remark ?? '',
                 'enable' => $inbound->enable ?? true,

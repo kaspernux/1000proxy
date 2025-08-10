@@ -108,23 +108,23 @@ This section provides comprehensive guides for all user types in the 1000proxy p
    {
      "v": "2",
      "ps": "1000proxy-service",
-     "add": "server.1000proxy.com",
+     "add": "server.1000proxy.io",
      "port": "443",
      "id": "your-uuid",
      "aid": "0",
      "scy": "auto",
      "net": "ws",
      "type": "none",
-     "host": "server.1000proxy.com",
+     "host": "server.1000proxy.io",
      "path": "/path",
      "tls": "tls",
-     "sni": "server.1000proxy.com"
+     "sni": "server.1000proxy.io"
    }
    ```
 
    **For Trojan Services:**
    ```
-   trojan://password@server.1000proxy.com:443?security=tls&sni=server.1000proxy.com#1000proxy-service
+   trojan://password@server.1000proxy.io:443?security=tls&sni=server.1000proxy.io#1000proxy-service
    ```
 
 3. **Renewing Services**

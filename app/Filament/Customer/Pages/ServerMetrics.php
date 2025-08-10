@@ -522,9 +522,9 @@ class ServerMetrics extends Page implements HasTable, HasForms
                         default => 'danger',
                     }),
 
-                TextColumn::make('bandwidth_used')
-                    ->label('Bandwidth Used')
-                    ->getStateUsing(fn () => number_format(rand(1000, 50000) / 1024, 2) . ' GB')
+                TextColumn::make('bandwidth_used_mb')
+                    ->label('Bandwidth Used (MB)')
+                    ->getStateUsing(fn (ServerClient $record) => number_format($record->bandwidth_used_mb, 2) . ' MB')
                     ->sortable(),
 
                 TextColumn::make('status')

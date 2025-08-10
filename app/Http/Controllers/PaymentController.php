@@ -35,82 +35,21 @@ class PaymentController extends Controller
             'currency' => 'required|string',
             'gateway' => 'required|string',
             'order_id' => 'nullable|integer',
-            'wallet_topup' => 'nullable|boolean',
         ]);
 
-        try {
+    try {
             $gateway = strtolower($validated['gateway']);
             $amount = $validated['amount'];
             $currency = strtolower($validated['currency']);
             $orderId = $validated['order_id'] ?? null;
-            $walletTopup = $validated['wallet_topup'] ?? false;
             $user = Auth::user();
-
-            // Wallet top-up logic
-            if ($walletTopup) {
-                $wallet = $user->wallet ?? $user->getWallet();
-                $transaction = $wallet->transactions()->create([
-                    'type' => 'deposit',
-                    'amount' => $amount,
-                    'status' => 'pending',
-                    'payment_method' => $gateway,
-                    'currency' => $currency,
-                    'reference' => 'WalletTopup_' . strtoupper(uniqid()),
-                ]);
-                // Call gateway for payment URL
-                switch ($gateway) {
-                    case 'stripe':
-                        $stripeService = app(\App\Services\PaymentGateways\StripePaymentService::class);
-                        $result = $stripeService->createPayment([
-                            'amount' => $amount,
-                            'currency' => $currency,
-                            'metadata' => [
-                                'wallet_topup' => true,
-                                'user_id' => $user->id,
-                                'transaction_id' => $transaction->id
-                            ]
-                        ]);
-                        break;
-                    case 'paypal':
-                        $paypalService = app(\App\Services\PaymentGateways\PayPalPaymentService::class);
-                        $result = $paypalService->createPayment([
-                            'amount' => $amount,
-                            'currency' => $currency,
-                            'metadata' => [
-                                'wallet_topup' => true,
-                                'user_id' => $user->id,
-                                'transaction_id' => $transaction->id
-                            ]
-                        ]);
-                        break;
-                    case 'mir':
-                        $mirService = app(\App\Services\PaymentGateways\MirPaymentService::class);
-                        $result = $mirService->createPayment([
-                            'amount' => $amount,
-                            'currency' => $currency,
-                            'metadata' => [
-                                'wallet_topup' => true,
-                                'user_id' => $user->id,
-                                'transaction_id' => $transaction->id
-                            ]
-                        ]);
-                        break;
-                    case 'nowpayments':
-                        $nowService = app(\App\Services\PaymentGateways\NowPaymentsService::class);
-                        $result = $nowService->createPayment([
-                            'amount' => $amount,
-                            'currency' => $currency,
-                            'metadata' => [
-                                'wallet_topup' => true,
-                                'user_id' => $user->id,
-                                'transaction_id' => $transaction->id
-                            ]
-                        ]);
-                        break;
-                    default:
-                        return response()->json(['success' => false, 'error' => 'Unsupported gateway for wallet top-up'], 400);
-                }
-                return response()->json(['success' => true, 'data' => $result, 'transaction_id' => $transaction->id]);
+            // Strict separation: wallet top-ups must use /payment/topup endpoint
+            // If client mistakenly sends wallet_topup flag, reject (defensive)
+            if ($request->boolean('wallet_topup')) {
+                return response()->json([
+                    'success' => false,
+                    'error' => 'Use /api/payment/topup for wallet top-ups.'
+                ], 422);
             }
 
             // Order payment logic
@@ -176,12 +115,26 @@ class PaymentController extends Controller
                         $result = $nowService->createPayment([
                             'amount' => $amount,
                             'currency' => $currency,
+                            // Critical: ensure we pass the actual numeric order id so webhook can locate the order.
+                            // Previously omitted => service generated synthetic WTU-* id, causing webhook order lookup to fail.
+                            'order_id' => $order->id,
+                            'description' => 'Order #'.$order->id.' Payment',
+                            // Optionally allow client to choose crypto currency; fallback to request('crypto_currency') or null
+                            'crypto_currency' => $request->input('crypto_currency'),
                             'metadata' => [
                                 'order_id' => $order->id,
                                 'invoice_id' => $invoice->id,
                                 'user_id' => $user->id
                             ]
                         ]);
+                        // Safety check: if gateway responded with different order_id, log it for diagnostics
+                        if (($result['data']['payment_id'] ?? false) && (($result['data']['order_id'] ?? $order->id) != $order->id)) {
+                            \Log::warning('NowPayments order_id mismatch after createPayment', [
+                                'expected_order_id' => $order->id,
+                                'gateway_order_id' => $result['data']['order_id'] ?? null,
+                                'invoice_id' => $invoice->id,
+                            ]);
+                        }
                         break;
                     case 'wallet':
                         // Direct wallet payment
@@ -201,13 +154,24 @@ class PaymentController extends Controller
                         $order->update(['payment_status' => 'paid']);
                         $invoice->update(['status' => 'paid']);
                         // Dispatch order processing job
-                        \App\Jobs\ProcessXuiOrder::dispatch($order);
+                        if ($order->payment_status === 'paid') {
+                            \App\Jobs\ProcessXuiOrder::dispatch($order);
+                        }
                         $result = ['success' => true, 'message' => 'Order paid with wallet'];
                         break;
                     default:
                         return response()->json(['success' => false, 'error' => 'Unsupported gateway for order payment'], 400);
                 }
-                return response()->json(['success' => true, 'data' => $result, 'invoice_id' => $invoice->id]);
+                return response()->json([
+                    'success' => true,
+                    'error' => null,
+                    'data' => [
+                        'invoice_id' => $invoice->id,
+                        'order_id' => $order->id,
+                        'gateway' => $gateway,
+                        'payment' => $result['data'] ?? $result
+                    ]
+                ]);
             }
 
             // Standalone gateway payment (no wallet/order)
@@ -247,6 +211,8 @@ class PaymentController extends Controller
                     $result = $nowService->createPayment([
                         'amount' => $amount,
                         'currency' => $currency,
+                        'description' => 'Standalone Payment',
+                        'crypto_currency' => $request->input('crypto_currency'),
                         'metadata' => [
                             'user_id' => $user->id
                         ]
@@ -271,7 +237,14 @@ class PaymentController extends Controller
                 default:
                     return response()->json(['success' => false, 'error' => 'Unsupported payment gateway'], 400);
             }
-            return response()->json(['success' => true, 'data' => $result]);
+            return response()->json([
+                'success' => true,
+                'error' => null,
+                'data' => [
+                    'gateway' => $gateway,
+                    'payment' => $result['data'] ?? $result
+                ]
+            ]);
         } catch (\Exception $e) {
             Log::error('Unified payment creation failed', [
                 'user_id' => Auth::id(),
@@ -279,7 +252,8 @@ class PaymentController extends Controller
             ]);
             return response()->json([
                 'success' => false,
-                'error' => 'Payment creation failed. Please try again.'
+                'error' => 'Payment creation failed. Please try again.',
+                'data' => []
             ], 500);
         }
     }
@@ -296,7 +270,10 @@ class PaymentController extends Controller
         ]);
 
         try {
-            $user = Auth::user();
+            $user = Auth::guard('customer')->user() ?? Auth::user();
+            if (!$user) {
+                return response()->json(['success' => false, 'error' => 'Unauthenticated'], 401);
+            }
             $wallet = $user->wallet ?? $user->getWallet();
             $amount = $validated['amount'];
             $currency = strtolower($validated['currency']);
@@ -352,6 +329,9 @@ class PaymentController extends Controller
                     $result = $nowService->createPayment([
                         'amount' => $amount,
                         'currency' => $currency,
+                        'order_id' => 'WTU-' . now()->format('YmdHis') . '-' . substr(md5(uniqid('', true)),0,6),
+                        'description' => 'Wallet Top-up',
+                        'crypto_currency' => null,
                         'metadata' => [
                             'wallet_topup' => true,
                             'user_id' => $user->id,
@@ -362,7 +342,15 @@ class PaymentController extends Controller
                 default:
                     return response()->json(['success' => false, 'error' => 'Unsupported gateway for wallet top-up'], 400);
             }
-            return response()->json(['success' => true, 'data' => $result, 'transaction_id' => $transaction->id]);
+            return response()->json([
+                'success' => true,
+                'error' => null,
+                'data' => [
+                    'transaction_id' => $transaction->id,
+                    'gateway' => $gateway,
+                    'payment' => $result['data'] ?? $result
+                ]
+            ]);
         } catch (\Exception $e) {
             Log::error('Wallet top-up failed', [
                 'user_id' => Auth::id(),
@@ -370,7 +358,8 @@ class PaymentController extends Controller
             ]);
             return response()->json([
                 'success' => false,
-                'error' => 'Wallet top-up failed. Please try again.'
+                'error' => 'Wallet top-up failed. Please try again.',
+                'data' => []
             ], 500);
         }
     }
@@ -421,7 +410,9 @@ class PaymentController extends Controller
                             case 'confirmed':
                                 $order->update(['payment_status' => 'paid']);
                                 $order->invoice?->update(['status' => 'paid']);
-                                \App\Jobs\ProcessXuiOrder::dispatch($order);
+                                if ($order->payment_status === 'paid') {
+                                    \App\Jobs\ProcessXuiOrder::dispatch($order);
+                                }
                                 break;
                             case 'failed':
                             case 'expired':
@@ -453,13 +444,21 @@ class PaymentController extends Controller
             elseif ($gateway === 'mir') {
                 // Implement Mir webhook logic as needed
             }
-            return response()->json(['success' => true, 'message' => 'Webhook processed.']);
+            return response()->json([
+                'success' => true,
+                'error' => null,
+                'data' => ['message' => 'Webhook processed.']
+            ]);
         } catch (\Exception $e) {
             Log::error('Webhook processing failed', [
                 'gateway' => $gateway,
                 'error' => $e->getMessage(),
             ]);
-            return response()->json(['success' => false, 'error' => 'Webhook processing failed.'], 500);
+            return response()->json([
+                'success' => false,
+                'error' => 'Webhook processing failed.',
+                'data' => []
+            ], 500);
         }
     }
     /**
@@ -505,13 +504,24 @@ class PaymentController extends Controller
                 default:
                     return response()->json(['success' => false, 'error' => 'Unsupported gateway for refund'], 400);
             }
-            return response()->json(['success' => true, 'data' => $result]);
+            return response()->json([
+                'success' => true,
+                'error' => null,
+                'data' => [
+                    'refund' => $result['data'] ?? $result,
+                    'transaction_id' => $transactionId
+                ]
+            ]);
         } catch (\Exception $e) {
             Log::error('Refund failed', [
                 'transaction_id' => $validated['transaction_id'],
                 'error' => $e->getMessage(),
             ]);
-            return response()->json(['success' => false, 'error' => 'Refund failed.'], 500);
+            return response()->json([
+                'success' => false,
+                'error' => 'Refund failed.',
+                'data' => []
+            ], 500);
         }
     }
     /**
@@ -572,7 +582,11 @@ class PaymentController extends Controller
         // Log the gateway response for debugging
         \Log::info('Payment gateways response', ['gateways' => $gateways]);
 
-        return response()->json(['success' => true, 'data' => $gateways]);
+        return response()->json([
+            'success' => true,
+            'error' => null,
+            'data' => $gateways
+        ]);
     }
 
     /**
@@ -910,7 +924,9 @@ class PaymentController extends Controller
                     $order->invoice?->update(['status' => 'paid']);
                     
                     // Trigger order processing job
-                    \App\Jobs\ProcessXuiOrder::dispatch($order);
+                    if ($order->payment_status === 'paid') {
+                        \App\Jobs\ProcessXuiOrder::dispatch($order);
+                    }
                     
                     Log::info('Payment confirmed via webhook', [
                         'order_id' => $order->id,
