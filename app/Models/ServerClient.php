@@ -20,6 +20,10 @@ class ServerClient extends Model
 
     protected $table = 'server_clients';
 
+    // Primary key is a UUID string (no auto-increment)
+    protected $keyType = 'string';
+    public $incrementing = false;
+
     protected $fillable = [
         // Core identification fields
         'id',                       // UUID for 3X-UI compatibility
@@ -338,42 +342,52 @@ class ServerClient extends Model
         $query = parse_url($link, PHP_URL_QUERY);
         parse_str($query, $params);
 
-        return self::updateOrCreate(
-            ['sub_id' => $subId],
-            [
-                'server_inbound_id' => $inboundId,
-                'email' => $client['email'] ?? null,
-                'password' => $client['id'],
-                'flow' => $params['flow'] ?? $client['flow'] ?? null,
-                'limit_ip' => $client['limit_ip'] ?? 0,
-                'total_gb_bytes' => $client['totalGB'] ?? 0,  // Store 3X-UI totalGB bytes directly
-                'expiry_time' => $client['expiry_time'] ?? 0,  // Store 3X-UI expiry_time milliseconds directly
-                'tg_id' => $client['tg_id'] ?? null,
-                'enable' => $client['enable'] ?? true,
-                'reset' => $client['reset'] ?? null,
-                'qr_code_client' => $qrClientPath,
-                'qr_code_sub' => $qrSubPath,
-                'qr_code_sub_json' => $qrJsonPath,
-                'client_link' => $link,
-                'remote_sub_link' => $subLink,
-                'remote_json_link' => $jsonLink,
-                'security' => $params['security'] ?? null,
-                'pbk' => $params['pbk'] ?? null,
-                'fp' => $params['fp'] ?? null,
-                'sni' => $params['sni'] ?? null,
-                'sid' => $params['sid'] ?? null,
-                'spx' => $params['spx'] ?? null,
-                'alpn' => $params['alpn'] ?? null,
-                'grpc_service_name' => $params['serviceName'] ?? null,
-                'network_type' => $params['type'] ?? null,
-                'tls_type' => $params['security'] ?? null,
-                'host' => $params['host'] ?? null,
-                'path' => $params['path'] ?? null,
-                'header_type' => $params['headerType'] ?? null,
-                'kcp_seed' => $params['kcpSeed'] ?? null,
-                'kcp_type' => $params['kcpType'] ?? null,
-            ]
-        );
+        // We key lookup by sub_id for idempotency, but ensure primary UUID id is set on creation.
+        $attributes = ['sub_id' => $subId];
+        $values = [
+            'id' => $client['id'], // primary key; required because table has no default
+            'server_inbound_id' => $inboundId,
+            'email' => $client['email'] ?? null,
+            'password' => $client['id'],
+            'flow' => $params['flow'] ?? $client['flow'] ?? null,
+            'limit_ip' => $client['limit_ip'] ?? 0,
+            'total_gb_bytes' => $client['totalGB'] ?? 0,  // Store 3X-UI totalGB bytes directly
+            'expiry_time' => $client['expiry_time'] ?? 0,  // Store 3X-UI expiry_time milliseconds directly
+            'tg_id' => $client['tg_id'] ?? null,
+            'enable' => $client['enable'] ?? true,
+            // 'reset' must be non-null due to DB constraint; default to 0
+            'reset' => $client['reset'] ?? 0,
+            'qr_code_client' => $qrClientPath,
+            'qr_code_sub' => $qrSubPath,
+            'qr_code_sub_json' => $qrJsonPath,
+            'client_link' => $link,
+            'remote_sub_link' => $subLink,
+            'remote_json_link' => $jsonLink,
+            'security' => $params['security'] ?? null,
+            'pbk' => $params['pbk'] ?? null,
+            'fp' => $params['fp'] ?? null,
+            'sni' => $params['sni'] ?? null,
+            'sid' => $params['sid'] ?? null,
+            'spx' => $params['spx'] ?? null,
+            'alpn' => $params['alpn'] ?? null,
+            'grpc_service_name' => $params['serviceName'] ?? null,
+            'network_type' => $params['type'] ?? null,
+            'tls_type' => $params['security'] ?? null,
+            'host' => $params['host'] ?? null,
+            'path' => $params['path'] ?? null,
+            'header_type' => $params['headerType'] ?? null,
+            'kcp_seed' => $params['kcpSeed'] ?? null,
+            'kcp_type' => $params['kcpType'] ?? null,
+        ];
+
+        // If record exists (same sub_id), do NOT overwrite primary key id.
+        $existing = self::where($attributes)->first();
+        if ($existing) {
+            unset($values['id']);
+            $existing->update($values);
+            return $existing->refresh();
+        }
+        return self::create(array_merge($attributes, $values));
     }
 
     // Enhanced lifecycle methods

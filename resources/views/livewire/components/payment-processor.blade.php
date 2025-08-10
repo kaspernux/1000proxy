@@ -86,28 +86,219 @@
             @if($selectedGateway === 'stripe')
                 <div class="mt-6 p-4 border border-blue-900/30 bg-gradient-to-r from-blue-900/20 to-gray-900/10 rounded-xl">
                     <h5 class="font-semibold text-white mb-4 drop-shadow">Card Information</h5>
-                    <div class="space-y-4">
-                        <div>
-                            <label class="block text-sm font-medium text-blue-200 mb-2">
-                                Cardholder Name
-                            </label>
-                            <input
-                                type="text"
-                                wire:model.live="cardholderName"
-                                placeholder="John Doe"
-                                class="w-full px-3 py-2 border border-blue-900/30 rounded-lg focus:ring-2 focus:ring-yellow-400 focus:border-transparent bg-gray-900 text-white"
-                            >
-                            @error('cardholderName') <span class="text-red-500 text-xs">{{ $message }}</span> @enderror
-                        </div>
-                        <div>
-                            <label class="block text-sm font-medium text-blue-200 mb-2">
-                                Card Number
-                            </label>
-                            <input
-                                type="text"
-                                wire:model.live="cardNumber"
+                    <div class="py-10">
+                        <section class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 lg:gap-8">
+                                <div class="lg:col-span-2 space-y-6">
+                                    <div class="bg-white/5 backdrop-blur-md rounded-2xl p-6 shadow-xl border border-white/10">
+                                        <div class="flex items-center justify-between mb-4">
+                                            <h1 class="text-2xl font-bold text-white flex items-center">
+                                                <x-custom-icon name="credit-card" class="w-7 h-7 mr-3 text-green-400" />
+                                                {{ $isWalletTopup ? 'Wallet Top-Up' : 'Payment' }}
+                                            </h1>
+                                            <div class="text-sm text-green-200">{{ $paymentProgress['progress'] }}% Complete</div>
+                                        </div>
+                                        <div class="w-full h-2 bg-white/10 rounded-full overflow-hidden mb-6">
+                                            <div class="h-2 bg-gradient-to-r from-green-500 via-green-400 to-green-300 rounded-full transition-all duration-500" style="width: {{ $paymentProgress['progress'] }}%"></div>
+                                        </div>
+
+                                        <!-- Gateway Selection (mirrors checkout style) -->
+                                        <h2 class="text-lg font-semibold text-white mb-4 flex items-center">
+                                            <x-custom-icon name="wallet" class="w-5 h-5 mr-2 text-green-400" />
+                                            Select Payment Method
+                                        </h2>
+                                        @php($gatewaysList = $isWalletTopup ? ($activeTopupGateways ?? []) : array_keys($availableGateways))
+                                        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+                                            @foreach($gatewaysList as $g)
+                                                @php($info = $availableGateways[$g] ?? null)
+                                                @if(!$info || empty($info['enabled'])) @continue @endif
+                                                <button wire:click="selectGateway('{{ $g }}')"
+                                                        class="relative p-4 rounded-xl border-2 transition-all duration-300 text-left
+                                                            {{ $selectedGateway === $g ? 'border-green-500 bg-green-500/15' : 'border-white/15 bg-white/5 hover:border-green-400/50 hover:bg-green-400/10' }}">
+                                                    <div class="text-center">
+                                                        @switch($g)
+                                                            @case('nowpayments')
+                                                                <div class="w-12 h-12 bg-orange-500 rounded-xl flex items-center justify-center mx-auto mb-2">
+                                                                    <span class="text-white font-bold text-lg">₿</span>
+                                                                </div>
+                                                                <h3 class="text-white text-sm font-medium">Cryptocurrency</h3>
+                                                                <p class="text-gray-400 text-xs mt-1">BTC, XMR, etc.</p>
+                                                                @break
+                                                            @case('stripe')
+                                                                <div class="w-12 h-12 bg-purple-600 rounded-xl flex items-center justify-center mx-auto mb-2">
+                                                                    <x-custom-icon name="credit-card" class="w-6 h-6 text-white" />
+                                                                </div>
+                                                                <h3 class="text-white text-sm font-medium">Credit Card</h3>
+                                                                <p class="text-gray-400 text-xs mt-1">Visa, Mastercard</p>
+                                                                @break
+                                                            @case('mir')
+                                                                <div class="w-12 h-12 bg-blue-600 rounded-xl flex items-center justify-center mx-auto mb-2">
+                                                                    <span class="text-white font-bold text-lg">₽</span>
+                                                                </div>
+                                                                <h3 class="text-white text-sm font-medium">MIR</h3>
+                                                                <p class="text-gray-400 text-xs mt-1">Russian Cards</p>
+                                                                @break
+                                                            @case('paypal')
+                                                                <div class="w-12 h-12 bg-blue-400 rounded-xl flex items-center justify-center mx-auto mb-2">
+                                                                    <x-custom-icon name="banknotes" class="w-6 h-6 text-white" />
+                                                                </div>
+                                                                <h3 class="text-white text-sm font-medium">PayPal</h3>
+                                                                <p class="text-gray-400 text-xs mt-1">Balance / Cards</p>
+                                                                @break
+                                                        @endswitch
+                                                    </div>
+                                                    @if($selectedGateway === $g)
+                                                        <div class="absolute -top-2 -right-2 w-6 h-6 bg-green-500 rounded-full flex items-center justify-center">
+                                                            <x-custom-icon name="check" class="w-4 h-4 text-white" />
+                                                        </div>
+                                                    @endif
+                                                </button>
+                                            @endforeach
+                                        </div>
+
+                                        <!-- Gateway Details -->
+                                        <div class="bg-white/5 rounded-xl p-5 border border-white/10 mb-6" wire:key="gateway-details-{{ $selectedGateway }}">
+                                            @switch($selectedGateway)
+                                                @case('nowpayments')
+                                                    <h3 class="text-lg sm:text-xl font-bold text-orange-400 mb-3 sm:mb-4">Cryptocurrency Payment</h3>
+                                                    <p class="text-green-200 mb-3 sm:mb-4 text-sm sm:text-base">Pay with your preferred cryptocurrency using NowPayments.</p>
+                                                    <div class="mb-4">
+                                                        <label class="block text-white font-medium mb-2 text-sm sm:text-base">Select Cryptocurrency</label>
+                                                        <select wire:model.live="selectedCrypto" wire:change="refreshCryptoEstimate"
+                                                                class="w-full px-3 sm:px-4 py-2 sm:py-3 bg-white border border-white/20 rounded-lg sm:rounded-xl text-black focus:ring-2 focus:ring-orange-500 focus:border-transparent text-sm sm:text-base">
+                                                            <option value="" class="text-gray-500">Choose a cryptocurrency</option>
+                                                            @foreach($cryptoCurrencies as $code => $details)
+                                                                <option value="{{ $code }}" class="text-black">{{ $details['name'] }} ({{ $code }})</option>
+                                                            @endforeach
+                                                        </select>
+                                                    </div>
+                                                    @if($selectedCrypto && $cryptoAmount > 0)
+                                                        <div class="p-4 bg-white/5 rounded-lg sm:rounded-xl border border-white/10 mb-4 flex items-center justify-between">
+                                                            <div>
+                                                                <div class="text-orange-300 font-semibold text-sm sm:text-base">Estimated Amount</div>
+                                                                <div class="text-gray-300 text-xs sm:text-sm">Based on current rate</div>
+                                                            </div>
+                                                            <div class="text-right">
+                                                                <div class="text-orange-400 font-bold text-base sm:text-lg">{{ $cryptoAmount }} {{ $selectedCrypto }}</div>
+                                                                <div class="text-gray-400 text-[10px]">Subject to network fees</div>
+                                                            </div>
+                                                        </div>
+                                                    @endif
+                                                    <div class="flex items-center text-green-300 text-xs sm:text-sm">
+                                                        <x-custom-icon name="shield-check" class="w-3 h-3 sm:w-4 sm:h-4 mr-2 flex-shrink-0" />
+                                                        <span>Secure and anonymous cryptocurrency payment via NowPayments</span>
+                                                    </div>
+                                                    @break
+                                                @case('stripe')
+                                                    <h3 class="text-purple-400 font-semibold mb-3">Card Information</h3>
+                                                    <div class="grid gap-4 md:grid-cols-2">
+                                                        <div class="md:col-span-2">
+                                                            <label class="block text-xs font-medium text-gray-300 mb-1">Cardholder Name</label>
+                                                            <input type="text" wire:model.live="cardholderName" class="w-full px-3 py-2 bg-white/10 border border-white/20 rounded-lg text-white focus:ring-2 focus:ring-purple-500" placeholder="John Doe" />
+                                                            @error('cardholderName') <span class="text-red-400 text-xs">{{ $message }}</span> @enderror
+                                                        </div>
+                                                        <div class="md:col-span-2">
+                                                            <label class="block text-xs font-medium text-gray-300 mb-1">Card Number</label>
+                                                            <input type="text" wire:model.live="cardNumber" maxlength="19" class="w-full px-3 py-2 bg-white/10 border border-white/20 rounded-lg text-white focus:ring-2 focus:ring-purple-500 font-mono" placeholder="1234 5678 9012 3456" />
+                                                            @error('cardNumber') <span class="text-red-400 text-xs">{{ $message }}</span> @enderror
+                                                        </div>
+                                                        <div>
+                                                            <label class="block text-xs font-medium text-gray-300 mb-1">Month</label>
+                                                            <select wire:model.live="expiryMonth" class="w-full px-3 py-2 bg-white/10 border border-white/20 rounded-lg text-white focus:ring-2 focus:ring-purple-500">
+                                                                <option value="">MM</option>
+                                                                @for($i=1;$i<=12;$i++) <option value="{{ $i }}">{{ str_pad($i,2,'0',STR_PAD_LEFT) }}</option> @endfor
+                                                            </select>
+                                                            @error('expiryMonth') <span class="text-red-400 text-xs">{{ $message }}</span> @enderror
+                                                        </div>
+                                                        <div>
+                                                            <label class="block text-xs font-medium text-gray-300 mb-1">Year</label>
+                                                            <select wire:model.live="expiryYear" class="w-full px-3 py-2 bg-white/10 border border-white/20 rounded-lg text-white focus:ring-2 focus:ring-purple-500">
+                                                                <option value="">YYYY</option>
+                                                                @for($i=date('Y');$i<=date('Y')+10;$i++) <option value="{{ $i }}">{{ $i }}</option> @endfor
+                                                            </select>
+                                                            @error('expiryYear') <span class="text-red-400 text-xs">{{ $message }}</span> @enderror
+                                                        </div>
+                                                        <div>
+                                                            <label class="block text-xs font-medium text-gray-300 mb-1">CVC</label>
+                                                            <input type="text" wire:model.live="cvc" maxlength="4" class="w-full px-3 py-2 bg-white/10 border border-white/20 rounded-lg text-white focus:ring-2 focus:ring-purple-500 font-mono" placeholder="123" />
+                                                            @error('cvc') <span class="text-red-400 text-xs">{{ $message }}</span> @enderror
+                                                        </div>
+                                                    </div>
+                                                    @break
+                                                @case('mir')
+                                                    <h3 class="text-blue-400 font-semibold mb-3">MIR Payment</h3>
+                                                    <p class="text-gray-300 text-sm mb-2">Process your payment securely using Russian MIR cards.</p>
+                                                    @break
+                                                @case('paypal')
+                                                    <h3 class="text-blue-300 font-semibold mb-3">PayPal Payment</h3>
+                                                    <p class="text-gray-300 text-sm mb-2">You will be redirected to PayPal to complete the payment.</p>
+                                                    @break
+                                            @endswitch
+                                        </div>
+
+                                        <div>
+                                            <button wire:click="processPayment" wire:loading.attr="disabled" class="w-full py-4 rounded-xl bg-gradient-to-r from-green-600 to-green-500 hover:from-green-500 hover:to-green-400 text-white font-semibold shadow-lg hover:shadow-2xl transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed">
+                                                <span wire:loading.remove wire:target="processPayment">Pay ${{ number_format($paymentAmount,2) }}</span>
+                                                <span wire:loading wire:target="processPayment" class="flex items-center justify-center">
+                                                    <div class="animate-spin rounded-full h-5 w-5 border-2 border-white border-t-transparent mr-2"></div>
+                                                    Processing...
+                                                </span>
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Summary Sidebar -->
+                                <div class="space-y-6">
+                                    <div class="bg-white/5 backdrop-blur-md rounded-2xl p-6 shadow-xl border border-white/10">
+                                        <h3 class="text-lg font-semibold text-white mb-4 flex items-center">
+                                            <x-custom-icon name="chart-bar" class="w-5 h-5 mr-2 text-green-400" />Top-Up Summary
+                                        </h3>
+                                        <ul class="space-y-3 text-sm">
+                                            <li class="flex justify-between"><span class="text-gray-300">Amount</span><span class="text-white font-medium">${{ number_format($paymentAmount,2) }} {{ $currency }}</span></li>
+                                            <li class="flex justify-between"><span class="text-gray-300">Method</span><span class="text-white font-medium capitalize">{{ $selectedGateway === 'nowpayments' ? 'Crypto (' . $selectedCrypto . ')' : $selectedGateway }}</span></li>
+                                            @if($selectedGateway === 'nowpayments' && $cryptoAmount > 0)
+                                                <li class="flex justify-between"><span class="text-gray-300">Crypto Amount</span><span class="text-orange-300 font-medium">{{ $cryptoAmount }} {{ $selectedCrypto }}</span></li>
+                                            @endif
+                                        </ul>
+                                        <div class="mt-4 p-3 bg-white/10 rounded-lg text-xs text-gray-300">
+                                            Funds will be added to your wallet balance after confirmation. Crypto confirmations may take several minutes.
+                                        </div>
+                                    </div>
+
+                                    <div class="bg-white/5 backdrop-blur-md rounded-2xl p-6 shadow-xl border border-white/10">
+                                        <h3 class="text-sm font-semibold text-white mb-3 flex items-center"><x-custom-icon name="shield-check" class="w-4 h-4 mr-2 text-green-400" />Security</h3>
+                                        <p class="text-xs text-gray-300 leading-relaxed">All transactions are encrypted. We never store sensitive card details. Cryptocurrency payments are processed via secure third-party gateways.</p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            @if($paymentStep === 'processing')
+                                <div class="mt-10 text-center">
+                                    <div class="animate-spin rounded-full h-16 w-16 border-4 border-green-500 border-t-transparent mx-auto mb-4"></div>
+                                    <p class="text-green-200 text-sm">Processing payment... please wait.</p>
+                                </div>
+                            @elseif($paymentStep === 'completed')
+                                <div class="mt-10 text-center">
+                                    <div class="w-16 h-16 bg-green-600 rounded-full flex items-center justify-center mx-auto mb-4">
+                                        <x-custom-icon name="check" class="w-8 h-8 text-white" />
+                                    </div>
+                                    <h2 class="text-2xl font-bold text-white mb-2">Top-Up Successful</h2>
+                                    <p class="text-green-200 text-sm mb-4">Your wallet will reflect the new balance shortly.</p>
+                                </div>
+                            @elseif($paymentStep === 'failed')
+                                <div class="mt-10 text-center">
+                                    <div class="w-16 h-16 bg-red-600/30 border border-red-500 rounded-full flex items-center justify-center mx-auto mb-4">
+                                        <x-custom-icon name="x-mark" class="w-8 h-8 text-red-400" />
+                                    </div>
+                                    <h2 class="text-2xl font-bold text-red-300 mb-2">Payment Failed</h2>
+                                    <p class="text-red-200 text-sm mb-4">Please try another payment method.</p>
+                                    <button wire:click="retryPayment" class="px-5 py-3 rounded-lg bg-red-500 hover:bg-red-400 text-white font-medium transition">Retry</button>
+                                </div>
+                            @endif
+                        </section>
                                 placeholder="1234 5678 9012 3456"
-                                maxlength="19"
+                     </div>
                                 class="w-full px-3 py-2 border border-blue-900/30 rounded-lg focus:ring-2 focus:ring-yellow-400 focus:border-transparent bg-gray-900 text-white font-mono"
                             >
                             @error('cardNumber') <span class="text-red-500 text-xs">{{ $message }}</span> @enderror

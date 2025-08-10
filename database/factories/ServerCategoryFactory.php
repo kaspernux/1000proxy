@@ -4,6 +4,7 @@ namespace Database\Factories;
 
 use App\Models\ServerCategory;
 use Illuminate\Database\Eloquent\Factories\Factory;
+use Illuminate\Support\Str;
 
 /**
  * @extends \Illuminate\Database\Eloquent\Factories\Factory<\App\Models\ServerCategory>
@@ -33,11 +34,16 @@ class ServerCategoryFactory extends Factory
         ];
 
         $name = $this->faker->randomElement($categories) . ' ' . $this->faker->randomElement(['Proxy', 'VPN', 'Server']);
+        $baseSlug = Str::slug($name);
+        $slug = $baseSlug;
+        if (ServerCategory::where('slug', $slug)->exists()) {
+            $slug = $baseSlug . '-' . Str::random(6);
+        }
 
         return [
             'name' => $name,
-            'slug' => \Illuminate\Support\Str::slug($name),
-            'image' => 'server_categories/' . \Illuminate\Support\Str::slug($name) . '.png',
+            'slug' => $slug,
+            'image' => 'server_categories/' . $slug . '.png',
             'is_active' => $this->faker->boolean(85), // 85% chance of being active
         ];
     }

@@ -27,16 +27,24 @@ class ProvisioningModesTest extends TestCase
         $inbound = ServerInbound::factory()->create(['server_id' => $server->id, 'provisioning_enabled' => true, 'status' => 'active', 'capacity' => 100]);
         $plan = ServerPlan::factory()->create(['server_id' => $server->id, 'type' => 'multiple', 'preferred_inbound_id' => $inbound->id, 'is_active' => true, 'in_stock' => true, 'on_sale' => true]);
         $order = Order::factory()->create(['payment_status' => 'paid']);
+        if (!$order->customer) {
+            $order->customer()->associate(\App\Models\Customer::factory()->create());
+            $order->save();
+        }
         $item = OrderItem::factory()->create(['order_id' => $order->id, 'server_plan_id' => $plan->id, 'quantity' => 1]);
 
-        $service = app(ClientProvisioningService::class);
-        Log::shouldReceive('info');
-        Log::shouldReceive('error');
+    $service = app(ClientProvisioningService::class);
+    Log::shouldReceive('channel')->andReturnSelf();
+    Log::shouldReceive('info');
+    Log::shouldReceive('error');
+    Log::shouldReceive('warning');
 
         $results = $service->provisionOrder($order->fresh('items.serverPlan'));
-
-        $this->assertTrue($order->fresh()->isFullyProvisioned());
-        $this->assertEquals($inbound->id, $order->orderServerClients()->first()->server_inbound_id);
+    $fresh = $order->fresh();
+    $osc = $fresh->orderServerClients()->first();
+    $this->assertNotNull($osc, 'No order_server_clients record was created. Results: ' . json_encode($results));
+    $this->assertTrue($fresh->isFullyProvisioned(), 'Order not fully provisioned. Results: ' . json_encode($results));
+    $this->assertEquals($inbound->id, $osc->server_inbound_id);
     }
 
     /** @test */
@@ -46,16 +54,23 @@ class ProvisioningModesTest extends TestCase
         $templateInbound = ServerInbound::factory()->create(['server_id' => $server->id, 'provisioning_enabled' => true, 'status' => 'active', 'capacity' => 100]);
         $plan = ServerPlan::factory()->create(['server_id' => $server->id, 'type' => 'single', 'preferred_inbound_id' => $templateInbound->id, 'is_active' => true, 'in_stock' => true, 'on_sale' => true]);
         $order = Order::factory()->create(['payment_status' => 'paid']);
+        if (!$order->customer) {
+            $order->customer()->associate(\App\Models\Customer::factory()->create());
+            $order->save();
+        }
         $item = OrderItem::factory()->create(['order_id' => $order->id, 'server_plan_id' => $plan->id, 'quantity' => 1]);
 
         // Mock XUI interactions by faking addClient & createInbound via partial mocking if needed
-        $service = app(ClientProvisioningService::class);
-        Log::shouldReceive('info');
-        Log::shouldReceive('error');
+    $service = app(ClientProvisioningService::class);
+    Log::shouldReceive('channel')->andReturnSelf();
+    Log::shouldReceive('info');
+    Log::shouldReceive('error');
+    Log::shouldReceive('warning');
 
         $results = $service->provisionOrder($order->fresh('items.serverPlan'));
 
-        $osc = $order->orderServerClients()->first();
+    $osc = $order->orderServerClients()->first();
+    $this->assertNotNull($osc, 'No order_server_clients record was created.');
         $this->assertNotNull($osc->dedicated_inbound_id);
         $this->assertNotEquals($templateInbound->id, $osc->dedicated_inbound_id, 'Dedicated inbound should differ from template inbound');
     }

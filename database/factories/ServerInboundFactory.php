@@ -31,6 +31,7 @@ class ServerInboundFactory extends Factory
             'capacity' => 100,
             'current_clients' => 0,
             'status' => 'active',
+            'remote_id' => app()->environment('testing') ? $this->faker->numberBetween(1000,9999) : null,
         ];
     }
 }

@@ -35,7 +35,8 @@ class ServerFactory extends Factory
             'country' => $country,
             'flag' => $flags[$countryIndex] ?? '🌐',
             'description' => $this->faker->sentence(),
-            'status' => $this->faker->randomElement(['up', 'down', 'maintenance']),
+            // Schema enum only allows up, down, paused; map legacy 'maintenance' to 'paused'
+            'status' => $this->faker->randomElement(['up', 'down', 'paused']),
             'host' => $this->faker->ipv4(),
             'panel_port' => $this->faker->numberBetween(8000, 9999),
             'web_base_path' => $this->faker->optional(0.3)->slug(),

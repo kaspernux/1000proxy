@@ -89,9 +89,21 @@ class PaymentProcessor extends Component
             $this->customer = \Illuminate\Support\Facades\Auth::guard('customer')->user();
         }
         $this->loadWalletBalance();
-    // Determine wallet topup context
-    $this->isWalletTopup = ($this->type === 'wallet_topup');
-    $this->selectedCurrency = $this->currency; // initialize
+        // Determine wallet topup context
+        $this->isWalletTopup = ($this->type === 'wallet_topup');
+        $this->selectedCurrency = $this->currency; // initialize
+
+        // For wallet top-up: ensure selectedGateway is a valid non-wallet active gateway
+        if ($this->isWalletTopup) {
+            $activeTopup = $this->getActiveTopupGateways();
+            // If URL param selectedGateway is inactive, reset
+            if (empty($activeTopup)) {
+                // No active external methods -> stay on placeholder and mark failed state earlier in UI
+                $this->selectedGateway = null;
+            } elseif ($this->selectedGateway === 'wallet' || !$this->selectedGateway || !in_array($this->selectedGateway, $activeTopup, true)) {
+                $this->selectedGateway = $activeTopup[0];
+            }
+        }
     }
 
     public function render()
@@ -99,7 +111,8 @@ class PaymentProcessor extends Component
         return view('livewire.components.payment-processor', [
             'availableGateways' => $this->getAvailableGateways(),
             'cryptoCurrencies' => $this->getCryptoCurrencies(),
-            'paymentProgress' => $this->getPaymentProgress()
+            'paymentProgress' => $this->getPaymentProgress(),
+            'activeTopupGateways' => $this->isWalletTopup ? $this->getActiveTopupGateways() : []
         ]);
     }
     /**
@@ -199,8 +212,9 @@ class PaymentProcessor extends Component
                         }
                         $this->alert('info', 'Redirecting to crypto invoice...');
                         $this->dispatch('redirectAfterPayment', url: $paymentPayload['payment_url'], delay: 400);
+                        // Fallback server-side redirect in case JS event not handled
+                        return redirect()->away($paymentPayload['payment_url']);
                         // Leave step as 'processing'; webhook will emit paymentCompleted/paymentFailed events
-                        return;
                     }
                     // If no payment_url returned treat as failure
                     $this->handlePaymentFailed(['error' => 'Failed to obtain NowPayments invoice URL']);
@@ -269,7 +283,7 @@ class PaymentProcessor extends Component
             if ($redirectUrl) {
                 $this->alert('info', 'Redirecting to top-up invoice...');
                 $this->dispatch('redirectAfterPayment', url: $redirectUrl, delay: 400);
-                return;
+                return redirect()->away($redirectUrl);
             }
             $this->handlePaymentCompleted($data);
         } catch (\Throwable $e) {
@@ -318,16 +332,20 @@ class PaymentProcessor extends Component
     // Merge duplicate getAvailableGateways into one method
     public function getAvailableGateways()
     {
-        static $cached = null;
-        // Do not cache across different top-up contexts
-        if ($cached !== null && !$this->isWalletTopup) {
-            return $cached;
+        static $cacheTopup = null;
+        static $cacheNormal = null;
+
+        if ($this->isWalletTopup) {
+            if ($cacheTopup !== null) return $cacheTopup;
+        } else {
+            if ($cacheNormal !== null) return $cacheNormal;
         }
+        $mapped = [];
         try {
+            // Primary source (could be remote/service definition)
             $service = app(\App\Services\PaymentGatewayService::class);
             $res = $service->getAvailableGateways();
             $data = $res['data'] ?? [];
-            $mapped = [];
             foreach ($data as $key => $info) {
                 $mapped[$key] = [
                     'enabled' => true,
@@ -336,33 +354,116 @@ class PaymentProcessor extends Component
                     'description' => $info['description'] ?? ($info['type'] ?? ''),
                 ];
             }
-            // Ensure baseline gateways present even if service returns none
-            foreach (['stripe'=>'Stripe','paypal'=>'PayPal','mir'=>'Mir','nowpayments'=>'Cryptocurrency','wallet'=>'Wallet Balance'] as $k=>$n) {
-                if (!isset($mapped[$k])) {
-                    $mapped[$k] = ['enabled' => true, 'name' => $n, 'fee' => 0.0];
+        } catch (\Throwable $e) {
+            \Log::warning('Primary gateway service failed', ['error'=>$e->getMessage()]);
+        }
+
+        // Overlay authoritative DB active states
+        try {
+            $dbMethods = \App\Models\PaymentMethod::select('slug','name','is_active')->get();
+            $activeDbSlugs = [];
+            foreach ($dbMethods as $m) {
+                if ($m->is_active) {
+                    $activeDbSlugs[] = $m->slug;
+                    if (!isset($mapped[$m->slug])) {
+                        $mapped[$m->slug] = [
+                            'enabled' => true,
+                            'name' => $m->name ?? ucfirst($m->slug),
+                            'fee' => 0.0,
+                            'description' => ''
+                        ];
+                    } else {
+                        $mapped[$m->slug]['enabled'] = true;
+                        if (!empty($m->name)) $mapped[$m->slug]['name'] = $m->name;
+                    }
                 }
             }
-            // If wallet top-up, remove wallet as a payment option
-            if ($this->isWalletTopup && isset($mapped['wallet'])) {
-                unset($mapped['wallet']);
-                if ($this->selectedGateway === 'wallet') {
-                    // pick a default available gateway
-                    $this->selectedGateway = array_key_first($mapped);
+            // Prune any gateways not explicitly active in DB (except wallet added later for non-top-up)
+            foreach ($mapped as $slug => $info) {
+                if (!in_array($slug, $activeDbSlugs, true)) {
+                    unset($mapped[$slug]);
                 }
             }
-            $cached = $mapped;
-            return $mapped;
-        } catch (\Exception $e) {
-            \Log::warning('Gateway retrieval fallback', ['error' => $e->getMessage()]);
-            return [
-                'stripe' => ['enabled' => true, 'name' => 'Stripe', 'fee' => 0.0],
-                'paypal' => ['enabled' => true, 'name' => 'PayPal', 'fee' => 0.0],
-                'mir' => ['enabled' => true, 'name' => 'Mir', 'fee' => 0.0],
-                'nowpayments' => ['enabled' => true, 'name' => 'Cryptocurrency', 'fee' => 0.0],
-                'wallet' => ['enabled' => true, 'name' => 'Wallet Balance', 'fee' => 0.0],
+        } catch (\Throwable $e) {
+            \Log::warning('Failed to overlay DB payment methods', ['error'=>$e->getMessage()]);
+        }
+
+        // Remove wallet for top-up; add for normal flow
+        if ($this->isWalletTopup) {
+            unset($mapped['wallet']);
+        } else {
+            $mapped['wallet'] = [
+                'enabled' => true,
+                'name' => 'Wallet Balance',
+                'fee' => 0.0,
+                'description' => 'Use internal wallet funds'
             ];
         }
+
+        // Remove any disabled flags just in case
+        foreach ($mapped as $k=>$info) {
+            if (empty($info['enabled'])) unset($mapped[$k]);
+        }
+
+        // Preferred order
+        $order = ['nowpayments','stripe','mir','paypal','wallet'];
+        // For wallet top-up restrict strictly to active top-up gateways list
+        if ($this->isWalletTopup) {
+            $allowed = $this->getActiveTopupGateways();
+            $mapped = array_filter($mapped, fn($v,$k) => in_array($k, $allowed, true), ARRAY_FILTER_USE_BOTH);
+        }
+        $ordered = [];
+        foreach ($order as $pref) {
+            if (isset($mapped[$pref])) $ordered[$pref] = $mapped[$pref];
+        }
+        // Append any remaining
+        foreach ($mapped as $k=>$info) {
+            if (!isset($ordered[$k])) $ordered[$k] = $info;
+        }
+        $mapped = $ordered;
+
+        // Ensure a valid selected gateway for top-up
+        if ($this->isWalletTopup && ($this->selectedGateway === 'wallet' || !isset($mapped[$this->selectedGateway]))) {
+            $this->selectedGateway = array_key_first($mapped) ?: null;
+        }
+
+        if (empty($mapped)) {
+            // As absolute fallback expose crypto if nothing else active
+            $mapped = [
+                'nowpayments' => [ 'enabled'=>true, 'name'=>'Cryptocurrency', 'fee'=>0.0, 'description'=>'Pay with crypto' ]
+            ];
+            if (!$this->isWalletTopup) {
+                $mapped['wallet'] = [ 'enabled'=>true, 'name'=>'Wallet Balance', 'fee'=>0.0, 'description'=>'Use internal wallet funds' ];
+            }
+        }
+
+        if ($this->isWalletTopup) {
+            $cacheTopup = $mapped;
+        } else {
+            $cacheNormal = $mapped;
+        }
+        return $mapped;
     }
+
+    /**
+     * Active gateways for wallet top-up (exclude internal wallet).
+     * Ordered by preference: nowpayments (crypto) -> stripe -> mir -> paypal.
+     */
+    private function getActiveTopupGateways(): array
+    {
+        try {
+            $slugs = \App\Models\PaymentMethod::where('is_active', true)->pluck('slug')->toArray();
+        } catch (\Throwable $e) {
+            \Log::warning('Failed to load active payment methods for topup', ['error' => $e->getMessage()]);
+            $slugs = [];
+        }
+        $ordered = [];
+        foreach (['nowpayments','stripe','mir','paypal'] as $pref) {
+            if (in_array($pref, $slugs, true)) $ordered[] = $pref;
+        }
+        return $ordered;
+    }
+
 
     private function getFiatCurrencies(): array
     {
@@ -380,17 +481,38 @@ class PaymentProcessor extends Component
         $this->processingPayment = false;
         $this->paymentStep = 'completed';
 
-        // Update order status if order exists
+        // Only mark order paid if gateway actually confirmed success.
         if ($this->order) {
-            $this->order->update([
-                'status' => 'paid',
-                'payment_method' => $this->selectedGateway,
-                'payment_id' => $result['transaction_id'] ?? $result['payment_id'] ?? null,
-                'paid_at' => now()
-            ]);
+            $gateway = $this->selectedGateway;
+            $explicitStatus = strtolower($result['status'] ?? $result['payment_status'] ?? '');
+            $successfulStatuses = ['paid','finished','confirmed','succeeded','completed'];
 
-            // Dispatch order processing
-            $this->dispatch('orderPaid', orderId: $this->order->id);
+            if ($gateway === 'nowpayments' && !in_array($explicitStatus, $successfulStatuses, true)) {
+                // For NowPayments we rely on webhook to flip payment_status to paid.
+                \Log::info('PaymentCompleted event received for NowPayments but status not final; skipping paid update', [
+                    'order_id' => $this->order->id,
+                    'reported_status' => $explicitStatus,
+                ]);
+            } else {
+                $update = [
+                    'payment_method' => $gateway,
+                    'payment_transaction_id' => $result['transaction_id'] ?? $result['payment_id'] ?? null,
+                    'paid_at' => now(),
+                ];
+                // Set both legacy and new status fields.
+                $update['payment_status'] = 'paid';
+                $update['status'] = 'completed';
+                try {
+                    $this->order->update($update);
+                    // Queue provisioning only when payment is final
+                    $this->dispatch('orderPaid', orderId: $this->order->id);
+                } catch (\Throwable $e) {
+                    \Log::error('Failed to update order as paid in PaymentProcessor', [
+                        'order_id' => $this->order->id,
+                        'error' => $e->getMessage(),
+                    ]);
+                }
+            }
         }
 
         $this->alert('success', 'Payment completed successfully!', [
