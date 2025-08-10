@@ -16,6 +16,7 @@ use Illuminate\Contracts\Auth\MustVerifyEmail;
 
 class Customer extends Authenticatable implements MustVerifyEmail
 {
+    use \App\Traits\LogsActivity;
     use HasFactory, Notifiable, HasApiTokens;
 
     protected $guard = 'customer';

@@ -13,6 +13,16 @@ use App\Models\ServerInfo;
 
 class Server extends Model
 {
+    use \App\Traits\LogsActivity;
+
+    protected static function booted(): void
+    {
+        static::updated(function(self $server) {
+            if ($server->isDirty('status')) {
+                event(new \App\Events\ServerStatusUpdated($server));
+            }
+        });
+    }
     use HasFactory;
 
     protected $table = 'servers';

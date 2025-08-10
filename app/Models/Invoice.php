@@ -17,6 +17,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 
 class Invoice extends Model
 {
+    use \App\Traits\LogsActivity;
     use HasFactory;
 
     protected $table = 'invoices';

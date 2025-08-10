@@ -14,13 +14,22 @@ class RevenueByMethodWidget extends ChartWidget
 
     protected function getData(): array
     {
+        $userId = auth()->id() ?? 0;
+        $filterStateService = app(\App\Services\AnalyticsFilterState::class);
+        $filterState = $filterStateService->get($userId);
+        $serviceRange = $filterStateService->mapToServiceRange($filterState['time_range'] ?? '30d');
+
         $biService = app(BusinessIntelligenceService::class);
-        $analytics = Cache::remember('bi_payment_chart', 300, function () use ($biService) {
-            return $biService->getDashboardAnalytics('30_days');
+        $cacheKey = 'bi_payment_chart_' . $userId . '_' . $serviceRange;
+        $analytics = Cache::remember($cacheKey, 300, function () use ($biService, $serviceRange) {
+            return $biService->getDashboardAnalytics($serviceRange);
         });
 
         $revenueData = $analytics['data']['revenue'] ?? [];
         $revenueByMethod = collect($revenueData['revenue_by_method'] ?? []);
+        if (!empty($filterState['payment_method'])) {
+            $revenueByMethod = $revenueByMethod->filter(fn($row, $key) => $key === $filterState['payment_method']);
+        }
 
         $labels = $revenueByMethod->keys()->map(function ($method) {
             return ucfirst($method);

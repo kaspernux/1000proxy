@@ -14,7 +14,7 @@ class AdminChartsWidget extends ChartWidget
 {
     protected static ?string $heading = 'Revenue & Growth Analytics';
 
-    protected static ?int $sort = 2;
+    protected static ?int $sort = 3; // after stats(1) + infra(2)
 
     protected int | string | array $columnSpan = 'full';
 
@@ -31,6 +31,14 @@ class AdminChartsWidget extends ChartWidget
             'year' => 'This year',
         ];
     }
+
+    /**
+     * Livewire listeners for real-time chart refresh (orders trigger revenue/orders update, serverStatus for client growth potential).
+     */
+    protected $listeners = [
+        'orderPaid' => '$refresh',
+        'refreshRevenueMetrics' => '$refresh',
+    ];
 
     protected function getData(): array
     {
@@ -51,6 +59,8 @@ class AdminChartsWidget extends ChartWidget
             case 'year':
                 $startDate = Carbon::now()->startOfYear();
                 $dateFormat = 'M Y';
+                // Use DATE_FORMAT for clean single period column
+                $periodSelect = "DATE_FORMAT(created_at, '%Y-%m')";
                 $groupBy = 'YEAR(created_at), MONTH(created_at)';
                 break;
             default: // 30days
@@ -60,10 +70,12 @@ class AdminChartsWidget extends ChartWidget
                 break;
         }
 
-        // Get revenue data (align with migration: payment_status = 'paid', grand_amount, etc.)
+        $periodSelect = $periodSelect ?? $groupBy; // for non-year filters
+
+        // Get revenue data (align with migration: payment_status = 'paid', grand_amount)
         $revenueData = Order::where('payment_status', 'paid')
             ->where('created_at', '>=', $startDate)
-            ->selectRaw($groupBy . ' as period, SUM(grand_amount) as revenue, COUNT(*) as orders')
+            ->selectRaw($periodSelect . ' as period, SUM(grand_amount) as revenue, COUNT(*) as orders')
             ->groupBy(DB::raw($groupBy))
             ->orderBy('period')
             ->get();

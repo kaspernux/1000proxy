@@ -269,7 +269,7 @@
                                     <div class="bg-white/5 backdrop-blur-md rounded-2xl p-6 shadow-xl border border-white/10">
                                         <h3 class="text-sm font-semibold text-white mb-3 flex items-center"><x-custom-icon name="shield-check" class="w-4 h-4 mr-2 text-green-400" />Security</h3>
                                         <p class="text-xs text-gray-300 leading-relaxed">All transactions are encrypted. We never store sensitive card details. Cryptocurrency payments are processed via secure third-party gateways.</p>
-                                    </div>
+                                                                </section>
                                 </div>
                             </div>
 

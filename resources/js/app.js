@@ -1,4 +1,5 @@
 import 'preline';
+import './echo';
 
 // Import component libraries
 import './components/interactive-data-tables.js';
@@ -26,3 +27,18 @@ document.addEventListener( 'livewire:navigated', () =>
 
 
 console.log( '✅ 1000proxy application initialized with Interactive Data Tables, Advanced Data Table Component, Advanced Color System, Enhanced Theme System, Accessibility Improvements, XUI Integration Interface, and Telegram Bot Integration UI' );
+
+// Simple toast handler for custom 'notify' events (used by export ready broadcast)
+window.addEventListener( 'notify', ( e ) =>
+{
+    const message = e.detail?.message || 'Notification';
+    const toast = document.createElement( 'div' );
+    toast.className = 'fixed z-[9999] top-4 right-4 bg-emerald-600 text-white px-4 py-2 rounded shadow text-sm animate-fade-in';
+    toast.textContent = message;
+    document.body.appendChild( toast );
+    setTimeout( () =>
+    {
+        toast.classList.add( 'opacity-0', 'transition-opacity', 'duration-500' );
+        setTimeout( () => toast.remove(), 600 );
+    }, 4000 );
+} );

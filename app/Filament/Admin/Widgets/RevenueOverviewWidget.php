@@ -11,12 +11,17 @@ class RevenueOverviewWidget extends BaseWidget
 {
     protected function getStats(): array
     {
+        $userId = auth()->id() ?? 0;
+        $filterStateService = app(\App\Services\AnalyticsFilterState::class);
+        $filterState = $filterStateService->get($userId);
+        $serviceRange = $filterStateService->mapToServiceRange($filterState['time_range'] ?? '30d');
         $biService = app(BusinessIntelligenceService::class);
-        $analytics = Cache::remember('bi_revenue_overview', 300, function () use ($biService) {
-            return $biService->getDashboardAnalytics('30_days');
+        $cacheKey = 'bi_revenue_overview_' . $userId . '_' . $serviceRange;
+        $analytics = Cache::remember($cacheKey, 300, function () use ($biService, $serviceRange) {
+            return $biService->getDashboardAnalytics($serviceRange);
         });
 
-        $revenueData = $analytics['data']['revenue'] ?? [];
+    $revenueData = $analytics['data']['revenue'] ?? [];
 
         return [
             Stat::make('Total Revenue (30 days)', '$' . number_format($revenueData['total_revenue'] ?? 0, 2))
@@ -64,7 +69,7 @@ class RevenueOverviewWidget extends BaseWidget
 
     private function getRevenueChart($revenueData): array
     {
-        $dailyRevenue = $revenueData['daily_revenue'] ?? [];
-        return array_values($dailyRevenue->take(7)->toArray());
+    $dailyRevenue = $revenueData['daily_revenue'] ?? collect();
+    return array_values(collect($dailyRevenue)->take(7)->toArray());
     }
 }

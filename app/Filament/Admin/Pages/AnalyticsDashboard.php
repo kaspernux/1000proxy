@@ -3,16 +3,8 @@
 namespace App\Filament\Admin\Pages;
 
 use Filament\Pages\Page;
-use Filament\Support\Enums\FontWeight;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Cache;
-use App\Models\Order;
-use App\Models\User;
-use App\Models\Customer;
-use App\Models\Server;
-use App\Models\ServerClient;
-use App\Models\WalletTransaction;
-use Carbon\Carbon;
+use App\Services\BusinessIntelligenceService;
 
 class AnalyticsDashboard extends Page
 {
@@ -25,10 +17,48 @@ class AnalyticsDashboard extends Page
     public $timeRange = '30d';
     public $selectedMetric = 'revenue';
     public $analyticsData = [];
+    public $paymentMethodFilter = '';
+    public $planFilter = '';
 
     public function mount(): void
     {
+        if (auth()->check()) {
+            $filterState = app(\App\Services\AnalyticsFilterState::class)->get(auth()->id());
+            $this->timeRange = $filterState['time_range'] ?? $this->timeRange;
+            $this->paymentMethodFilter = $filterState['payment_method'] ?? '';
+            $this->planFilter = $filterState['plan'] ?? '';
+        }
         $this->loadAnalyticsData();
+    }
+
+    public function updatedTimeRange(): void
+    {
+        if (auth()->check()) {
+            app(\App\Services\AnalyticsFilterState::class)->setTimeRange(auth()->id(), $this->timeRange);
+        }
+        $this->refreshAnalytics();
+    }
+
+    public function updatedPaymentMethodFilter(): void
+    {
+        $this->persistFilters();
+        $this->refreshAnalytics();
+    }
+
+    public function updatedPlanFilter(): void
+    {
+        $this->persistFilters();
+        $this->refreshAnalytics();
+    }
+
+    protected function persistFilters(): void
+    {
+        if (auth()->check()) {
+            app(\App\Services\AnalyticsFilterState::class)->setFilters(auth()->id(), [
+                'payment_method' => $this->paymentMethodFilter,
+                'plan' => $this->planFilter,
+            ]);
+        }
     }
 
     protected function getHeaderActions(): array
@@ -84,24 +114,73 @@ class AnalyticsDashboard extends Page
 
     protected function loadAnalyticsData(): void
     {
-        $cacheKey = "analytics_dashboard_{$this->timeRange}";
+        $serviceRange = app(\App\Services\AnalyticsFilterState::class)->mapToServiceRange($this->timeRange);
+        $cacheKey = "analytics_dashboard_v2_{$serviceRange}";
+        $bi = app(BusinessIntelligenceService::class);
+        $raw = Cache::tags(['analytics'])->remember($cacheKey, now()->addMinutes(5), fn() => $bi->getDashboardAnalytics($serviceRange));
 
-        $this->analyticsData = Cache::tags(['analytics'])->remember($cacheKey, now()->addMinutes(15), function () {
-            $timeRange = $this->getTimeRangeFilter();
+        $data = [
+            'overview' => $this->mapOverview($raw['data'] ?? []),
+            'revenue' => $raw['data']['revenue'] ?? [],
+            'users' => $raw['data']['users'] ?? [],
+            'servers' => $raw['data']['servers'] ?? [],
+            'performance' => $raw['data']['performance'] ?? [],
+            'forecasting' => $raw['data']['forecasts'] ?? [],
+            // Transform raw segment arrays into simple counts for legacy blade
+            'segmentation' => (function () use ($raw) {
+                $segments = $raw['data']['segments']['segments'] ?? [];
+                if (empty($segments)) return [];
+                return [
+                    'High Value' => count($segments['high_value'] ?? []),
+                    'Frequent Buyers' => count($segments['frequent_buyers'] ?? []),
+                    'At Risk' => count($segments['at_risk'] ?? []),
+                    'New Customers' => count($segments['new_customers'] ?? []),
+                    'Churned' => count($segments['churned_customers'] ?? []),
+                ];
+            })(),
+            'churn' => [
+                'churn_rate' => $raw['data']['revenue']['churn_rate'] ?? 0,
+                'retention_rate' => isset($raw['data']['revenue']['churn_rate']) ? 100 - ($raw['data']['revenue']['churn_rate']) : 0,
+                'at_risk_customers' => count($raw['data']['segments']['segments']['at_risk'] ?? []),
+                'churned_customers' => count($raw['data']['segments']['segments']['churned_customers'] ?? []),
+            ],
+        ];
 
-            return [
-                'overview' => $this->getOverviewMetrics($timeRange),
-                'revenue' => $this->getRevenueAnalytics($timeRange),
-                'users' => $this->getUserAnalytics($timeRange),
-                'servers' => $this->getServerAnalytics($timeRange),
-                'performance' => $this->getPerformanceMetrics($timeRange),
-                'customer_behavior' => $this->getCustomerBehaviorAnalytics($timeRange),
-                'forecasting' => $this->getRevenueForecast($timeRange),
-                'segmentation' => $this->getCustomerSegmentation($timeRange),
-                'churn' => $this->getChurnAnalysis($timeRange),
-                'geographic' => $this->getGeographicAnalytics($timeRange),
-            ];
-        });
+        // Normalize revenue daily series for blade (expects array with formatted_date)
+        if (isset($data['revenue']['daily_revenue']) && is_iterable($data['revenue']['daily_revenue'])) {
+            $daily = [];
+            foreach ($data['revenue']['daily_revenue'] as $date => $value) {
+                if (is_array($value) && isset($value['date'])) { // already structured
+                    $daily[] = $value;
+                } else {
+                    $daily[] = [
+                        'date' => $date,
+                        'formatted_date' => \Carbon\Carbon::parse($date)->format('M j'),
+                        'revenue' => is_array($value) ? ($value['revenue'] ?? 0) : $value,
+                    ];
+                }
+            }
+            usort($daily, fn($a, $b) => strcmp($a['date'], $b['date']));
+            $data['revenue']['daily_revenue'] = $daily;
+            $data['revenue']['total_period'] = collect($daily)->sum('revenue');
+            $data['revenue']['average_daily'] = count($daily) ? round($data['revenue']['total_period'] / count($daily), 2) : 0;
+            $data['revenue']['peak_day'] = collect($daily)->sortByDesc('revenue')->first();
+        }
+
+        if (!empty($this->paymentMethodFilter) && isset($data['revenue']['revenue_by_method'])) {
+            $pm = strtolower($this->paymentMethodFilter);
+            $data['revenue']['revenue_by_method'] = collect($data['revenue']['revenue_by_method'])
+                ->filter(fn($row, $key) => strtolower($key) === $pm || (is_array($row) && strtolower($row['payment_method'] ?? '') === $pm))
+                ->all();
+        }
+        if (!empty($this->planFilter) && isset($data['revenue']['revenue_by_plan'])) {
+            $plan = strtolower($this->planFilter);
+            $data['revenue']['revenue_by_plan'] = collect($data['revenue']['revenue_by_plan'])
+                ->filter(fn($row) => str_contains(strtolower($row->plan_name ?? $row['plan_name'] ?? ''), $plan))
+                ->values()->all();
+        }
+
+        $this->analyticsData = $data;
     }
 
     protected function getTimeRangeFilter(): array
@@ -118,134 +197,52 @@ class AnalyticsDashboard extends Page
         };
     }
 
-    protected function getOverviewMetrics(array $timeRange): array
+    protected function mapOverview(array $data): array
     {
-        // Calculate period metrics
-        $currentPeriodOrders = Order::whereBetween('created_at', [$timeRange['start'], $timeRange['end']])
-            ->where('payment_status', 'completed')
-            ->get();
-
-        $previousStart = $timeRange['start']->copy()->sub($timeRange['end']->diffInDays($timeRange['start']), 'days');
-        $previousEnd = $timeRange['start']->copy();
-
-        $previousPeriodOrders = Order::whereBetween('created_at', [$previousStart, $previousEnd])
-            ->where('payment_status', 'completed')
-            ->get();
-
-        // Revenue calculations
-        $currentRevenue = $currentPeriodOrders->sum('grand_amount');
-        $previousRevenue = $previousPeriodOrders->sum('grand_amount');
-        $revenueGrowth = $previousRevenue > 0 ? (($currentRevenue - $previousRevenue) / $previousRevenue) * 100 : 0;
-
-        // User metrics
-        $currentUsers = Customer::whereBetween('created_at', [$timeRange['start'], $timeRange['end']])->count();
-        $previousUsers = Customer::whereBetween('created_at', [$previousStart, $previousEnd])->count();
-        $userGrowth = $previousUsers > 0 ? (($currentUsers - $previousUsers) / $previousUsers) * 100 : 0;
-
-        // Order metrics
-        $currentOrderCount = $currentPeriodOrders->count();
-        $previousOrderCount = $previousPeriodOrders->count();
-        $orderGrowth = $previousOrderCount > 0 ? (($currentOrderCount - $previousOrderCount) / $previousOrderCount) * 100 : 0;
-
-        // Active servers
-        $activeServers = Server::where('status', 'active')->count();
-        $totalClients = ServerClient::where('status', 'active')->count();
+        $revenue = $data['revenue']['total_revenue'] ?? 0;
+        $growth = $data['revenue']['revenue_growth'] ?? 0;
+        $orders = $data['revenue']['order_count'] ?? 0;
+        $aov = $data['revenue']['average_order_value'] ?? 0;
+        $usersTotal = $data['users']['total_users'] ?? 0;
+        $activeUsers = $data['users']['active_users'] ?? 0;
+        $conversion = $data['users']['conversion_rate'] ?? 0;
+        $serversOnline = $data['servers']['health_metrics']['servers_online'] ?? 0;
+        $avgUptime = $data['servers']['health_metrics']['average_uptime'] ?? 0;
 
         return [
             'total_revenue' => [
-                'value' => $currentRevenue,
-                'formatted' => '$' . number_format($currentRevenue, 2),
-                'growth' => round($revenueGrowth, 1),
-                'trend' => $revenueGrowth >= 0 ? 'up' : 'down',
+                'value' => $revenue,
+                'formatted' => '$' . number_format($revenue, 2),
+                'growth' => $growth,
+                'trend' => ($growth ?? 0) >= 0 ? 'up' : 'down',
             ],
             'new_customers' => [
-                'value' => $currentUsers,
-                'growth' => round($userGrowth, 1),
-                'trend' => $userGrowth >= 0 ? 'up' : 'down',
+                'value' => $usersTotal,
+                'growth' => $growth,
+                'trend' => ($growth ?? 0) >= 0 ? 'up' : 'down',
             ],
             'total_orders' => [
-                'value' => $currentOrderCount,
-                'growth' => round($orderGrowth, 1),
-                'trend' => $orderGrowth >= 0 ? 'up' : 'down',
+                'value' => $orders,
+                'growth' => $growth,
+                'trend' => ($growth ?? 0) >= 0 ? 'up' : 'down',
             ],
             'active_servers' => [
-                'value' => $activeServers,
-                'clients' => $totalClients,
-                'utilization' => $activeServers > 0 ? round(($totalClients / ($activeServers * 100)) * 100, 1) : 0,
+                'value' => $serversOnline,
+                'clients' => $activeUsers,
+                'utilization' => $avgUptime,
             ],
             'avg_order_value' => [
-                'value' => $currentOrderCount > 0 ? $currentRevenue / $currentOrderCount : 0,
-                'formatted' => '$' . number_format($currentOrderCount > 0 ? $currentRevenue / $currentOrderCount : 0, 2),
+                'value' => $aov,
+                'formatted' => '$' . number_format($aov, 2),
             ],
             'conversion_rate' => [
-                'value' => $this->calculateConversionRate($timeRange),
-                'formatted' => number_format($this->calculateConversionRate($timeRange), 1) . '%',
+                'value' => $conversion,
+                'formatted' => number_format($conversion, 1) . '%',
             ],
         ];
     }
 
-    protected function getRevenueAnalytics(array $timeRange): array
-    {
-        // Daily revenue breakdown
-        $dailyRevenue = [];
-        $current = $timeRange['start']->copy();
-
-        while ($current <= $timeRange['end']) {
-            $dayRevenue = Order::where(DB::raw('DATE(created_at)'), $current->format('Y-m-d'))
-                ->where('payment_status', 'completed')
-                ->sum('grand_amount');
-
-            $dailyRevenue[] = [
-                'date' => $current->format('Y-m-d'),
-                'revenue' => $dayRevenue,
-                'formatted_date' => $current->format('M j'),
-            ];
-
-            $current->addDay();
-        }
-
-        // Revenue by payment method
-        $revenueByPaymentMethod = WalletTransaction::whereBetween('created_at', [$timeRange['start'], $timeRange['end']])
-            ->where('type', 'credit')
-            ->select('payment_method', DB::raw('SUM(amount) as total'))
-            ->groupBy('payment_method')
-            ->get()
-            ->map(function ($item) {
-                return [
-                    'method' => ucfirst($item->payment_method ?? 'Unknown'),
-                    'amount' => $item->total,
-                    'formatted' => '$' . number_format($item->total, 2),
-                ];
-            });
-
-        // Revenue by server category
-        $revenueByCategory = DB::table('orders')
-            ->join('order_items', 'orders.id', '=', 'order_items.order_id')
-            ->join('server_plans', 'order_items.server_plan_id', '=', 'server_plans.id')
-            ->join('servers', 'server_plans.server_id', '=', 'servers.id')
-            ->join('server_categories', 'servers.server_category_id', '=', 'server_categories.id')
-            ->whereBetween('orders.created_at', [$timeRange['start'], $timeRange['end']])
-            ->where('orders.payment_status', 'completed')
-            ->select('server_categories.name', DB::raw('SUM(orders.grand_amount) as total'))
-            ->groupBy('server_categories.name')
-            ->get()
-            ->map(function ($item) {
-                return [
-                    'category' => $item->name,
-                    'amount' => $item->total,
-                    'formatted' => '$' . number_format($item->total, 2),
-                ];
-            });
-
-        return [
-            'daily_revenue' => $dailyRevenue,
-            'by_payment_method' => $revenueByPaymentMethod,
-            'by_category' => $revenueByCategory,
-            'total_period' => collect($dailyRevenue)->sum('revenue'),
-            'peak_day' => collect($dailyRevenue)->sortByDesc('revenue')->first(),
-            'average_daily' => collect($dailyRevenue)->avg('revenue'),
-        ];
-    }
+    // Legacy detailed query methods removed in favor of BusinessIntelligenceService delegation
 
     protected function getUserAnalytics(array $timeRange): array
     {
@@ -372,7 +369,7 @@ class AnalyticsDashboard extends Page
         // Purchase patterns
         $purchasePatterns = DB::table('orders')
             ->whereBetween('created_at', [$timeRange['start'], $timeRange['end']])
-            ->where('payment_status', 'completed')
+            ->where('payment_status', 'paid')
             ->select(DB::raw('HOUR(created_at) as hour'), DB::raw('COUNT(*) as count'))
             ->groupBy(DB::raw('HOUR(created_at)'))
             ->get()
@@ -389,16 +386,16 @@ class AnalyticsDashboard extends Page
 
         // Customer lifetime value calculation
         $avgCustomerLifetimeValue = Customer::whereHas('orders', function ($query) {
-            $query->where('payment_status', 'completed');
-        })->withSum('orders', 'total_amount')->avg('orders_sum_total_amount') ?? 0;
+            $query->where('payment_status', 'paid');
+        })->withSum('orders', 'grand_amount')->avg('orders_sum_grand_amount') ?? 0;
 
         // Repeat purchase rate
         $customersWithMultiplePurchases = Customer::whereHas('orders', function ($query) {
-            $query->where('payment_status', 'completed');
+            $query->where('payment_status', 'paid');
         }, '>', 1)->count();
 
         $totalCustomersWithPurchases = Customer::whereHas('orders', function ($query) {
-            $query->where('payment_status', 'completed');
+            $query->where('payment_status', 'paid');
         })->count();
 
         $repeatPurchaseRate = $totalCustomersWithPurchases > 0
@@ -416,12 +413,12 @@ class AnalyticsDashboard extends Page
     protected function getRevenueForecast(array $timeRange): array
     {
         // Simple linear regression forecast based on historical data
-        $historicalRevenue = Order::where('payment_status', 'completed')
+        $historicalRevenue = Order::where('payment_status', 'paid')
             ->whereBetween('created_at', [
                 $timeRange['start']->copy()->subDays(30),
                 $timeRange['end']
             ])
-            ->selectRaw('DATE(created_at) as date, SUM(total_amount) as revenue')
+            ->selectRaw('DATE(created_at) as date, SUM(grand_amount) as revenue')
             ->groupBy(DB::raw('DATE(created_at)'))
             ->orderBy('date')
             ->get();
@@ -471,13 +468,13 @@ class AnalyticsDashboard extends Page
         $segments = [];
 
         foreach ($customers as $customer) {
-            $orders = $customer->orders->where('payment_status', 'completed');
+            $orders = $customer->orders->where('payment_status', 'paid');
 
             if ($orders->isEmpty()) continue;
 
             $recency = $orders->max('created_at')->diffInDays(now());
             $frequency = $orders->count();
-            $monetary = $orders->sum('total_amount');
+            $monetary = $orders->sum('grand_amount');
 
             // Simple segmentation logic
             if ($monetary > 500 && $frequency > 5 && $recency < 30) {
@@ -539,7 +536,7 @@ class AnalyticsDashboard extends Page
             ->join('server_plans', 'order_items.server_plan_id', '=', 'server_plans.id')
             ->join('servers', 'server_plans.server_id', '=', 'servers.id')
             ->whereBetween('orders.created_at', [$timeRange['start'], $timeRange['end']])
-            ->where('orders.payment_status', 'completed')
+            ->where('orders.payment_status', 'paid')
             ->select('servers.location', DB::raw('SUM(orders.grand_amount) as revenue'), DB::raw('COUNT(orders.id) as order_count'))
             ->groupBy('servers.location')
             ->orderByDesc('revenue')
@@ -557,7 +554,7 @@ class AnalyticsDashboard extends Page
         // Simple conversion rate calculation
         $visitors = rand(1000, 5000); // Replace with actual visitor tracking
         $orders = Order::whereBetween('created_at', [$timeRange['start'], $timeRange['end']])
-            ->where('payment_status', 'completed')
+            ->where('payment_status', 'paid')
             ->count();
 
         return $visitors > 0 ? ($orders / $visitors) * 100 : 0;

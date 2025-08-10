@@ -60,10 +60,12 @@ class BusinessIntelligenceDashboard extends Page
     protected function getHeaderWidgets(): array
     {
         return [
-            \App\Filament\Admin\Widgets\RevenueOverviewWidget::class,
+            // Unified KPI + growth/revenue stats
+            \App\Filament\Widgets\AdminDashboardStatsWidget::class,
             \App\Filament\Admin\Widgets\UserGrowthWidget::class,
             \App\Filament\Admin\Widgets\OrderMetricsWidget::class,
-            \App\Filament\Admin\Widgets\ServerPerformanceWidget::class,
+            // Infrastructure health (replaces ServerPerformanceWidget)
+            \App\Filament\Widgets\InfrastructureHealthWidget::class,
         ];
     }
 
@@ -99,7 +101,8 @@ class RevenueAnalytics extends Page
     protected function getHeaderWidgets(): array
     {
         return [
-            \App\Filament\Admin\Widgets\RevenueChartWidget::class,
+            // Consolidated multi-series charts widget replaces RevenueChartWidget
+            \App\Filament\Widgets\AdminChartsWidget::class,
             \App\Filament\Admin\Widgets\RevenueByMethodWidget::class,
             \App\Filament\Admin\Widgets\RevenueForecastWidget::class,
         ];
@@ -135,9 +138,10 @@ class ServerAnalytics extends Page
     protected function getHeaderWidgets(): array
     {
         return [
-            \App\Filament\Admin\Widgets\ServerUsageWidget::class,
+            // Removed deprecated ServerUsageWidget (duplicated by LocationPopularity/ProtocolUsage)
             \App\Filament\Admin\Widgets\LocationPopularityWidget::class,
             \App\Filament\Admin\Widgets\ProtocolUsageWidget::class,
+            \App\Filament\Admin\Widgets\TrendsWidget::class,
         ];
     }
 }

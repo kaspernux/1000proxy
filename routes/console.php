@@ -3,6 +3,7 @@
 use Illuminate\Foundation\Inspiring;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Schedule;
+use App\Jobs\PruneOldExportsJob;
 
 Artisan::command('inspire', function () {
     $this->comment(Inspiring::quote());
@@ -48,4 +49,9 @@ Schedule::command('log:clear')
 // Cleanup unused dedicated inbounds hourly
 Schedule::command('inbounds:cleanup-dedicated')
     ->hourly()
+    ->withoutOverlapping();
+
+// Prune old export artifacts daily (moved from Kernel for Laravel 12 scheduling style)
+Schedule::job(new PruneOldExportsJob())
+    ->dailyAt('02:15')
     ->withoutOverlapping();

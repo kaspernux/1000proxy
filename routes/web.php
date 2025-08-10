@@ -1,5 +1,23 @@
 <?php
 
+use Illuminate\Support\Facades\Route;
+use Illuminate\Support\Facades\Storage;
+
+// Download route for generated exports (ensures notifications marked read)
+Route::middleware(['web','auth'])->get('/admin/exports/download', function() {
+    $path = base64_decode(request('path'));
+    abort_unless($path && Storage::disk('local')->exists($path), 404);
+    $user = auth()->user();
+    if ($user) {
+        $user->unreadNotifications()
+            ->where('type', \App\Notifications\ExportReadyNotification::class)
+            ->whereJsonContains('data->path', $path)
+            ->get()
+            ->each(function($n){ $n->markAsRead(); });
+    }
+    return Storage::disk('local')->download($path);
+})->name('admin.download-export');
+
 use App\Livewire\{
     CartPage,
     HomePage,
@@ -31,7 +49,7 @@ use App\Http\Controllers\{
     CheckoutController
 };
 
-use Illuminate\Support\Facades\Route;
+// (Route facade already imported at top)
 use Illuminate\Support\Facades\Auth;
 use App\Http\Middleware\RedirectIfCustomer;
 use Illuminate\Support\Facades\Log;

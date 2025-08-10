@@ -16,12 +16,18 @@ class RevenueChartWidget extends ChartWidget
 
     protected function getData(): array
     {
+        $userId = auth()->id() ?? 0;
+        $filterStateService = app(\App\Services\AnalyticsFilterState::class);
+        $filterState = $filterStateService->get($userId);
+        $serviceRange = $filterStateService->mapToServiceRange($filterState['time_range'] ?? '30d');
+
         $biService = app(BusinessIntelligenceService::class);
-        $analytics = Cache::remember('bi_revenue_chart', 300, function () use ($biService) {
-            return $biService->getDashboardAnalytics('30_days');
+        $cacheKey = 'bi_revenue_chart_' . $userId . '_' . $serviceRange;
+        $analytics = Cache::remember($cacheKey, 300, function () use ($biService, $serviceRange) {
+            return $biService->getDashboardAnalytics($serviceRange);
         });
 
-        $revenueData = $analytics['data']['revenue'] ?? [];
+    $revenueData = $analytics['data']['revenue'] ?? [];
         $dailyRevenue = $revenueData['daily_revenue'] ?? collect();
 
         $labels = $dailyRevenue->keys()->map(function ($date) {

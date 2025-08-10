@@ -14,6 +14,16 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 
 class Order extends Model
 {
+    use \App\Traits\LogsActivity;
+
+    protected static function booted(): void
+    {
+        static::updated(function(self $order) {
+            if ($order->isDirty('payment_status') && $order->payment_status === 'paid') {
+                event(new \App\Events\OrderPaid($order));
+            }
+        });
+    }
     use HasFactory;
 
     protected $table = 'orders';

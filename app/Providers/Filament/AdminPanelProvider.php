@@ -19,7 +19,7 @@ use Illuminate\Session\Middleware\StartSession;
 use Illuminate\View\Middleware\ShareErrorsFromSession;
 use App\Filament\Clusters\ProxyShop\Resources\OrderResource\Widgets\OrderStats;
 use App\Http\Middleware\RedirectIfCustomer;
-use App\Filament\Widgets\AdminStatsOverview;
+use App\Filament\Widgets\AdminDashboardStatsWidget;
 
 class AdminPanelProvider extends PanelProvider
 {
@@ -45,7 +45,7 @@ class AdminPanelProvider extends PanelProvider
             ])
             ->discoverWidgets(in: app_path('Filament/Widgets'), for: 'App\\Filament\\Widgets')
             ->widgets([
-                AdminStatsOverview::class,	
+                AdminDashboardStatsWidget::class,
                 // Widgets\AccountWidget::class,
             ])
             ->middleware([

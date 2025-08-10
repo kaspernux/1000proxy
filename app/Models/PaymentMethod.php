@@ -10,6 +10,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 
 class PaymentMethod extends Model
 {
+    use \App\Traits\LogsActivity;
     use HasFactory;
 
     protected $table = 'payment_methods';

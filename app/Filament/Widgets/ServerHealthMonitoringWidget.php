@@ -9,24 +9,23 @@ use Filament\Widgets\StatsOverviewWidget\Stat;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 
+/**
+ * @deprecated Replaced by InfrastructureHealthWidget. Kept temporarily for backward compatibility.
+ */
 class ServerHealthMonitoringWidget extends BaseWidget
 {
-    protected static ?int $sort = 1;
-
+    protected static ?int $sort = 9999;
     protected int | string | array $columnSpan = 'full';
-
-    protected static ?string $pollingInterval = '30s';
+    protected static ?string $pollingInterval = null;
 
     protected function getStats(): array
     {
-        return [
-            $this->getServerStatusStat(),
-            $this->getActiveConnectionsStat(),
-            $this->getServerLoadStat(),
-            $this->getXUIConnectionsStat(),
-            $this->getTotalTrafficStat(),
-            $this->getServerPerformanceStat(),
-        ];
+        return []; // suppressed
+    }
+
+    protected function shouldRegisterNavigation(): bool
+    {
+        return false;
     }
 
     private function getServerStatusStat(): Stat
@@ -57,7 +56,7 @@ class ServerHealthMonitoringWidget extends BaseWidget
             return Server::with('clients')
                 ->get()
                 ->sum(function ($server) {
-                    return $server->clients()->where('status', 'active')->count();
+                    return $server->clients()->where('server_clients.status', 'active')->count();
                 });
         });
 
@@ -230,7 +229,7 @@ class ServerHealthMonitoringWidget extends BaseWidget
                 ->get()
                 ->sum(function ($server) {
                     return $server->clients()
-                        ->where('status', 'active')
+                        ->where('server_clients.status', 'active')
                         ->where('server_clients.updated_at', '>=', now()->subHour())
                         ->count();
                 });
@@ -241,7 +240,7 @@ class ServerHealthMonitoringWidget extends BaseWidget
                 ->get()
                 ->sum(function ($server) {
                     return $server->clients()
-                        ->where('status', 'active')
+                        ->where('server_clients.status', 'active')
                         ->whereBetween('server_clients.updated_at', [now()->subHours(2), now()->subHour()])
                         ->count();
                 });
@@ -284,7 +283,7 @@ class ServerHealthMonitoringWidget extends BaseWidget
                     ->get()
                     ->sum(function ($server) use ($hour) {
                         return $server->clients()
-                            ->where('status', 'active')
+                            ->where('server_clients.status', 'active')
                             ->whereBetween('server_clients.updated_at', [$hour, $hour->copy()->addHour()])
                             ->count();
                     });
@@ -338,7 +337,7 @@ class ServerHealthMonitoringWidget extends BaseWidget
         }
 
         // Client count impact
-        $clientCount = $server->clients()->where('status', 'active')->count();
+    $clientCount = $server->clients()->where('server_clients.status', 'active')->count();
         $maxClients = 100; // Assume max 100 clients per server
         if ($clientCount > $maxClients * 0.9) {
             $score -= 20;

@@ -9,6 +9,7 @@ use App\Models\Invoice;
 use Filament\Tables;
 use Filament\Tables\Table;
 use Filament\Widgets\TableWidget as BaseWidget;
+use Illuminate\Database\Eloquent\Builder;
 
 class LatestOrdersWidget extends BaseWidget
 {
@@ -20,9 +21,19 @@ class LatestOrdersWidget extends BaseWidget
         'xl' => 3,
     ];
 
+    protected function getTableQuery(): Builder
+    {
+        return Order::query()->with('customer')->latest();
+    }
+
     public function table(Table $table): Table
     {
         return $table
+            ->query(
+                Order::query()
+                    ->with('customer')
+                    ->latest()
+            )
             // Removed OrderResource reference
             ->defaultPaginationPageOption(5)
             ->defaultSort('created_at', 'desc')

@@ -10,6 +10,7 @@ use Illuminate\Support\Str;
 
 class ServerPlan extends Model
 {
+    use \App\Traits\LogsActivity;
     use HasFactory;
 
     protected $table = 'server_plans';

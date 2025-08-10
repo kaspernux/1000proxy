@@ -10,27 +10,23 @@ use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\Redis;
 use Illuminate\Support\Facades\Storage;
 
+/**
+ * @deprecated Replaced by InfrastructureHealthWidget. Safe to remove once dashboard updated.
+ */
 class SystemHealthIndicatorsWidget extends BaseWidget
 {
-    protected static ?int $sort = 4;
-
+    protected static ?int $sort = 9999;
     protected int | string | array $columnSpan = 'full';
-
-    protected static ?string $pollingInterval = '60s';
+    protected static ?string $pollingInterval = null;
 
     protected function getStats(): array
     {
-        return [
-            $this->getDatabaseHealth(),
-            $this->getQueueHealth(),
-            $this->getCacheHealth(),
-            $this->getStorageHealth(),
-            $this->getApplicationHealth(),
-            $this->getSecurityHealth(),
-            $this->getServerFleetHealth(),
-            $this->getXUIPanelHealth(),
-            $this->getSystemTrafficStat(),
-        ];
+        return []; // suppressed legacy widget
+    }
+
+    protected function shouldRegisterNavigation(): bool
+    {
+        return false;
     }
 
     // New: Server fleet health (up/down/paused)

@@ -17,6 +17,10 @@ use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
+use App\Models\{Order, Server, PaymentMethod, Customer, ServerPlan, ServerClient, Invoice};
+use App\Policies\{OrderPolicy, ServerPolicy, PaymentMethodPolicy, CustomerPolicy, ServerPlanPolicy, ServerClientPolicy, InvoicePolicy};
+use App\Models\ActivityLog;
+use App\Policies\ActivityLogPolicy;
 
 
 class AppServiceProvider extends ServiceProvider
@@ -98,8 +102,16 @@ class AppServiceProvider extends ServiceProvider
 
         Model::unguard();
 
-        // Register policies
-        Gate::policy(\App\Models\User::class, \App\Policies\UserPolicy::class);
+    // Register policies (centralized until AuthServiceProvider is added)
+    Gate::policy(\App\Models\User::class, \App\Policies\UserPolicy::class);
+    Gate::policy(Order::class, OrderPolicy::class);
+    Gate::policy(Server::class, ServerPolicy::class);
+    Gate::policy(PaymentMethod::class, PaymentMethodPolicy::class);
+    Gate::policy(Customer::class, CustomerPolicy::class);
+    Gate::policy(ServerPlan::class, ServerPlanPolicy::class);
+    Gate::policy(ServerClient::class, ServerClientPolicy::class);
+    Gate::policy(Invoice::class, InvoicePolicy::class);
+    Gate::policy(ActivityLog::class, ActivityLogPolicy::class);
 
         // Configure rate limiting
         $this->configureRateLimiting();

@@ -11,12 +11,17 @@ class UserGrowthWidget extends BaseWidget
 {
     protected function getStats(): array
     {
+        $userId = auth()->id() ?? 0;
+        $filterStateService = app(\App\Services\AnalyticsFilterState::class);
+        $filterState = $filterStateService->get($userId);
+        $serviceRange = $filterStateService->mapToServiceRange($filterState['time_range'] ?? '30d');
         $biService = app(BusinessIntelligenceService::class);
-        $analytics = Cache::remember('bi_user_overview', 300, function () use ($biService) {
-            return $biService->getDashboardAnalytics('30_days');
+        $cacheKey = 'bi_user_overview_' . $userId . '_' . $serviceRange;
+        $analytics = Cache::remember($cacheKey, 300, function () use ($biService, $serviceRange) {
+            return $biService->getDashboardAnalytics($serviceRange);
         });
 
-        $userData = $analytics['data']['users'] ?? [];
+    $userData = $analytics['data']['users'] ?? [];
 
         return [
             Stat::make('Total Users (30 days)', number_format($userData['total_users'] ?? 0))

@@ -55,9 +55,7 @@ class EnhancedPerformanceStatsWidget extends BaseWidget
             Stat::make('Servers Down', $serversDown)
                 ->description('Servers with status = down')
                 ->color('danger'),
-            Stat::make('Clients', $totalClients)
-                ->description('Total server clients')
-                ->color('primary'),
+            // Removed duplicate Clients stat (unified in AdminDashboardStatsWidget / server summary)
         ];
     }
 

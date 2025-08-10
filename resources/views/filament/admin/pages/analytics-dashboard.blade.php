@@ -27,6 +27,18 @@
                         <option value="servers">Server Performance</option>
                         <option value="behavior">Customer Behavior</option>
                     </select>
+
+                    <!-- Payment Method Filter -->
+                    <select wire:model.live="paymentMethodFilter" class="rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-700 text-sm">
+                        <option value="">All Methods</option>
+                        <option value="stripe">Stripe</option>
+                        <option value="paypal">PayPal</option>
+                        <option value="mir">MIR</option>
+                        <option value="nowpayments">Crypto</option>
+                    </select>
+
+                    <!-- Plan Filter -->
+                    <input type="text" wire:model.live="planFilter" placeholder="Filter Plan" class="rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-700 text-sm px-3" />
                 </div>
             </div>
         </div>

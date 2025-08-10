@@ -11,12 +11,17 @@ class ServerPerformanceWidget extends BaseWidget
 {
     protected function getStats(): array
     {
+        $userId = auth()->id() ?? 0;
+        $filterStateService = app(\App\Services\AnalyticsFilterState::class);
+        $filterState = $filterStateService->get($userId);
+        $serviceRange = $filterStateService->mapToServiceRange($filterState['time_range'] ?? '30d');
         $biService = app(BusinessIntelligenceService::class);
-        $analytics = Cache::remember('bi_server_overview', 300, function () use ($biService) {
-            return $biService->getDashboardAnalytics('30_days');
+        $cacheKey = 'bi_server_overview_' . $userId . '_' . $serviceRange;
+        $analytics = Cache::remember($cacheKey, 300, function () use ($biService, $serviceRange) {
+            return $biService->getDashboardAnalytics($serviceRange);
         });
 
-        $serverData = $analytics['data']['servers'] ?? [];
+    $serverData = $analytics['data']['servers'] ?? [];
         $healthMetrics = $serverData['health_metrics'] ?? [];
 
         return [

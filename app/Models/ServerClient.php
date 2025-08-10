@@ -16,6 +16,7 @@ use Illuminate\Support\Str;
 
 class ServerClient extends Model
 {
+    use \App\Traits\LogsActivity;
     use HasFactory, SoftDeletes;
 
     protected $table = 'server_clients';
