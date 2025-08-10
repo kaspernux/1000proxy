@@ -25,7 +25,7 @@ return new class extends Migration
             $table->enum('status', ['up', 'down', 'paused'])->default('up');
             $table->string('host')->nullable()->comment('3X-UI panel host');
             $table->integer('panel_port')->default(2053)->comment('3X-UI panel port');
-            $table->string('web_base_path')->nullable()->comment('3X-UI web base path');
+            $table->string('web_base_path')->nullable()->default('/')->comment('3X-UI web base path (e.g. / or /proxy)');
             $table->string('panel_url')->nullable();
             $table->string('ip');
             $table->integer('port')->nullable();

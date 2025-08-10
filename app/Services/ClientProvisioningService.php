@@ -599,10 +599,14 @@ class ClientProvisioningService
      */
     protected function createFailureResult(string $error): array
     {
+        $now = now();
+        if (!is_object($now) || !method_exists($now, 'toISOString')) {
+            $now = \Carbon\Carbon::parse($now);
+        }
         return [
             'success' => false,
             'error' => $error,
-            'timestamp' => now()->toISOString(),
+            'timestamp' => $now->toISOString(),
         ];
     }
 

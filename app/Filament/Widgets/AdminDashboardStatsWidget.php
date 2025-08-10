@@ -60,10 +60,9 @@ class AdminDashboardStatsWidget extends BaseWidget
         /** @var MetricsAggregator $metrics */
         $metrics = App::make(MetricsAggregator::class);
 
-        $rev = $metrics->revenueSummary();
-        $cust = $metrics->customerSummary();
-        $server = $metrics->serverSummary();
-        $health = $metrics->systemHealth();
+    $rev = $metrics->revenueSummary();
+    $cust = $metrics->customerSummary();
+    // Removed server + health aggregation here to avoid duplication with Infrastructure & Performance widgets
 
         // Additional lightweight computed values (single queries acceptable)
         $pendingOrdersCount = Order::where('payment_status', 'pending')->count();
@@ -99,43 +98,24 @@ class AdminDashboardStatsWidget extends BaseWidget
                 ->chart($metrics->customerDailySeries())
                 ->color('info'),
 
-            Stat::make('Active Clients', number_format($server['clients']))
-                ->description($cust['subscriptionGrowth'] . '% vs last month')
-                ->descriptionIcon($cust['subscriptionGrowth'] > 0 ? 'heroicon-m-arrow-trending-up' : 'heroicon-m-arrow-trending-down')
-                ->color($cust['subscriptionGrowth'] > 0 ? 'success' : 'danger'),
+            Stat::make('Active Clients', number_format($cust['activeClients'] ?? ($cust['active'] ?? 0)))
+                ->description(($cust['subscriptionGrowth'] ?? 0) . '% vs last month')
+                ->descriptionIcon(($cust['subscriptionGrowth'] ?? 0) > 0 ? 'heroicon-m-arrow-trending-up' : 'heroicon-m-arrow-trending-down')
+                ->color(($cust['subscriptionGrowth'] ?? 0) > 0 ? 'success' : 'danger'),
 
             Stat::make('Customer Retention', number_format($cust['retention'], 1) . '%')
                 ->description('90-day retention rate')
                 ->descriptionIcon('heroicon-m-heart')
                 ->color('purple'),
 
-            // Server & Infrastructure Stats
-            Stat::make('Total Servers', number_format($server['total']))
-                ->description($server['online'] . ' online')
-                ->descriptionIcon('heroicon-m-server')
-                ->chart(array_values($server['statusDistribution']))
-                ->color('primary'),
-
-            Stat::make('Server Utilization', number_format($server['utilization'], 1) . '%')
-                ->description('Average server load')
-                ->descriptionIcon($server['utilization'] > 80 ? 'heroicon-m-exclamation-triangle' : 'heroicon-m-check-circle')
-                ->color($server['utilization'] > 80 ? 'danger' : 'success'),
-
-            // Performance & System Stats
-            Stat::make('Total Plans', number_format(ServerPlan::count()))
-                ->description('All plans')
-                ->descriptionIcon('heroicon-m-squares-2x2')
-                ->color('emerald'),
+            // (Server / infra stats moved out to InfrastructureHealthWidget to prevent duplication)
 
             Stat::make('Conversion Rate', number_format($conversion, 1) . '%')
                 ->description('Visitor to customer conversion')
                 ->descriptionIcon('heroicon-m-chart-bar')
                 ->color('cyan'),
 
-            Stat::make('System Health', $health . '%')
-                ->description('Overall system status')
-                ->descriptionIcon($health > 95 ? 'heroicon-m-check-badge' : 'heroicon-m-exclamation-circle')
-                ->color($health > 95 ? 'success' : ($health > 80 ? 'warning' : 'danger')),
+            // System health covered in dedicated performance widgets
         ];
     }
     protected function getColumns(): int

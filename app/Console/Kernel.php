@@ -13,6 +13,9 @@ class Kernel extends ConsoleKernel
         $schedule->job(new PruneOldExportsJob())->dailyAt('02:15');
     }
 
+	protected $commands = [
+        App\Console\Commands\SmartRetryQueue::class,
+    ];
     protected function commands(): void
     {
         $this->load(__DIR__.'/Commands');

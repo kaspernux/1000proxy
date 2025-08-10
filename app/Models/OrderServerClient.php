@@ -114,8 +114,13 @@ class OrderServerClient extends Model
     public function addLogEntry(string $message, array $data = []): void
     {
         $log = $this->provision_log ?? [];
+        $now = now();
+        // Guard: in rare cases helpers may return int (misconfiguration); coerce to Carbon
+        if (!is_object($now) || !method_exists($now, 'toISOString')) {
+            $now = \Carbon\Carbon::parse($now);
+        }
         $log[] = [
-            'timestamp' => now()->toISOString(),
+            'timestamp' => $now->toISOString(),
             'message' => $message,
             'data' => $data,
         ];

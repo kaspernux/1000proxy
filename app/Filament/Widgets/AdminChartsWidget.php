@@ -9,26 +9,36 @@ use App\Models\ServerClient;
 use Filament\Widgets\ChartWidget;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Cache;
 
 class AdminChartsWidget extends ChartWidget
 {
     protected static ?string $heading = 'Revenue & Growth Analytics';
+    protected static ?string $description = 'Unified revenue, orders, customer and client growth trends with multi-range filters.';
+
+    public function getHeading(): string
+    {
+        // Ensure deterministic heading (used by dataset persistence & added as data attribute downstream)
+        return static::$heading ?? 'Revenue & Growth Analytics';
+    }
 
     protected static ?int $sort = 3; // after stats(1) + infra(2)
 
     protected int | string | array $columnSpan = 'full';
 
     protected static ?string $maxHeight = '400px';
+    protected static bool $isLazy = false; // ensure immediate render so skeleton replaced quickly
 
-    public ?string $filter = '30days';
+    public ?string $filter = 'week';
 
     protected function getFilters(): ?array
     {
         return [
-            '7days' => 'Last 7 days',
-            '30days' => 'Last 30 days',
-            '90days' => 'Last 90 days',
-            'year' => 'This year',
+            'today' => 'Today (hourly)',
+            'week' => 'Last 7 Days',
+            'month' => 'Last 30 Days',
+            '90days' => 'Last 90 Days',
+            'year' => 'This Year',
         ];
     }
 
@@ -42,116 +52,149 @@ class AdminChartsWidget extends ChartWidget
 
     protected function getData(): array
     {
-        $filter = $this->filter;
+        $key = 'dash.chart.filter.' . ($this->filter ?? 'week');
+        return Cache::remember($key, 300, function () {
+            return match($this->filter) {
+                'today' => $this->buildTodayData(),
+                'week' => $this->buildDailyWindowData(7),
+                'month' => $this->buildDailyWindowData(30),
+                '90days' => $this->buildDailyWindowData(90),
+                'year' => $this->buildYearData(),
+                default => $this->buildDailyWindowData(7),
+            };
+        });
+    }
 
-        // Determine date range based on filter
-        switch ($filter) {
-            case '7days':
-                $startDate = Carbon::now()->subDays(7);
-                $dateFormat = 'M j';
-                $groupBy = 'DATE(created_at)';
-                break;
-            case '90days':
-                $startDate = Carbon::now()->subDays(90);
-                $dateFormat = 'M j';
-                $groupBy = 'DATE(created_at)';
-                break;
-            case 'year':
-                $startDate = Carbon::now()->startOfYear();
-                $dateFormat = 'M Y';
-                // Use DATE_FORMAT for clean single period column
-                $periodSelect = "DATE_FORMAT(created_at, '%Y-%m')";
-                $groupBy = 'YEAR(created_at), MONTH(created_at)';
-                break;
-            default: // 30days
-                $startDate = Carbon::now()->subDays(30);
-                $dateFormat = 'M j';
-                $groupBy = 'DATE(created_at)';
-                break;
+    /** Hourly data for current day */
+    protected function buildTodayData(): array
+    {
+        $start = Carbon::now()->startOfDay();
+        $end = Carbon::now()->endOfDay();
+
+        // Batch aggregate queries (group by hour)
+        $ordersAgg = Order::selectRaw('HOUR(created_at) as h, COUNT(*) as cnt, SUM(grand_amount) as revenue')
+            ->where('payment_status','paid')
+            ->whereBetween('created_at', [$start, $end])
+            ->groupBy('h')->pluck('cnt','h');
+        $revenueAgg = Order::selectRaw('HOUR(created_at) as h, SUM(grand_amount) as revenue')
+            ->where('payment_status','paid')
+            ->whereBetween('created_at', [$start, $end])
+            ->groupBy('h')->pluck('revenue','h');
+        $customerAgg = Customer::selectRaw('HOUR(created_at) as h, COUNT(*) c')
+            ->whereBetween('created_at', [$start,$end])
+            ->groupBy('h')->pluck('c','h');
+        $clientAgg = ServerClient::selectRaw('HOUR(created_at) as h, COUNT(*) c')
+            ->whereBetween('created_at', [$start,$end])
+            ->groupBy('h')->pluck('c','h');
+
+        $labels=[];$revenue=[];$orders=[];$customers=[];$clients=[];
+        for ($h=0;$h<24;$h++) {
+            $labels[] = str_pad($h,2,'0',STR_PAD_LEFT).':00';
+            $revenue[] = round((float)($revenueAgg[$h] ?? 0),2);
+            $orders[] = (int)($ordersAgg[$h] ?? 0);
+            $customers[] = (int)($customerAgg[$h] ?? 0);
+            $clients[] = (int)($clientAgg[$h] ?? 0);
         }
+        return $this->formatDatasets($labels,$revenue,$orders,$customers,$clients,true);
+    }
 
-        $periodSelect = $periodSelect ?? $groupBy; // for non-year filters
+    /** Generic daily window (last N days) */
+    protected function buildDailyWindowData(int $days): array
+    {
+        $start = Carbon::now()->subDays($days-1)->startOfDay();
+        $end = Carbon::now()->endOfDay();
 
-        // Get revenue data (align with migration: payment_status = 'paid', grand_amount)
-        $revenueData = Order::where('payment_status', 'paid')
-            ->where('created_at', '>=', $startDate)
-            ->selectRaw($periodSelect . ' as period, SUM(grand_amount) as revenue, COUNT(*) as orders')
-            ->groupBy(DB::raw($groupBy))
-            ->orderBy('period')
-            ->get();
+        $ordersAgg = Order::selectRaw('DATE(created_at) d, COUNT(*) cnt, SUM(grand_amount) revenue')
+            ->where('payment_status','paid')
+            ->whereBetween('created_at', [$start,$end])
+            ->groupBy('d')->get()->keyBy('d');
+        $customerAgg = Customer::selectRaw('DATE(created_at) d, COUNT(*) c')
+            ->whereBetween('created_at', [$start,$end])
+            ->groupBy('d')->pluck('c','d');
+        $clientAgg = ServerClient::selectRaw('DATE(created_at) d, COUNT(*) c')
+            ->whereBetween('created_at', [$start,$end])
+            ->groupBy('d')->pluck('c','d');
 
-        // Get customer registration data (align with migration: no changes needed)
-        $customerData = Customer::where('created_at', '>=', $startDate)
-            ->selectRaw($groupBy . ' as period, COUNT(*) as customers')
-            ->groupBy(DB::raw($groupBy))
-            ->orderBy('period')
-            ->get()
-            ->keyBy('period');
-
-        // Get server client data (align with migration: no changes needed)
-        $clientData = ServerClient::where('created_at', '>=', $startDate)
-            ->selectRaw($groupBy . ' as period, COUNT(*) as clients')
-            ->groupBy(DB::raw($groupBy))
-            ->orderBy('period')
-            ->get()
-            ->keyBy('period');
-
-        // Prepare labels and data arrays
-        $labels = [];
-        $revenues = [];
-        $orders = [];
-        $customers = [];
-        $clients = [];
-
-        // Fill data arrays
-        foreach ($revenueData as $item) {
-            $date = $filter === 'year'
-                ? Carbon::parse($item->period.'-01')->format($dateFormat)
-                : Carbon::parse($item->period)->format($dateFormat);
-
-            $labels[] = $date;
-            $revenues[] = round($item->revenue, 2);
-            $orders[] = $item->orders;
-            $customers[] = $customerData->get($item->period)?->customers ?? 0;
-            $clients[] = $clientData->get($item->period)?->clients ?? 0;
+        $labels=[];$revenue=[];$orders=[];$customers=[];$clients=[];
+        for ($d = $days-1; $d >= 0; $d--) {
+            $date = Carbon::now()->subDays($d)->format('Y-m-d');
+            $labels[] = Carbon::parse($date)->format('M j');
+            $row = $ordersAgg[$date] ?? null;
+            $revenue[] = round((float)($row->revenue ?? 0),2);
+            $orders[] = (int)($row->cnt ?? 0);
+            $customers[] = (int)($customerAgg[$date] ?? 0);
+            $clients[] = (int)($clientAgg[$date] ?? 0);
         }
+        return $this->formatDatasets($labels,$revenue,$orders,$customers,$clients,true);
+    }
 
+    /** Monthly data for current year */
+    protected function buildYearData(): array
+    {
+        $year = Carbon::now()->year;
+        $ordersAgg = Order::selectRaw('MONTH(created_at) m, COUNT(*) cnt, SUM(grand_amount) revenue')
+            ->where('payment_status','paid')
+            ->whereYear('created_at',$year)
+            ->groupBy('m')->get()->keyBy('m');
+        $customerAgg = Customer::selectRaw('MONTH(created_at) m, COUNT(*) c')
+            ->whereYear('created_at',$year)
+            ->groupBy('m')->pluck('c','m');
+        $clientAgg = ServerClient::selectRaw('MONTH(created_at) m, COUNT(*) c')
+            ->whereYear('created_at',$year)
+            ->groupBy('m')->pluck('c','m');
+
+        $labels=[];$revenue=[];$orders=[];$customers=[];$clients=[];
+        for ($m=1;$m<=12;$m++) {
+            $date = Carbon::createFromDate($year,$m,1);
+            if ($date->gt(Carbon::now())) break;
+            $labels[] = $date->format('M Y');
+            $row = $ordersAgg[$m] ?? null;
+            $revenue[] = round((float)($row->revenue ?? 0),2);
+            $orders[] = (int)($row->cnt ?? 0);
+            $customers[] = (int)($customerAgg[$m] ?? 0);
+            $clients[] = (int)($clientAgg[$m] ?? 0);
+        }
+        return $this->formatDatasets($labels,$revenue,$orders,$customers,$clients,true);
+    }
+
+    protected function formatDatasets(array $labels,array $revenue,array $orders,array $customers,array $clients,bool $fillRevenue=false): array
+    {
         return [
             'datasets' => [
                 [
                     'label' => 'Revenue ($)',
-                    'data' => $revenues,
-                    'borderColor' => 'rgb(59, 130, 246)',
-                    'backgroundColor' => 'rgba(59, 130, 246, 0.1)',
-                    'fill' => true,
-                    'tension' => 0.4,
+                    'data' => $revenue,
+                    'borderColor' => 'rgb(59,130,246)',
+                    'backgroundColor' => 'rgba(59,130,246,0.1)',
+                    'fill' => $fillRevenue,
+                    'tension' => 0.35,
                     'yAxisID' => 'y',
                 ],
                 [
                     'label' => 'Orders',
                     'data' => $orders,
-                    'borderColor' => 'rgb(34, 197, 94)',
-                    'backgroundColor' => 'rgba(34, 197, 94, 0.1)',
+                    'borderColor' => 'rgb(34,197,94)',
+                    'backgroundColor' => 'rgba(34,197,94,0.1)',
                     'fill' => false,
-                    'tension' => 0.4,
+                    'tension' => 0.35,
                     'yAxisID' => 'y1',
                 ],
                 [
                     'label' => 'New Customers',
                     'data' => $customers,
-                    'borderColor' => 'rgb(168, 85, 247)',
-                    'backgroundColor' => 'rgba(168, 85, 247, 0.1)',
+                    'borderColor' => 'rgb(168,85,247)',
+                    'backgroundColor' => 'rgba(168,85,247,0.1)',
                     'fill' => false,
-                    'tension' => 0.4,
+                    'tension' => 0.35,
                     'yAxisID' => 'y1',
                 ],
                 [
                     'label' => 'New Clients',
                     'data' => $clients,
-                    'borderColor' => 'rgb(249, 115, 22)',
-                    'backgroundColor' => 'rgba(249, 115, 22, 0.1)',
+                    'borderColor' => 'rgb(249,115,22)',
+                    'backgroundColor' => 'rgba(249,115,22,0.1)',
                     'fill' => false,
-                    'tension' => 0.4,
+                    'tension' => 0.35,
                     'yAxisID' => 'y1',
                 ],
             ],
@@ -231,6 +274,12 @@ class AdminChartsWidget extends ChartWidget
                 ],
             ],
         ];
+    }
+
+    public function extraAttributes(): array
+    {
+        // Provide the heading as a data attribute so the persistence plugin can key reliably.
+        return [ 'data-chart-heading' => $this->getHeading() ];
     }
 }
 

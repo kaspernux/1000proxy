@@ -20,6 +20,7 @@ class LatestOrdersWidget extends BaseWidget
         'md' => 2,
         'xl' => 3,
     ];
+    protected static bool $isLazy = false; // show immediately (paired with CSS skeleton)
 
     protected function getTableQuery(): Builder
     {

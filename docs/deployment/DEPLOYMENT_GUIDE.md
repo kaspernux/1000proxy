@@ -684,7 +684,7 @@ server {
     add_header X-XSS-Protection "1; mode=block" always;
     add_header X-Content-Type-Options "nosniff" always;
     add_header Referrer-Policy "no-referrer-when-downgrade" always;
-    add_header Content-Security-Policy "default-src 'self' http: https: data: blob: 'unsafe-inline'" always;
+  # CSP disabled (Livewire v3 incompatibility). Keep placeholder for future hardened policy.
     add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;
 
     # Gzip Compression

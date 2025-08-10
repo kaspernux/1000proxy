@@ -1,6 +1,11 @@
 <?php
 
 return [
+    // Register Filament panel providers (admin & customer panels)
+    'panels' => [
+        App\Providers\Filament\AdminPanelProvider::class,
+        App\Providers\Filament\CustomerPanelProvider::class,
+    ],
 
     /*
     |--------------------------------------------------------------------------

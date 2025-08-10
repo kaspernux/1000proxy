@@ -9,6 +9,7 @@ use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Cache;
 use Exception;
+use Illuminate\Support\Facades\Log as BaseLog;
 
 /**
  * Enhanced 3X-UI API Service
@@ -37,34 +38,198 @@ class XUIService
                 Log::warning("Login locked for server {$this->server->name} due to too many failed attempts");
                 return false;
             }
+            $base = rtrim($this->server->getApiBaseUrl(), '/');
+            $logger = logger()->channel('xui');
+            $bodyLen = app()->bound('xui.debug_body') ? 1500 : 400;
 
-            $response = Http::timeout($this->timeout)
-                ->asForm()
-                ->post($this->server->getApiEndpoint('login'), [
+            // Fetch login page for potential CSRF token
+            $csrfToken = null;
+            try {
+                $loginPageReq = Http::timeout($this->timeout)->withHeaders([
+                    'User-Agent' => '1000Proxy/1.0 (+https://1000proxy.me)',
+                    'Accept' => 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8'
+                ]);
+                if (app()->bound('xui.insecure') && app('xui.insecure') === true) {
+                    $loginPageReq = $loginPageReq->withoutVerifying();
+                }
+                $loginPageResp = $loginPageReq->get($base . '/login');
+                if ($loginPageResp->successful()) {
+                    $html = $loginPageResp->body();
+                    if (preg_match('/name=\"csrf-token\" content=\"([^\"]+)\"/i', $html, $m)) {
+                        $csrfToken = $m[1];
+                    } elseif (preg_match('/<input[^>]+name=\"_token\"[^>]+value=\"([^\"]+)\"/i', $html, $m)) {
+                        $csrfToken = $m[1];
+                    }
+                    $logger->debug('Fetched login page', [
+                        'status' => $loginPageResp->status(),
+                        'csrf_detected' => (bool)$csrfToken,
+                    ]);
+                }
+            } catch (\Throwable $t) {
+                $logger->debug('Login page fetch failed', ['error' => $t->getMessage()]);
+            }
+
+            // Primary JSON login attempt
+            try {
+                $jsonLoginReq = Http::timeout($this->timeout)
+                    ->withHeaders([
+                        'User-Agent' => '1000Proxy/1.0 (+https://1000proxy.me)',
+                        'Accept' => 'application/json, text/plain, */*',
+                        'X-Requested-With' => 'XMLHttpRequest',
+                        'Referer' => $base . '/',
+                        'Origin' => preg_replace('#/[^/]*$#','', $base . '/'),
+                    ])
+                    ->asJson();
+                if (app()->bound('xui.insecure') && app('xui.insecure') === true) {
+                    $jsonLoginReq = $jsonLoginReq->withoutVerifying();
+                }
+                $payload = [
                     'username' => $this->server->username,
                     'password' => $this->server->password,
+                    'twoFactorCode' => '',
+                    'remember' => true,
+                ];
+                if ($csrfToken) {
+                    $payload['_token'] = $csrfToken;
+                    $jsonLoginReq = $jsonLoginReq->withHeaders(['X-CSRF-TOKEN' => $csrfToken]);
+                }
+                $jsonResp = $jsonLoginReq->post($base . '/login', $payload);
+                $snippet = substr($jsonResp->body(), 0, $bodyLen);
+                $logger->debug('Primary JSON login attempt', [
+                    'login_url' => $base . '/login',
+                    'status' => $jsonResp->status(),
+                    'content_type' => $jsonResp->header('Content-Type'),
+                    'body_snippet' => $snippet,
+                    'set_cookie' => $jsonResp->headers()['Set-Cookie'] ?? $jsonResp->headers()['set-cookie'] ?? null,
+                    'all_headers' => app()->bound('xui.debug_body') ? $jsonResp->headers() : null,
                 ]);
-
-            if ($response->successful()) {
-                $data = $response->json();
-
-                if ($data['success'] ?? false) {
-                    // Extract session cookie from response
-                    $sessionCookie = $this->extractSessionCookie($response);
-
-                    if ($sessionCookie) {
-                        $this->server->updateSession($sessionCookie, 60); // 1 hour session
-                        Log::info("Successfully logged in to 3X-UI server: {$this->server->name}");
-                        return true;
+                if ($jsonResp->successful()) {
+                    $json = null;
+                    try { $json = $jsonResp->json(); } catch (\Throwable $t) {}
+                    $sessionCookie = $this->extractSessionCookie($jsonResp);
+                    if (($json['success'] ?? false) && $sessionCookie) {
+                        if ($this->verifySession($sessionCookie)) {
+                            $cookieName = $this->server->session_cookie_name ?: 'session';
+                            $this->server->updateSession($sessionCookie, 60, $cookieName);
+                            $logger->info('Successfully logged in via primary JSON flow');
+                            return true;
+                        } else {
+                            $logger->warning('Session cookie obtained but verification failed, continuing with fallbacks');
+                        }
+                    } elseif (($json['success'] ?? false) && !$sessionCookie) {
+                        $logger->warning('Login success JSON but no cookie; attempting direct list verification');
+                        if ($this->verifySessionWithoutCookie()) {
+                            $logger->info('Authenticated without cookie (verification succeeded).');
+                            return true;
+                        }
                     }
                 }
-
-                Log::error("Login failed for server {$this->server->name}: " . ($data['msg'] ?? 'Unknown error'));
-            } else {
-                Log::error("Login HTTP error for server {$this->server->name}: " . $response->status());
+            } catch (\Throwable $t) {
+                $logger->debug('Primary JSON login exception', ['error' => $t->getMessage()]);
             }
+            $altBase = preg_replace('#^https://#','http://',$base);
+            if ($altBase === $base) {
+                $altBase = preg_replace('#^http://#','https://',$base); // flip if originally http
+            }
+            $candidates = [
+                $this->server->getApiEndpoint('login'),              // /login
+                $base . '/panel/login',                              // /panel/login
+                $base . '/panel/api/login',                          // potential alt
+                $base . '/panel/api/inbounds/list',                  // sometimes login cookie issued then 401
+                $altBase . '/login',                                 // alternate scheme /login
+                $altBase . '/panel/login',
+            ];
+            $candidates = array_values(array_unique($candidates));
+
+            $logger = logger()->channel('xui');
+            foreach ($candidates as $loginUrl) {
+                $logger->debug('Attempting 3X-UI login', [
+                    'server_id' => $this->server->id,
+                    'name' => $this->server->name,
+                    'login_url' => $loginUrl,
+                    'timeout' => $this->timeout,
+                ]);
+
+                $request = Http::timeout($this->timeout)
+                    ->withHeaders([
+                        'User-Agent' => '1000Proxy/1.0 (+https://1000proxy.me)'
+                    ])
+                    ->asForm();
+                if (app()->bound('xui.insecure') && app('xui.insecure') === true) {
+                    $request = $request->withoutVerifying();
+                }
+
+                // For list endpoint (GET) vs login (POST)
+                if (str_contains($loginUrl, '/inbounds/list')) {
+                    $response = $request->get($loginUrl);
+                } else {
+                    $response = $request->post($loginUrl, [
+                        'username' => $this->server->username,
+                        'password' => $this->server->password,
+                        'remember' => 'true', // some panels expect remember
+                        'twoFactorCode' => '', // supply blank code if 2FA disabled
+                    ]);
+                }
+
+                $bodySnippet = substr($response->body(), 0, $bodyLen);
+                $logger->debug('Login HTTP response', [
+                    'login_url' => $loginUrl,
+                    'status' => $response->status(),
+                    'content_type' => $response->header('Content-Type'),
+                    'length' => strlen($response->body()),
+                    'body_snippet' => $bodySnippet,
+                ]);
+
+                if ($response->successful()) {
+                    $json = null;
+                    try { $json = $response->json(); } catch (\Throwable $t) {}
+                    $data = is_array($json) ? $json : [];
+
+                    $sessionCookie = $this->extractSessionCookie($response);
+                    // Detect HTML login page (contains 'async mounted()' or 'twoFactorEnable')
+                    if (!$sessionCookie && str_contains(strtolower($bodySnippet), 'vue') && str_contains($bodySnippet, 'twoFactorEnable')) {
+                        $logger->debug('Detected HTML login form (no session cookie yet)', ['login_url' => $loginUrl]);
+                    }
+                    if (($data['success'] ?? false) && $sessionCookie) {
+                        if ($this->verifySession($sessionCookie)) {
+                            $cookieName = $this->server->session_cookie_name ?: 'session';
+                            $this->server->updateSession($sessionCookie, 60, $cookieName);
+                            $logger->info("Successfully logged in to 3X-UI server via {$loginUrl}");
+                            return true;
+                        } else {
+                            $logger->warning('Obtained cookie but verification failed for candidate', ['login_url' => $loginUrl]);
+                        }
+                    }
+
+                    // Some panels return HTML but still set cookie; accept cookie alone
+                    if ($sessionCookie && empty($data)) {
+                        if ($this->verifySession($sessionCookie)) {
+                            $cookieName = $this->server->session_cookie_name ?: 'session';
+                            $this->server->updateSession($sessionCookie, 60, $cookieName);
+                            $logger->warning("Login succeeded (cookie only, no JSON) via {$loginUrl}");
+                            return true;
+                        } else {
+                            $logger->warning('Cookie only response but verification failed, continuing');
+                        }
+                    }
+
+                    $logger->warning('Login attempt returned non-success JSON', [
+                        'login_url' => $loginUrl,
+                        'status' => $response->status(),
+                        'json_keys' => array_keys($data),
+                        'body_snippet' => substr($response->body(), 0, 300),
+                    ]);
+                } else {
+            $logger->debug('Login path failed', [
+                        'login_url' => $loginUrl,
+                        'status' => $response->status(),
+                        'body_snippet' => substr($response->body(), 0, 250),
+                    ]);
+                }
+            }
+        $logger->error("All login path attempts failed for server {$this->server->name}");
         } catch (Exception $e) {
-            Log::error("Login exception for server {$this->server->name}: " . $e->getMessage());
+        logger()->channel('xui')->error("Login exception for server {$this->server->name}: " . $e->getMessage());
         }
 
         $this->server->incrementLoginAttempts();
@@ -136,18 +301,100 @@ class XUIService
     private function extractSessionCookie($response): ?string
     {
         $cookies = $response->headers()['Set-Cookie'] ?? $response->headers()['set-cookie'] ?? [];
-
+        if (is_string($cookies)) {
+            $cookies = [$cookies];
+        }
+        $possibleNames = ['session', '3x-ui', 'x-ui-session'];
         foreach ($cookies as $cookie) {
-            if (is_string($cookie) && strpos($cookie, 'session=') !== false) {
-                $parts = explode(';', $cookie);
-                $sessionPart = trim($parts[0]);
-                if (strpos($sessionPart, 'session=') === 0) {
-                    return substr($sessionPart, 8); // Remove "session=" prefix
+            if (!is_string($cookie)) { continue; }
+            foreach ($possibleNames as $name) {
+                if (stripos($cookie, $name . '=') !== false) {
+                    $parts = explode(';', $cookie);
+                    $first = trim($parts[0]);
+                    if (stripos($first, $name . '=') === 0) {
+                        $value = substr($first, strlen($name) + 1);
+                        // store discovered name on server (deferred until updateSession)
+                        $this->server->session_cookie_name = $name;
+                        return $value;
+                    }
                 }
             }
         }
-
         return null;
+    }
+
+    /**
+     * Verify that a session cookie actually grants API access by hitting a lightweight endpoint.
+     * We use /panel/api/inbounds/list which should return JSON with success flag when authenticated.
+     */
+    private function verifySession(string $sessionCookie): bool
+    {
+        try {
+            // Use dynamically discovered cookie name (defaults to 'session')
+            $cookieName = $this->server->session_cookie_name ?: 'session';
+            $headers = [
+                'Cookie' => $cookieName . '=' . $sessionCookie,
+                'Accept' => 'application/json',
+                'User-Agent' => '1000Proxy/1.0 (+https://1000proxy.me)',
+                // Some panels require AJAX style header to return JSON instead of HTML login page
+                'X-Requested-With' => 'XMLHttpRequest',
+                'Referer' => rtrim($this->server->getApiBaseUrl(), '/') . '/',
+            ];
+            $request = Http::timeout($this->timeout)->withHeaders($headers);
+            if (app()->bound('xui.insecure') && app('xui.insecure') === true) {
+                $request = $request->withoutVerifying();
+            }
+            $resp = $request->get($this->server->getApiEndpoint('panel/api/inbounds/list'));
+            if (!$resp->successful()) {
+                logger()->channel('xui')->debug('Session verification HTTP failure', [
+                    'status' => $resp->status(),
+                    'cookie_name_used' => $cookieName,
+                    'cookie_present' => !empty($sessionCookie),
+                ]);
+                return false;
+            }
+            $json = null;
+            try { $json = $resp->json(); } catch (\Throwable $t) {}
+            $valid = is_array($json) && ($json['success'] ?? false);
+            logger()->channel('xui')->debug('Session verification result', [
+                'valid' => $valid,
+                'cookie_name_used' => $cookieName,
+                'content_type' => $resp->header('Content-Type'),
+                'body_snippet' => substr($resp->body(), 0, 180),
+            ]);
+            return $valid;
+        } catch (\Throwable $t) {
+            logger()->channel('xui')->debug('Session verification exception', ['error' => $t->getMessage()]);
+            return false;
+        }
+    }
+
+    /** Attempt API call without cookie for diagnostic purposes */
+    private function verifySessionWithoutCookie(): bool
+    {
+        try {
+            $request = Http::timeout($this->timeout)
+                ->withHeaders([
+                    'Accept' => 'application/json',
+                    'User-Agent' => '1000Proxy/1.0 (+https://1000proxy.me)'
+                ]);
+            if (app()->bound('xui.insecure') && app('xui.insecure') === true) {
+                $request = $request->withoutVerifying();
+            }
+            $resp = $request->get($this->server->getApiEndpoint('panel/api/inbounds/list'));
+            if (!$resp->successful()) {
+                logger()->channel('xui')->debug('Cookie-less verification HTTP failure', ['status' => $resp->status()]);
+                return false;
+            }
+            $json = null;
+            try { $json = $resp->json(); } catch (\Throwable $t) {}
+            $valid = is_array($json) && ($json['success'] ?? false);
+            logger()->channel('xui')->debug('Cookie-less verification result', ['valid' => $valid]);
+            return $valid;
+        } catch (\Throwable $t) {
+            logger()->channel('xui')->debug('Cookie-less verification exception', ['error' => $t->getMessage()]);
+            return false;
+        }
     }
 
     // === INBOUND MANAGEMENT METHODS ===

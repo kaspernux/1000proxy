@@ -9,6 +9,10 @@ use App\Http\Middleware\SessionSecurity;
 use App\Http\Middleware\EnhancedCsrfProtection;
 use App\Http\Middleware\TelegramRateLimit;
 use App\Http\Middleware\StaffRoleMiddleware;
+use Illuminate\Console\Scheduling\Schedule;
+use App\Jobs\PruneOldExportsJob;
+use App\Console\Commands\SmartRetryQueue;
+use App\Console\Commands\TestRealXuiProvisioning;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
 
@@ -22,9 +26,16 @@ return Application::configure(basePath: dirname(__DIR__))
         },
         health: '/up',
     )
+    ->withCommands([
+        SmartRetryQueue::class,
+    TestRealXuiProvisioning::class,
+    ])
+    ->withSchedule(function (Schedule $schedule) {
+        $schedule->job(new PruneOldExportsJob())->dailyAt('02:15');
+    })
     ->withMiddleware(function (Middleware $middleware) {
-        // Security Middleware (applied globally)
-        $middleware->append(SessionSecurity::class);
+    // Global & security middleware
+    $middleware->append(SessionSecurity::class);
 
         // Existing middleware
         $middleware->append(RedirectIfCustomer::class);

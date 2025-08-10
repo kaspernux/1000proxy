@@ -17,7 +17,7 @@
         <!-- Livewire Styles -->
         @livewireStyles
 
-        <style>
+    <style>
             @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
             body {
                 font-family: 'Inter', sans-serif;
@@ -182,11 +182,11 @@
         @livewireScripts
         
         <!-- SweetAlert2 and Livewire Alert -->
-        <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
         <x-livewire-alert::scripts />
 
         <!-- Cart Update JavaScript -->
-        <script>
+    <script>
             // Function to get cart count from cookies
             function getCartCount() {
                 const cartItems = getCookie('cart_items');

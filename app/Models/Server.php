@@ -68,6 +68,7 @@ class Server extends Model
         'alert_settings',
         // 3X-UI session and API management fields
         'session_cookie',
+    'session_cookie_name',
         'session_expires_at',
         'last_login_at',
         'login_attempts',
@@ -396,10 +397,11 @@ class Server extends Model
     /**
      * Update session information after login
      */
-    public function updateSession(string $sessionCookie, int $expiresInMinutes = 60): void
+    public function updateSession(string $sessionCookie, int $expiresInMinutes = 60, string $cookieName = 'session'): void
     {
         $this->update([
             'session_cookie' => $sessionCookie,
+            'session_cookie_name' => $cookieName,
             'session_expires_at' => now()->addMinutes($expiresInMinutes),
             'last_login_at' => now(),
             'login_attempts' => 0, // Reset on successful login
@@ -443,19 +445,40 @@ class Server extends Model
     {
         // If host and panel_port are set, use new structure
         if ($this->host && $this->panel_port) {
-            $protocol = (strpos($this->host, 'https://') === 0) ? '' : 'http://';
-            $host = ltrim($this->host, 'http://');
-            $host = ltrim($host, 'https://');
-
-            $url = $protocol . $host . ':' . $this->panel_port;
-
-            // Add web base path if present
-            $basePath = trim($this->web_base_path ?? '', '/');
-            if ($basePath) {
-                $url .= '/' . $basePath;
+            // Determine scheme from stored panel_url (fallback http)
+            $parsed = parse_url($this->panel_url ?? '');
+            $scheme = $parsed['scheme'] ?? null;
+            // If panel_url lacked scheme, attempt to derive from host value
+            if (!$scheme) {
+                if (preg_match('#^https://#i', $this->host)) {
+                    $scheme = 'https';
+                } elseif (preg_match('#^http://#i', $this->host)) {
+                    $scheme = 'http';
+                }
+            }
+            if (!$scheme) { // final fallback
+                $scheme = 'http';
             }
 
-            return $url;
+            $host = $this->host;
+            // Strip any accidental scheme remnants from host
+            $host = preg_replace('#^https?://#i', '', $host);
+
+            $url = $scheme . '://' . $host . ':' . $this->panel_port;
+
+            // Prefer explicit web_base_path; if empty fall back to path segment in original panel_url
+            $basePath = trim($this->web_base_path ?? '', '/');
+            if (!$basePath && isset($parsed['path'])) {
+                $derivedPath = trim($parsed['path'], '/');
+                if ($derivedPath) {
+                    $basePath = $derivedPath;
+                }
+            }
+            if ($basePath) {
+                $url .= '/' . $basePath; // ensures single instance of /proxy
+            }
+
+            return rtrim($url, '/');
         }
 
         // Fallback to old panel_url structure for backward compatibility
@@ -466,7 +489,7 @@ class Server extends Model
             $url .= '/' . $basePath;
         }
 
-        return $url;
+    return rtrim($url, '/');
     }
 
     /**
@@ -485,8 +508,10 @@ class Server extends Model
      */
     public function getSessionHeader(): array
     {
+        $name = $this->session_cookie_name ?: 'session';
+        $cookieValue = $this->session_cookie;
         return [
-            'Cookie' => 'session=' . $this->session_cookie,
+            'Cookie' => $name . '=' . $cookieValue,
             'Accept' => 'application/json',
             'Content-Type' => 'application/json',
         ];

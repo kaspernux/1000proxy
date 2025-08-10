@@ -15,6 +15,7 @@ class AdminMonitoringWidget extends BaseWidget
     protected static ?int $sort = 4;
 
     protected int | string | array $columnSpan = 'full';
+    protected static bool $isLazy = false;
 
     public function table(Table $table): Table
     {
@@ -72,6 +73,7 @@ class AdminRecentActivitiesWidget extends BaseWidget
     protected static ?int $sort = 5;
 
     protected int | string | array $columnSpan = 'full';
+    protected static bool $isLazy = false;
 
     public function table(Table $table): Table
     {

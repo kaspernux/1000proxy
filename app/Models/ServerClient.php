@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany; // Added to ensure correct return type for orders() relation
 use App\Models\ServerInbound;
 use App\Models\ServerPlan;
 use Illuminate\Support\Facades\Storage;
@@ -622,7 +623,8 @@ class ServerClient extends Model
                 'traffic_used_mb' => $this->traffic_used_mb,
                 'traffic_limit_mb' => $this->traffic_limit_mb,
                 'traffic_percentage' => $this->traffic_percentage_used,
-                'expires_at' => $this->expiry_time?->toISOString(),
+                // expiry_time stored as milliseconds (int); convert safely to ISO if present
+                'expires_at' => $this->expiry_time ? \Carbon\Carbon::createFromTimestampMs($this->expiry_time)->toISOString() : null,
                 'status' => $this->status,
             ],
         ];

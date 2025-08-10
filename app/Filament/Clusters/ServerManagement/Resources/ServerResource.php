@@ -223,8 +223,21 @@ class ServerResource extends Resource
                                 ->maxLength(255)
                                 ->default('/')
                                 ->prefixIcon('heroicon-o-folder')
-                                ->placeholder('/')
-                                ->helperText('Panel base path (usually /)'),
+                                ->placeholder('/proxy or /')
+                                ->helperText('Panel base path, include without trailing slash (e.g. /proxy or /). If you set panel_url including /proxy this field will auto-derive when saving.')
+                                ->afterStateHydrated(function($component, $state, $record){
+                                    if ($record && !$state && $record->panel_url) {
+                                        $path = parse_url($record->panel_url, PHP_URL_PATH);
+                                        if ($path && $path !== '/') {
+                                            $component->state(rtrim($path, '/'));
+                                        }
+                                    }
+                                })
+                                ->dehydrateStateUsing(function($state){
+                                    if (!$state) return '/';
+                                    $state = '/' . trim($state, '/');
+                                    return $state === '//' ? '/' : $state;
+                                }),
                         ])->columns(1),
 
                     Section::make('🛡️ Advanced Configuration')
@@ -904,6 +917,39 @@ class ServerResource extends Resource
                         $query->where('last_health_check_at', '>=', now()->subDay())),
             ])
             ->actions([
+                Action::make('login_and_sync')
+                    ->label('Login & Sync')
+                    ->icon('heroicon-o-arrows-right-left')
+                    ->color('success')
+                    ->tooltip('Authenticate then synchronize inbounds & clients')
+                    ->requiresConfirmation()
+                    ->action(function (Server $record) {
+                        try {
+                            $xuiService = new XUIService($record);
+                            if (!$xuiService->testConnection()) {
+                                Notification::make()
+                                    ->title('🔴 Login Failed')
+                                    ->body("Authentication failed for {$record->name}. Check credentials or base path.")
+                                    ->danger()
+                                    ->send();
+                                return;
+                            }
+                            $inbounds = $xuiService->syncAllInbounds();
+                            $clients = $xuiService->syncAllClients();
+                            $record->refresh();
+                            Notification::make()
+                                ->title('✅ Login & Sync Complete')
+                                ->body("{$record->name}: {$inbounds} inbounds, {$clients} clients. Session until " . ($record->session_expires_at? $record->session_expires_at->diffForHumans(): 'n/a'))
+                                ->success()
+                                ->send();
+                        } catch (\Exception $e) {
+                            Notification::make()
+                                ->title('❌ Login & Sync Error')
+                                ->body($e->getMessage())
+                                ->danger()
+                                ->send();
+                        }
+                    }),
                 Action::make('test_connection')
                     ->label('Test Connection')
                     ->icon('heroicon-o-signal')
@@ -1108,6 +1154,33 @@ class ServerResource extends Resource
                             Notification::make()
                                 ->title('🔄 Bulk Sync Complete')
                                 ->body("✅ Successful: {$successful}, ❌ Failed: {$failed} | Synced: {$totalInbounds} inbounds, {$totalClients} clients")
+                                ->success()
+                                ->send();
+                        }),
+
+                    Tables\Actions\BulkAction::make('bulk_login_and_sync')
+                        ->label('🔐 Login & Sync')
+                        ->icon('heroicon-o-arrows-right-left')
+                        ->color('success')
+                        ->action(function (Collection $records) {
+                            $ok = 0; $fail = 0; $inboundsTotal = 0; $clientsTotal = 0;
+                            foreach ($records as $record) {
+                                try {
+                                    $xuiService = new XUIService($record);
+                                    if ($xuiService->testConnection()) {
+                                        $inboundsTotal += $xuiService->syncAllInbounds();
+                                        $clientsTotal += $xuiService->syncAllClients();
+                                        $ok++;
+                                    } else {
+                                        $fail++;
+                                    }
+                                } catch (\Exception $e) {
+                                    $fail++;
+                                }
+                            }
+                            Notification::make()
+                                ->title('🔐 Bulk Login & Sync Complete')
+                                ->body("✅ {$ok} succeeded / ❌ {$fail} failed | Inbounds: {$inboundsTotal} Clients: {$clientsTotal}")
                                 ->success()
                                 ->send();
                         }),

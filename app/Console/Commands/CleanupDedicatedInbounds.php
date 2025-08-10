@@ -12,6 +12,10 @@ class CleanupDedicatedInbounds extends Command
     protected $signature = 'inbounds:cleanup-dedicated {--dry-run : Show what would be deleted without deleting}';
     protected $description = 'Remove unused dedicated inbounds (no active clients) older than a grace period';
 
+    // Note: Logs showed repeated RuntimeException about an invalid "--format" option.
+    // This command does not define such an option. Review scheduler / supervisor cron
+    // entries to ensure it isn't invoked with unsupported flags.
+
     public function handle(): int
     {
         $graceMinutes = config('provisioning.dedicated_inbound_cleanup_grace', 30);

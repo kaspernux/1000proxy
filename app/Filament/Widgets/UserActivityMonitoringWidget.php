@@ -30,6 +30,7 @@ class UserActivityMonitoringWidget extends BaseWidget
     protected int | string | array $columnSpan = 'full';
 
     protected static ?string $pollingInterval = '30s';
+    protected static bool $isLazy = true; // make lazy to reduce initial payload
 
     public function table(Table $table): Table
     {

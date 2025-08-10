@@ -113,4 +113,21 @@ return [
         'name' => env('MAIL_FROM_NAME', 'Example'),
     ],
 
+    /*
+    |--------------------------------------------------------------------------
+    | Markdown Mail Settings
+    |--------------------------------------------------------------------------
+    | Adding explicit markdown mail configuration to ensure the framework can
+    | resolve custom alert templates placed under resources/views/emails when
+    | using the generic "mail::" or custom namespaces. This also mitigates
+    | the "No hint path defined for [mail]" error surfaced in logs.
+    */
+    'markdown' => [
+        'theme' => 'default',
+        'paths' => [
+            resource_path('views/vendor/mail'),
+            resource_path('views/emails'), // fallback path for custom mail templates
+        ],
+    ],
+
 ];

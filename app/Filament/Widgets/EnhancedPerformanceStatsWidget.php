@@ -15,7 +15,8 @@ use Carbon\Carbon;
 class EnhancedPerformanceStatsWidget extends BaseWidget
 {
     protected static ?int $sort = 1;
-    protected static ?string $pollingInterval = '30s';
+    protected static ?string $pollingInterval = '120s';
+    protected static bool $isLazy = true; // defer to improve first paint
 
     // Cache TTL in seconds (5 minutes)
     protected const CACHE_TTL = 300;
@@ -23,38 +24,14 @@ class EnhancedPerformanceStatsWidget extends BaseWidget
     protected function getStats(): array
     {
         // Example: add real-time stats from your actual models
-        $activeUsers = User::count();
-        $totalUsers = User::count();
-        $paidOrders = Order::where('payment_status', 'paid')->count();
-        $pendingOrders = Order::where('payment_status', 'pending')->count();
-        $totalRevenue = Order::where('payment_status', 'paid')->sum('grand_amount');
-        $serversUp = Server::where('status', 'up')->count();
-        $serversDown = Server::where('status', 'down')->count();
-        $totalClients = ServerClient::count();
+    // Remove business & infra stats (already shown elsewhere) -> dedicated focus on internal performance only
 
         return [
             $this->getSystemPerformanceStat(),
             $this->getDatabasePerformanceStat(),
             $this->getCachePerformanceStat(),
             $this->getApiPerformanceStat(),
-            Stat::make('Users', $activeUsers . '/' . $totalUsers)
-                ->description('Total users')
-                ->color($activeUsers > ($totalUsers * 0.7) ? 'success' : 'warning'),
-            Stat::make('Paid Orders', $paidOrders)
-                ->description('Orders with payment_status = paid')
-                ->color('success'),
-            Stat::make('Pending Orders', $pendingOrders)
-                ->description('Orders with payment_status = pending')
-                ->color('warning'),
-            Stat::make('Total Revenue', '$' . number_format($totalRevenue, 2))
-                ->description('Sum of grand_amount for paid orders')
-                ->color('emerald'),
-            Stat::make('Servers Up', $serversUp)
-                ->description('Servers with status = up')
-                ->color('success'),
-            Stat::make('Servers Down', $serversDown)
-                ->description('Servers with status = down')
-                ->color('danger'),
+            // Business / infra KPIs removed to avoid duplication with AdminDashboardStatsWidget & InfrastructureHealthWidget
             // Removed duplicate Clients stat (unified in AdminDashboardStatsWidget / server summary)
         ];
     }

@@ -1,0 +1,248 @@
+<?php
+
+namespace App\Console\Commands;
+
+use Illuminate\Console\Command;
+use App\Models\{Server, ServerPlan, Order, OrderItem, Customer};
+use App\Services\{XUIService, ClientProvisioningService};
+use Illuminate\Support\Str;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Schema;
+
+class TestRealXuiProvisioning extends Command
+{
+    protected $signature = 'xui:test-provision 
+        {--panel= : Full base panel URL e.g. https://host:1111/proxy} 
+        {--username= : Panel username} 
+        {--password= : Panel password} 
+        {--mode=shared : Provision mode: shared|dedicated maps to plan type multiple|single} 
+        {--plan= : Reuse existing plan ID instead of creating} 
+        {--server= : Reuse existing server ID instead of creating} 
+    {--dry-run : Show what would happen without remote mutations (still logs in & lists inbounds)} 
+    {--diagnostics : Show detailed diagnostic output} 
+    {--insecure : Disable TLS certificate verification for debugging (NOT for production)} 
+    {--unlock : Force clear login lock counters before attempting}
+    {--debug-body : Log extended HTTP body snippets (for troubleshooting auth)}';
+
+    protected $description = 'Perform a one-off live provisioning test against a real XUI panel (DO NOT use in production unattended).';
+
+    public function handle(): int
+    {
+        $panel = rtrim($this->option('panel') ?? '', '/');
+        $username = $this->option('username');
+        $password = $this->option('password');
+        $mode = strtolower($this->option('mode') ?? 'shared');
+        $useServerId = $this->option('server');
+        $usePlanId = $this->option('plan');
+    $dryRun = (bool) $this->option('dry-run');
+    $diagnostics = (bool) $this->option('diagnostics');
+    $insecure = (bool) $this->option('insecure');
+    $unlock = (bool) $this->option('unlock');
+    $debugBody = (bool) $this->option('debug-body');
+
+        if (!$panel || !$username || !$password) {
+            $this->error('panel, username and password options are required.');
+            return 1;
+        }
+        if (!in_array($mode, ['shared','dedicated'])) {
+            $this->error('--mode must be shared or dedicated');
+            return 1;
+        }
+
+        $this->warn('This will contact the real XUI panel: ' . $panel);
+        if ($dryRun) {
+            $this->info('Dry run enabled: remote create (inbound / client) steps will be skipped.');
+        }
+
+        // 1. Resolve or create server
+        $server = null;
+        if ($useServerId) {
+            $server = Server::find($useServerId);
+            if (!$server) { $this->error('Server ID not found'); return 1; }
+        } else {
+            $server = Server::firstOrCreate([
+                'panel_url' => $panel,
+            ], [
+                'name' => 'LIVE-XUI-' . Str::upper(Str::random(5)),
+                'username' => $username,
+                'password' => $password,
+                'status' => 'up',
+                'auto_provisioning' => true,
+                'country' => 'NL',
+                'health_status' => 'unknown',
+                'server_category_id' => 1,
+                'server_brand_id' => 1,
+                'ip' => parse_url($panel, PHP_URL_HOST) ?? '127.0.0.1',
+                'host' => parse_url($panel, PHP_URL_HOST) ?? 'localhost',
+                'panel_port' => parse_url($panel, PHP_URL_PORT) ?? 443,
+                'port' => parse_url($panel, PHP_URL_PORT) ?? 443,
+                'type' => 'xui',
+            ]);
+            // Always update credentials in case changed
+            $server->update(['username' => $username, 'password' => $password]);
+            // Derive web base path from provided panel URL if not explicitly set
+            $path = trim(parse_url($panel, PHP_URL_PATH) ?? '', '/');
+            if ($path && !$server->web_base_path) {
+                $server->update(['web_base_path' => $path]);
+            }
+        }
+
+        $this->line('Using Server ID: ' . $server->id);
+        if ($insecure) {
+            app()->instance('xui.insecure', true);
+            $this->warn('TLS verification disabled (insecure mode ON).');
+        }
+        if ($debugBody) {
+            app()->instance('xui.debug_body', true);
+            $this->warn('Extended body logging enabled (--debug-body). DO NOT use in production routinely.');
+        }
+        if ($unlock && $server->login_attempts > 0) {
+            $server->update(['login_attempts' => 0, 'last_login_attempt_at' => null]);
+            $this->info('Login attempt counters reset (--unlock).');
+        }
+    if ($diagnostics) {
+            $this->info('Derived attributes:');
+            $this->line('  host=' . $server->host);
+            $this->line('  panel_port=' . $server->panel_port);
+            $this->line('  web_base_path=' . ($server->web_base_path ?? '(none)'));
+            $this->line('  api_base=' . $server->getApiBaseUrl());
+            $this->line('  login_endpoint=' . $server->getApiEndpoint('login'));
+        }
+
+        // 2. Login & sync inbounds
+        $xui = new XUIService($server);
+        if (!$xui->testConnection()) {
+            $this->error('Login failed. Check credentials.');
+            return 1;
+        }
+        $this->info('Login succeeded. Synchronising inbounds...');
+        $count = $dryRun ? 0 : $xui->syncAllInbounds();
+        if (!$dryRun) {
+            $this->line("Synced {$count} inbounds (local DB)");
+        }
+
+        $inbound = $server->inbounds()->orderBy('port')->first();
+        if (!$inbound) {
+            $this->error('No inbounds available after sync. Aborting.');
+            return 1;
+        }
+        $this->line('Selected inbound #' . $inbound->id . ' port ' . $inbound->port);
+
+        // Ensure inbound is eligible for provisioning (remote sync may not set these flags)
+        if (!$inbound->provisioning_enabled || $inbound->status !== 'active') {
+            $inbound->update([
+                'provisioning_enabled' => true,
+                'status' => 'active',
+            ]);
+            $this->line('Inbound provisioning flags normalized (provisioning_enabled=1, status=active).');
+        }
+        // Make this the default if none defined
+        if (!$server->inbounds()->where('is_default', true)->exists()) {
+            $inbound->update(['is_default' => true]);
+            $this->line('Marked inbound #' . $inbound->id . ' as default (no previous default).');
+        }
+
+        // 3. Resolve or create plan
+        $plan = null;
+        if ($usePlanId) {
+            $plan = ServerPlan::find($usePlanId);
+            if (!$plan) { $this->error('Plan ID not found'); return 1; }
+        } else {
+            $planType = $mode === 'dedicated' ? 'single' : 'multiple';
+            $columns = Schema::getColumnListing('server_plans');
+            $attrs = [
+                'server_id' => $server->id,
+                'name' => 'Test Plan ' . Str::upper(Str::random(4)),
+                'slug' => 'test-plan-' . Str::lower(Str::random(4)),
+                'price' => 5.00,
+                'type' => $planType,
+                'days' => 30,
+                'volume' => 50,
+                'is_active' => true,
+                'in_stock' => true,
+                'on_sale' => true,
+                'server_category_id' => 1,
+                'server_brand_id' => 1,
+            ];
+            if (in_array('preferred_inbound_id', $columns, true)) $attrs['preferred_inbound_id'] = $inbound->id;
+            if (in_array('auto_provision', $columns, true)) $attrs['auto_provision'] = true;
+            if (in_array('data_limit_gb', $columns, true)) $attrs['data_limit_gb'] = 50;
+            if (in_array('current_clients', $columns, true)) $attrs['current_clients'] = 0;
+            if (in_array('max_clients', $columns, true)) $attrs['max_clients'] = ($mode === 'dedicated' ? 1 : 100);
+            if (in_array('auto_provisioning', $columns, true)) $attrs['auto_provisioning'] = true; // legacy compatibility
+            $plan = ServerPlan::create($attrs);
+        }
+        $this->line('Using Plan ID: ' . $plan->id . ' (type=' . $plan->type . ')');
+
+        // 4. Create order + customer + item (schema-aware)
+        $customer = Customer::factory()->create();
+
+        $orderColumns = Schema::getColumnListing('orders');
+        $orderAttributes = [
+            'customer_id' => $customer->id,
+        ];
+        // Monetary amount mapping
+        if (in_array('grand_amount', $orderColumns, true)) {
+            $orderAttributes['grand_amount'] = $plan->price;
+        } elseif (in_array('total_amount', $orderColumns, true)) {
+            $orderAttributes['total_amount'] = $plan->price;
+        } elseif (in_array('amount', $orderColumns, true)) {
+            $orderAttributes['amount'] = $plan->price;
+        }
+        if (in_array('currency', $orderColumns, true)) {
+            $orderAttributes['currency'] = 'USD';
+        }
+        if (in_array('payment_status', $orderColumns, true)) {
+            $orderAttributes['payment_status'] = 'paid';
+        }
+        if (in_array('order_status', $orderColumns, true)) {
+            $orderAttributes['order_status'] = 'new';
+        } elseif (in_array('status', $orderColumns, true)) {
+            // fallback older schema
+            $orderAttributes['status'] = 'new';
+        }
+        $order = Order::create($orderAttributes);
+
+        $itemColumns = Schema::getColumnListing('order_items');
+        $itemAttributes = [
+            'order_id' => $order->id,
+            'server_plan_id' => $plan->id,
+            'quantity' => 1,
+        ];
+        if (in_array('unit_amount', $itemColumns, true)) {
+            $itemAttributes['unit_amount'] = $plan->price;
+        }
+        if (in_array('total_amount', $itemColumns, true)) {
+            $itemAttributes['total_amount'] = $plan->price;
+        } elseif (in_array('total', $itemColumns, true)) {
+            $itemAttributes['total'] = $plan->price; // legacy
+        }
+        OrderItem::create($itemAttributes);
+
+        $this->info('Order #' . $order->id . ' created for Customer #' . $customer->id);
+
+        if ($dryRun) {
+            $this->info('Dry run complete (no provisioning attempted).');
+            return 0;
+        }
+
+        // 5. Provision
+        /** @var ClientProvisioningService $provisioner */
+        // Rebind provisioning service with a server-specific XUIService instance to ensure remote calls are executed.
+        $provisioner = app()->makeWith(ClientProvisioningService::class, [
+            'xuiService' => new XUIService($server),
+        ]);
+        $results = $provisioner->provisionOrder($order->fresh('items.serverPlan'));
+
+        $this->table(['Key','Value'], [
+            ['order_id', $order->id],
+            ['mode', $mode],
+            ['plan_id', $plan->id],
+            ['inbound_id', $inbound->id],
+            ['results', json_encode($results)],
+        ]);
+
+        $this->info('Provisioning complete. Check logs for detailed steps.');
+        return 0;
+    }
+}

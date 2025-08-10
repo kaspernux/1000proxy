@@ -73,548 +73,51 @@ fi
 print_header "1000proxy Application Deployment"
 print_info "Deploying 1000proxy Laravel application"
 print_info "Project directory: $PROJECT_DIR"
-print_info "Domain: $DOMAIN"
-
-# =============================================================================
-# 1. Clone or Update Repository
-# =============================================================================
-print_header "Repository Management"
-
-if [[ -d "$PROJECT_DIR/.git" ]]; then
-    print_info "Updating existing repository..."
-    cd "$PROJECT_DIR"
-    sudo -u "$PROJECT_USER" git fetch origin
-    sudo -u "$PROJECT_USER" git reset --hard origin/main
-    print_success "Repository updated"
+# Configure / Update .env without overwriting existing secrets
+if [[ -f "$PROJECT_DIR/.env" ]]; then
+    print_info "Existing .env detected – preserving values. Injecting/ensuring required keys."
+    backup_file="$PROJECT_DIR/.env.backup-$(date +%Y%m%d%H%M%S)"
+    cp "$PROJECT_DIR/.env" "$backup_file"
+    print_success "Created backup: $backup_file"
 else
-    print_info "Cloning repository..."
-    # Remove existing directory if it exists but is not a git repo
-    if [[ -d "$PROJECT_DIR" ]]; then
-        rm -rf "$PROJECT_DIR"
-    fi
-
-    # Clone repository
-    sudo -u "$PROJECT_USER" git clone "$REPO_URL" "$PROJECT_DIR"
-    cd "$PROJECT_DIR"
-    print_success "Repository cloned"
-fi
-
-# Set proper ownership
-chown -R "$PROJECT_USER:www-data" "$PROJECT_DIR"
-
-# =============================================================================
-# 2. Environment Configuration
-# =============================================================================
-print_header "Environment Configuration"
-
-# Interactive configuration collection
-print_info "Payment Gateway and Integration Configuration"
-print_warning "You can leave these empty and configure them later in the .env file"
-echo
-
-# Stripe Configuration
-read -p "Enter Stripe Publishable Key (or press Enter to skip): " stripe_key_input
-STRIPE_KEY="${stripe_key_input:-$STRIPE_KEY}"
-
-read -p "Enter Stripe Secret Key (or press Enter to skip): " stripe_secret_input
-STRIPE_SECRET="${stripe_secret_input:-$STRIPE_SECRET}"
-
-read -p "Enter Stripe Webhook Secret (or press Enter to skip): " stripe_webhook_input
-STRIPE_WEBHOOK_SECRET="${stripe_webhook_input:-$STRIPE_WEBHOOK_SECRET}"
-
-# PayPal Configuration
-read -p "Enter PayPal Client ID (or press Enter to skip): " paypal_client_input
-PAYPAL_CLIENT_ID="${paypal_client_input:-$PAYPAL_CLIENT_ID}"
-
-read -p "Enter PayPal Client Secret (or press Enter to skip): " paypal_secret_input
-PAYPAL_CLIENT_SECRET="${paypal_secret_input:-$PAYPAL_CLIENT_SECRET}"
-
-read -p "Enter PayPal Webhook ID (or press Enter to skip): " paypal_webhook_input
-PAYPAL_WEBHOOK_ID="${paypal_webhook_input:-$PAYPAL_WEBHOOK_ID}"
-
-echo "PayPal Mode options: sandbox, live"
-read -p "Enter PayPal Mode (default: sandbox): " paypal_mode_input
-PAYPAL_MODE="${paypal_mode_input:-$PAYPAL_MODE}"
-
-# NowPayments Configuration
-read -p "Enter NowPayments API Key (or press Enter to skip): " nowpayments_key_input
-NOWPAYMENTS_API_KEY="${nowpayments_key_input:-$NOWPAYMENTS_API_KEY}"
-
-read -p "Enter NowPayments Webhook Secret (or press Enter to skip): " nowpayments_webhook_input
-NOWPAYMENTS_WEBHOOK_SECRET="${nowpayments_webhook_input:-$NOWPAYMENTS_WEBHOOK_SECRET}"
-
-# Telegram Bot Configuration
-read -p "Enter Telegram Bot Token (or press Enter to skip): " telegram_token_input
-TELEGRAM_BOT_TOKEN="${telegram_token_input:-$TELEGRAM_BOT_TOKEN}"
-
-if [[ -n "$TELEGRAM_BOT_TOKEN" ]]; then
-    default_webhook="https://$DOMAIN/api/telegram/webhook"
-    read -p "Enter Telegram Webhook URL (default: $default_webhook): " telegram_webhook_input
-    TELEGRAM_WEBHOOK_URL="${telegram_webhook_input:-$default_webhook}"
-fi
-
-echo
-print_info "Configuration Summary:"
-print_info "Stripe: $(if [[ -n "$STRIPE_KEY" ]]; then echo "Configured"; else echo "Not configured"; fi)"
-print_info "PayPal: $(if [[ -n "$PAYPAL_CLIENT_ID" ]]; then echo "Configured ($PAYPAL_MODE mode)"; else echo "Not configured"; fi)"
-print_info "NowPayments: $(if [[ -n "$NOWPAYMENTS_API_KEY" ]]; then echo "Configured"; else echo "Not configured"; fi)"
-print_info "Telegram Bot: $(if [[ -n "$TELEGRAM_BOT_TOKEN" ]]; then echo "Configured"; else echo "Not configured"; fi)"
-echo
-
-# Create .env file if it doesn't exist
-if [[ ! -f "$PROJECT_DIR/.env" ]]; then
     if [[ -f "$PROJECT_DIR/.env.example" ]]; then
         sudo -u "$PROJECT_USER" cp "$PROJECT_DIR/.env.example" "$PROJECT_DIR/.env"
     else
         sudo -u "$PROJECT_USER" touch "$PROJECT_DIR/.env"
     fi
+    print_info ".env created from example or empty template"
 fi
 
-# Read existing passwords if available
-if [[ -f "/root/1000proxy-security-report.txt" ]]; then
-    DB_PASSWORD=$(grep "MySQL Password:" /root/1000proxy-security-report.txt | cut -d' ' -f3 || echo "")
-    REDIS_PASSWORD=$(grep "Redis Password:" /root/1000proxy-security-report.txt | cut -d' ' -f3 || echo "")
+# Helper to ensure a key exists (adds if missing)
+ensure_env_key() {
+    local key="$1"; shift
+    local value="$1"; shift || true
+    if ! grep -qE "^${key}=" "$PROJECT_DIR/.env"; then
+        echo "${key}=${value}" >> "$PROJECT_DIR/.env"
+    fi
+}
+
+# Ensure critical keys (don't overwrite if already present)
+ensure_env_key APP_NAME "\"1000PROXY\""
+ensure_env_key APP_ENV production
+ensure_env_key APP_URL "https://$DOMAIN"
+ensure_env_key DB_DATABASE 1000proxy
+ensure_env_key DB_USERNAME 1000proxy
+if ! grep -q '^DB_PASSWORD=' "$PROJECT_DIR/.env"; then
+  echo "DB_PASSWORD=$DB_PASSWORD" >> "$PROJECT_DIR/.env"
+fi
+if ! grep -q '^REDIS_PASSWORD=' "$PROJECT_DIR/.env"; then
+  echo "REDIS_PASSWORD=$REDIS_PASSWORD" >> "$PROJECT_DIR/.env"
 fi
 
-# Generate passwords if not available
-if [[ -z "$DB_PASSWORD" ]]; then
-    DB_PASSWORD=$(openssl rand -base64 32)
-fi
-
-if [[ -z "$REDIS_PASSWORD" ]]; then
-    REDIS_PASSWORD=$(openssl rand -base64 32)
-fi
-
-# Configure .env file with comprehensive settings
-cat > "$PROJECT_DIR/.env" << EOF
-# =============================================================================
-# 1000PROXY ENVIRONMENT CONFIGURATION
-# =============================================================================
-# Production environment configuration for 1000proxy Laravel application
-# Generated on: $(date)
-# =============================================================================
-
-# =============================================================================
-# APPLICATION CONFIGURATION
-# =============================================================================
-APP_NAME="1000proxy"
-APP_ENV=production
-APP_KEY=
-APP_DEBUG=false
-APP_TIMEZONE=UTC
-APP_URL=https://$DOMAIN
-
-# Localization
-APP_LOCALE=en
-APP_FALLBACK_LOCALE=en
-APP_FAKER_LOCALE=en_US
-
-# Maintenance
-APP_MAINTENANCE_DRIVER=file
-APP_MAINTENANCE_STORE=redis
-
-# =============================================================================
-# DATABASE CONFIGURATION
-# =============================================================================
-DB_CONNECTION=mysql
-DB_HOST=127.0.0.1
-DB_PORT=3306
-DB_DATABASE=1000proxy
-DB_USERNAME=1000proxy
-DB_PASSWORD=$DB_PASSWORD
-
-# Database Options
-DB_CHARSET=utf8mb4
-DB_COLLATION=utf8mb4_unicode_ci
-DB_PREFIX=
-DB_STRICT=true
-DB_ENGINE=InnoDB
-
-# =============================================================================
-# CACHE CONFIGURATION
-# =============================================================================
-CACHE_STORE=redis
-CACHE_PREFIX=1000proxy_cache
-CACHE_TTL=3600
-
-# Redis Cache Configuration
-REDIS_CLIENT=phpredis
-REDIS_HOST=127.0.0.1
-REDIS_PASSWORD=$REDIS_PASSWORD
-REDIS_PORT=6379
-REDIS_DB=0
-
-# Redis Session Configuration
-REDIS_SESSION_HOST=127.0.0.1
-REDIS_SESSION_PASSWORD=$REDIS_PASSWORD
-REDIS_SESSION_PORT=6379
-REDIS_SESSION_DB=1
-
-# Redis Cache Database
-REDIS_CACHE_HOST=127.0.0.1
-REDIS_CACHE_PASSWORD=$REDIS_PASSWORD
-REDIS_CACHE_PORT=6379
-REDIS_CACHE_DB=2
-
-# =============================================================================
-# SESSION CONFIGURATION
-# =============================================================================
-SESSION_DRIVER=redis
-SESSION_LIFETIME=120
-SESSION_ENCRYPT=true
-SESSION_PATH=/
-SESSION_DOMAIN=
-SESSION_SECURE_COOKIE=true
-SESSION_HTTP_ONLY=true
-SESSION_SAME_SITE=lax
-
-# =============================================================================
-# QUEUE CONFIGURATION
-# =============================================================================
-QUEUE_CONNECTION=redis
-QUEUE_FAILED_DRIVER=database-uuids
-QUEUE_DEFAULT=default
-QUEUE_RETRY_AFTER=90
-QUEUE_MAX_TRIES=3
-
-# Queue Redis Configuration
-REDIS_QUEUE_HOST=127.0.0.1
-REDIS_QUEUE_PASSWORD=$REDIS_PASSWORD
-REDIS_QUEUE_PORT=6379
-REDIS_QUEUE_DB=3
-
-# =============================================================================
-# MAIL CONFIGURATION
-# =============================================================================
-MAIL_MAILER=smtp
-MAIL_HOST=127.0.0.1
-MAIL_PORT=587
-MAIL_USERNAME=null
-MAIL_PASSWORD=null
-MAIL_ENCRYPTION=tls
-MAIL_FROM_ADDRESS="noreply@$DOMAIN"
-MAIL_FROM_NAME="\${APP_NAME}"
-
-# Mail Queue Settings
-MAIL_QUEUE_ENABLED=true
-MAIL_QUEUE_CONNECTION=redis
-MAIL_QUEUE_NAME=emails
-
-# Mailgun Configuration (Optional - Configure if needed)
-MAILGUN_DOMAIN=
-MAILGUN_SECRET=
-MAILGUN_ENDPOINT=api.mailgun.net
-
-# AWS SES Configuration (Optional - Configure if needed)
-AWS_ACCESS_KEY_ID=
-AWS_SECRET_ACCESS_KEY=
-AWS_DEFAULT_REGION=us-east-1
-AWS_SES_REGION=us-east-1
-
-# =============================================================================
-# FILESYSTEM CONFIGURATION
-# =============================================================================
-FILESYSTEM_DISK=local
-FILESYSTEM_CLOUD=s3
-
-# AWS S3 Configuration (Optional)
-AWS_BUCKET=
-AWS_URL=
-AWS_ENDPOINT=
-AWS_USE_PATH_STYLE_ENDPOINT=false
-
-# =============================================================================
-# LOGGING CONFIGURATION
-# =============================================================================
-LOG_CHANNEL=daily
-LOG_STACK=single
-LOG_DEPRECATIONS_CHANNEL=null
-LOG_LEVEL=warning
-LOG_DAYS=14
-LOG_MAX_FILES=10
-
-# Papertrail Logging (Optional)
-PAPERTRAIL_URL=
-PAPERTRAIL_PORT=
-
-# =============================================================================
-# SECURITY CONFIGURATION
-# =============================================================================
-BCRYPT_ROUNDS=12
-HASH_VERIFY=true
-
-# Security Headers
-#SECURITY_HEADERS_ENABLED=true
-#SECURITY_CSP_ENABLED=true
-#SECURITY_HSTS_ENABLED=true
-
-# Rate Limiting
-RATE_LIMIT_ENABLED=true
-RATE_LIMIT_PER_MINUTE=60
-RATE_LIMIT_LOGIN_ATTEMPTS=5
-RATE_LIMIT_LOGIN_TIMEOUT=15
-
-# =============================================================================
-# PAYMENT GATEWAY CONFIGURATION
-# =============================================================================
-
-# Stripe Configuration
-STRIPE_KEY=$STRIPE_KEY
-STRIPE_SECRET=$STRIPE_SECRET
-STRIPE_WEBHOOK_SECRET=$STRIPE_WEBHOOK_SECRET
-STRIPE_WEBHOOK_ENDPOINT=/webhooks/stripe
-STRIPE_CURRENCY=USD
-STRIPE_PAYMENT_METHODS=card,alipay,wechat_pay
-
-# PayPal Configuration
-PAYPAL_CLIENT_ID=$PAYPAL_CLIENT_ID
-PAYPAL_CLIENT_SECRET=$PAYPAL_CLIENT_SECRET
-PAYPAL_WEBHOOK_ID=$PAYPAL_WEBHOOK_ID
-PAYPAL_MODE=$PAYPAL_MODE
-PAYPAL_CURRENCY=USD
-PAYPAL_WEBHOOK_ENDPOINT=/webhooks/paypal
-
-# NowPayments (Cryptocurrency) Configuration
-NOWPAYMENTS_API_KEY=$NOWPAYMENTS_API_KEY
-NOWPAYMENTS_WEBHOOK_SECRET=$NOWPAYMENTS_WEBHOOK_SECRET
-NOWPAYMENTS_WEBHOOK_ENDPOINT=/webhooks/nowpayments
-NOWPAYMENTS_CURRENCY=USD
-NOWPAYMENTS_SUCCESS_URL=/payment/success
-NOWPAYMENTS_CANCEL_URL=/payment/cancel
-
-# Payment Configuration
-PAYMENT_DEFAULT_CURRENCY=USD
-PAYMENT_SUPPORTED_CURRENCIES=USD,EUR,GBP,JPY,BTC,ETH,LTC
-PAYMENT_SESSION_TIMEOUT=1800
-PAYMENT_CONFIRMATION_REQUIRED=true
-
-# =============================================================================
-# CRYPTOCURRENCY CONFIGURATION
-# =============================================================================
-
-# Bitcoin Core RPC (Optional - Configure if using Bitcoin)
-BITCOIN_RPC_HOST=127.0.0.1
-BITCOIN_RPC_PORT=8332
-BITCOIN_RPC_USER=
-BITCOIN_RPC_PASSWORD=
-BITCOIN_RPC_WALLET=
-BITCOIN_CONFIRMATIONS_REQUIRED=3
-
-# Ethereum Configuration (Optional)
-ETHEREUM_RPC_URL=
-ETHEREUM_WALLET_ADDRESS=
-ETHEREUM_PRIVATE_KEY=
-ETHEREUM_CHAIN_ID=1
-ETHEREUM_CONFIRMATIONS_REQUIRED=12
-
-# Monero Configuration (Optional)
-MONERO_RPC_HOST=127.0.0.1
-MONERO_RPC_PORT=18081
-MONERO_WALLET_RPC_HOST=127.0.0.1
-MONERO_WALLET_RPC_PORT=18083
-MONERO_WALLET_PASSWORD=
-MONERO_CONFIRMATIONS_REQUIRED=10
-
-# =============================================================================
-# 3X-UI PANEL INTEGRATION
-# =============================================================================
-XUI_HOST=127.0.0.1
-XUI_PORT=2053
-XUI_USERNAME=admin
-XUI_PASSWORD=admin
-XUI_WEBBASEPATH=
-XUI_SSL_ENABLED=false
-XUI_API_TIMEOUT=30
-XUI_MAX_RETRIES=3
-
-# Multiple 3X-UI Servers (JSON format)
-XUI_SERVERS='[
-    {
-        "name": "Server 1",
-        "host": "127.0.0.1",
-        "port": 2053,
-        "username": "admin",
-        "password": "admin",
-        "ssl": false
-    }
-]'
-
-# =============================================================================
-# TELEGRAM BOT CONFIGURATION
-# =============================================================================
-TELEGRAM_BOT_TOKEN=$TELEGRAM_BOT_TOKEN
-TELEGRAM_WEBHOOK_URL=$TELEGRAM_WEBHOOK_URL
-TELEGRAM_WEBHOOK_ENDPOINT=/api/telegram/webhook
-TELEGRAM_ADMIN_CHAT_ID=
-TELEGRAM_NOTIFICATIONS_ENABLED=true
-TELEGRAM_LANGUAGE=en
-
-# Telegram Bot Features
-TELEGRAM_COMMANDS_ENABLED=true
-TELEGRAM_INLINE_KEYBOARDS=true
-TELEGRAM_FILE_UPLOADS=true
-TELEGRAM_MAX_MESSAGE_LENGTH=4096
-
-# =============================================================================
-# SOCIAL AUTHENTICATION (Configure if needed)
-# =============================================================================
-
-# Google OAuth
-GOOGLE_CLIENT_ID=
-GOOGLE_CLIENT_SECRET=
-GOOGLE_REDIRECT_URI=/auth/google/callback
-
-# Facebook OAuth
-FACEBOOK_CLIENT_ID=
-FACEBOOK_CLIENT_SECRET=
-FACEBOOK_REDIRECT_URI=/auth/facebook/callback
-
-# GitHub OAuth
-GITHUB_CLIENT_ID=
-GITHUB_CLIENT_SECRET=
-GITHUB_REDIRECT_URI=/auth/github/callback
-
-# Twitter OAuth
-TWITTER_CLIENT_ID=
-TWITTER_CLIENT_SECRET=
-TWITTER_REDIRECT_URI=/auth/twitter/callback
-
-# =============================================================================
-# API CONFIGURATION
-# =============================================================================
-API_VERSION=v1
-API_RATE_LIMIT=1000
-API_RATE_LIMIT_WINDOW=60
-API_PAGINATION_DEFAULT=20
-API_PAGINATION_MAX=100
-
-# API Authentication
-API_AUTH_ENABLED=true
-API_KEY_REQUIRED=false
-API_CORS_ENABLED=true
-API_CORS_ORIGINS=*
-
-# Sanctum Configuration
-SANCTUM_STATEFUL_DOMAINS=localhost,127.0.0.1,$DOMAIN
-SANCTUM_GUARD=web
-SANCTUM_MIDDLEWARE=auth:sanctum
-
-# =============================================================================
-# MONITORING AND ANALYTICS (Configure if needed)
-# =============================================================================
-
-# Application Monitoring
-MONITORING_ENABLED=true
-MONITORING_SAMPLE_RATE=1.0
-
-# Sentry Error Tracking
-SENTRY_LARAVEL_DSN=
-SENTRY_TRACES_SAMPLE_RATE=1.0
-SENTRY_PROFILES_SAMPLE_RATE=1.0
-
-# Google Analytics
-GOOGLE_ANALYTICS_ID=
-GOOGLE_TAG_MANAGER_ID=
-
-# Application Insights
-APPINSIGHTS_INSTRUMENTATIONKEY=
-
-# =============================================================================
-# BACKUP CONFIGURATION
-# =============================================================================
-BACKUP_ENABLED=true
-BACKUP_SCHEDULE="0 */6 * * *"
-BACKUP_RETENTION_DAYS=30
-BACKUP_COMPRESS=true
-BACKUP_ENCRYPT=true
-
-# Backup Destinations
-BACKUP_DISK=local
-BACKUP_S3_ENABLED=false
-BACKUP_S3_BUCKET=
-BACKUP_FTP_ENABLED=false
-BACKUP_FTP_HOST=
-BACKUP_FTP_USERNAME=
-BACKUP_FTP_PASSWORD=
-
-# =============================================================================
-# PERFORMANCE CONFIGURATION
-# =============================================================================
-
-# Caching
-CACHE_VIEWS=true
-CACHE_ROUTES=true
-CACHE_CONFIG=true
-CACHE_EVENTS=true
-
-# Database Query Optimization
-DB_QUERY_LOG_ENABLED=false
-DB_SLOW_QUERY_LOG=true
-DB_SLOW_QUERY_TIME=2
-
-# Image Optimization
-IMAGE_OPTIMIZATION_ENABLED=true
-IMAGE_MAX_WIDTH=1920
-IMAGE_MAX_HEIGHT=1080
-IMAGE_QUALITY=85
-
-# =============================================================================
-# FEATURE FLAGS
-# =============================================================================
-FEATURE_REGISTRATION_ENABLED=true
-FEATURE_EMAIL_VERIFICATION=true
-FEATURE_TWO_FACTOR_AUTH=false
-FEATURE_API_ACCESS=true
-FEATURE_WEBHOOKS=true
-FEATURE_NOTIFICATIONS=true
-FEATURE_DARK_MODE=true
-FEATURE_MULTI_LANGUAGE=true
-FEATURE_ADMIN_IMPERSONATION=false
-
-# =============================================================================
-# BUSINESS CONFIGURATION
-# =============================================================================
-
-# Company Information
-COMPANY_NAME="1000proxy"
-COMPANY_EMAIL="support@$DOMAIN"
-COMPANY_PHONE="+1-555-0123"
-COMPANY_ADDRESS="123 Business St, City, State 12345"
-COMPANY_VAT_NUMBER=
-COMPANY_REGISTRATION_NUMBER=
-
-# Pricing Configuration
-DEFAULT_CURRENCY=USD
-TAX_RATE=0.00
-TAX_INCLUDED=false
-INVOICE_PREFIX=INV-
-INVOICE_NUMBER_LENGTH=6
-
-# Subscription Configuration
-SUBSCRIPTION_TRIAL_DAYS=7
-SUBSCRIPTION_GRACE_PERIOD=3
-SUBSCRIPTION_AUTO_RENEWAL=true
-
-# =============================================================================
-# NOTIFICATION CHANNELS (Configure if needed)
-# =============================================================================
-
-# Slack Notifications
-SLACK_WEBHOOK_URL=
-SLACK_CHANNEL=#general
-SLACK_USERNAME=1000proxy
-SLACK_EMOJI=:robot_face:
-
-# Discord Notifications
-DISCORD_WEBHOOK_URL=
-DISCORD_USERNAME=1000proxy
-DISCORD_AVATAR_URL=
-
-# Pusher Real-time Notifications
-PUSHER_APP_ID=
-PUSHER_APP_KEY=
-PUSHER_APP_SECRET=
-PUSHER_HOST=
+# Update APP_URL / DOMAIN dependent values if domain changed
+sed -i "s#^APP_URL=.*#APP_URL=https://$DOMAIN#" "$PROJECT_DIR/.env" || true
+sed -i "s#support@.*#support@$DOMAIN#" "$PROJECT_DIR/.env" || true
+
+# Do not expose payment / telegram secrets here; user can manage manually.
+print_success ".env synchronization complete (non-destructive)."
+chown "$PROJECT_USER:www-data" "$PROJECT_DIR/.env" || true
+chmod 640 "$PROJECT_DIR/.env" || true
 PUSHER_PORT=443
 PUSHER_SCHEME=https
 PUSHER_APP_CLUSTER=mt1
@@ -872,136 +375,104 @@ print_success "Laravel scheduler configured"
 print_header "Web Server Configuration"
 
 # Update Nginx site configuration for production
+CERT_BASE=""
+if [[ -d "/etc/letsencrypt/live/$DOMAIN" ]]; then
+  CERT_BASE="/etc/letsencrypt/live/$DOMAIN"
+elif [[ -d "/etc/letsencrypt/live/www.$DOMAIN" ]]; then
+  CERT_BASE="/etc/letsencrypt/live/www.$DOMAIN"
+fi
+
 cat > /etc/nginx/sites-available/1000proxy << EOF
 server {
-    listen 80;
+    if (\$host = www.$DOMAIN) {
+        return 301 https://\$host\$request_uri;
+    }
+    listen 80 default_server;
     server_name $DOMAIN www.$DOMAIN;
     return 301 https://\$server_name\$request_uri;
 }
 
 server {
-    listen 443 ssl http2;
+    listen 443 ssl http2 default_server;
     server_name $DOMAIN www.$DOMAIN;
     root $PROJECT_DIR/public;
     index index.php index.html;
 
-    # SSL Configuration (if certificates exist)
-    ssl_certificate /etc/letsencrypt/live/$DOMAIN/fullchain.pem;
-    ssl_certificate_key /etc/letsencrypt/live/$DOMAIN/privkey.pem;
+    # SSL Certificates (auto-detected)
+    $(if [[ -n "$CERT_BASE" ]]; then echo "ssl_certificate $CERT_BASE/fullchain.pem;"; else echo "# ssl_certificate path not found yet"; fi)
+    $(if [[ -n "$CERT_BASE" ]]; then echo "ssl_certificate_key $CERT_BASE/privkey.pem;"; else echo "# ssl_certificate_key path not found yet"; fi)
 
-    # Include security snippets
-    include /etc/nginx/snippets/security-headers.conf;
-    include /etc/nginx/snippets/ssl-security.conf;
-
-    # Logging
     access_log /var/log/nginx/1000proxy.access.log;
     error_log /var/log/nginx/1000proxy.error.log;
 
-    # Security configurations
-    location ~ /\. {
-        deny all;
-        access_log off;
-        log_not_found off;
-    }
+    # Security headers (baseline)
+    add_header X-Frame-Options "SAMEORIGIN";
+    add_header X-Content-Type-Options "nosniff";
+    add_header X-XSS-Protection "1; mode=block";
 
-    location ~ ~$ {
-        deny all;
-        access_log off;
-        log_not_found off;
-    }
+    # Block hidden files
+    location ~ /\. { deny all; access_log off; log_not_found off; }
+    location ~ ~$ { deny all; access_log off; log_not_found off; }
 
-    # Block access to sensitive files
-    location ~* \.(env|config|sql|log|htaccess|htpasswd|ini|bak|old|tmp)$ {
-        deny all;
-        return 404;
-    }
+    # Block sensitive extensions
+    location ~* \.(env|config|sql|log|htaccess|htpasswd|ini|bak|old|tmp)$ { deny all; return 404; }
 
-    # Rate limiting for authentication endpoints
-    location ~* ^/(login|register|api/auth) {
-        limit_req zone=login burst=5 nodelay;
-        limit_conn perip 5;
-        try_files \$uri \$uri/ /index.php?\$query_string;
-    }
-
-    # Rate limiting for API endpoints
+    # API (rate limit zones must be defined globally)
     location ~* ^/api/ {
+        try_files \$uri \$uri/ /index.php?\$query_string;
         limit_req zone=api burst=20 nodelay;
         limit_conn perip 10;
-        try_files \$uri \$uri/ /index.php?\$query_string;
     }
 
-    # Rate limiting for admin panel
-    location ~* ^/(admin|filament) {
-        limit_req zone=admin burst=10 nodelay;
-        limit_conn perip 3;
-        try_files \$uri \$uri/ /index.php?\$query_string;
+    # Main application & SPA fallback
+    location / { try_files \$uri \$uri/ /index.php?\$query_string; }
 
-        # Additional security for admin
-        allow 127.0.0.1;
-        # allow YOUR_ADMIN_IP_HERE;
-        # deny all;
+    # Livewire (upload tuning)
+    location /livewire/ {
+        try_files \$uri \$uri/ /index.php?\$query_string;
+        add_header Cache-Control "no-cache, private, no-store, must-revalidate, max-stale=0, post-check=0, pre-check=0";
+        client_max_body_size 100M;
+        client_body_buffer_size 128k;
     }
 
-    # General rate limiting
-    location / {
-        limit_req zone=general burst=10 nodelay;
-        limit_conn perip 10;
-        try_files \$uri \$uri/ /index.php?\$query_string;
+    # Filament admin
+    location ~ ^/filament/ { try_files \$uri \$uri/ /index.php?\$query_string; }
+
+    # Static assets
+    location ~* \.(jpg|jpeg|png|gif|ico|css|js|svg|webp|woff|woff2|ttf|eot|js)$ {
+        expires 1y;
+        add_header Cache-Control "public, immutable";
+        add_header Vary "Accept-Encoding";
+        access_log off; log_not_found off;
     }
+
+    location = /favicon.ico { log_not_found off; access_log off; }
+    location = /robots.txt { allow all; log_not_found off; access_log off; }
+
+    # Protect framework directories
+    location ~ ^/(storage|bootstrap|config|database|resources|routes|tests)/ { deny all; return 404; }
 
     # PHP handling
     location ~ \.php$ {
+        include fastcgi_params;
         fastcgi_split_path_info ^(.+\.php)(/.+)$;
         fastcgi_pass unix:/run/php/php8.3-1000proxy.sock;
         fastcgi_index index.php;
-        include fastcgi_params;
-        fastcgi_param SCRIPT_FILENAME \$realpath_root\$fastcgi_script_name;
-        fastcgi_param DOCUMENT_ROOT \$realpath_root;
+        fastcgi_param SCRIPT_FILENAME \$document_root\$fastcgi_script_name;
         fastcgi_param PATH_INFO \$fastcgi_path_info;
-
-        # Security headers for PHP
+        fastcgi_param HTTPS on;
         fastcgi_hide_header X-Powered-By;
         fastcgi_read_timeout 300;
         fastcgi_buffer_size 128k;
         fastcgi_buffers 256 16k;
         fastcgi_busy_buffers_size 256k;
         fastcgi_temp_file_write_size 256k;
+        fastcgi_max_temp_file_size 0;
     }
 
-    # Static files handling with long cache
-    location ~* \.(jpg|jpeg|png|gif|ico|css|js|svg|webp|woff|woff2|ttf|eot)$ {
-        expires 1y;
-        add_header Cache-Control "public, immutable";
-        add_header Vary "Accept-Encoding";
-        access_log off;
-        log_not_found off;
-    }
-
-    # Favicon
-    location = /favicon.ico {
-        log_not_found off;
-        access_log off;
-    }
-
-    # Robots
-    location = /robots.txt {
-        allow all;
-        log_not_found off;
-        access_log off;
-    }
-
-    # Deny access to Laravel specific directories
-    location ~ ^/(storage|bootstrap|config|database|resources|routes|tests|vendor)/ {
-        deny all;
-        return 404;
-    }
-
-    # Security headers for all responses
-    #add_header X-Frame-Options "SAMEORIGIN" always;
-    #add_header X-XSS-Protection "1; mode=block" always;
-    #add_header X-Content-Type-Options "nosniff" always;
-    #add_header Referrer-Policy "no-referrer-when-downgrade" always;
-    #add_header Content-Security-Policy "default-src 'self' http: https: data: blob: 'unsafe-inline'" always;
+    error_page 404 /index.php;
+    error_page 500 502 503 504 /50x.html;
+    location = /50x.html { root /usr/share/nginx/html; }
 }
 EOF
 

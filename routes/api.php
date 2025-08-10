@@ -10,9 +10,32 @@ use App\Http\Controllers\Api\WalletController;
 use App\Http\Controllers\Api\ServerPlanFilterController;
 use App\Http\Controllers\QrCodeController;
 use App\Http\Controllers\Admin\AdvancedProxyController;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Queue;
+use Laravel\Horizon\Horizon;
 
 // Mobile App API Routes
 Route::middleware(['throttle:api'])->group(function () {
+    // Lightweight health/queue status endpoint
+    Route::get('/health/queue', function() {
+        $connection = config('queue.default');
+        $queueName = config('queue.connections.' . $connection . '.queue', 'default');
+        $size = Queue::size($queueName);
+        $failed = DB::table('failed_jobs')->count();
+        $horizonStatus = class_exists(Horizon::class) ? (Horizon::isPaused() ? 'paused' : 'running') : 'unavailable';
+        return response()->json([
+            'ok' => true,
+            'queue' => [
+                'connection' => $connection,
+                'name' => $queueName,
+                'size' => $size,
+                'failed' => $failed,
+            ],
+            'horizon' => $horizonStatus,
+            'timestamp' => now()->toIso8601String(),
+        ]);
+    });
     // Authentication routes - stricter rate limiting
     Route::middleware(['throttle:auth'])->group(function () {
         Route::post('/register', [AuthController::class, 'register']);

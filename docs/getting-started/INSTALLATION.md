@@ -337,7 +337,7 @@ server {
     add_header X-XSS-Protection "1; mode=block" always;
     add_header X-Content-Type-Options "nosniff" always;
     add_header Referrer-Policy "no-referrer-when-downgrade" always;
-    add_header Content-Security-Policy "default-src 'self' http: https: data: blob: 'unsafe-inline'" always;
+    # (CSP header intentionally disabled: Livewire v3 currently needs inline/eval. Re-enable later with safer policy.)
 
     # Rate limiting
     limit_req_zone $binary_remote_addr zone=general:10m rate=10r/m;
