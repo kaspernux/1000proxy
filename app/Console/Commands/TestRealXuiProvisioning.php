@@ -18,6 +18,11 @@ class TestRealXuiProvisioning extends Command
         {--mode=shared : Provision mode: shared|dedicated maps to plan type multiple|single} 
         {--plan= : Reuse existing plan ID instead of creating} 
         {--server= : Reuse existing server ID instead of creating} 
+    {--quantity=1 : Number of clients to provision for the plan/order item}
+    {--cleanup-minutes=30 : Auto-delete prior test plans/inbounds older than N minutes}
+    {--keep-dedicated : Keep dedicated inbound even if post-creation health check fails}
+    {--dedicated-port-min=20000 : Minimum port for dedicated inbound allocation}
+    {--dedicated-port-max=60000 : Maximum port for dedicated inbound allocation}
     {--dry-run : Show what would happen without remote mutations (still logs in & lists inbounds)} 
     {--diagnostics : Show detailed diagnostic output} 
     {--insecure : Disable TLS certificate verification for debugging (NOT for production)} 
@@ -31,9 +36,14 @@ class TestRealXuiProvisioning extends Command
         $panel = rtrim($this->option('panel') ?? '', '/');
         $username = $this->option('username');
         $password = $this->option('password');
-        $mode = strtolower($this->option('mode') ?? 'shared');
+    $mode = strtolower($this->option('mode') ?? 'shared');
         $useServerId = $this->option('server');
         $usePlanId = $this->option('plan');
+    $quantity = max(1, (int) $this->option('quantity'));
+    $cleanupMinutes = (int) $this->option('cleanup-minutes');
+    $keepDedicated = (bool) $this->option('keep-dedicated');
+    $dedicatedPortMin = (int) $this->option('dedicated-port-min');
+    $dedicatedPortMax = (int) $this->option('dedicated-port-max');
     $dryRun = (bool) $this->option('dry-run');
     $diagnostics = (bool) $this->option('diagnostics');
     $insecure = (bool) $this->option('insecure');
@@ -92,6 +102,12 @@ class TestRealXuiProvisioning extends Command
             app()->instance('xui.insecure', true);
             $this->warn('TLS verification disabled (insecure mode ON).');
         }
+        // Bind provisioning config overrides for dedicated mode
+        app()->instance('provision.dedicated.port_min', $dedicatedPortMin);
+        app()->instance('provision.dedicated.port_max', $dedicatedPortMax);
+        if ($keepDedicated) {
+            app()->instance('provision.keep_dedicated', true);
+        }
         if ($debugBody) {
             app()->instance('xui.debug_body', true);
             $this->warn('Extended body logging enabled (--debug-body). DO NOT use in production routinely.');
@@ -109,7 +125,12 @@ class TestRealXuiProvisioning extends Command
             $this->line('  login_endpoint=' . $server->getApiEndpoint('login'));
         }
 
-        // 2. Login & sync inbounds
+        // 2a. Optional cleanup of stale test artifacts
+        if ($cleanupMinutes > 0) {
+            $this->cleanupStaleArtifacts($cleanupMinutes, $diagnostics);
+        }
+
+        // 2b. Login & sync inbounds
         $xui = new XUIService($server);
         if (!$xui->testConnection()) {
             $this->error('Login failed. Check credentials.');
@@ -172,7 +193,7 @@ class TestRealXuiProvisioning extends Command
             if (in_array('auto_provisioning', $columns, true)) $attrs['auto_provisioning'] = true; // legacy compatibility
             $plan = ServerPlan::create($attrs);
         }
-        $this->line('Using Plan ID: ' . $plan->id . ' (type=' . $plan->type . ')');
+    $this->line('Using Plan ID: ' . $plan->id . ' (type=' . $plan->type . ', quantity=' . $quantity . ')');
 
         // 4. Create order + customer + item (schema-aware)
         $customer = Customer::factory()->create();
@@ -207,7 +228,7 @@ class TestRealXuiProvisioning extends Command
         $itemAttributes = [
             'order_id' => $order->id,
             'server_plan_id' => $plan->id,
-            'quantity' => 1,
+            'quantity' => $quantity,
         ];
         if (in_array('unit_amount', $itemColumns, true)) {
             $itemAttributes['unit_amount'] = $plan->price;
@@ -232,17 +253,40 @@ class TestRealXuiProvisioning extends Command
         $provisioner = app()->makeWith(ClientProvisioningService::class, [
             'xuiService' => new XUIService($server),
         ]);
-        $results = $provisioner->provisionOrder($order->fresh('items.serverPlan'));
+    $results = $provisioner->provisionOrder($order->fresh('items.serverPlan'));
 
         $this->table(['Key','Value'], [
             ['order_id', $order->id],
             ['mode', $mode],
             ['plan_id', $plan->id],
             ['inbound_id', $inbound->id],
+            ['quantity', $quantity],
             ['results', json_encode($results)],
         ]);
 
         $this->info('Provisioning complete. Check logs for detailed steps.');
         return 0;
+    }
+
+    /**
+     * Delete test plans & dedicated inbounds older than N minutes (zero clients only for inbounds)
+     */
+    protected function cleanupStaleArtifacts(int $minutes, bool $verbose = false): void
+    {
+        $cutoff = now()->subMinutes($minutes);
+        $planQuery = \App\Models\ServerPlan::where('name', 'like', 'Test Plan %')
+            ->where('created_at', '<', $cutoff);
+        $stalePlans = $planQuery->count();
+        $planQuery->delete();
+
+        $inboundQuery = \App\Models\ServerInbound::where('remark', 'like', 'DEDICATED%')
+            ->where('created_at', '<', $cutoff)
+            ->where(function($q){ $q->whereNull('current_clients')->orWhere('current_clients', 0); });
+        $staleInbounds = $inboundQuery->count();
+        $inboundQuery->delete();
+
+        if ($verbose) {
+            $this->line("Cleanup: removed {$stalePlans} stale test plans & {$staleInbounds} dedicated inbounds older than {$minutes}m.");
+        }
     }
 }

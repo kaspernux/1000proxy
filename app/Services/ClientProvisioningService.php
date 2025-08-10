@@ -90,7 +90,7 @@ class ClientProvisioningService
     protected function provisionOrderItem(OrderItem $item): array
     {
         $plan = $item->serverPlan;
-        $quantity = $item->quantity;
+    $quantity = max(1, (int) $item->quantity);
 
         Log::info("📦 Provisioning {$quantity} client(s) for plan: {$plan->name}");
 
@@ -481,20 +481,49 @@ class ClientProvisioningService
 
             // Build minimal inbound payload (clone essential fields)
             $baseStream = is_array($base->streamSettings) ? $base->streamSettings : json_decode($base->streamSettings ?? '{}', true);
+            // 3X-UI API expects camelCase expiryTime (not expiry_time) and settings/streamSettings/sniffing/allocate as JSON strings
+            // Some panel builds become unstable with totally empty clients array; clone base clients but strip IDs to be safe.
+            $baseSettings = $base->settings;
+            if (is_string($baseSettings)) {
+                $decoded = json_decode($baseSettings, true);
+            } else {
+                $decoded = $baseSettings ?? [];
+            }
+            if (isset($decoded['clients']) && is_array($decoded['clients'])) {
+                // Remove client-specific heavy fields; keep first client as template but without id/subId to avoid duplicates
+                $decoded['clients'] = array_map(function($c){
+                    return [
+                        'id' => $c['id'] ?? \Illuminate\Support\Str::uuid()->toString(),
+                        'email' => ($c['email'] ?? 'template') . '-TEMPLATE',
+                        'enable' => true,
+                        'expiryTime' => 0,
+                        'flow' => $c['flow'] ?? '',
+                        'limitIp' => $c['limitIp'] ?? 0,
+                        'totalGB' => $c['totalGB'] ?? 0,
+                        'subId' => $c['subId'] ?? substr(md5(uniqid('', true)),0,16),
+                        'tgId' => $c['tgId'] ?? '',
+                        'reset' => 0,
+                    ];
+                }, array_slice($decoded['clients'],0,1));
+            } else {
+                $decoded = [ 'clients' => [] , 'decryption' => 'none', 'fallbacks' => []];
+            }
             $payload = [
+                'up' => 0,
                 'down' => 0,
                 'total' => 0,
                 'remark' => $remark,
                 'enable' => true,
-                'expiry_time' => 0,
+                'expiryTime' => 0,
                 'listen' => $base->listen ?? '',
                 'port' => $port,
                 'protocol' => $base->protocol,
-                'settings' => json_encode(['clients' => []]),
+                'settings' => json_encode($decoded),
                 'streamSettings' => json_encode($baseStream),
                 'tag' => $tag,
-                'sniffing' => json_encode([]),
-                'allocate' => json_encode([]),
+                // Provide valid objects for sniffing/allocate; empty arrays cause XUI config parse failure
+                'sniffing' => json_encode($this->buildSniffingConfig($base)),
+                'allocate' => json_encode($this->buildAllocateConfig($base)),
             ];
 
             if (app()->environment('testing')) {
@@ -503,7 +532,43 @@ class ClientProvisioningService
                 ]);
             } else {
                 $remote = $this->xuiService->createInbound($payload);
+                if (!$remote) {
+                    Log::error('Dedicated inbound API returned empty response', [
+                        'order_id' => $order->id,
+                        'plan_id' => $plan->id,
+                        'payload_keys' => array_keys($payload),
+                    ]);
+                }
             }
+            // Basic post-create health check: ensure inbound retrieval works and sniffing config decodes as object
+            if ($remote && !empty($remote['id'])) {
+                try {
+                    $fetched = $this->xuiService->getInbound((int) $remote['id']);
+                    $sniffingRaw = $fetched['sniffing'] ?? null;
+                    $sniffDecoded = is_string($sniffingRaw) ? json_decode($sniffingRaw, true) : $sniffingRaw;
+                    $sniffAssoc = is_array($sniffDecoded) && \Illuminate\Support\Arr::isAssoc($sniffDecoded);
+                    if (!$sniffAssoc) {
+                        throw new \RuntimeException('Sniffing config not associative object');
+                    }
+                } catch (\Throwable $healthEx) {
+                    $keep = app()->bound('provision.keep_dedicated');
+                    Log::warning('Dedicated inbound health check failed', [
+                        'order_id' => $order->id,
+                        'plan_id' => $plan->id,
+                        'remote_id' => $remote['id'] ?? null,
+                        'error' => $healthEx->getMessage(),
+                        'keep_flag' => $keep,
+                    ]);
+                    if (!$keep && !empty($remote['id'])) {
+                        try { $this->xuiService->deleteInbound((int) $remote['id']); } catch (\Throwable $delEx) {
+                            Log::warning('Failed to rollback unhealthy dedicated inbound', ['error' => $delEx->getMessage()]);
+                        }
+                        try { $placeholder->delete(); } catch (\Throwable $eDel) {}
+                        return null; // fallback to shared
+                    }
+                }
+            }
+
             if (!$remote || empty($remote['id'] ?? null)) {
                 Log::error('Failed to create dedicated inbound via API', [
                     'order_id' => $order->id,
@@ -559,12 +624,65 @@ class ClientProvisioningService
     }
 
     /**
+     * Build a valid sniffing config object for XUI.
+     * XUI expects something like {"enabled": bool, "destOverride": [...], "metadataOnly": false, "routeOnly": false}
+     * Passing an empty array causes JSON unmarshal errors (cannot unmarshal array into object type SniffingConfig).
+     */
+    protected function buildSniffingConfig(?ServerInbound $base): array
+    {
+        try {
+            if ($base && $base->sniffing) {
+                // Base already has an array form due to casting; ensure it's an associative array
+                $sniff = is_array($base->sniffing) ? $base->sniffing : json_decode((string) $base->sniffing, true);
+                if (is_array($sniff) && \Illuminate\Support\Arr::isAssoc($sniff)) {
+                    return $sniff;
+                }
+            }
+        } catch (\Throwable $e) {
+            // fall through to defaults
+        }
+        return [
+            'enabled' => false,
+            'destOverride' => ['http','tls','quic','fakedns'],
+            'metadataOnly' => false,
+            'routeOnly' => false,
+        ];
+    }
+
+    /**
+     * Build a valid allocate config object for XUI.
+     */
+    protected function buildAllocateConfig(?ServerInbound $base): array
+    {
+        try {
+            if ($base && $base->allocate) {
+                $alloc = is_array($base->allocate) ? $base->allocate : json_decode((string) $base->allocate, true);
+                if (is_array($alloc) && \Illuminate\Support\Arr::isAssoc($alloc)) {
+                    return $alloc;
+                }
+            }
+        } catch (\Throwable $e) {
+            // ignore and use default
+        }
+        return [
+            'strategy' => 'always',
+            'refresh' => 5,
+            'concurrency' => 3,
+        ];
+    }
+
+    /**
      * Allocate a free port in a concurrency-safe way.
      */
     protected function allocateAvailablePort($server, ?int $min = null, ?int $max = null, int $maxAttempts = 50): ?ServerInbound
     {
-        $min = $min ?? (int) config('provisioning.dedicated_inbound_port_min', 20000);
-        $max = $max ?? (int) config('provisioning.dedicated_inbound_port_max', 60000);
+        // Allow runtime overrides (bound in provisioning test command)
+        if ($min === null) {
+            $min = app()->bound('provision.dedicated.port_min') ? (int) app('provision.dedicated.port_min') : (int) config('provisioning.dedicated_inbound_port_min', 20000);
+        }
+        if ($max === null) {
+            $max = app()->bound('provision.dedicated.port_max') ? (int) app('provision.dedicated.port_max') : (int) config('provisioning.dedicated_inbound_port_max', 60000);
+        }
 
         return DB::transaction(function () use ($server, $min, $max, $maxAttempts) {
             $used = $server->inbounds()->lockForUpdate()->pluck('port')->filter()->toArray();
