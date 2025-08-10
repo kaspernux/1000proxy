@@ -96,7 +96,7 @@
 
                     <div class="space-y-3 sm:space-y-4 lg:space-y-6">
                         @foreach($cart_items as $item)
-                        <div class="group bg-white/5 rounded-xl sm:rounded-2xl p-3 sm:p-4 lg:p-6 border border-white/10 hover:bg-white/10 transition-all duration-300" 
+                        <div class="group relative bg-white/5 rounded-xl sm:rounded-2xl p-3 sm:p-4 lg:p-6 border border-white/10 hover:bg-white/10 transition-all duration-300" 
                              wire:key="cart-{{ $item['server_plan_id'] }}">
                             <div class="flex items-center space-x-3 sm:space-x-4 lg:space-x-6">
                                 <!-- Enhanced Product Image with Products Page Style -->
@@ -176,6 +176,16 @@
                                     </div>
                                 </div>
                             </div>
+
+                            <!-- Remove Item Button (only step 1 editable) -->
+                            @if($currentStep === 1)
+                            <button type="button"
+                                    wire:click="removeCartItem('{{ $item['server_plan_id'] }}')"
+                                    class="absolute top-2 right-2 sm:top-3 sm:right-3 text-white/60 hover:text-red-400 transition-colors"
+                                    title="Remove item from cart">
+                                <x-custom-icon name="x-mark" class="w-4 h-4 sm:w-5 sm:h-5" />
+                            </button>
+                            @endif
                         </div>
                         @endforeach
                     </div>
@@ -540,7 +550,8 @@
 
                     <!-- Payment Options -->
                     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-6 sm:mb-8">
-                        @foreach(['crypto', 'stripe', 'wallet', 'mir'] as $method)
+                        @php($methods = $activeMethods ?? ['wallet','crypto','stripe','mir'])
+                        @foreach($methods as $method)
                         <button wire:click="$set('payment_method', '{{ $method }}')"
                                 class="relative p-4 sm:p-6 rounded-xl sm:rounded-2xl border-2 transition-all duration-300 group
                                 {{ $payment_method === $method 
@@ -737,10 +748,14 @@
                             <x-custom-icon name="arrow-left" class="w-4 h-4 sm:w-5 sm:h-5 mr-2 inline" />
                             Back to Billing
                         </button>
+                        
                         <button wire:click="processOrder"
                                 wire:loading.attr="disabled"
-                                {{ !$payment_method || !$agree_to_terms ? 'disabled' : '' }}
-                                class="order-1 sm:order-2 px-6 sm:px-8 py-3 sm:py-4 bg-gradient-to-r from-green-600 to-green-500 hover:from-green-500 hover:to-green-400 text-white font-bold text-base sm:text-lg rounded-xl shadow-xl hover:shadow-2xl transition-all duration-300 transform hover:scale-105 flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed">
+                                @disabled($this->disableComplete)
+                                class="order-1 sm:order-2 px-6 sm:px-8 py-3 sm:py-4 bg-gradient-to-r from-green-600 to-green-500 hover:from-green-500 hover:to-green-400 text-white font-bold text-base sm:text-lg rounded-xl shadow-xl hover:shadow-2xl transition-all duration-300 transform hover:scale-105 flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed relative">
+                            @if($this->walletInsufficient)
+                                <span class="absolute -top-6 left-0 w-full text-center text-xs text-red-300 font-medium">Insufficient wallet balance</span>
+                            @endif
                             <x-custom-icon name="lock-closed" class="w-4 h-4 sm:w-5 sm:h-5 mr-2 sm:mr-3" wire:loading.remove wire:target="processOrder" />
                             <div class="animate-spin rounded-full h-4 w-4 sm:h-5 sm:w-5 border-2 border-white border-t-transparent mr-2 sm:mr-3" wire:loading wire:target="processOrder"></div>
                             <span wire:loading.remove wire:target="processOrder">Complete Order</span>
@@ -803,63 +818,25 @@
                         Order Summary
                     </h3>
 
-                    <!-- Cart Items -->
+                    <!-- Cart Items (Simplified to avoid Blade directive nesting issues) -->
                     <div class="space-y-3 sm:space-y-4 mb-4 sm:mb-6">
                         @foreach($cart_items as $item)
-                        <div class="flex items-center space-x-2 sm:space-x-3 p-3 sm:p-4 bg-white/5 rounded-lg sm:rounded-xl" wire:key="summary-{{ $item['server_plan_id'] }}">
-                            <!-- Enhanced Product Image for Order Summary -->
-                            @php
-                                $summaryImageUrl = null;
-                                $summaryAltText = $item['name'];
-                                
-                                // Priority 1: Product image from cart item
-                                if (!empty($item['product_image']) && file_exists(storage_path('app/public/'.$item['product_image']))) {
-                                    $summaryImageUrl = asset('storage/'.$item['product_image']);
-                                    $summaryAltText = $item['name'] . ' - Product Image';
-                                }
-                                // Priority 2: Try to get plan details if server_plan_id exists
-                                elseif(isset($item['server_plan_id'])) {
-                                    $plan = \App\Models\ServerPlan::find($item['server_plan_id']);
-                                    if($plan) {
-                                        // Priority 2a: Plan's product image
-                                        if (!empty($plan->product_image) && file_exists(storage_path('app/public/'.$plan->product_image))) {
-                                            $summaryImageUrl = asset('storage/'.$plan->product_image);
-                                            $summaryAltText = $plan->name . ' - Product Image';
-                                        }
-                                        // Priority 2b: Brand image
-                                        elseif ($plan->brand && !empty($plan->brand->image) && file_exists(storage_path('app/public/'.$plan->brand->image))) {
-                                            $summaryImageUrl = asset('storage/'.$plan->brand->image);
-                                            $summaryAltText = $plan->brand->name . ' Brand Logo';
-                                        }
-                                        // Priority 2c: Category image
-                                        elseif ($plan->category && !empty($plan->category->image) && file_exists(storage_path('app/public/'.$plan->category->image))) {
-                                            $summaryImageUrl = asset('storage/'.$plan->category->image);
-                                            $summaryAltText = $plan->category->name . ' Category';
-                                        }
-                                    }
-                                }
-                                // Priority 3: Default fallback
-                                if (!$summaryImageUrl) {
-                                    $summaryImageUrl = asset('images/default-proxy.svg');
-                                    $summaryAltText = 'Default Proxy Server Image';
-                                }
-                            @endphp
-                            
-                            <div class="relative flex-shrink-0">
-                                <img src="{{ $summaryImageUrl }}" 
-                                     alt="{{ $summaryAltText }}"
-                                     class="w-10 h-10 sm:w-12 sm:h-12 object-cover rounded-lg border border-yellow-400/30"
-                                     loading="lazy"
-                                     onerror="this.src='{{ asset('images/default-proxy.svg') }}';">
+                            <div class="flex items-center space-x-2 sm:space-x-3 p-3 sm:p-4 bg-white/5 rounded-lg sm:rounded-xl" wire:key="summary-{{ $item['server_plan_id'] ?? md5(json_encode($item)) }}">
+                                <div class="relative flex-shrink-0">
+                                    <img src="{{ asset('images/default-proxy.svg') }}"
+                                         alt="{{ $item['name'] ?? 'Item' }}"
+                                         class="w-10 h-10 sm:w-12 sm:h-12 object-cover rounded-lg border border-yellow-400/30"
+                                         loading="lazy"
+                                         onerror="this.src='{{ asset('images/default-proxy.svg') }}';">
+                                </div>
+                                <div class="flex-1 min-w-0">
+                                    <h4 class="text-white font-medium text-xs sm:text-sm truncate">{{ $item['name'] ?? 'Item' }}</h4>
+                                    <p class="text-green-200 text-xs">Qty: {{ $item['quantity'] ?? 1 }}</p>
+                                </div>
+                                <div class="text-yellow-400 font-bold text-xs sm:text-sm flex-shrink-0">
+                                    ${{ number_format($item['total_amount'] ?? ($item['price'] ?? 0), 2) }}
+                                </div>
                             </div>
-                            <div class="flex-1 min-w-0">
-                                <h4 class="text-white font-medium text-xs sm:text-sm truncate">{{ $item['name'] }}</h4>
-                                <p class="text-green-200 text-xs">Qty: {{ $item['quantity'] }}</p>
-                            </div>
-                            <div class="text-yellow-400 font-bold text-xs sm:text-sm flex-shrink-0">
-                                ${{ number_format($item['total_amount'], 2) }}
-                            </div>
-                        </div>
                         @endforeach
                     </div>
 
