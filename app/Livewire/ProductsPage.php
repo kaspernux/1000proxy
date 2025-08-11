@@ -15,13 +15,13 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\ValidationException;
 use Livewire\Attributes\Url;
 use Livewire\Attributes\Title;
-use Jantinnerezo\LivewireAlert\LivewireAlert;
+use App\Livewire\Traits\LivewireAlertV4;
 
 #[Title('Products Page - 1000 PROXIES')]
 class ProductsPage extends Component
 {
     use WithPagination;
-    use LivewireAlert;
+    use LivewireAlertV4;
 
     // Advanced filtering system with location-first sorting
     #[Url]

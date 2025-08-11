@@ -1,4 +1,4 @@
-<x-mail::message>
+@component('mail.layouts.branding')
 # Welcome to 1000 PROXIES! 🎉
 
 Hello {{ $user->name }},
@@ -54,4 +54,4 @@ The 1000 PROXIES Team
 ---
 
 *This is an automated message. Please do not reply to this email. For support, use the contact link above.*
-</x-mail::message>
+@endcomponent

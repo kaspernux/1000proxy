@@ -10,12 +10,12 @@ use App\Models\ServerBrand;
 use Livewire\WithPagination;
 use Livewire\Attributes\On;
 use Livewire\Attributes\Reactive;
-use Jantinnerezo\LivewireAlert\LivewireAlert;
+use App\Livewire\Traits\LivewireAlertV4;
 
 class ServerBrowser extends Component
 {
     use WithPagination;
-    use LivewireAlert;
+    use LivewireAlertV4;
 
     // Real-time filtering properties
     #[Reactive]

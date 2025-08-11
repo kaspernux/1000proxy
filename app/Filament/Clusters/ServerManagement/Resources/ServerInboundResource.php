@@ -20,7 +20,7 @@ use Illuminate\Support\Facades\Redirect;
 use Filament\Forms\Components\DatePicker;
 use Filament\Tables\Filters\SelectFilter;
 use App\Filament\Clusters\ServerManagement;
-use Jantinnerezo\LivewireAlert\LivewireAlert;
+use App\Livewire\Traits\LivewireAlertV4;
 use App\Filament\Clusters\ServerManagement\Resources\ServerInboundResource\Pages;
 use Filament\Tables\Actions\Action;
 use App\Models\Server;
@@ -28,7 +28,7 @@ use Filament\Tables\Filters\Filter;
 
 class ServerInboundResource extends Resource
 {
-    use LivewireAlert;
+    use LivewireAlertV4;
 
     protected static ?string $cluster = ServerManagement::class;
 

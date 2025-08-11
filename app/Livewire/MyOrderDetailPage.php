@@ -7,12 +7,12 @@ use App\Models\Order;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\Log;
-use Jantinnerezo\LivewireAlert\LivewireAlert;
+use App\Livewire\Traits\LivewireAlertV4;
 use Illuminate\Validation\ValidationException;
 
 class MyOrderDetailPage extends Component
 {
-    use AuthorizesRequests, LivewireAlert;
+    use AuthorizesRequests, LivewireAlertV4;
 
     public Order $order;
     public bool $isLoading = false;

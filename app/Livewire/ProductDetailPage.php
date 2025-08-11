@@ -18,13 +18,13 @@ use Illuminate\Validation\ValidationException;
 use Livewire\Attributes\Title;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\On;
-use Jantinnerezo\LivewireAlert\LivewireAlert;
+use App\Livewire\Traits\LivewireAlertV4;
 use Illuminate\Support\Facades\Cache;
 
 #[Title('Product Detail - 1000 PROXIES')]
 class ProductDetailPage extends Component
 {
-    use LivewireAlert;
+    use LivewireAlertV4;
 
     public $slug;
     public $quantity = 1;

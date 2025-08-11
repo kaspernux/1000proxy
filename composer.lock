@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "16f44830510d9d3976112ddd8f7d947f",
+    "content-hash": "a5e729926599cd1387b029ffb434ff86",
     "packages": [
         {
             "name": "anourvalar/eloquent-serialize",
@@ -2698,32 +2698,34 @@
         },
         {
             "name": "jantinnerezo/livewire-alert",
-            "version": "v3.0.3",
+            "version": "v4.0.6",
             "source": {
                 "type": "git",
                 "url": "https://github.com/jantinnerezo/livewire-alert.git",
-                "reference": "7466b71df6b237dd49dcd741fd872dfaa47977fe"
+                "reference": "5e0eeeb5eeec6429fc49eb66ecf1e6898b7e25c6"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/jantinnerezo/livewire-alert/zipball/7466b71df6b237dd49dcd741fd872dfaa47977fe",
-                "reference": "7466b71df6b237dd49dcd741fd872dfaa47977fe",
+                "url": "https://api.github.com/repos/jantinnerezo/livewire-alert/zipball/5e0eeeb5eeec6429fc49eb66ecf1e6898b7e25c6",
+                "reference": "5e0eeeb5eeec6429fc49eb66ecf1e6898b7e25c6",
                 "shasum": ""
             },
             "require": {
-                "illuminate/support": "^5.5 || ^6.0 || ^7.0 || ^8.0 || ^9.0 || ^10.0|^11.0|^12.0",
+                "illuminate/support": "^10.0|^11.0|^12.0",
                 "livewire/livewire": "^3.0",
-                "php": "^8.1|^8.2"
+                "php": "^8.1"
             },
             "require-dev": {
-                "orchestra/testbench": "^6.15|^7.0|^8.0|^9.0|^10.0",
+                "friendsofphp/php-cs-fixer": "^3.70",
+                "orchestra/testbench": "^8.0|^9.0|^10.0",
+                "phpstan/phpstan": "^2.1",
                 "phpunit/phpunit": "^9.5|^10.0|^11.5.3"
             },
             "type": "library",
             "extra": {
                 "laravel": {
                     "aliases": {
-                        "LivewireAlert": "Jantinnerezo\\LivewireAlert\\LivewireAlertFacade"
+                        "LivewireAlert": "Jantinnerezo\\LivewireAlert\\LivewireAlert"
                     },
                     "providers": [
                         "Jantinnerezo\\LivewireAlert\\LivewireAlertServiceProvider"
@@ -2754,9 +2756,9 @@
             ],
             "support": {
                 "issues": "https://github.com/jantinnerezo/livewire-alert/issues",
-                "source": "https://github.com/jantinnerezo/livewire-alert/tree/v3.0.3"
+                "source": "https://github.com/jantinnerezo/livewire-alert/tree/v4.0.6"
             },
-            "time": "2025-02-26T13:38:27+00:00"
+            "time": "2025-07-13T10:49:59+00:00"
         },
         {
             "name": "kirschbaum-development/eloquent-power-joins",
@@ -10941,16 +10943,16 @@
         },
         {
             "name": "phpunit/phpunit",
-            "version": "11.5.30",
+            "version": "11.5.31",
             "source": {
                 "type": "git",
                 "url": "https://github.com/sebastianbergmann/phpunit.git",
-                "reference": "33fa3d10fed43f51bdd874965497a4925a123a53"
+                "reference": "fc44414e0779e94640663b809557b0b599548260"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/sebastianbergmann/phpunit/zipball/33fa3d10fed43f51bdd874965497a4925a123a53",
-                "reference": "33fa3d10fed43f51bdd874965497a4925a123a53",
+                "url": "https://api.github.com/repos/sebastianbergmann/phpunit/zipball/fc44414e0779e94640663b809557b0b599548260",
+                "reference": "fc44414e0779e94640663b809557b0b599548260",
                 "shasum": ""
             },
             "require": {
@@ -11022,7 +11024,7 @@
             "support": {
                 "issues": "https://github.com/sebastianbergmann/phpunit/issues",
                 "security": "https://github.com/sebastianbergmann/phpunit/security/policy",
-                "source": "https://github.com/sebastianbergmann/phpunit/tree/11.5.30"
+                "source": "https://github.com/sebastianbergmann/phpunit/tree/11.5.31"
             },
             "funding": [
                 {
@@ -11046,7 +11048,7 @@
                     "type": "tidelift"
                 }
             ],
-            "time": "2025-08-10T08:35:26+00:00"
+            "time": "2025-08-11T05:27:39+00:00"
         },
         {
             "name": "sebastian/cli-parser",

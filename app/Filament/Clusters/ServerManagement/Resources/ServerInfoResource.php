@@ -15,7 +15,7 @@ use Filament\Forms\Components\Section;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\MarkdownEditor;
 use Illuminate\Support\Facades\Redirect;
-use Jantinnerezo\LivewireAlert\LivewireAlert;
+use App\Livewire\Traits\LivewireAlertV4;
 use App\Services\XUIService;
 use App\Filament\Clusters\ServerManagement;
 use App\Filament\Clusters\ServerManagement\Resources\ServerInfoResource\Pages;
@@ -23,7 +23,7 @@ use App\Filament\Clusters\ServerManagement\Resources\ServerInfoResource\Pages;
 
 class ServerInfoResource extends Resource
 {
-    use LivewireAlert;
+    use LivewireAlertV4;
 
     protected static ?string $cluster = ServerManagement::class;
 

@@ -1,4 +1,4 @@
-<x-mail::message>
+@component('mail.layouts.branding')
 # ✅ Payment Received Successfully!
 
 Hello {{ $order->user->name }},
@@ -58,4 +58,4 @@ The 1000 PROXIES Team
 ---
 
 *Transaction processed on {{ now()->format('F j, Y \a\t g:i A T') }}*
-</x-mail::message>
+@endcomponent

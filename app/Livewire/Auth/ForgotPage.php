@@ -8,12 +8,12 @@ use Livewire\Attributes\Title;
 use Illuminate\Support\Facades\Password;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Validation\ValidationException;
-use Jantinnerezo\LivewireAlert\LivewireAlert;
+use App\Livewire\Traits\LivewireAlertV4;
 
 #[Title('Forgot Password - 1000 PROXIES')]
 class ForgotPage extends Component
 {
-    use LivewireAlert;
+    use LivewireAlertV4;
 
     public $email = '';
     public $is_loading = false;

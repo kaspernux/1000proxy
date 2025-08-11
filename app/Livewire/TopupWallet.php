@@ -11,13 +11,13 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\ValidationException;
-use Jantinnerezo\LivewireAlert\LivewireAlert;
+use App\Livewire\Traits\LivewireAlertV4;
 use App\Models\WalletTransaction;
 
 #[Title('Top Up Wallet - 1000 PROXIES')]
 class TopupWallet extends Component
 {
-    use WithFileUploads, LivewireAlert;
+    use WithFileUploads, LivewireAlertV4;
 
     // Wallet topup properties
     public $currency;

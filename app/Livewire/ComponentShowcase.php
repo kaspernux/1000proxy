@@ -10,12 +10,12 @@ use Livewire\Attributes\Title;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\RateLimiter;
-use Jantinnerezo\LivewireAlert\LivewireAlert;
+use App\Livewire\Traits\LivewireAlertV4;
 
 #[Title('Component Showcase - 1000 PROXIES')]
 class ComponentShowcase extends Component
 {
-    use LivewireAlert;
+    use LivewireAlertV4;
 
     public $activeDemo = 'server-browser';
     public bool $isLoading = false;

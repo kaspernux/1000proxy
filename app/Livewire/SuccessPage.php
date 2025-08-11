@@ -15,7 +15,7 @@ use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Validation\ValidationException;
-use Jantinnerezo\LivewireAlert\LivewireAlert;
+use App\Livewire\Traits\LivewireAlertV4;
 use Stripe\Stripe;
 use Stripe\Checkout\Session;
 use App\Jobs\ProcessXuiOrder;
@@ -23,7 +23,7 @@ use App\Jobs\ProcessXuiOrder;
 #[Title('Order Success - 1000 PROXIES')]
 class SuccessPage extends Component
 {
-    use LivewireAlert;
+    use LivewireAlertV4;
 
     #[Url]
     public $session_id;

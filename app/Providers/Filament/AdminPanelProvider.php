@@ -32,6 +32,7 @@ use Livewire\Livewire;
 use App\Http\Middleware\LivewirePerformanceProbe;
 use Filament\Support\Assets\Js;
 use Filament\Support\Facades\FilamentAsset;
+use Filament\Facades\Filament;
 use Illuminate\Support\Facades\Vite;
 
 class AdminPanelProvider extends PanelProvider
@@ -81,6 +82,9 @@ class AdminPanelProvider extends PanelProvider
                 FilamentAsset::register([
                     Js::make('chart-dataset-persistence', Vite::asset('resources/js/filament-chart-dataset-persistence.js'))->module(),
                 ]);
+
+                // Ensure SweetAlert2 + Livewire Alert scripts are available inside the Filament admin panel
+                Filament::registerRenderHook('panels::body.end', fn () => view('partials.livewire-alert-filament'));
             })
             ->middleware([
                 EncryptCookies::class,

@@ -12,12 +12,12 @@ use Illuminate\Support\Facades\Password;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Auth\Events\PasswordReset;
 use Illuminate\Validation\ValidationException;
-use Jantinnerezo\LivewireAlert\LivewireAlert;
+use App\Livewire\Traits\LivewireAlertV4;
 
 #[Title('Reset Password - 1000 PROXIES')]
 class ResetPasswordPage extends Component
 {
-    use LivewireAlert;
+    use LivewireAlertV4;
 
     #[Url]
     public $token;

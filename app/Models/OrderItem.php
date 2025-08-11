@@ -22,10 +22,12 @@ class OrderItem extends Model
         'total_amount',
         'agent_bought',
         'expires_at',
+    'provisioning_summary',
     ];
 
     protected $casts = [
         'expires_at' => 'datetime',
+    'provisioning_summary' => 'array',
     ];
 
     public function order(): BelongsTo

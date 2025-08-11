@@ -12,13 +12,13 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\ValidationException;
-use Jantinnerezo\LivewireAlert\LivewireAlert;
+use App\Livewire\Traits\LivewireAlertV4;
 use App\Services\XUIService;
 
 #[Title('My Orders - 1000 PROXIES')]
 class MyOrdersPage extends Component
 {
-    use WithPagination, LivewireAlert;
+    use WithPagination, LivewireAlertV4;
 
     // Advanced filtering properties
     #[Url]

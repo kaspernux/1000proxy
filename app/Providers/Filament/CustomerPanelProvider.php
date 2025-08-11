@@ -2,7 +2,6 @@
 
 namespace App\Providers\Filament;
 
-use Filament\Facades\Filament;
 use Filament\Navigation\MenuItem;
 use Filament\Panel;
 use Filament\PanelProvider;
@@ -29,6 +28,7 @@ use App\Http\Middleware\AuthenticateSession as AuthenticateSessionMiddleware;
 use App\Http\Middleware\ShareErrorsFromSession as ShareErrorsFromSessionMiddleware;
 use App\Http\Middleware\DispatchServingFilamentEvent as DispatchServingFilamentEventMiddleware;
 use Filament\Enums\ThemeMode;
+use Filament\Facades\Filament;
 
 class CustomerPanelProvider extends PanelProvider
 {
@@ -124,6 +124,10 @@ class CustomerPanelProvider extends PanelProvider
                 'logout'  => MenuItem::make('logout')
                     ->label('Log out')
                     ->icon('heroicon-o-arrow-left-start-on-rectangle'),
-            ]);
+            ])
+            ->bootUsing(function(){
+                // Ensure SweetAlert2 + Livewire Alert scripts are available inside the Filament customer panel
+                Filament::registerRenderHook('panels::body.end', fn () => view('partials.livewire-alert-filament'));
+            });
     }
 }

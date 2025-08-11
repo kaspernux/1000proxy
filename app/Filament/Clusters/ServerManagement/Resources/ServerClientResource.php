@@ -13,7 +13,6 @@ use App\Models\ServerInbound;
 use Filament\Resources\Resource;
 use Illuminate\Database\Eloquent\Builder;
 use App\Filament\Clusters\ServerManagement;
-use Jantinnerezo\LivewireAlert\LivewireAlert;
 use App\Filament\Clusters\ServerManagement\Resources\ServerClientResource\Pages;
 use App\Filament\Clusters\ServerManagement\Resources\ServerClientResource\RelationManagers;
 use App\Services\XUIService;
@@ -52,7 +51,6 @@ use Filament\Notifications\Notification;
 
 class ServerClientResource extends Resource
 {
-    use LivewireAlert;
 
     protected static ?string $cluster = ServerManagement::class;
 

@@ -7,13 +7,13 @@ use App\Models\ServerCategory;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\RateLimiter;
-use Jantinnerezo\LivewireAlert\LivewireAlert;
+use App\Livewire\Traits\LivewireAlertV4;
 use Livewire\Attributes\Title;
 
 #[Title('Category Page - 1000 PROXIES')]
 class CategoriesPage extends Component
 {
-    use LivewireAlert;
+    use LivewireAlertV4;
 
     public bool $isLoading = false;
     public array $selectedCategories = [];

@@ -7,12 +7,12 @@ use App\Models\ServerClient;
 use App\Models\Order;
 use Livewire\Attributes\On;
 use Livewire\Attributes\Reactive;
-use Jantinnerezo\LivewireAlert\LivewireAlert;
+use App\Livewire\Traits\LivewireAlertV4;
 use SimpleSoftwareIO\QrCode\Facades\QrCode;
 
 class ProxyConfigurationCard extends Component
 {
-    use LivewireAlert;
+    use LivewireAlertV4;
 
     #[Reactive]
     public $serverClient;

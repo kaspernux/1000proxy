@@ -1,4 +1,4 @@
-<x-mail::message>
+@component('mail.layouts.branding')
 @if($type === 'success')
 # ✅ {{ $subject }}
 @elseif($type === 'warning')
@@ -54,4 +54,4 @@ The 1000 PROXIES Team
 ---
 
 *Notification sent on {{ now()->format('F j, Y \a\t g:i A T') }}*
-</x-mail::message>
+@endcomponent

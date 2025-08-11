@@ -24,7 +24,8 @@ class WalletTransaction extends Model {
         'metadata',
         'description',
         'qr_code_path',
-        'gateway',
+    'gateway',
+    'currency',
     ];
 
     protected $casts = [

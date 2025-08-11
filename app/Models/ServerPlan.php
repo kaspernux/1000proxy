@@ -70,6 +70,36 @@ class ServerPlan extends Model
         'bandwidth_mbps' => 'integer',
     ];
 
+    /**
+     * Normalize plan provisioning type (returns 'shared' or 'dedicated').
+     * Accept existing historical values: 'single' => dedicated, 'multiple' => shared.
+     */
+    public function getProvisioningTypeAttribute(): string
+    {
+        $raw = strtolower((string) ($this->type ?? 'shared'));
+        return match($raw) {
+            'single', 'dedicated' => 'dedicated',
+            'multiple', 'shared' => 'shared',
+            default => 'shared',
+        };
+    }
+
+    /**
+     * Convenience: is this a dedicated plan?
+     */
+    public function isDedicated(): bool
+    {
+        return $this->provisioning_type === 'dedicated';
+    }
+
+    /**
+     * Convenience: is this a shared plan?
+     */
+    public function isShared(): bool
+    {
+        return $this->provisioning_type === 'shared';
+    }
+
     protected static function boot()
     {
         parent::boot();

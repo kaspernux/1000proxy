@@ -1,4 +1,4 @@
-<x-mail::message>
+@component('mail.layouts.branding')
 # Order Placed successfully
 
 Thank you for your order. Your order number is: {{ $order->id }}.
@@ -12,4 +12,4 @@ View Order
 
 Thanks,<br>
 {{ config('app.name') }}
-</x-mail::message>
+@endcomponent

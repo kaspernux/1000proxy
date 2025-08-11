@@ -7,14 +7,14 @@ use App\Models\Customer;
 use App\Models\Order;
 use Livewire\Attributes\On;
 use Livewire\Attributes\Reactive;
-use Jantinnerezo\LivewireAlert\LivewireAlert;
+use App\Livewire\Traits\LivewireAlertV4;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
 
 class PaymentProcessor extends Component
 {
-    use LivewireAlert;
+    use LivewireAlertV4;
 
     #[Reactive]
     public $order;

@@ -1,4 +1,4 @@
-<x-mail::message>
+@component('mail.layouts.branding')
 # ⚠️ Service Expiring Soon
 
 Hello {{ $order->user->name }},
@@ -45,4 +45,4 @@ The 1000 PROXIES Team
 ---
 
 *Order expires: {{ $order->expires_at ? $order->expires_at->format('F j, Y \a\t g:i A T') : 'N/A' }}*
-</x-mail::message>
+@endcomponent

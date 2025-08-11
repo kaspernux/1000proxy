@@ -12,7 +12,7 @@ use Illuminate\Validation\ValidationException;
 use Livewire\Component;
 use Livewire\WithFileUploads;
 use Livewire\Attributes\Title;
-use Jantinnerezo\LivewireAlert\LivewireAlert;
+use App\Livewire\Traits\LivewireAlertV4;
 use App\Models\Customer;
 use App\Models\Address;
 use App\Models\Order;
@@ -20,7 +20,7 @@ use App\Models\Order;
 #[Title('Account Settings - 1000 PROXIES')]
 class AccountSettings extends Component
 {
-    use WithFileUploads, LivewireAlert;
+    use WithFileUploads, LivewireAlertV4;
 
     // User profile properties
     public $customer;

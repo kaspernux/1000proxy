@@ -18,12 +18,12 @@ use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Validation\ValidationException;
-use Jantinnerezo\LivewireAlert\LivewireAlert;
+use App\Livewire\Traits\LivewireAlertV4;
 
 #[Title('Checkout - Complete Your Order | 1000 PROXIES')]
 class CheckoutPage extends Component
 {
-    use LivewireAlert;
+    use LivewireAlertV4;
 
     // Checkout steps
     public $currentStep = 1; // 1: Cart Review, 2: Billing Info, 3: Payment, 4: Confirmation

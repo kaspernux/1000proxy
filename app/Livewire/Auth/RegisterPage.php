@@ -9,12 +9,12 @@ use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Validation\ValidationException;
 use Livewire\Attributes\Title;
-use Jantinnerezo\LivewireAlert\LivewireAlert;
+use App\Livewire\Traits\LivewireAlertV4;
 
 #[Title('Register - 1000 PROXIES')]
 class RegisterPage extends Component
 {
-    use LivewireAlert;
+    use LivewireAlertV4;
 
     public $name = '';
     public $email = '';

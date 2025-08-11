@@ -6,6 +6,7 @@ use Illuminate\Support\ServiceProvider;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\View;
 use Illuminate\Support\Facades\Blade;
+use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Session;
 use Illuminate\Support\Facades\App;
@@ -116,7 +117,7 @@ class AppServiceProvider extends ServiceProvider
         // Configure rate limiting
         $this->configureRateLimiting();
 
-        if (auth('customer')->check() && request()->isMethod('post')) {
+    if (auth('customer')->check() && request()->isMethod('post')) {
             $user = auth('customer')->user();
             session()->put('locale', $user->locale ?? config('app.locale'));
             session()->put('theme_mode', $user->theme_mode ?? 'system');
@@ -128,6 +129,10 @@ class AppServiceProvider extends ServiceProvider
 
             app()->setLocale(session('locale'));
         }
+
+    // Inline event listeners (no EventServiceProvider present)
+    Event::listen(\App\Events\OrderPaid::class, \App\Listeners\DispatchProvisioningOnOrderPaid::class);
+    Event::listen(\App\Events\OrderProvisioned::class, \App\Listeners\SendOrderProvisionedNotification::class);
     }
 
     /**

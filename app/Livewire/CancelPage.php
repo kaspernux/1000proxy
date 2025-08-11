@@ -6,13 +6,13 @@ use Livewire\Component;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\RateLimiter;
-use Jantinnerezo\LivewireAlert\LivewireAlert;
+use App\Livewire\Traits\LivewireAlertV4;
 use Livewire\Attributes\Title;
 
 #[Title('Cancel Order - 1000 PROXIES')]
 class CancelPage extends Component
 {
-    use LivewireAlert;
+    use LivewireAlertV4;
 
     public bool $isLoading = false;
     public string $reason = '';

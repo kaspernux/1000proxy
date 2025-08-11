@@ -17,13 +17,13 @@ use App\Livewire\Partials\Navbar;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\ValidationException;
-use Jantinnerezo\LivewireAlert\LivewireAlert;
+use App\Livewire\Traits\LivewireAlertV4;
 use Illuminate\Support\Collection;
 
 #[Title('Shopping Cart - 1000 PROXIES')]
 class CartPage extends Component
 {
-    use LivewireAlert;
+    use LivewireAlertV4;
 
     /** @var array<int, mixed> */
     public array $order_items = [];

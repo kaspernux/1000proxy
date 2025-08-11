@@ -11,8 +11,43 @@ use App\Http\Middleware\TelegramRateLimit;
 use App\Http\Middleware\StaffRoleMiddleware;
 use Illuminate\Console\Scheduling\Schedule;
 use App\Jobs\PruneOldExportsJob;
+// Console Commands (migrated from Console Kernel / auto-discovery consolidation)
 use App\Console\Commands\SmartRetryQueue;
 use App\Console\Commands\TestRealXuiProvisioning;
+use App\Console\Commands\SimulateLiveOrders;
+use App\Console\Commands\CleanupDedicatedInbounds;
+use App\Console\Commands\ConfirmPendingDeposits;
+use App\Console\Commands\CreateTestCustomer;
+use App\Console\Commands\ExecuteIPRotation;
+use App\Console\Commands\GenerateAnalyticsReport;
+use App\Console\Commands\HealthCheckCommand;
+use App\Console\Commands\LogClearCommand;
+use App\Console\Commands\MonitorIntegrations;
+use App\Console\Commands\PruneExports;
+use App\Console\Commands\QueueMaintenance;
+use App\Console\Commands\CacheWarmupCommand;
+use App\Console\Commands\RefreshFxRates;
+use App\Console\Commands\RepairXuiSniffing;
+use App\Console\Commands\RunCustomerSuccessAutomation;
+use App\Console\Commands\SecurityCommand;
+use App\Console\Commands\ServerManagementCommand;
+use App\Console\Commands\SetupStaffRoles;
+use App\Console\Commands\SyncPartnershipData;
+use App\Console\Commands\SyncThirdPartyData;
+use App\Console\Commands\SystemHealthCheck;
+use App\Console\Commands\TelegramSetWebhook;
+use App\Console\Commands\TelegramTestBot;
+use App\Console\Commands\TelegramWebhookInfo;
+use App\Console\Commands\TestFilamentPanels;
+use App\Console\Commands\TestHomePage;
+use App\Console\Commands\TestLogin;
+use App\Console\Commands\TestMail;
+use App\Console\Commands\TestPaymentSystem;
+use App\Console\Commands\TestTelegramBotIntegration;
+use App\Console\Commands\TestUserAuthentication;
+use App\Console\Commands\TestXUIService;
+use App\Console\Commands\TestXuiEnhancements;
+use App\Console\Commands\VerifyQueueWorkers;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
 
@@ -27,8 +62,44 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withCommands([
+        // Core / maintenance
         SmartRetryQueue::class,
-    TestRealXuiProvisioning::class,
+        QueueMaintenance::class,
+        VerifyQueueWorkers::class,
+        LogClearCommand::class,
+        PruneExports::class,
+        RefreshFxRates::class,
+    CacheWarmupCommand::class,
+        // Provisioning & operations
+        SimulateLiveOrders::class,
+        CleanupDedicatedInbounds::class,
+        RepairXuiSniffing::class,
+        ExecuteIPRotation::class,
+        ServerManagementCommand::class,
+        SecurityCommand::class,
+        SetupStaffRoles::class,
+        RunCustomerSuccessAutomation::class,
+        MonitorIntegrations::class,
+        SyncPartnershipData::class,
+        SyncThirdPartyData::class,
+        // Testing & diagnostics
+        TestRealXuiProvisioning::class,
+        TestXUIService::class,
+        TestXuiEnhancements::class,
+        TestPaymentSystem::class,
+        TestTelegramBotIntegration::class,
+        TestUserAuthentication::class,
+        TestFilamentPanels::class,
+        TestHomePage::class,
+        TestLogin::class,
+        TestMail::class,
+        // Telegram
+        TelegramSetWebhook::class,
+        TelegramTestBot::class,
+        TelegramWebhookInfo::class,
+        // Analytics / reports
+        GenerateAnalyticsReport::class,
+        HealthCheckCommand::class,
     ])
     ->withSchedule(function (Schedule $schedule) {
         $schedule->job(new PruneOldExportsJob())->dailyAt('02:15');

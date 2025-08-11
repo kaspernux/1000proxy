@@ -1,4 +1,4 @@
-<x-mail::message>
+@component('mail.layouts.branding')
 # ❌ Payment Failed
 
 Hello {{ $user->name }},
@@ -78,4 +78,4 @@ The 1000 PROXIES Team
 ---
 
 *Order reservation expires in 48 hours from {{ now()->format('F j, Y \a\t g:i A T') }}*
-</x-mail::message>
+@endcomponent

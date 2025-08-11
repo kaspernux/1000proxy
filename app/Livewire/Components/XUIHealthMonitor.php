@@ -8,11 +8,11 @@ use App\Models\ServerClient;
 use App\Services\XUIService;
 use Livewire\Attributes\On;
 use Livewire\Attributes\Reactive;
-use Jantinnerezo\LivewireAlert\LivewireAlert;
+use App\Livewire\Traits\LivewireAlertV4;
 
 class XUIHealthMonitor extends Component
 {
-    use LivewireAlert;
+    use LivewireAlertV4;
 
     #[Reactive]
     public $servers;

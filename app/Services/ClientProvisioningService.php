@@ -70,6 +70,8 @@ class ClientProvisioningService
         Log::info("🚀 Starting enhanced client provisioning for Order #{$order->id}");
 
         $results = [];
+    // Initialize results array for storing provisioning results
+    $results = [];
 
         DB::transaction(function () use ($order, &$results) {
             foreach ($order->items as $item) {
@@ -81,6 +83,11 @@ class ClientProvisioningService
         $this->updateOrderStatus($order, $results);
 
         Log::info("✅ Enhanced client provisioning completed for Order #{$order->id}", $results);
+        try {
+            event(new \App\Events\OrderProvisioned($order->fresh('items'), $results));
+        } catch (\Throwable $e) {
+            Log::warning('Failed dispatching OrderProvisioned event', ['order_id' => $order->id, 'error' => $e->getMessage()]);
+        }
         return $results;
     }
 
@@ -120,13 +127,22 @@ class ClientProvisioningService
             }
         }
 
-        return [
+        $summary = [
             'order_item_id' => $item->id,
             'plan_name' => $plan->name,
             'quantity_requested' => $quantity,
             'quantity_provisioned' => collect($results)->where('success', true)->count(),
             'clients' => $results,
         ];
+        try {
+            $item->update(['provisioning_summary' => $summary]);
+        } catch (\Throwable $e) {
+            Log::warning('Failed saving provisioning_summary', [
+                'order_item_id' => $item->id,
+                'error' => $e->getMessage(),
+            ]);
+        }
+        return $summary;
     }
 
     /**
@@ -420,14 +436,13 @@ class ClientProvisioningService
      */
     protected function determineProvisionMode(ServerPlan $plan): string
     {
+        // Use new normalization accessor provisioning_type if present
         try {
-            if (strtolower($plan->type) === 'single') {
-                return 'dedicated';
-            }
+            return $plan->provisioning_type; // returns shared|dedicated
         } catch (\Throwable $e) {
-            // Fallback silently
+            // Fallback legacy mapping
+            return strtolower($plan->type) === 'single' ? 'dedicated' : 'shared';
         }
-        return 'shared';
     }
 
     /**

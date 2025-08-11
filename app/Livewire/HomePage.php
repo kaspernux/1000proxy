@@ -17,13 +17,13 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\ValidationException;
-use Jantinnerezo\LivewireAlert\LivewireAlert;
+use App\Livewire\Traits\LivewireAlertV4;
 
 #[Title('Home - Premium VPN & Proxy Solutions | 1000 PROXIES')]
 
 class HomePage extends Component
 {
-    use LivewireAlert;
+    use LivewireAlertV4;
 
     public $searchTerm = '';
     public $selectedCategory = '';
