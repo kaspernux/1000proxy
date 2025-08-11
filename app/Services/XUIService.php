@@ -270,13 +270,43 @@ class XUIService
                     $response = $request->get($this->server->getApiEndpoint($endpoint));
                 }
 
+                $bodySnippet = substr($response->body(), 0, app()->bound('xui.debug_body') ? 4000 : 400);
                 if (!$response->successful()) {
+                    Log::warning('3X-UI API HTTP failure', [
+                        'server_id' => $this->server->id,
+                        'endpoint' => $endpoint,
+                        'method' => $method,
+                        'status' => $response->status(),
+                        'attempt' => $attempt + 1,
+                        'body_snippet' => $bodySnippet,
+                    ]);
                     throw new Exception("API request failed with status: " . $response->status());
                 }
 
-                $result = $response->json();
+                $result = [];
+                try { $result = $response->json(); } catch (\Throwable $t) {
+                    Log::warning('3X-UI API non-JSON response', [
+                        'endpoint' => $endpoint,
+                        'method' => $method,
+                        'status' => $response->status(),
+                        'attempt' => $attempt + 1,
+                        'body_snippet' => $bodySnippet,
+                        'error' => $t->getMessage(),
+                    ]);
+                    throw new Exception('Invalid JSON response');
+                }
 
                 if (!($result['success'] ?? false)) {
+                    Log::warning('3X-UI API logical failure', [
+                        'server_id' => $this->server->id,
+                        'endpoint' => $endpoint,
+                        'method' => $method,
+                        'status' => $response->status(),
+                        'attempt' => $attempt + 1,
+                        'msg' => $result['msg'] ?? null,
+                        'result_keys' => array_keys($result),
+                        'obj_keys' => isset($result['obj']) && is_array($result['obj']) ? array_keys($result['obj']) : null,
+                    ]);
                     throw new Exception("API request failed: " . ($result['msg'] ?? 'Unknown error'));
                 }
 
@@ -284,10 +314,22 @@ class XUIService
             } catch (Exception $e) {
                 $lastException = $e;
                 $attempt++;
-
                 if ($attempt < $this->retryCount) {
-                    Log::warning("API request failed, retrying ({$attempt}/{$this->retryCount}): " . $e->getMessage());
-                    sleep(1); // Wait before retry
+                    Log::warning('3X-UI API request retrying', [
+                        'endpoint' => $endpoint,
+                        'method' => $method,
+                        'next_attempt' => $attempt + 1,
+                        'retry_limit' => $this->retryCount,
+                        'error' => $e->getMessage(),
+                    ]);
+                    usleep(300000); // 300ms backoff
+                } else {
+                    Log::error('3X-UI API request exhausted retries', [
+                        'endpoint' => $endpoint,
+                        'method' => $method,
+                        'attempts' => $attempt,
+                        'error' => $e->getMessage(),
+                    ]);
                 }
             }
         }
@@ -422,8 +464,27 @@ class XUIService
      */
     public function createInbound(array $inboundData): array
     {
-        $result = $this->makeAuthenticatedRequest('POST', 'panel/api/inbounds/add', $inboundData);
-        return $result['obj'] ?? [];
+        try {
+            Log::debug('createInbound request payload', [
+                'server_id' => $this->server->id,
+                'keys' => array_keys($inboundData),
+                'port' => $inboundData['port'] ?? null,
+                'protocol' => $inboundData['protocol'] ?? null,
+            ]);
+            $result = $this->makeAuthenticatedRequest('POST', 'panel/api/inbounds/add', $inboundData);
+            Log::debug('createInbound raw API result keys', [
+                'success' => $result['success'] ?? null,
+                'msg' => $result['msg'] ?? null,
+                'obj_keys' => isset($result['obj']) && is_array($result['obj']) ? array_keys($result['obj']) : null,
+            ]);
+            return $result['obj'] ?? [];
+        } catch (\Throwable $e) {
+            Log::error('createInbound exception', [
+                'server_id' => $this->server->id,
+                'error' => $e->getMessage(),
+            ]);
+            return [];
+        }
     }
 
     /**

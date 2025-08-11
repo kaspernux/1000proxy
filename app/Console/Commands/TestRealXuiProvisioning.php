@@ -142,25 +142,24 @@ class TestRealXuiProvisioning extends Command
             $this->line("Synced {$count} inbounds (local DB)");
         }
 
-        $inbound = $server->inbounds()->orderBy('port')->first();
-        if (!$inbound) {
-            $this->error('No inbounds available after sync. Aborting.');
+        // For shared mode we still need at least one base inbound; for dedicated a base inbound is still required to clone settings
+        $baseInbound = $server->inbounds()->orderBy('port')->first();
+        if (!$baseInbound) {
+            $this->error('No inbounds available after sync to use as base. Aborting.');
             return 1;
         }
-        $this->line('Selected inbound #' . $inbound->id . ' port ' . $inbound->port);
+        $this->line('Base inbound #' . $baseInbound->id . ' port ' . $baseInbound->port . ' will be used for cloning (shared or dedicated).');
 
-        // Ensure inbound is eligible for provisioning (remote sync may not set these flags)
-        if (!$inbound->provisioning_enabled || $inbound->status !== 'active') {
-            $inbound->update([
+        if (!$baseInbound->provisioning_enabled || $baseInbound->status !== 'active') {
+            $baseInbound->update([
                 'provisioning_enabled' => true,
                 'status' => 'active',
             ]);
-            $this->line('Inbound provisioning flags normalized (provisioning_enabled=1, status=active).');
+            $this->line('Base inbound provisioning flags normalized (provisioning_enabled=1, status=active).');
         }
-        // Make this the default if none defined
         if (!$server->inbounds()->where('is_default', true)->exists()) {
-            $inbound->update(['is_default' => true]);
-            $this->line('Marked inbound #' . $inbound->id . ' as default (no previous default).');
+            $baseInbound->update(['is_default' => true]);
+            $this->line('Marked base inbound #' . $baseInbound->id . ' as default (no previous default).');
         }
 
         // 3. Resolve or create plan
@@ -185,7 +184,10 @@ class TestRealXuiProvisioning extends Command
                 'server_category_id' => 1,
                 'server_brand_id' => 1,
             ];
-            if (in_array('preferred_inbound_id', $columns, true)) $attrs['preferred_inbound_id'] = $inbound->id;
+            // Only set preferred inbound for shared (multi-client) plans; dedicated plans always create a fresh inbound
+            if ($planType !== 'single' && in_array('preferred_inbound_id', $columns, true)) {
+                $attrs['preferred_inbound_id'] = $baseInbound->id;
+            }
             if (in_array('auto_provision', $columns, true)) $attrs['auto_provision'] = true;
             if (in_array('data_limit_gb', $columns, true)) $attrs['data_limit_gb'] = 50;
             if (in_array('current_clients', $columns, true)) $attrs['current_clients'] = 0;
@@ -255,11 +257,21 @@ class TestRealXuiProvisioning extends Command
         ]);
     $results = $provisioner->provisionOrder($order->fresh('items.serverPlan'));
 
+        // Extract dedicated inbound IDs (if any) from results for clearer summary
+        $dedicatedIds = collect($results)
+            ->flatMap(fn($r) => $r['clients'] ?? [])
+            ->filter(fn($c) => ($c['dedicated_inbound_id'] ?? null))
+            ->pluck('dedicated_inbound_id')
+            ->unique()
+            ->values()
+            ->all();
+        $summaryInbound = ($mode === 'dedicated') ? (implode(',', $dedicatedIds) ?: '(none-created)') : $baseInbound->id;
+
         $this->table(['Key','Value'], [
             ['order_id', $order->id],
             ['mode', $mode],
             ['plan_id', $plan->id],
-            ['inbound_id', $inbound->id],
+            ['inbound_id', $summaryInbound],
             ['quantity', $quantity],
             ['results', json_encode($results)],
         ]);

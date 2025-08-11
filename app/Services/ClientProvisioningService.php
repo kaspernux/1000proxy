@@ -144,25 +144,8 @@ class ClientProvisioningService
     // Determine provisioning mode (shared vs dedicated) and resolve inbound
         $mode = $this->determineProvisionMode($plan);
 
-        // Reuse a previously created dedicated inbound for this order_item if exists
-        $existingDedicatedInboundId = null;
-        if ($mode === 'dedicated') {
-            $existingDedicatedInboundId = OrderServerClient::where('order_id', $order->id)
-                ->where('order_item_id', $item->id)
-                ->whereNotNull('dedicated_inbound_id')
-                ->value('dedicated_inbound_id');
-        }
-
-        if ($existingDedicatedInboundId) {
-            $inbound = ServerInbound::find($existingDedicatedInboundId);
-            Log::info('🔁 Reusing existing dedicated inbound for order item', [
-                'order_id' => $order->id,
-                'order_item_id' => $item->id,
-                'inbound_id' => $existingDedicatedInboundId,
-            ]);
-        } else {
-            $inbound = $this->resolveInbound($plan, $order, $mode);
-        }
+    // Always attempt to create a brand-new dedicated inbound (no reuse) when in dedicated mode
+    $inbound = $this->resolveInbound($plan, $order, $mode);
         if (!$inbound) {
             return $this->createFailureResult('No suitable inbound available');
         }
@@ -219,6 +202,8 @@ class ClientProvisioningService
             return [
                 'success' => true,
                 'server_client_id' => $serverClient->id,
+                'inbound_id' => $inbound->id,
+                'dedicated_inbound_id' => ($mode === 'dedicated') ? $inbound->id : null,
                 'client_config' => $serverClient->getDownloadableConfig(),
                 'provision_duration' => $orderClient->provision_duration_seconds,
             ];
@@ -315,17 +300,29 @@ class ClientProvisioningService
         $modeFlag = $mode === 'dedicated' ? 'D' : 'S';
         $inboundTag = $inbound?->tag ?? $inbound?->id;
 
-        // Canonical client identifier (used in email field for XUI uniqueness + internal searching)
-        $identifier = join('-', array_filter([
-            $brandCode,
-            $categoryCode,
-            $shortPlan,
+        $server = $plan->server; // ensure relation loaded
+        $country = strtoupper($server->country ?? ($plan->country_code ?? 'XX'));
+        $categoryName = strtoupper(Str::slug($server->category?->name ?? $plan->category?->name ?? 'GEN','')); // compress name
+        $modeLabel = $mode === 'dedicated' ? 'DEDICATED' : 'SHARED';
+        $totalGb = (int) ($plan->data_limit_gb ?? $plan->volume ?? 0);
+        $days = (int) ($plan->days + ($plan->trial_days ?? 0));
+        // TOTAL meaning number of clients in plan capacity (max_clients) or requested quantity; choose max_clients fallback
+        $capacity = (int) ($plan->max_clients ?? 1);
+        // Requested branding pattern: 🌐1000PROXY-COUNTRY-SERVERCATEGORYNAME-SHARED/DEDICATED-TOTALGB- DAYS- TOTAL
+        // Use hyphen separated, avoid spaces except inside emoji prefix; collapse multiple hyphens.
+        $identifier = '🌐1000PROXY-' . implode('-', array_filter([
+            $country,
+            $categoryName,
+            $modeLabel,
+            ($totalGb > 0 ? ($totalGb . 'GB') : null),
+            ($days > 0 ? ($days . 'D') : null),
+            ('T' . $capacity),
             'O' . $order->id,
             'C' . $customer->id,
             'N' . $clientNumber,
-            $modeFlag,
             $rand,
         ]));
+        $identifier = preg_replace('/-+/', '-', $identifier); // normalize
 
         return [
             'id' => $this->xuiService->generateUID(),
@@ -444,10 +441,12 @@ class ClientProvisioningService
             if ($inbound) {
                 return $inbound;
             }
-            Log::warning('Falling back to shared inbound (dedicated creation failed)', [
+            // No fallback: dedicated mode must create a new inbound; return null to surface failure
+            Log::error('Dedicated inbound creation failed (no fallback to shared).', [
                 'order_id' => $order->id,
                 'plan_id' => $plan->id,
             ]);
+            return null;
         }
         return $this->getBestInbound($plan);
     }
@@ -469,15 +468,44 @@ class ClientProvisioningService
             ]);
             return null;
         }
+        // Pre-fetch remote inbounds to detect ID/port conflicts (uniqueness only, no sequential requirement)
+        $remoteList = [];
+        try {
+            $remoteList = $this->xuiService->listInbounds();
+        } catch (\Throwable $t) {
+            Log::warning('Failed listing remote inbounds before dedicated creation', ['error' => $t->getMessage()]);
+        }
+        $existingIds = collect($remoteList)->pluck('id')->filter()->values()->all();
+        $existingPorts = collect($remoteList)->pluck('port')->filter()->values()->all();
 
         try {
-            $placeholder = $this->allocateAvailablePort($server);
+            Log::info('🆕 Starting dedicated inbound creation', [
+                'order_id' => $order->id,
+                'plan_id' => $plan->id,
+                'existing_remote_ids_count' => count($existingIds),
+                'existing_remote_ports_count' => count($existingPorts),
+            ]);
+            // Single attempt (retries handled upstream if desired)
+            $placeholder = $this->allocateAvailablePort($server, null, null, 50, $existingPorts);
             if (!$placeholder) {
+                Log::error('Dedicated inbound creation aborted: failed to allocate port placeholder', [
+                    'order_id' => $order->id,
+                    'plan_id' => $plan->id,
+                ]);
                 return null;
             }
-            $port = $placeholder->port;
-            $remark = 'DEDICATED O' . $order->id . ' P' . $plan->id . ' ' . Str::upper(Str::random(4));
-            $tag = 'dedic-' . $order->id . '-' . $plan->id . '-' . Str::lower(Str::random(5));
+                $port = $placeholder->port;
+                $server = $plan->server; // ensure relation
+                $country = strtoupper($server->country ?? ($plan->country_code ?? 'XX'));
+                $categoryName = strtoupper(Str::slug($server->category?->name ?? $plan->category?->name ?? 'GEN',' '));
+                $totalGb = (int) ($plan->data_limit_gb ?? $plan->volume ?? 0);
+                $days = (int) ($plan->days + ($plan->trial_days ?? 0));
+                $capacity = (int) ($plan->max_clients ?? 1);
+                $remark = "🌐1000PROXY | {$country} | {$categoryName} | DEDICATED | " .
+                    ($totalGb>0 ? ($totalGb.'GB | ') : '') .
+                    ($days>0 ? ($days.'D | ') : '') .
+                    'CAP:' . $capacity . ' | O' . $order->id . ' | ' . Str::upper(Str::random(4));
+                $tag = 'dedic-' . $order->id . '-' . $plan->id . '-' . Str::lower(Str::random(5));
 
             // Build minimal inbound payload (clone essential fields)
             $baseStream = is_array($base->streamSettings) ? $base->streamSettings : json_decode($base->streamSettings ?? '{}', true);
@@ -526,12 +554,27 @@ class ClientProvisioningService
                 'allocate' => json_encode($this->buildAllocateConfig($base)),
             ];
 
+            Log::debug('Prepared dedicated inbound payload', [
+                'order_id' => $order->id,
+                'plan_id' => $plan->id,
+                'port' => $port,
+                'tag' => $tag,
+                'remark' => $remark,
+            ]);
+
             if (app()->environment('testing')) {
                 $remote = array_merge($payload, [
                     'id' => random_int(10000, 99999),
                 ]);
             } else {
+                $beforeCreateIds = $existingIds;
                 $remote = $this->xuiService->createInbound($payload);
+                Log::debug('Remote createInbound response', [
+                    'order_id' => $order->id,
+                    'plan_id' => $plan->id,
+                    'response_id' => $remote['id'] ?? null,
+                    'raw_response_keys' => array_keys($remote ?: []),
+                ]);
                 if (!$remote) {
                     Log::error('Dedicated inbound API returned empty response', [
                         'order_id' => $order->id,
@@ -540,50 +583,126 @@ class ClientProvisioningService
                     ]);
                 }
             }
-            // Basic post-create health check: ensure inbound retrieval works and sniffing config decodes as object
+            // Basic post-create health & uniqueness check
             if ($remote && !empty($remote['id'])) {
+                $remoteId = (int) $remote['id'];
+                if (in_array($remoteId, $existingIds, true)) {
+                    Log::warning('Dedicated inbound conflict: remote returned existing ID', [
+                        'order_id' => $order->id,
+                        'plan_id' => $plan->id,
+                        'remote_id' => $remoteId,
+                    ]);
+                    try { $this->xuiService->deleteInbound($remoteId); } catch (\Throwable $delDup) {
+                        Log::warning('Failed deleting duplicate inbound', ['error' => $delDup->getMessage()]);
+                    }
+                    try { $placeholder->delete(); } catch (\Throwable $eDel) {}
+                    return null;
+                }
                 try {
-                    $fetched = $this->xuiService->getInbound((int) $remote['id']);
+                    $fetched = $this->xuiService->getInbound($remoteId);
                     $sniffingRaw = $fetched['sniffing'] ?? null;
                     $sniffDecoded = is_string($sniffingRaw) ? json_decode($sniffingRaw, true) : $sniffingRaw;
                     $sniffAssoc = is_array($sniffDecoded) && \Illuminate\Support\Arr::isAssoc($sniffDecoded);
                     if (!$sniffAssoc) {
                         throw new \RuntimeException('Sniffing config not associative object');
                     }
+                    Log::info('✅ Dedicated inbound health check passed', [
+                        'order_id' => $order->id,
+                        'plan_id' => $plan->id,
+                        'remote_id' => $remoteId,
+                        'port' => $port,
+                    ]);
                 } catch (\Throwable $healthEx) {
                     $keep = app()->bound('provision.keep_dedicated');
                     Log::warning('Dedicated inbound health check failed', [
                         'order_id' => $order->id,
                         'plan_id' => $plan->id,
-                        'remote_id' => $remote['id'] ?? null,
+                        'remote_id' => $remoteId,
                         'error' => $healthEx->getMessage(),
                         'keep_flag' => $keep,
                     ]);
-                    if (!$keep && !empty($remote['id'])) {
-                        try { $this->xuiService->deleteInbound((int) $remote['id']); } catch (\Throwable $delEx) {
+                    if (!$keep) {
+                        try { $this->xuiService->deleteInbound($remoteId); } catch (\Throwable $delEx) {
                             Log::warning('Failed to rollback unhealthy dedicated inbound', ['error' => $delEx->getMessage()]);
                         }
                         try { $placeholder->delete(); } catch (\Throwable $eDel) {}
-                        return null; // fallback to shared
+                        return null;
                     }
                 }
             }
 
             if (!$remote || empty($remote['id'] ?? null)) {
-                Log::error('Failed to create dedicated inbound via API', [
+                Log::warning('First dedicated inbound creation attempt failed; will try simplified payload', [
                     'order_id' => $order->id,
                     'plan_id' => $plan->id,
-                    'payload' => $payload,
-                    'response' => $remote,
+                    'port' => $port,
+                    'attempt' => 1,
                 ]);
-                // Cleanup placeholder to free port for future attempts
-                try { $placeholder->delete(); } catch (\Throwable $eDel) {
-                    Log::warning('Failed deleting placeholder after remote creation failure', [
-                        'placeholder_id' => $placeholder->id,
-                        'error' => $eDel->getMessage(),
+
+                // Build a simplified fallback payload (strip template client, normalize stream settings)
+                $simpleSettings = [
+                    'clients' => [], // start with empty; client added after inbound create
+                    'decryption' => 'none',
+                    'fallbacks' => [],
+                ];
+                $simpleStream = [
+                    'network' => $baseStream['network'] ?? 'tcp',
+                    'security' => $baseStream['security'] ?? 'none',
+                ];
+                if (($simpleStream['security'] ?? 'none') === 'reality' && isset($baseStream['realitySettings'])) {
+                    $simpleStream['realitySettings'] = $baseStream['realitySettings'];
+                }
+                if (isset($baseStream['tcpSettings'])) { $simpleStream['tcpSettings'] = $baseStream['tcpSettings']; }
+
+                $fallbackPayload = [
+                    'up' => 0,
+                    'down' => 0,
+                    'total' => 0,
+                    'remark' => $remark . ' Fallback',
+                    'enable' => true,
+                    'expiryTime' => 0,
+                    'listen' => $base->listen ?? '',
+                    'port' => $port,
+                    'protocol' => $base->protocol,
+                    'settings' => json_encode($simpleSettings),
+                    'streamSettings' => json_encode($simpleStream),
+                    'tag' => $tag . '-fb',
+                    'sniffing' => json_encode($this->buildSniffingConfig($base)),
+                    'allocate' => json_encode($this->buildAllocateConfig($base)),
+                ];
+                try {
+                    $remote = $this->xuiService->createInbound($fallbackPayload);
+                    Log::debug('Fallback createInbound response', [
+                        'order_id' => $order->id,
+                        'plan_id' => $plan->id,
+                        'response_id' => $remote['id'] ?? null,
+                        'raw_response_keys' => array_keys($remote ?: []),
+                    ]);
+                } catch (\Throwable $fallbackEx) {
+                    Log::error('Fallback dedicated inbound creation exception', [
+                        'order_id' => $order->id,
+                        'plan_id' => $plan->id,
+                        'error' => $fallbackEx->getMessage(),
                     ]);
                 }
-                return null;
+
+                if (!$remote || empty($remote['id'] ?? null)) {
+                    Log::error('Failed to create dedicated inbound via API after fallback', [
+                        'order_id' => $order->id,
+                        'plan_id' => $plan->id,
+                        'initial_payload_keys' => array_keys($payload),
+                        'fallback_payload_keys' => array_keys($fallbackPayload),
+                        'response' => $remote,
+                    ]);
+                    // Cleanup placeholder to free port for future attempts
+                    try { $placeholder->delete(); } catch (\Throwable $eDel) {
+                        Log::warning('Failed deleting placeholder after remote creation failure', [
+                            'placeholder_id' => $placeholder->id,
+                            'error' => $eDel->getMessage(),
+                        ]);
+                    }
+                    return null;
+                }
             }
 
             // Persist locally using fromRemoteInbound helper (expects object)
@@ -605,11 +724,13 @@ class ClientProvisioningService
                 'tag' => $tag,
             ]);
 
-            Log::info('Created dedicated inbound', [
+            Log::info('🎉 Created dedicated inbound', [
                 'inbound_id' => $local->id,
                 'server_id' => $server->id,
                 'order_id' => $order->id,
                 'plan_id' => $plan->id,
+                'remote_id' => $remote['id'] ?? null,
+                'port' => $port,
             ]);
 
             return $local;
@@ -674,7 +795,7 @@ class ClientProvisioningService
     /**
      * Allocate a free port in a concurrency-safe way.
      */
-    protected function allocateAvailablePort($server, ?int $min = null, ?int $max = null, int $maxAttempts = 50): ?ServerInbound
+    protected function allocateAvailablePort($server, ?int $min = null, ?int $max = null, int $maxAttempts = 50, array $extraUsedPorts = []): ?ServerInbound
     {
         // Allow runtime overrides (bound in provisioning test command)
         if ($min === null) {
@@ -684,8 +805,11 @@ class ClientProvisioningService
             $max = app()->bound('provision.dedicated.port_max') ? (int) app('provision.dedicated.port_max') : (int) config('provisioning.dedicated_inbound_port_max', 60000);
         }
 
-        return DB::transaction(function () use ($server, $min, $max, $maxAttempts) {
+        return DB::transaction(function () use ($server, $min, $max, $maxAttempts, $extraUsedPorts) {
             $used = $server->inbounds()->lockForUpdate()->pluck('port')->filter()->toArray();
+            if (!empty($extraUsedPorts)) {
+                $used = array_unique(array_merge($used, $extraUsedPorts));
+            }
             $attempts = 0;
             $candidate = null;
             do {
@@ -725,6 +849,8 @@ class ClientProvisioningService
             'success' => false,
             'error' => $error,
             'timestamp' => $now->toISOString(),
+            'inbound_id' => null,
+            'dedicated_inbound_id' => null,
         ];
     }
 
