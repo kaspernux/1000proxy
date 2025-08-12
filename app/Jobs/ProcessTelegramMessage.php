@@ -4,18 +4,20 @@ namespace App\Jobs;
 
 use App\Services\TelegramBotService;
 use Illuminate\Contracts\Queue\ShouldQueue;
+use Illuminate\Contracts\Queue\ShouldBeUnique;
 use Illuminate\Foundation\Queue\Queueable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\Log;
 
-class ProcessTelegramMessage implements ShouldQueue
+class ProcessTelegramMessage implements ShouldQueue, ShouldBeUnique
 {
     use Queueable, InteractsWithQueue, SerializesModels;
 
     public int $tries = 3;
     public int $maxExceptions = 2;
     public int $timeout = 30;
+    public int $uniqueFor = 300; // seconds
 
     private array $update;
 

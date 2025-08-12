@@ -15,16 +15,16 @@ class EnhancedCsrfProtection extends Middleware
      * The URIs that should be excluded from CSRF verification.
      */
     protected $except = [
-        '*', // Temporarily disable all CSRF protection for testing
-        'webhooks/*',
-        'api/public/*',
-        'stripe/webhook',
-        'paypal/webhook',
-        'nowpayments/webhook',
-        'telegram/webhook',
-        'livewire/update',
-        'livewire/upload-file',
-        'livewire/*',
+    'webhooks/*',
+    'api/public/*',
+    'stripe/webhook',
+    'paypal/webhook',
+    'nowpayments/webhook',
+    // Ensure Telegram webhook with optional secret path is exempt
+    'telegram/webhook*',
+    'livewire/update',
+    'livewire/upload-file',
+    'livewire/*',
     ];
 
     /**
@@ -107,7 +107,8 @@ class EnhancedCsrfProtection extends Middleware
      */
     protected function isValidWebhook(Request $request): bool
     {
-        if (!$request->is('*/webhook')) {
+        // Accept both exact "/webhook" and secret-suffixed "/webhook/*" paths
+        if (!($request->is('*/webhook') || $request->is('*/webhook/*'))) {
             return false;
         }
 
@@ -120,7 +121,7 @@ class EnhancedCsrfProtection extends Middleware
             return $this->validatePayPalWebhook($request);
         }
 
-        if ($request->is('telegram/webhook')) {
+    if ($request->is('telegram/webhook') || $request->is('telegram/webhook/*')) {
             return $this->validateTelegramWebhook($request);
         }
 
@@ -171,10 +172,15 @@ class EnhancedCsrfProtection extends Middleware
      */
     protected function validateTelegramWebhook(Request $request): bool
     {
-        $token = config('services.telegram.bot_token');
-        $secretPath = hash('sha256', $token);
+        // Prefer Telegram's secret header validation when configured
+        $expected = config('services.telegram.secret_token');
+        if ($expected) {
+            $provided = $request->header('X-Telegram-Bot-Api-Secret-Token');
+            return hash_equals($expected, (string) $provided);
+        }
 
-        return $request->is("telegram/webhook/{$secretPath}");
+        // Fallback: accept plain /telegram/webhook when no secret is set
+        return $request->is('telegram/webhook') || $request->is('telegram/webhook/*');
     }
 
     /**

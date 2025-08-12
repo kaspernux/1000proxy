@@ -1,6 +1,7 @@
 <?php
 
 use Illuminate\Foundation\Application;
+use Illuminate\Support\Facades\Route;
 use App\Http\Middleware\RedirectIfCustomer;
 use App\Http\Middleware\EnhancedErrorHandling;
 use App\Http\Middleware\RateLimitMiddleware;
@@ -36,6 +37,8 @@ use App\Console\Commands\SyncPartnershipData;
 use App\Console\Commands\SyncThirdPartyData;
 use App\Console\Commands\SystemHealthCheck;
 use App\Console\Commands\TelegramSetWebhook;
+use App\Console\Commands\TelegramSetCommands;
+use App\Console\Commands\TelegramSetBranding;
 use App\Console\Commands\TelegramTestBot;
 use App\Console\Commands\TelegramWebhookInfo;
 use App\Console\Commands\TestFilamentPanels;
@@ -69,7 +72,7 @@ return Application::configure(basePath: dirname(__DIR__))
         LogClearCommand::class,
         PruneExports::class,
         RefreshFxRates::class,
-    CacheWarmupCommand::class,
+        CacheWarmupCommand::class,
         // Provisioning & operations
         SimulateLiveOrders::class,
         CleanupDedicatedInbounds::class,
@@ -95,6 +98,8 @@ return Application::configure(basePath: dirname(__DIR__))
         TestMail::class,
         // Telegram
         TelegramSetWebhook::class,
+        TelegramSetCommands::class,
+    TelegramSetBranding::class,
         TelegramTestBot::class,
         TelegramWebhookInfo::class,
         // Analytics / reports
@@ -103,6 +108,8 @@ return Application::configure(basePath: dirname(__DIR__))
     ])
     ->withSchedule(function (Schedule $schedule) {
         $schedule->job(new PruneOldExportsJob())->dailyAt('02:15');
+    // Ensure Horizon collects metrics snapshots (Laravel 12 app.php replaces Console Kernel)
+    $schedule->command('horizon:snapshot')->everyFiveMinutes();
     })
     ->withMiddleware(function (Middleware $middleware) {
     // Global & security middleware

@@ -166,7 +166,11 @@ Horizon::auth(function ($request) {
 
 // Telegram Bot Routes
 Route::prefix('telegram')->group(function () {
-    Route::post('/webhook', [TelegramBotController::class, 'webhook'])
+    Route::post('/webhook/{secret?}', [TelegramBotController::class, 'webhook'])
+        ->withoutMiddleware([
+            \App\Http\Middleware\EnhancedCsrfProtection::class,
+            \Illuminate\Foundation\Http\Middleware\VerifyCsrfToken::class,
+        ])
         ->middleware('telegram.rate')
         ->name('telegram.webhook');
 
@@ -185,6 +189,32 @@ Route::prefix('telegram')->group(function () {
             ->name('telegram.bot-stats');
         Route::post('/broadcast', [TelegramBotController::class, 'broadcastMessage'])
             ->name('telegram.broadcast');
+
+        // Admin UI: Linking and Notifications
+        Route::post('/generate-link', [TelegramBotController::class, 'generateLink'])
+            ->name('telegram.generate-link');
+        Route::get('/linked-users', [TelegramBotController::class, 'linkedUsers'])
+            ->name('telegram.linked-users');
+        Route::get('/stats', [TelegramBotController::class, 'linkedUsersStats'])
+            ->name('telegram.linked-users-stats');
+        Route::delete('/unlink-user/{id}', [TelegramBotController::class, 'unlinkUser'])
+            ->name('telegram.unlink-user');
+        Route::get('/notifications', [TelegramBotController::class, 'getNotifications'])
+            ->name('telegram.notifications');
+        Route::get('/templates', [TelegramBotController::class, 'getTemplates'])
+            ->name('telegram.templates');
+        Route::post('/send-notification', [TelegramBotController::class, 'sendNotification'])
+            ->name('telegram.send-notification');
+        Route::post('/preview-notification', [TelegramBotController::class, 'previewNotification'])
+            ->name('telegram.preview-notification');
+        Route::delete('/notifications/{id}', [TelegramBotController::class, 'deleteNotification'])
+            ->name('telegram.delete-notification');
+
+        // Admin bot UX controls
+        Route::post('/set-branding', [TelegramBotController::class, 'setBranding'])
+            ->name('telegram.set-branding');
+        Route::post('/set-menu', [TelegramBotController::class, 'setMenu'])
+            ->name('telegram.set-menu');
     });
 });
 

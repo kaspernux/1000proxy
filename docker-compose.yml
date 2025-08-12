@@ -90,7 +90,7 @@ services:
             timeout: 10s
             start_period: 20s
 
-    queue:
+    horizon:
         build:
             context: .
             dockerfile: Dockerfile
@@ -107,10 +107,10 @@ services:
             - .env
         networks:
             - proxy-network
-        command: php artisan queue:work
+        command: php artisan horizon
         restart: unless-stopped
         healthcheck:
-            test: ["CMD-SHELL", "pgrep -f 'artisan queue:work' || exit 1"]
+            test: ["CMD-SHELL", "pgrep -f 'artisan horizon' || exit 1"]
             interval: 30s
             timeout: 10s
             retries: 3

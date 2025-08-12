@@ -141,12 +141,12 @@ function telegramBotControlPanel ()
         {
             try
             {
-                const response = await fetch( '/api/telegram/settings' );
+                const response = await fetch( '/telegram/webhook-info' );
                 if ( response.ok )
                 {
                     const data = await response.json();
-                    this.botToken = data.bot_token || '';
-                    this.webhookInfo = data.webhook_info || null;
+                    // Keep webhook info if available
+                    this.webhookInfo = data.data || data.webhook_info || null;
                 }
             } catch ( error )
             {
@@ -216,16 +216,9 @@ function telegramBotControlPanel ()
         {
             try
             {
-                await fetch( '/api/telegram/settings', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRF-TOKEN': document.querySelector( 'meta[name="csrf-token"]' ).content
-                    },
-                    body: JSON.stringify( {
-                        bot_token: this.botToken
-                    } )
-                } );
+                // No direct token storage endpoint; token must be managed in env/config on the server
+                // This is a no-op to keep UI logic simple
+                return true;
             } catch ( error )
             {
                 console.error( 'Failed to save bot token:', error );
@@ -243,18 +236,23 @@ function telegramBotControlPanel ()
 
             try
             {
-                const webhookUrl = `${ window.location.origin }/api/telegram/webhook`;
-                const result = await this.telegramAPI.setWebhook( webhookUrl );
+                const webhookUrl = `${ window.location.origin }/telegram/webhook`;
+                const setResp = await fetch( '/telegram/set-webhook', { method: 'POST', headers: { 'X-CSRF-TOKEN': document.querySelector( 'meta[name="csrf-token"]' ).content } } );
+                const setJson = setResp.ok ? await setResp.json() : { success: false };
 
-                if ( result.ok )
+                if ( setJson.success )
                 {
                     // Refresh webhook info
-                    const webhookInfo = await this.telegramAPI.getWebhookInfo();
-                    this.webhookInfo = webhookInfo.result;
+                    const respInfo = await fetch( '/telegram/webhook-info' );
+                    if ( respInfo.ok )
+                    {
+                        const infoJson = await respInfo.json();
+                        this.webhookInfo = infoJson.data || infoJson;
+                    }
                     this.addActivity( 'Webhook set successfully', 'success' );
                 } else
                 {
-                    throw new Error( result.description || 'Failed to set webhook' );
+                    throw new Error( setJson.message || 'Failed to set webhook' );
                 }
             } catch ( error )
             {
@@ -274,15 +272,16 @@ function telegramBotControlPanel ()
 
             try
             {
-                const result = await this.telegramAPI.deleteWebhook();
+                const delResp = await fetch( '/telegram/webhook', { method: 'DELETE', headers: { 'X-CSRF-TOKEN': document.querySelector( 'meta[name="csrf-token"]' ).content } } );
+                const result = delResp.ok ? await delResp.json() : { success: false, message: 'Request failed' };
 
-                if ( result.ok )
+                if ( result.success )
                 {
                     this.webhookInfo = { url: '', has_custom_certificate: false };
                     this.addActivity( 'Webhook deleted successfully', 'success' );
                 } else
                 {
-                    throw new Error( result.description || 'Failed to delete webhook' );
+                    throw new Error( result.message || 'Failed to delete webhook' );
                 }
             } catch ( error )
             {
@@ -309,21 +308,25 @@ function telegramBotControlPanel ()
             try
             {
                 this.isLoading = true;
-                const result = await this.telegramAPI.sendMessage(
-                    this.testMessage.chatId,
-                    this.testMessage.text,
-                    {
-                        parse_mode: this.testMessage.parseMode || undefined,
-                        reply_markup: this.testMessage.replyMarkup || undefined
-                    }
-                );
+                const resp = await fetch( '/telegram/send-test-message', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': document.querySelector( 'meta[name="csrf-token"]' ).content
+                    },
+                    body: JSON.stringify( {
+                        chat_id: this.testMessage.chatId,
+                        message: this.testMessage.text
+                    } )
+                } );
+                const data = await resp.json();
 
-                if ( result.ok )
+                if ( resp.ok && data.success )
                 {
                     this.addActivity( `Test message sent to ${ this.testMessage.chatId }`, 'success' );
                 } else
                 {
-                    throw new Error( result.description || 'Failed to send message' );
+                    throw new Error( data.message || 'Failed to send message' );
                 }
             } catch ( error )
             {
@@ -386,11 +389,16 @@ function telegramBotControlPanel ()
         {
             try
             {
-                const response = await fetch( '/api/telegram/activity' );
+                const response = await fetch( '/telegram/bot-stats' );
                 if ( response.ok )
                 {
-                    const data = await response.json();
-                    this.recentActivity = data.activities || [];
+                    const json = await response.json();
+                    const stats = json.data || {};
+                    const ri = stats.recent_interactions || {};
+                    this.recentActivity = [
+                        { id: Date.now(), message: `Linked users: ${ stats.total_linked_users ?? 'N/A' }`, type: 'info', timestamp: new Date().toISOString() },
+                        { id: Date.now() + 1, message: `24h: ${ ri.last_24h ?? 'N/A' }, 7d: ${ ri.last_7d ?? 'N/A' }`, type: 'info', timestamp: new Date().toISOString() }
+                    ];
                 }
             } catch ( error )
             {
@@ -469,7 +477,7 @@ function userTelegramLinking ()
 
             try
             {
-                const response = await fetch( '/api/telegram/generate-link', {
+                const response = await fetch( '/telegram/generate-link', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
@@ -502,7 +510,7 @@ function userTelegramLinking ()
 
             try
             {
-                const response = await fetch( '/api/telegram/linked-users' );
+                const response = await fetch( '/telegram/linked-users' );
                 if ( response.ok )
                 {
                     const data = await response.json();
@@ -522,7 +530,7 @@ function userTelegramLinking ()
         {
             try
             {
-                const response = await fetch( '/api/telegram/stats' );
+                const response = await fetch( '/telegram/stats' );
                 if ( response.ok )
                 {
                     const data = await response.json();
@@ -544,7 +552,7 @@ function userTelegramLinking ()
 
             try
             {
-                const response = await fetch( `/api/telegram/unlink-user/${ userId }`, {
+                const response = await fetch( `/telegram/unlink-user/${ userId }`, {
                     method: 'DELETE',
                     headers: {
                         'X-CSRF-TOKEN': document.querySelector( 'meta[name="csrf-token"]' ).content
@@ -570,7 +578,7 @@ function userTelegramLinking ()
         {
             try
             {
-                const response = await fetch( '/api/telegram/send-test-message', {
+                const response = await fetch( '/telegram/send-notification', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
@@ -719,7 +727,7 @@ function telegramNotificationCenter ()
 
             try
             {
-                const response = await fetch( '/api/telegram/notifications' );
+                const response = await fetch( '/telegram/notifications' );
                 if ( response.ok )
                 {
                     const data = await response.json();
@@ -739,7 +747,7 @@ function telegramNotificationCenter ()
         {
             try
             {
-                const response = await fetch( '/api/telegram/templates' );
+                const response = await fetch( '/telegram/templates' );
                 if ( response.ok )
                 {
                     const data = await response.json();
@@ -762,7 +770,7 @@ function telegramNotificationCenter ()
 
             try
             {
-                const response = await fetch( '/api/telegram/send-notification', {
+                const response = await fetch( '/telegram/send-notification', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
@@ -797,7 +805,7 @@ function telegramNotificationCenter ()
 
             try
             {
-                const response = await fetch( '/api/telegram/preview-notification', {
+                const response = await fetch( '/telegram/preview-notification', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
@@ -863,7 +871,7 @@ function telegramNotificationCenter ()
 
             try
             {
-                const response = await fetch( `/api/telegram/notifications/${ notificationId }`, {
+                const response = await fetch( `/telegram/notifications/${ notificationId }`, {
                     method: 'DELETE',
                     headers: {
                         'X-CSRF-TOKEN': document.querySelector( 'meta[name="csrf-token"]' ).content

@@ -8,6 +8,11 @@ use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Str;
+use App\Models\Customer;
+use App\Services\QrCodeService;
 
 class TelegramBotController extends Controller
 {
@@ -16,6 +21,11 @@ class TelegramBotController extends Controller
     public function __construct(TelegramBotService $telegramBotService)
     {
         $this->telegramBotService = $telegramBotService;
+        // Feature flag to toggle enhanced behavior without creating V2 service
+        $enhanced = (bool) (config('services.telegram.enhanced') ?? env('TELEGRAM_BOT_ENHANCED', true));
+        if (method_exists($this->telegramBotService, 'setEnhanced')) {
+            $this->telegramBotService->setEnhanced($enhanced);
+        }
     }
 
     /**
@@ -99,6 +109,34 @@ class TelegramBotController extends Controller
                 'message' => 'Internal server error'
             ], 500);
         }
+    }
+
+    /**
+     * Admin: set bot branding (name/desc/short)
+     */
+    public function setBranding(Request $request): JsonResponse
+    {
+        $this->authorizeStaff();
+        $ok = $this->telegramBotService->setBranding(
+            $request->input('name'),
+            $request->input('short_description'),
+            $request->input('description'),
+        );
+        return response()->json(['success' => $ok]);
+    }
+
+    /**
+     * Admin: set chat menu button
+     */
+    public function setMenu(Request $request): JsonResponse
+    {
+        $this->authorizeStaff();
+        $ok = $this->telegramBotService->setMenuButton(
+            $request->input('type', 'commands'),
+            $request->input('text'),
+            $request->input('url')
+        );
+        return response()->json(['success' => $ok]);
     }
 
     /**
@@ -191,8 +229,8 @@ class TelegramBotController extends Controller
     {
         try {
             $stats = [
-                'total_linked_users' => \App\Models\User::whereNotNull('telegram_chat_id')->count(),
-                'total_users' => \App\Models\User::count(),
+                'total_linked_users' => Customer::whereNotNull('telegram_chat_id')->count(),
+                'total_users' => Customer::count(),
                 'recent_interactions' => $this->getRecentInteractions(),
                 'bot_info' => $this->telegramBotService->testBot()['bot_info'] ?? null,
             ];
@@ -208,6 +246,248 @@ class TelegramBotController extends Controller
                 'success' => false,
                 'message' => 'Failed to get bot statistics'
             ], 500);
+        }
+    }
+
+    /**
+     * Generate a one-time Telegram linking code for a customer
+     */
+    public function generateLink(Request $request): JsonResponse
+    {
+        try {
+            $customer = Auth::guard('customer')->user();
+
+            // Allow staff to generate for a specific customer
+            if (!$customer && Auth::check()) {
+                $customerId = (int) $request->input('customer_id');
+                if ($customerId) {
+                    $customer = Customer::find($customerId);
+                }
+            }
+
+            if (!$customer) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Customer context required to generate link'
+                ], 422);
+            }
+
+            $code = strtoupper(Str::random(8));
+            $cacheKey = "telegram_linking_{$code}";
+            Cache::put($cacheKey, $customer->id, now()->addMinutes(10));
+
+            // Generate QR that encodes the code text for easy scanning
+            $qrService = app(QrCodeService::class);
+            $qrBase64 = $qrService->generateBase64QrCode($code, 220, [
+                'colorScheme' => 'primary',
+                'style' => 'dot'
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'code' => $code,
+                'qr_url' => $qrBase64,
+                'expires_at' => now()->addMinutes(10)->toIso8601String()
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Generate link error', ['error' => $e->getMessage()]);
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to generate link'
+            ], 500);
+        }
+    }
+
+    /**
+     * List customers with Telegram linked
+     */
+    public function linkedUsers(Request $request): JsonResponse
+    {
+        try {
+            $query = Customer::query();
+
+            if ($request->boolean('only_linked', true)) {
+                $query->whereNotNull('telegram_chat_id');
+            }
+
+            if ($search = $request->input('q')) {
+                $query->where(function ($q) use ($search) {
+                    $q->where('email', 'like', "%{$search}%")
+                        ->orWhere('name', 'like', "%{$search}%")
+                        ->orWhere('telegram_username', 'like', "%{$search}%");
+                });
+            }
+
+            $users = $query->orderByDesc('last_login_at')
+                ->limit(200)
+                ->get(['id', 'name', 'email', 'telegram_username', 'telegram_chat_id', 'last_login_at', 'email_verified_at']);
+
+            return response()->json([
+                'success' => true,
+                'users' => $users,
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Linked users fetch error', ['error' => $e->getMessage()]);
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to load linked users'
+            ], 500);
+        }
+    }
+
+    /**
+     * Basic stats for Telegram linking
+     */
+    public function linkedUsersStats(): JsonResponse
+    {
+        try {
+            $totalLinked = Customer::whereNotNull('telegram_chat_id')->count();
+            $activeToday = Customer::whereNotNull('telegram_chat_id')
+                ->where('last_login_at', '>=', now()->subDay())
+                ->count();
+            $pendingLinks = Customer::whereNull('telegram_chat_id')->count();
+
+            return response()->json([
+                'success' => true,
+                'stats' => [
+                    'totalLinked' => $totalLinked,
+                    'activeToday' => $activeToday,
+                    'pendingLinks' => $pendingLinks,
+                    'averageResponseTime' => 0,
+                ]
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Linked users stats error', ['error' => $e->getMessage()]);
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to load stats'
+            ], 500);
+        }
+    }
+
+    /**
+     * Unlink a customer's Telegram
+     */
+    public function unlinkUser(int $id): JsonResponse
+    {
+        try {
+            $customer = Customer::findOrFail($id);
+            $customer->unlinkTelegram();
+            return response()->json(['success' => true]);
+        } catch (\Exception $e) {
+            Log::error('Unlink user error', ['error' => $e->getMessage()]);
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to unlink user'
+            ], 500);
+        }
+    }
+
+    /**
+     * Placeholder: list of notifications (no persistence yet)
+     */
+    public function getNotifications(): JsonResponse
+    {
+        $this->authorizeStaff();
+        $items = \App\Models\TelegramNotification::orderByDesc('created_at')->limit(200)->get();
+        return response()->json([
+            'success' => true,
+            'notifications' => $items
+        ]);
+    }
+
+    /**
+     * Placeholder: list of templates (no persistence yet)
+     */
+    public function getTemplates(): JsonResponse
+    {
+        $this->authorizeStaff();
+        $items = \App\Models\TelegramTemplate::orderBy('title')->get();
+        return response()->json([
+            'success' => true,
+            'templates' => $items
+        ]);
+    }
+
+    /**
+     * Send a one-off notification (reuses broadcast)
+     */
+    public function sendNotification(Request $request): JsonResponse
+    {
+        $this->authorizeStaff();
+        $message = trim((string) $request->input('message', ''));
+        if ($message === '') {
+            return response()->json([
+                'success' => false,
+                'message' => 'Message is required'
+            ], 422);
+        }
+
+        // Persist notification record
+        $notification = \App\Models\TelegramNotification::create([
+            'title' => $request->input('title', ''),
+            'message' => $message,
+            'recipients' => $request->input('recipients', 'all'),
+            'priority' => $request->input('priority', 'normal'),
+            'status' => 'pending',
+            'scheduled_at' => $request->input('schedule_at') ? now() : null,
+            'created_by' => Auth::id(),
+        ]);
+
+        // Reuse broadcast logic to all linked customers (basic immediate send)
+        $sent = 0; $failed = 0;
+        $customers = Customer::whereNotNull('telegram_chat_id')->get();
+        foreach ($customers as $c) {
+            try {
+                $this->telegramBotService->sendDirectMessage($c->telegram_chat_id, $message);
+                usleep(100000); // 0.1s
+                $sent++;
+            } catch (\Exception $e) {
+                $failed++;
+            }
+        }
+
+        $notification->update([
+            'status' => 'sent',
+            'sent_at' => now(),
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'data' => [ 'sent' => $sent, 'failed' => $failed, 'total' => $customers->count() ]
+        ]);
+    }
+
+    /**
+     * Preview notification payload
+     */
+    public function previewNotification(Request $request): JsonResponse
+    {
+        $this->authorizeStaff();
+        return response()->json([
+            'success' => true,
+            'preview' => $request->only(['title', 'message', 'recipients', 'priority'])
+        ]);
+    }
+
+    /**
+     * Placeholder delete notification endpoint
+     */
+    public function deleteNotification(int $id): JsonResponse
+    {
+        $this->authorizeStaff();
+        \App\Models\TelegramNotification::where('id', $id)->delete();
+        return response()->json(['success' => true]);
+    }
+
+    /**
+     * Ensure the caller is an authenticated staff/admin user.
+     */
+    private function authorizeStaff(): void
+    {
+        $user = Auth::user();
+        if (!$user || !in_array($user->role, ['admin', 'support_manager', 'sales_support'])) {
+            abort(403, 'Forbidden');
         }
     }
 
@@ -309,8 +589,18 @@ class TelegramBotController extends Controller
             return true; // Skip verification if no secret token is configured
         }
 
-        $telegramToken = $request->header('X-Telegram-Bot-Api-Secret-Token');
+        $telegramToken = (string) ($request->header('X-Telegram-Bot-Api-Secret-Token') ?? '');
+        $pathSecret = (string) ($request->route('secret') ?? '');
 
-        return hash_equals($secretToken, $telegramToken ?? '');
+        // Accept either header-based secret or the optional path secret
+        $ok = hash_equals($secretToken, $telegramToken) || (!empty($pathSecret) && hash_equals($secretToken, $pathSecret));
+
+        if (!$ok) {
+            \Log::warning('Telegram webhook secret validation failed', [
+                'has_header' => !empty($telegramToken),
+                'has_path_secret' => !empty($pathSecret),
+            ]);
+        }
+        return $ok;
     }
 }
