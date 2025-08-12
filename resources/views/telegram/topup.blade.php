@@ -5,11 +5,11 @@
 🔗 <a href="{{ config('app.url') }}/wallet">{{ __('telegram.common.open_dashboard') }}</a>
 
 💡 {{ __('telegram.topup.methods') }}:
-• 💳 Cards (Stripe)
-• 🅿️ PayPal
-• ₿ Bitcoin (BTC)
-• 🔒 Monero (XMR)
-• ☀️ Solana (SOL)
+• 💳 {{ __('telegram.topup.method_cards') }}
+• 🅿️ {{ __('telegram.topup.method_paypal') }}
+• ₿ {{ __('telegram.topup.method_bitcoin') }}
+• 🔒 {{ __('telegram.topup.method_monero') }}
+• ☀️ {{ __('telegram.topup.method_solana') }}
 
 ⚡ {{ __('telegram.topup.instant') }}
 💰 {{ __('telegram.topup.min') }}

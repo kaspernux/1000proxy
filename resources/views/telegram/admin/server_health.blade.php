@@ -4,7 +4,7 @@
 ✅ {{ __('telegram.admin.active') }}: <b>{{ $activeServers }}</b>
 ❌ {{ __('telegram.admin.inactive') }}: <b>{{ $inactiveServers }}</b>
 
-🔍 <b>{{ __('telegram.admin.server_details') }}</b> (max 10):
+🔍 <b>{{ __('telegram.admin.server_details') }}</b> ({{ __('telegram.admin.max', ['count' => 10]) }}):
 @foreach($servers as $server)
 {{ $server['statusIcon'] }} {{ $server['location'] }}
    {{ $server['loadIcon'] }} {{ __('telegram.admin.avg_load') }}: {{ $server['load'] }}%

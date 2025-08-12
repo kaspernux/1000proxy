@@ -18,6 +18,7 @@ use Telegram\Bot\Objects\Message;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Str;
 use Telegram\Bot\Keyboard\Keyboard;
+use Illuminate\Support\Facades\Lang;
 
 class TelegramBotService
 {
@@ -44,36 +45,60 @@ class TelegramBotService
     public function setCommands(?array $commands = null): bool
     {
         try {
-            $default = [
-                ['command' => 'start', 'description' => 'Link your account and get started'],
-                ['command' => 'menu', 'description' => 'Open the main menu'],
-                ['command' => 'help', 'description' => 'Show help and available commands'],
-                ['command' => 'balance', 'description' => 'Check your wallet balance'],
-                ['command' => 'topup', 'description' => 'Top up your wallet'],
-                ['command' => 'myproxies', 'description' => 'List your active services'],
-                ['command' => 'plans', 'description' => 'Browse available plans'],
-                ['command' => 'orders', 'description' => 'View your recent orders'],
-                ['command' => 'buy', 'description' => 'Buy a plan by ID (e.g., /buy 1)'],
-                ['command' => 'config', 'description' => 'Get config for a client (e.g., /config <id>)'],
-                ['command' => 'reset', 'description' => 'Reset traffic for a client (e.g., /reset <id>)'],
-                ['command' => 'status', 'description' => 'Account or service status'],
-                ['command' => 'support', 'description' => 'Contact support'],
-                ['command' => 'signup', 'description' => 'Create an account'],
-                ['command' => 'profile', 'description' => 'View or update your profile'],
-            ];
-
-            $payload = [
-                'commands' => $commands ?? $default,
-            ];
-
-            // Optionally set language-specific commands
-            $lang = config('services.telegram.language') ?? env('TELEGRAM_LANGUAGE');
-            if (!empty($lang)) {
-                $payload['language_code'] = $lang;
+            // If custom commands are provided, set them as-is (default scope) and return
+            if ($commands) {
+                $resp = $this->telegram->setMyCommands(['commands' => $commands]);
+                Log::info('Telegram commands set (custom)', ['ok' => (bool)($resp['ok'] ?? true)]);
+                return true;
             }
 
-            $resp = $this->telegram->setMyCommands($payload);
-            \Illuminate\Support\Facades\Log::info('Telegram commands set', ['ok' => (bool)($resp['ok'] ?? true)]);
+            // Helper to build a localized commands list
+            $buildCommands = function (string $locale): array {
+                $key = fn(string $k) => Lang::get("telegram.commands.$k", [], $locale);
+                return [
+                    ['command' => 'start', 'description' => (string) $key('start')],
+                    ['command' => 'menu', 'description' => (string) $key('menu')],
+                    ['command' => 'help', 'description' => (string) $key('help')],
+                    ['command' => 'balance', 'description' => (string) $key('balance')],
+                    ['command' => 'topup', 'description' => (string) $key('topup')],
+                    ['command' => 'myproxies', 'description' => (string) $key('myproxies')],
+                    ['command' => 'plans', 'description' => (string) $key('plans')],
+                    ['command' => 'orders', 'description' => (string) $key('orders')],
+                    ['command' => 'buy', 'description' => (string) $key('buy')],
+                    ['command' => 'config', 'description' => (string) $key('config')],
+                    ['command' => 'reset', 'description' => (string) $key('reset')],
+                    ['command' => 'status', 'description' => (string) $key('status')],
+                    ['command' => 'support', 'description' => (string) $key('support')],
+                    ['command' => 'signup', 'description' => (string) $key('signup')],
+                    ['command' => 'profile', 'description' => (string) $key('profile')],
+                ];
+            };
+
+            // Set default (no language_code) commands using English as a fallback
+            $defaultCommands = $buildCommands('en');
+            $this->telegram->setMyCommands(['commands' => $defaultCommands]);
+
+            // Register language-specific command descriptions (two-letter ISO 639-1 only)
+            $locales = [
+                'en' => ['en'],
+                'ru' => ['ru'],
+                'fr' => ['fr'],
+                'zh' => ['zh'],
+                'ar' => ['ar'],
+                'hi' => ['hi'],
+                'es' => ['es'],
+                'pt' => ['pt'],
+            ];
+
+            foreach ($locales as $locale => $codes) {
+                $list = $buildCommands($locale);
+                foreach ($codes as $code) {
+                    $payload = ['commands' => $list, 'language_code' => $code];
+                    $this->telegram->setMyCommands($payload);
+                }
+            }
+
+            Log::info('Telegram commands set (localized)');
             return true;
         } catch (\Throwable $e) {
             \Illuminate\Support\Facades\Log::error('Failed to set Telegram commands', ['error' => $e->getMessage()]);
@@ -105,6 +130,52 @@ class TelegramBotService
     }
 
     /**
+     * Set localized bot branding (name, short description, description) for multiple locales.
+     * Uses translation keys telegram.bot.name|short|description per locale with English fallback.
+     */
+    public function setBrandingLocalized(): bool
+    {
+        try {
+            $locales = [
+                'en' => ['en'],
+                'ru' => ['ru'],
+                'fr' => ['fr'],
+                'zh' => ['zh'],
+                'ar' => ['ar'],
+                'hi' => ['hi'],
+                'es' => ['es'],
+                'pt' => ['pt'],
+            ];
+
+            // Default (no language_code) from English
+            $defaultName = (string) \Lang::get('telegram.bot.name', [], 'en');
+            $defaultShort = (string) \Lang::get('telegram.bot.short', [], 'en');
+            $defaultDesc = (string) \Lang::get('telegram.bot.description', [], 'en');
+            if ($defaultName) { $this->botApi('setMyName', ['name' => $defaultName]); }
+            if ($defaultShort) { $this->botApi('setMyShortDescription', ['short_description' => $defaultShort]); }
+            if ($defaultDesc) { $this->botApi('setMyDescription', ['description' => $defaultDesc]); }
+
+            // Per-language variants
+            foreach ($locales as $locale => $codes) {
+                $name = (string) \Lang::get('telegram.bot.name', [], $locale) ?: $defaultName;
+                $short = (string) \Lang::get('telegram.bot.short', [], $locale) ?: $defaultShort;
+                $desc = (string) \Lang::get('telegram.bot.description', [], $locale) ?: $defaultDesc;
+                foreach ($codes as $code) {
+                    if ($name) { $this->botApi('setMyName', ['name' => $name, 'language_code' => $code]); }
+                    if ($short) { $this->botApi('setMyShortDescription', ['short_description' => $short, 'language_code' => $code]); }
+                    if ($desc) { $this->botApi('setMyDescription', ['description' => $desc, 'language_code' => $code]); }
+                }
+            }
+
+            \Log::info('Telegram localized branding set');
+            return true;
+        } catch (\Throwable $e) {
+            \Log::error('Failed to set localized Telegram branding', ['error' => $e->getMessage()]);
+            return false;
+        }
+    }
+
+    /**
      * Configure chat menu button
      * type: 'commands' or 'web_app' (with text + url)
      */
@@ -126,6 +197,25 @@ class TelegramBotService
             Log::error('Failed to set Telegram menu button', ['error' => $e->getMessage()]);
             return false;
         }
+    }
+
+    /**
+     * Low-level helper to call Telegram Bot API endpoints not exposed by the SDK.
+     * Returns decoded response array; throws on API error.
+     */
+    protected function botApi(string $endpoint, array $params = []): array
+    {
+        // Using SDK's HTTP client to POST to raw endpoints.
+        $response = $this->telegram->post($endpoint, $params);
+        $data = $response->getDecodedBody();
+        if (isset($data['ok']) && $data['ok'] === true) {
+            return $data;
+        }
+        // If Telegram returned an error, surface it for the caller to handle/log.
+        if ($response->isError()) {
+            $response->throwException();
+        }
+        return $data ?? [];
     }
 
     /**
@@ -269,19 +359,57 @@ class TelegramBotService
 
         // Map pretty reply-keyboard labels to commands (no leading '/')
         if ($text && !str_starts_with($text, '/')) {
-            // Map localized reply-keyboard labels to commands
-            $labelMap = [
-                '✨ ' . __('telegram.buttons.menu') => '/menu',
-                '🛒 ' . __('telegram.buttons.plans') => '/plans',
-                '📦 ' . __('telegram.buttons.orders') => '/orders',
-                '🧰 ' . __('telegram.buttons.my_services') => '/myproxies',
-                '💳 ' . __('telegram.buttons.wallet') => '/balance',
-                '🆘 ' . __('telegram.buttons.support') => '/support',
-                '👤 ' . __('telegram.buttons.profile') => '/profile',
-                '🆕 ' . __('telegram.buttons.sign_up') => '/signup',
+            $normalized = trim(preg_replace('/\s+/', ' ', $text));
+
+            // 1) Emoji-first mapping (language-agnostic)
+            $emojiMap = [
+                '✨' => '/menu',
+                '🛒' => '/plans',
+                '📦' => '/orders',
+                '🧰' => '/myproxies',
+                '💳' => '/balance',
+                '🆘' => '/support',
+                '👤' => '/profile',
+                '🆕' => '/signup',
             ];
-            if (isset($labelMap[$text])) {
-                $text = $labelMap[$text];
+            foreach ($emojiMap as $emoji => $cmd) {
+                if (str_starts_with($normalized, $emoji)) {
+                    $text = $cmd;
+                    break;
+                }
+            }
+
+            // 2) If not matched by emoji, try label maps for current locale and English fallback
+            if (!str_starts_with($text, '/')) {
+                $currentLocaleMap = [
+                    '✨ ' . __('telegram.buttons.menu') => '/menu',
+                    '🛒 ' . __('telegram.buttons.plans') => '/plans',
+                    '📦 ' . __('telegram.buttons.orders') => '/orders',
+                    '🧰 ' . __('telegram.buttons.my_services') => '/myproxies',
+                    '💳 ' . __('telegram.buttons.wallet') => '/balance',
+                    '🆘 ' . __('telegram.buttons.support') => '/support',
+                    '👤 ' . __('telegram.buttons.profile') => '/profile',
+                    '🆕 ' . __('telegram.buttons.sign_up') => '/signup',
+                ];
+
+                // English fallback mapping in case labels were shown in EN but locale resolved differently
+                $en = function (string $k) { return \Illuminate\Support\Facades\Lang::get("telegram.buttons.$k", [], 'en'); };
+                $englishMap = [
+                    '✨ ' . $en('menu') => '/menu',
+                    '🛒 ' . $en('plans') => '/plans',
+                    '📦 ' . $en('orders') => '/orders',
+                    '🧰 ' . $en('my_services') => '/myproxies',
+                    '💳 ' . $en('wallet') => '/balance',
+                    '🆘 ' . $en('support') => '/support',
+                    '👤 ' . $en('profile') => '/profile',
+                    '🆕 ' . $en('sign_up') => '/signup',
+                ];
+
+                if (isset($currentLocaleMap[$normalized])) {
+                    $text = $currentLocaleMap[$normalized];
+                } elseif (isset($englishMap[$normalized])) {
+                    $text = $englishMap[$normalized];
+                }
             }
         }
 
@@ -469,15 +597,15 @@ class TelegramBotService
 
         // Create inline keyboard for quick top-up amounts via builder
     $kb = Keyboard::make()->inline()
-            ->row(
+            ->row([
                 Keyboard::inlineButton(['text' => '$10', 'url' => config('app.url') . '/wallet?amount=10']),
                 Keyboard::inlineButton(['text' => '$25', 'url' => config('app.url') . '/wallet?amount=25']),
                 Keyboard::inlineButton(['text' => '$50', 'url' => config('app.url') . '/wallet?amount=50'])
-            )
-            ->row(
+            ])
+            ->row([
                 Keyboard::inlineButton(['text' => '$100', 'url' => config('app.url') . '/wallet?amount=100']),
         Keyboard::inlineButton(['text' => __('telegram.buttons.custom_amount'), 'url' => config('app.url') . '/wallet'])
-            );
+            ]);
 
     $this->sendMessageWithKeyboard($chatId, $message, $kb);
     }
@@ -546,10 +674,10 @@ class TelegramBotService
         }
 
         // Send confirmation keyboard (builder)
-        $keyboard = Keyboard::make()->inline()->row(
+        $keyboard = Keyboard::make()->inline()->row([
             Keyboard::inlineButton(['text' => '✅ ' . __('telegram.buttons.yes_reset'), 'callback_data' => "reset_confirm_{$client->id}"]),
             Keyboard::inlineButton(['text' => '❌ ' . __('telegram.buttons.cancel'), 'callback_data' => "reset_cancel_{$client->id}"])
-        );
+        ]);
 
         $text = $this->renderView('telegram.reset_confirm', [
             'planName' => $client->plan->name ?? '—',
@@ -610,22 +738,27 @@ class TelegramBotService
     protected function handleMenu(int $chatId, int $userId): void
     {
         $keyboard = Keyboard::make()->inline();
-        $keyboard->row(
+        $keyboard->row([
             Keyboard::inlineButton(['text' => '🧰 ' . __('telegram.buttons.my_services'), 'callback_data' => 'view_myproxies']),
             Keyboard::inlineButton(['text' => '🛒 ' . __('telegram.buttons.plans'), 'callback_data' => 'view_servers'])
-        );
-        $keyboard->row(
+        ]);
+        $keyboard->row([
             Keyboard::inlineButton(['text' => '💳 ' . __('telegram.buttons.wallet'), 'callback_data' => 'refresh_balance']),
             Keyboard::inlineButton(['text' => '📦 ' . __('telegram.buttons.orders'), 'callback_data' => 'view_orders'])
-        );
-        $keyboard->row(
+        ]);
+        $keyboard->row([
             Keyboard::inlineButton(['text' => '🆘 ' . __('telegram.buttons.support'), 'callback_data' => 'open_support'])
-        );
+        ]);
+
+        // Direct link to Dashboard (opens website inside Telegram)
+        $keyboard->row([
+            Keyboard::inlineButton(['text' => '🔗 ' . __('telegram.common.open_dashboard'), 'url' => config('app.url')])
+        ]);
 
         // If linked staff, add admin row
         $staff = $this->getStaffUser($chatId, $userId);
         if ($staff && in_array($staff->role, ['admin', 'support_manager', 'sales_support'])) {
-            $keyboard->row(Keyboard::inlineButton(['text' => '🛠 ' . __('telegram.buttons.admin'), 'callback_data' => 'admin_panel']));
+            $keyboard->row([Keyboard::inlineButton(['text' => '🛠 ' . __('telegram.buttons.admin'), 'callback_data' => 'admin_panel'])]);
         }
 
         $text = $this->renderView('telegram.menu');
@@ -679,11 +812,11 @@ class TelegramBotService
         if ($customer) {
             $this->sendMessage($chatId, $text . "\n" . __('telegram.messages.use_buy_compact'));
         } else {
-            $keyboard = Keyboard::make()->inline()->row(
+            $keyboard = Keyboard::make()->inline()->row([
                 Keyboard::inlineButton(['text' => '🆕 ' . __('telegram.common.create_account'), 'callback_data' => 'signup_start'])
-            )->row(
+            ])->row([
                 Keyboard::inlineButton(['text' => '📋 ' . __('telegram.buttons.how_to_link_later'), 'callback_data' => 'open_support'])
-            );
+            ]);
             $this->sendMessageWithKeyboard($chatId, $text . "\n" . __('telegram.messages.purchase_requires_account'), $keyboard);
         }
     }
@@ -709,15 +842,15 @@ class TelegramBotService
         foreach ($orders as $order) {
             $icon = $this->getOrderStatusIcon($order->order_status ?? '');
             $amount = (float) ($order->grand_amount ?? $order->total_amount ?? 0);
-            $kb->row(Keyboard::inlineButton([
+            $kb->row([Keyboard::inlineButton([
                 'text' => $icon . ' #' . $order->id . ' • $' . number_format($amount, 2),
                 'url' => config('app.url') . '/orders/' . $order->id,
-            ]));
+            ])]);
         }
-        $kb->row(Keyboard::inlineButton([
+        $kb->row([Keyboard::inlineButton([
             'text' => '🧾 ' . __('telegram.buttons.open_orders'),
             'url' => config('app.url') . '/orders'
-        ]));
+        ])]);
         $this->sendMessageWithKeyboard($chatId, $text, $kb);
     }
 
@@ -934,16 +1067,16 @@ class TelegramBotService
             $nav[] = Keyboard::inlineButton(['text' => __('telegram.common.next') . ' ▶️', 'callback_data' => 'server_page_' . ($page + 1)]);
         }
         if (!empty($nav)) {
-            $kb->row(...$nav);
+            $kb->row($nav);
         }
         foreach ($plans as $plan) {
-            $kb->row(Keyboard::inlineButton([
+            $kb->row([Keyboard::inlineButton([
                 'text' => '🛒 ' . __('telegram.buttons.buy_plan', ['name' => $plan->name, 'price' => '$' . number_format((float)$plan->price, 2)]),
                 'callback_data' => 'buy_plan_' . $plan->id,
-            ]));
+            ])]);
         }
         if (!$isLinked) {
-            $kb->row(Keyboard::inlineButton(['text' => '🆕 ' . __('telegram.common.create_account'), 'callback_data' => 'signup_start']));
+            $kb->row([Keyboard::inlineButton(['text' => '🆕 ' . __('telegram.common.create_account'), 'callback_data' => 'signup_start'])]);
         }
 
         $this->sendMessageWithKeyboard($chatId, $text, $kb);
@@ -982,10 +1115,10 @@ class TelegramBotService
         }
 
         // Create confirmation keyboard
-        $keyboard = Keyboard::make()->inline()->row(
+        $keyboard = Keyboard::make()->inline()->row([
             Keyboard::inlineButton(['text' => '✅ ' . __('telegram.buttons.confirm_purchase'), 'callback_data' => "confirm_buy_{$planId}"]),
             Keyboard::inlineButton(['text' => '❌ ' . __('telegram.buttons.cancel'), 'callback_data' => 'cancel_buy'])
-        );
+        ]);
 
         $message = '🛒 ' . __('telegram.messages.buy_confirm_title') . "\n\n";
         $message .= '📦 ' . __('telegram.messages.buy_confirm_plan', ['plan' => $plan->name]) . "\n";
@@ -1010,17 +1143,17 @@ class TelegramBotService
         }
 
     $keyboard = Keyboard::make()->inline()
-            ->row(
+            ->row([
                 Keyboard::inlineButton(['text' => '👥 ' . __('telegram.buttons.users'), 'callback_data' => 'user_stats']),
                 Keyboard::inlineButton(['text' => '🌐 ' . __('telegram.buttons.servers'), 'callback_data' => 'server_health'])
-            )
-            ->row(
+            ])
+            ->row([
                 Keyboard::inlineButton(['text' => '📊 ' . __('telegram.buttons.statistics'), 'callback_data' => 'system_stats']),
                 Keyboard::inlineButton(['text' => '📢 ' . __('telegram.buttons.broadcast'), 'callback_data' => 'admin_broadcast'])
-            )
-            ->row(
+            ])
+            ->row([
                 Keyboard::inlineButton(['text' => '🔄 ' . __('telegram.buttons.refresh'), 'callback_data' => 'admin_panel'])
-            );
+            ]);
 
     $text = $this->renderView('telegram.admin.panel');
 
@@ -1139,7 +1272,7 @@ class TelegramBotService
             $nav[] = Keyboard::inlineButton(['text' => __('telegram.common.next') . ' ▶️', 'callback_data' => 'server_health_page_' . ($page + 1)]);
         }
         if (!empty($nav)) {
-            $kb->row(...$nav);
+            $kb->row($nav);
         }
 
         $this->sendMessageWithKeyboard($chatId, $text, $kb);
@@ -1404,12 +1537,41 @@ class TelegramBotService
     {
         try {
             $html = trim(view($view, $data)->render());
-            // Telegram supports a subset of HTML; keep it simple
+            // Normalize to Telegram-safe HTML: allow only simple inline tags and line breaks
+            $html = $this->sanitizeTelegramHtml($html);
             return $html;
         } catch (\Throwable $e) {
             Log::error('Telegram view render failed', ['view' => $view, 'error' => $e->getMessage()]);
             return '⚠️ Failed to render message.';
         }
+    }
+
+    /**
+     * Convert Blade HTML to Telegram-safe subset (no div/span/p tags).
+     * Allowed: <b><strong><i><em><u><s><code><pre><a><br>
+     */
+    protected function sanitizeTelegramHtml(string $html): string
+    {
+        // Convert common block elements to newlines to preserve readability
+        $replacements = [
+            '/\r\n|\r/' => "\n",
+            '/<\s*br\s*\/?>/i' => "\n",
+            '/<\s*\/(div|p)\s*>/i' => "\n\n",
+            '/<\s*(div|p)[^>]*>/i' => '',
+            '/<\s*\/?span[^>]*>/i' => '',
+        ];
+        foreach ($replacements as $pattern => $rep) {
+            $html = preg_replace($pattern, $rep, $html);
+        }
+
+        // Strip all tags except Telegram-allowed subset
+        $html = strip_tags($html, '<b><strong><i><em><u><s><code><pre><a><br>');
+
+        // Collapse excessive blank lines and spaces
+        $html = preg_replace("/\n{3,}/", "\n\n", $html);
+        $html = trim($html);
+
+        return $html;
     }
 
     /**
@@ -1744,5 +1906,49 @@ class TelegramBotService
         cache()->put("tg_flow_{$chatId}", [ 'name' => $stateName ], now()->addMinutes(10));
         $prompt = $type === 'name' ? __('telegram.messages.prompt_new_name') : __('telegram.messages.prompt_new_email');
         $this->sendMessage($chatId, $prompt);
+    }
+
+    /**
+     * Get authenticated web User (staff or customer-linked account context)
+     */
+    protected function getAuthenticatedUser(int $chatId, int $userId): ?User
+    {
+        // Prefer User model linked to this chat for staff/admin features
+        $user = User::where('telegram_chat_id', $chatId)->first();
+        if ($user) {
+            return $user;
+        }
+        // Fallback: if a Customer is linked, try to resolve its owning User if applicable
+        $customer = Customer::where('telegram_chat_id', $chatId)->first();
+        if (method_exists(Customer::class, 'user') && $customer && $customer->user) {
+            return $customer->user;
+        }
+        return null;
+    }
+
+    /**
+     * Handle /profile command: show current profile with quick edit actions.
+     */
+    protected function handleProfile(int $chatId, int $userId): void
+    {
+        $customer = Customer::where('telegram_chat_id', $chatId)->first();
+        if (!$customer) {
+            $this->sendMessage($chatId, __('telegram.messages.need_account_profile'));
+            return;
+        }
+
+        $text = $this->renderView('telegram.profile', [
+            'name' => $customer->name,
+            'email' => $customer->email,
+            'joined' => $customer->created_at?->format('M j, Y') ?? '—',
+        ]);
+
+        $kb = Keyboard::make()->inline()
+            ->row([
+                Keyboard::inlineButton(['text' => '✏️ ' . __('telegram.buttons.edit_name'), 'callback_data' => 'profile_update_name']),
+                Keyboard::inlineButton(['text' => '✉️ ' . __('telegram.buttons.edit_email'), 'callback_data' => 'profile_update_email'])
+            ]);
+
+        $this->sendMessageWithKeyboard($chatId, $text, $kb);
     }
 }

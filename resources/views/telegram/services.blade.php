@@ -5,12 +5,13 @@
     @php
       $planName = $client->plan->name ?? '—';
       $location = $client->inbound->server->country ?? $client->inbound->server->ip ?? '—';
-      $status = $client->status ?? ($client->enable ? 'active' : 'inactive');
+  $status = $client->status ?? ($client->enable ? 'active' : 'inactive');
+  $statusLabel = $status === 'active' ? __('telegram.status.active_label') : ($status === 'inactive' ? __('telegram.status.inactive_label') : $status);
       $used = $usedMap[$client->id] ?? '—';
     @endphp
     • <b>{{ $planName }}</b><br/>
     📍 {{ $location }}<br/>
-    📊 {{ __('telegram.services.status') }}: {{ $status }}<br/>
+  📊 {{ __('telegram.services.status') }}: {{ $statusLabel }}<br/>
     📈 {{ __('telegram.services.traffic') }}: {{ $used }}<br/>
     🔗 /config_{{ $client->id }} • 🔄 /reset_{{ $client->id }}
     <br/><br/>

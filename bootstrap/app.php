@@ -41,6 +41,7 @@ use App\Console\Commands\TelegramSetCommands;
 use App\Console\Commands\TelegramSetBranding;
 use App\Console\Commands\TelegramTestBot;
 use App\Console\Commands\TelegramWebhookInfo;
+use App\Console\Commands\TelegramSmokeProfile;
 use App\Console\Commands\TestFilamentPanels;
 use App\Console\Commands\TestHomePage;
 use App\Console\Commands\TestLogin;
@@ -102,6 +103,7 @@ return Application::configure(basePath: dirname(__DIR__))
     TelegramSetBranding::class,
         TelegramTestBot::class,
         TelegramWebhookInfo::class,
+    TelegramSmokeProfile::class,
         // Analytics / reports
         GenerateAnalyticsReport::class,
         HealthCheckCommand::class,

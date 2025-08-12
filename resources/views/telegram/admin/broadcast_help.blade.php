@@ -1,8 +1,8 @@
 📢 <b>{{ __('telegram.admin.broadcast_title') }}</b>
 
-{{ __('telegram.admin.broadcast_help') ?? 'Send a message to all Telegram users.' }}
+{{ __('telegram.admin.broadcast_help') }}
 
-Usage: <code>/broadcast [your message]</code>
+{{ __('telegram.admin.broadcast_usage') }} <code>/broadcast [{{ __('telegram.admin.your_message') }}]</code>
 
-Example:
-<code>/broadcast Important maintenance tonight at 2 AM UTC. Services will be temporarily unavailable.</code>
+{{ __('telegram.admin.broadcast_example_label') }}
+<code>/broadcast {{ __('telegram.admin.broadcast_example_text') }}</code>

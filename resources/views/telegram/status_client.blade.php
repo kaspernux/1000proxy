@@ -2,7 +2,7 @@
 
 📦 {{ __('telegram.config.plan') }}: <b>{{ $planName ?? '—' }}</b>
 🌐 {{ __('telegram.config.server') }}: <b>{{ $server ?? '—' }}</b>
-🔌 {{ __('telegram.status.connection') }}: <b>{{ $connection ? 'Active' : 'Inactive' }}</b>
+🔌 {{ __('telegram.status.connection') }}: <b>{{ $connection ? __('telegram.status.active_label') : __('telegram.status.inactive_label') }}</b>
 📈 {{ __('telegram.status.upload') }}: <b>{{ $upload }}</b>
 📉 {{ __('telegram.status.download') }}: <b>{{ $download }}</b>
 📊 {{ __('telegram.status.total') }}: <b>{{ $total }}</b>
