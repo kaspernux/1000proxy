@@ -1,0 +1,17 @@
+🔐 <b>{{ __('telegram.config.title') }}</b>
+
+📦 {{ __('telegram.config.plan') }}: <b>{{ $planName ?? '—' }}</b>
+🌐 {{ __('telegram.config.server') }}: <b>{{ $server ?? '—' }}</b>
+
+@if(!empty($clientLink))
+🔗 {{ __('telegram.config.client_link') }}: <a href="{{ $clientLink }}">open</a>
+@endif
+@if(!empty($subscriptionLink))
+📩 {{ __('telegram.config.subscription') }}: <a href="{{ $subscriptionLink }}">open</a>
+@endif
+@if(!empty($jsonLink))
+🧾 {{ __('telegram.config.json') }}: <a href="{{ $jsonLink }}">open</a>
+@endif
+
+🧭 {{ __('telegram.config.dashboard') }}
+<a href="{{ config('app.url') }}/dashboard">{{ __('telegram.common.open_dashboard') }}</a>

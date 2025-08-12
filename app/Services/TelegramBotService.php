@@ -9,6 +9,7 @@ use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\PaymentMethod;
 use App\Models\ServerClient;
+use App\Models\Server;
 use App\Jobs\ProcessXuiOrder;
 use Illuminate\Support\Facades\Log;
 use Telegram\Bot\Api;
@@ -16,6 +17,7 @@ use Telegram\Bot\Objects\Update;
 use Telegram\Bot\Objects\Message;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Str;
+use Telegram\Bot\Keyboard\Keyboard;
 
 class TelegramBotService
 {
@@ -127,20 +129,6 @@ class TelegramBotService
     }
 
     /**
-     * Low-level Bot API helper using Laravel HTTP
-     */
-    protected function botApi(string $method, array $params): array
-    {
-        $token = (string) config('services.telegram.bot_token');
-        $url = "https://api.telegram.org/bot{$token}/{$method}";
-        $resp = Http::asJson()->post($url, $params);
-        if (!$resp->ok() || !($resp->json('ok') ?? false)) {
-            throw new \RuntimeException('Telegram API error: ' . ($resp->json('description') ?? $resp->body()));
-        }
-        return $resp->json();
-    }
-
-    /**
      * Set webhook for Telegram bot
      */
     public function setWebhook(): bool
@@ -227,6 +215,31 @@ class TelegramBotService
         try {
             $update = new Update($update);
 
+            // Locale detection: prefer Telegram user's language_code, map to supported locales
+            try {
+                $langCode = null;
+                if ($update->getMessage()) {
+                    $langCode = $update->getMessage()->getFrom()->getLanguageCode();
+                } elseif ($update->getCallbackQuery()) {
+                    $langCode = $update->getCallbackQuery()->getFrom()->getLanguageCode();
+                }
+                $supported = ['en','ru','fr','zh','ar','hi','es','pt'];
+                $map = [
+                    'en' => 'en', 'en-us' => 'en', 'en-gb' => 'en',
+                    'ru' => 'ru', 'fr' => 'fr', 'zh' => 'zh', 'zh-hans' => 'zh', 'zh-cn' => 'zh', 'zh-hant' => 'zh',
+                    'ar' => 'ar', 'hi' => 'hi', 'es' => 'es', 'pt' => 'pt', 'pt-br' => 'pt',
+                ];
+                $code = strtolower((string) $langCode);
+                $locale = $map[$code] ?? ($map[substr($code, 0, 2)] ?? 'en');
+                if (!in_array($locale, $supported, true)) {
+                    $locale = 'en';
+                }
+                app()->setLocale($locale);
+            } catch (\Throwable $e) {
+                // Default to English on any error
+                app()->setLocale('en');
+            }
+
             if ($update->getMessage()) {
                 $message = $update->getMessage();
                 if ($message instanceof Message) {
@@ -253,6 +266,24 @@ class TelegramBotService
         $chatId = $message->getChat()->getId();
         $text = $message->getText();
         $userId = $message->getFrom()->getId();
+
+        // Map pretty reply-keyboard labels to commands (no leading '/')
+        if ($text && !str_starts_with($text, '/')) {
+            // Map localized reply-keyboard labels to commands
+            $labelMap = [
+                '✨ ' . __('telegram.buttons.menu') => '/menu',
+                '🛒 ' . __('telegram.buttons.plans') => '/plans',
+                '📦 ' . __('telegram.buttons.orders') => '/orders',
+                '🧰 ' . __('telegram.buttons.my_services') => '/myproxies',
+                '💳 ' . __('telegram.buttons.wallet') => '/balance',
+                '🆘 ' . __('telegram.buttons.support') => '/support',
+                '👤 ' . __('telegram.buttons.profile') => '/profile',
+                '🆕 ' . __('telegram.buttons.sign_up') => '/signup',
+            ];
+            if (isset($labelMap[$text])) {
+                $text = $labelMap[$text];
+            }
+        }
 
         // Extract command and parameters
         $command = strtok($text, ' ');
@@ -362,7 +393,7 @@ class TelegramBotService
                     if ($this->handleOngoingFlow($chatId, $userId, $text)) {
                         // handled
                     } else {
-                        $this->sendMessage($chatId, "Unknown command. Type /help to see available commands.");
+                        $this->sendMessage($chatId, __('telegram.messages.unknown'));
                     }
                 }
         }
@@ -373,6 +404,9 @@ class TelegramBotService
      */
     protected function handleStart(int $chatId, int $userId, string $params): void
     {
+        // Always show a persistent command keyboard first
+        $this->sendPersistentCommandMenu($chatId);
+
         // If a customer is already linked, jump to main menu
         $customer = Customer::where('telegram_chat_id', $chatId)->first();
         if ($customer) {
@@ -380,22 +414,17 @@ class TelegramBotService
             return;
         }
 
-        // Not linked: friendly onboarding with CTAs
-        $message = "Welcome to 1000proxy! 🚀\n\n";
-        $message .= "You can browse plans now, and create an account when you're ready.\n\n";
-        $message .= "To link later from the website:\n";
-        $message .= "1) Visit: " . config('app.url') . "\n";
-        $message .= "2) Login or create an account\n";
-        $message .= "3) Account settings → Link Telegram Account, then paste the code here.\n\n";
+    // Not linked: friendly onboarding with CTAs (localized)
+    $message = __('telegram.messages.start_welcome', ['url' => config('app.url')]);
 
         $keyboard = [
             'inline_keyboard' => [
-                [ ['text' => '🌐 Browse Plans', 'callback_data' => 'view_servers'] ],
-                [ ['text' => '🆕 Create Account', 'callback_data' => 'signup_start'] ],
-                [ ['text' => '❓ Help', 'callback_data' => 'open_support'] ],
+                [ ['text' => '🌐 ' . __('telegram.common.browse_plans'), 'callback_data' => 'view_servers'] ],
+                [ ['text' => '🆕 ' . __('telegram.common.create_account'), 'callback_data' => 'signup_start'] ],
+                [ ['text' => '❓ ' . __('telegram.common.help'), 'callback_data' => 'open_support'] ],
             ]
         ];
-        $this->sendMessageWithKeyboard($chatId, $message, $keyboard);
+    $this->sendMessageWithKeyboard($chatId, $message, $keyboard);
     }
 
     /**
@@ -409,30 +438,19 @@ class TelegramBotService
         $clients = $customer->clients()->latest()->take(10)->get();
 
         if ($clients->isEmpty()) {
-            $this->sendMessage($chatId, "📭 No active services found.\n\nUse /plans to browse and purchase.");
+            $this->sendMessage($chatId, __('telegram.messages.no_services'));
             return;
         }
-
-        $message = "🔐 Your Active Services\n\n";
+        // Precompute used
+        $usedMap = [];
         foreach ($clients as $client) {
-            $planName = $client->plan->name ?? '—';
-            $location = $client->inbound->server->country ?? $client->inbound->server->ip ?? '—';
-            $status = $client->status ?? ($client->enable ? 'active' : 'inactive');
-            $used = $this->formatTraffic(($client->remote_up ?? 0) + ($client->remote_down ?? 0));
-
-            $message .= "� {$planName}\n";
-            $message .= "📍 {$location}\n";
-            $message .= "📊 Status: {$status}\n";
-            $message .= "📈 Traffic: {$used}\n";
-            $message .= "🔗 /config_{$client->id} - Get config\n";
-            $message .= "🔄 /reset_{$client->id} - Reset traffic\n";
-            $message .= "📅 Created: " . ($client->created_at?->format('M j, Y') ?? '—') . "\n\n";
+            $usedMap[$client->id] = $this->formatTraffic(($client->remote_up ?? 0) + ($client->remote_down ?? 0));
         }
-
-        $message .= "💡 Use /config_[client_id] to get configuration\n";
-        $message .= "🔗 Full dashboard: " . config('app.url') . "/dashboard";
-
-        $this->sendMessage($chatId, $message);
+        $text = $this->renderView('telegram.services', [
+            'clients' => $clients,
+            'usedMap' => $usedMap,
+        ]);
+    $this->sendMessage($chatId, $text . "\n" . __('telegram.messages.use_config_hint') . "\n" . __('telegram.messages.open_dashboard', ['url' => config('app.url') . '/dashboard']));
     }
 
     /**
@@ -445,35 +463,23 @@ class TelegramBotService
 
         $wallet = $user->wallet;
         $currentBalance = $wallet ? $wallet->balance : 0;
+        $message = $this->renderView('telegram.topup', [
+            'currentBalance' => $currentBalance,
+        ]);
 
-        $message = "💳 Top Up Your Wallet\n\n";
-        $message .= "💰 Current Balance: $" . number_format($currentBalance, 2) . "\n\n";
-        $message .= "🔗 Visit: " . config('app.url') . "/wallet\n\n";
-        $message .= "💡 Payment Methods Available:\n";
-        $message .= "• 💳 Credit/Debit Cards (Stripe)\n";
-        $message .= "• 🅿️ PayPal\n";
-        $message .= "• ₿ Bitcoin (BTC)\n";
-        $message .= "• 🔒 Monero (XMR)\n";
-        $message .= "• ☀️ Solana (SOL)\n\n";
-        $message .= "⚡ Crypto payments are processed instantly!\n";
-        $message .= "💰 Minimum top-up: $5.00";
+        // Create inline keyboard for quick top-up amounts via builder
+    $kb = Keyboard::make()->inline()
+            ->row(
+                Keyboard::inlineButton(['text' => '$10', 'url' => config('app.url') . '/wallet?amount=10']),
+                Keyboard::inlineButton(['text' => '$25', 'url' => config('app.url') . '/wallet?amount=25']),
+                Keyboard::inlineButton(['text' => '$50', 'url' => config('app.url') . '/wallet?amount=50'])
+            )
+            ->row(
+                Keyboard::inlineButton(['text' => '$100', 'url' => config('app.url') . '/wallet?amount=100']),
+        Keyboard::inlineButton(['text' => __('telegram.buttons.custom_amount'), 'url' => config('app.url') . '/wallet'])
+            );
 
-        // Create inline keyboard for quick top-up amounts
-        $keyboard = [
-            'inline_keyboard' => [
-                [
-                    ['text' => '$10', 'url' => config('app.url') . '/wallet?amount=10'],
-                    ['text' => '$25', 'url' => config('app.url') . '/wallet?amount=25'],
-                    ['text' => '$50', 'url' => config('app.url') . '/wallet?amount=50']
-                ],
-                [
-                    ['text' => '$100', 'url' => config('app.url') . '/wallet?amount=100'],
-                    ['text' => 'Custom Amount', 'url' => config('app.url') . '/wallet']
-                ]
-            ]
-        ];
-
-        $this->sendMessageWithKeyboard($chatId, $message, $keyboard);
+    $this->sendMessageWithKeyboard($chatId, $message, $kb);
     }
 
     /**
@@ -485,7 +491,7 @@ class TelegramBotService
         if (!$customer) return;
 
         if (empty($params)) {
-            $this->sendMessage($chatId, "Please specify a client or item ID.\n\nExample: /config 1a2b-uuid or /config 123\n\nUse /myproxies to see your active services.");
+            $this->sendMessage($chatId, __('telegram.messages.config_need_id'));
             return;
         }
 
@@ -504,26 +510,20 @@ class TelegramBotService
         }
 
         if (!$client) {
-            $this->sendMessage($chatId, "❌ Configuration not found for the provided ID.");
+            $this->sendMessage($chatId, __('telegram.messages.config_not_found'));
             return;
         }
 
         $config = $client->getDownloadableConfig();
-        $message = "🔐 Configuration\n\n";
-        $message .= "� Plan: " . ($client->plan->name ?? '—') . "\n";
-        $message .= "🌐 Server: " . ($client->inbound->server->ip ?? '—') . "\n\n";
-        if (!empty($config['client_link'])) {
-            $message .= "� Client Link: {$config['client_link']}\n";
-        }
-        if (!empty($config['subscription_link'])) {
-            $message .= "� Subscription: {$config['subscription_link']}\n";
-        }
-        if (!empty($config['json_link'])) {
-            $message .= "� JSON: {$config['json_link']}\n";
-        }
-        $message .= "\n� QR codes and full setup in dashboard:\n" . config('app.url') . "/dashboard";
+        $text = $this->renderView('telegram.config', [
+            'planName' => $client->plan->name ?? '—',
+            'server' => $client->inbound->server->ip ?? '—',
+            'clientLink' => $config['client_link'] ?? null,
+            'subscriptionLink' => $config['subscription_link'] ?? null,
+            'jsonLink' => $config['json_link'] ?? null,
+        ]);
 
-        $this->sendMessage($chatId, $message);
+        $this->sendMessage($chatId, $text);
     }
 
     /**
@@ -535,35 +535,28 @@ class TelegramBotService
         if (!$customer) return;
 
         if (empty($params)) {
-            $this->sendMessage($chatId, "Please specify a client ID.\n\nExample: /reset 1a2b-uuid\n\nUse /myproxies to see your active services.");
+            $this->sendMessage($chatId, __('telegram.messages.reset_need_id'));
             return;
         }
 
         $client = ServerClient::where('customer_id', $customer->id)->find(trim($params));
         if (!$client) {
-            $this->sendMessage($chatId, "❌ Client not found or not accessible.");
+            $this->sendMessage($chatId, __('telegram.messages.client_not_found'));
             return;
         }
 
-        // Send confirmation keyboard
-        $keyboard = [
-            'inline_keyboard' => [
-                [
-                    ['text' => '✅ Yes, Reset', 'callback_data' => "reset_confirm_{$client->id}"],
-                    ['text' => '❌ Cancel', 'callback_data' => "reset_cancel_{$client->id}"]
-                ]
-            ]
-        ];
+        // Send confirmation keyboard (builder)
+        $keyboard = Keyboard::make()->inline()->row(
+            Keyboard::inlineButton(['text' => '✅ ' . __('telegram.buttons.yes_reset'), 'callback_data' => "reset_confirm_{$client->id}"]),
+            Keyboard::inlineButton(['text' => '❌ ' . __('telegram.buttons.cancel'), 'callback_data' => "reset_cancel_{$client->id}"])
+        );
 
-        $message = "🔄 Reset Traffic Confirmation\n\n";
-        $message .= "� Plan: " . ($client->plan->name ?? '—') . "\n";
-        $message .= "🌐 Server: " . ($client->inbound->server->ip ?? '—') . "\n\n";
-        $message .= "⚠️ This will:\n";
-        $message .= "• Clear traffic statistics\n";
-        $message .= "• Keep your credentials the same\n\n";
-        $message .= "Proceed?";
+        $text = $this->renderView('telegram.reset_confirm', [
+            'planName' => $client->plan->name ?? '—',
+            'server' => $client->inbound->server->ip ?? '—',
+        ]);
 
-        $this->sendMessageWithKeyboard($chatId, $message, $keyboard);
+        $this->sendMessageWithKeyboard($chatId, $text, $keyboard);
     }
 
     /**
@@ -575,45 +568,40 @@ class TelegramBotService
         if (!$customer) return;
 
         if (empty($params)) {
-            $this->sendMessage($chatId, "Welcome back, {$user->name}! \ud83c\udf89\n\nYour account is already linked. Tap Menu or type /menu to explore.");
-            $this->handleMenu($chatId, $userId);
             $activeServices = $customer->clients()->count();
             $wallet = $customer->wallet;
             $balance = $wallet ? $wallet->balance : 0;
+            $text = $this->renderView('telegram.status_account', [
+                'name' => $customer->name,
+                'balance' => $balance,
+                'activeServices' => $activeServices,
+                'memberSince' => $customer->created_at->format('M j, Y'),
+            ]);
 
-            $message = "📊 Account Status\n\n";
-            $message .= "👤 User: {$customer->name}\n";
-            $message .= "💰 Balance: $" . number_format($balance, 2) . "\n";
-            $message .= "🔐 Active Services: {$activeServices}\n";
-            $message .= "📅 Member Since: {$customer->created_at->format('M j, Y')}\n\n";
-            $message .= "🔗 Full Dashboard: " . config('app.url') . "/dashboard\n";
-            $message .= "💡 Use /status [client_id] for specific service status";
-
-            $this->sendMessage($chatId, $message);
+            $this->sendMessage($chatId, $text);
             return;
         }
 
         // Show specific client status
         $client = ServerClient::where('customer_id', $customer->id)->find(trim($params));
         if (!$client) {
-            $this->sendMessage($chatId, "❌ Service not found.\n\nUse /myproxies to see your services.");
+            $this->sendMessage($chatId, __('telegram.messages.service_not_found'));
             return;
         }
 
-        $message = "📊 Service Status\n\n";
-        $message .= "� Plan: " . ($client->plan->name ?? '—') . "\n";
-        $message .= "🌐 Server: " . ($client->inbound->server->ip ?? '—') . "\n";
-        $message .= "🔌 Connection: " . (($client->enable ?? false) ? 'Active' : 'Inactive') . "\n";
-        $message .= "📈 Upload: " . $this->formatTraffic((int)($client->remote_up ?? 0)) . "\n";
-        $message .= "📉 Download: " . $this->formatTraffic((int)($client->remote_down ?? 0)) . "\n";
-        $message .= "📊 Total: " . $this->formatTraffic((int)($client->remote_up + $client->remote_down)) . "\n";
-        $message .= "🔄 Resets: " . (int)($client->reset ?? 0) . "\n";
-        $message .= "📅 Created: " . ($client->created_at?->format('M j, Y H:i') ?? '—') . "\n\n";
-        $message .= "🔗 /config_{$client->id} - Get configuration\n";
-        $message .= "🔄 /reset_{$client->id} - Reset traffic";
+        $text = $this->renderView('telegram.status_client', [
+            'planName' => $client->plan->name ?? '—',
+            'server' => $client->inbound->server->ip ?? '—',
+            'connection' => (bool)($client->enable ?? false),
+            'upload' => $this->formatTraffic((int)($client->remote_up ?? 0)),
+            'download' => $this->formatTraffic((int)($client->remote_down ?? 0)),
+            'total' => $this->formatTraffic((int)(($client->remote_up ?? 0) + ($client->remote_down ?? 0))),
+            'resets' => (int)($client->reset ?? 0),
+            'created' => ($client->created_at?->format('M j, Y H:i') ?? '—'),
+            'clientId' => $client->id,
+        ]);
 
-        $this->sendMessage($chatId, $message);
-        $this->handleMenu($chatId, $userId);
+        $this->sendMessage($chatId, $text);
     }
 
     /**
@@ -621,28 +609,27 @@ class TelegramBotService
      */
     protected function handleMenu(int $chatId, int $userId): void
     {
-        $buttons = [
-            [
-                ['text' => '🧰 My Services', 'callback_data' => 'view_myproxies'],
-                ['text' => '🛒 Plans', 'callback_data' => 'view_servers']
-            ],
-            [
-                ['text' => '💳 Wallet', 'callback_data' => 'refresh_balance'],
-                ['text' => '📦 Orders', 'callback_data' => 'view_orders']
-            ],
-            [
-                ['text' => '🆘 Support', 'callback_data' => 'open_support']
-            ]
-        ];
+        $keyboard = Keyboard::make()->inline();
+        $keyboard->row(
+            Keyboard::inlineButton(['text' => '🧰 ' . __('telegram.buttons.my_services'), 'callback_data' => 'view_myproxies']),
+            Keyboard::inlineButton(['text' => '🛒 ' . __('telegram.buttons.plans'), 'callback_data' => 'view_servers'])
+        );
+        $keyboard->row(
+            Keyboard::inlineButton(['text' => '💳 ' . __('telegram.buttons.wallet'), 'callback_data' => 'refresh_balance']),
+            Keyboard::inlineButton(['text' => '📦 ' . __('telegram.buttons.orders'), 'callback_data' => 'view_orders'])
+        );
+        $keyboard->row(
+            Keyboard::inlineButton(['text' => '🆘 ' . __('telegram.buttons.support'), 'callback_data' => 'open_support'])
+        );
 
         // If linked staff, add admin row
         $staff = $this->getStaffUser($chatId, $userId);
         if ($staff && in_array($staff->role, ['admin', 'support_manager', 'sales_support'])) {
-            $buttons[] = [ ['text' => '🛠 Admin', 'callback_data' => 'admin_panel'] ];
+            $keyboard->row(Keyboard::inlineButton(['text' => '🛠 ' . __('telegram.buttons.admin'), 'callback_data' => 'admin_panel']));
         }
 
-        $keyboard = ['inline_keyboard' => $buttons];
-        $this->sendMessageWithKeyboard($chatId, "✨ Main Menu\nPick an option:", $keyboard);
+        $text = $this->renderView('telegram.menu');
+        $this->sendMessageWithKeyboard($chatId, $text, $keyboard);
     }
 
     /**
@@ -656,12 +643,11 @@ class TelegramBotService
         $wallet = $customer->wallet;
         $balance = $wallet ? $wallet->balance : 0;
 
-        $message = "💰 Your Wallet Balance\n\n";
-        $message .= "Balance: $" . number_format($balance, 2) . "\n\n";
-        $message .= "💡 Use /buy to purchase proxy services\n";
-        $message .= "💳 Visit " . config('app.url') . "/wallet to top up your balance";
+        $text = $this->renderView('telegram.balance', [
+            'balance' => $balance,
+        ]);
 
-        $this->sendMessage($chatId, $message);
+        $this->sendMessage($chatId, $text);
     }
 
     /**
@@ -669,7 +655,7 @@ class TelegramBotService
      */
     protected function handlePlans(int $chatId, int $userId): void
     {
-    $customer = Customer::where('telegram_chat_id', $chatId)->first();
+        $customer = Customer::where('telegram_chat_id', $chatId)->first();
 
         $plans = ServerPlan::where('is_active', true)
             ->where('in_stock', true)
@@ -680,36 +666,25 @@ class TelegramBotService
             ->get();
 
         if ($plans->isEmpty()) {
-            $this->sendMessage($chatId, "No plans available at the moment. Please try again later.");
+            $this->sendMessage($chatId, __('telegram.messages.no_plans'));
             return;
         }
 
-        $message = "🌐 Available Plans\n\n";
-
-        foreach ($plans as $plan) {
-            $loc = $plan->server->country ?? $plan->server->ip ?? '—';
-            $duration = $plan->days ? ($plan->days . ' days') : 'Monthly';
-            $data = $plan->data_limit_gb ? ($plan->data_limit_gb . ' GB') : ($plan->volume ? ($plan->volume . ' GB') : 'Unlimited');
-            $protocol = $plan->protocol ?? $plan->server->type ?? '—';
-            $message .= "� {$plan->name}\n";
-            $message .= "� {$loc} • 🔧 {$protocol}\n";
-            $message .= "�️ {$duration} • 📶 {$data}\n";
-            $message .= "� $" . number_format((float)$plan->price, 2) . "\n";
-            $message .= "� /buy_{$plan->id}\n\n";
-        }
+        $text = $this->renderView('telegram.plans', [
+            'plans' => $plans,
+            'page' => 1,
+            'totalPages' => 1,
+        ]);
 
         if ($customer) {
-            $message .= "💡 Use /buy_[plan_id] to purchase";
-            $this->sendMessage($chatId, $message);
+            $this->sendMessage($chatId, $text . "\n" . __('telegram.messages.use_buy_compact'));
         } else {
-            $message .= "🔐 To purchase, please create an account.";
-            $keyboard = [
-                'inline_keyboard' => [
-                    [ ['text' => '🆕 Create Account', 'callback_data' => 'signup_start'] ],
-                    [ ['text' => '📋 How to link later', 'callback_data' => 'open_support'] ],
-                ]
-            ];
-            $this->sendMessageWithKeyboard($chatId, $message, $keyboard);
+            $keyboard = Keyboard::make()->inline()->row(
+                Keyboard::inlineButton(['text' => '🆕 ' . __('telegram.common.create_account'), 'callback_data' => 'signup_start'])
+            )->row(
+                Keyboard::inlineButton(['text' => '📋 ' . __('telegram.buttons.how_to_link_later'), 'callback_data' => 'open_support'])
+            );
+            $this->sendMessageWithKeyboard($chatId, $text . "\n" . __('telegram.messages.purchase_requires_account'), $keyboard);
         }
     }
 
@@ -724,27 +699,26 @@ class TelegramBotService
         $orders = $customer->orders()->latest()->take(5)->get();
 
         if ($orders->isEmpty()) {
-            $this->sendMessage($chatId, "You have no orders yet. Use /servers to browse available servers.");
+            $this->sendMessage($chatId, __('telegram.messages.no_orders'));
             return;
         }
-
-        $message = "📋 Your Recent Orders\n\n";
-
+        $text = $this->renderView('telegram.orders', [
+            'orders' => $orders,
+        ]);
+        $kb = Keyboard::make()->inline();
         foreach ($orders as $order) {
-            $statusIcon = $this->getOrderStatusIcon($order->order_status ?? 'new');
-            $firstItem = $order->items()->with('serverPlan.server')->first();
-            $serverLabel = $firstItem?->serverPlan?->server?->country ?? $firstItem?->serverPlan?->server?->ip ?? '—';
-            $amount = $order->grand_amount ?? $order->total_amount ?? 0;
-            $message .= "{$statusIcon} Order #{$order->id}\n";
-            $message .= "🌐 Server: {$serverLabel}\n";
-            $message .= "💰 Amount: $" . number_format((float)$amount, 2) . "\n";
-            $message .= "📅 Date: {$order->created_at->format('M j, Y')}\n";
-            $message .= "📊 Status: " . ($order->payment_status ?? '—') . " / " . ($order->order_status ?? '—') . "\n\n";
+            $icon = $this->getOrderStatusIcon($order->order_status ?? '');
+            $amount = (float) ($order->grand_amount ?? $order->total_amount ?? 0);
+            $kb->row(Keyboard::inlineButton([
+                'text' => $icon . ' #' . $order->id . ' • $' . number_format($amount, 2),
+                'url' => config('app.url') . '/orders/' . $order->id,
+            ]));
         }
-
-        $message .= "🔗 Visit " . config('app.url') . "/orders for detailed order management";
-
-        $this->sendMessage($chatId, $message);
+        $kb->row(Keyboard::inlineButton([
+            'text' => '🧾 ' . __('telegram.buttons.open_orders'),
+            'url' => config('app.url') . '/orders'
+        ]));
+        $this->sendMessageWithKeyboard($chatId, $text, $kb);
     }
 
     /**
@@ -764,13 +738,13 @@ class TelegramBotService
         }
 
         if (!$planId) {
-            $this->sendMessage($chatId, "Please specify a plan ID. Use /plans to see available plans.");
+            $this->sendMessage($chatId, __('telegram.messages.buy_need_plan'));
             return;
         }
 
         $plan = ServerPlan::with('server')->find($planId);
         if (!$plan || !$plan->isAvailable()) {
-            $this->sendMessage($chatId, "Plan not found or unavailable. Use /plans to see available options.");
+            $this->sendMessage($chatId, __('telegram.messages.plan_unavailable'));
             return;
         }
 
@@ -778,7 +752,7 @@ class TelegramBotService
         $wallet = $customer->wallet;
         $price = (float) $plan->getTotalPrice();
         if (!$wallet || $wallet->balance < $price) {
-            $this->sendMessage($chatId, "Insufficient balance. Please top up your wallet at " . config('app.url') . "/wallet");
+            $this->sendMessage($chatId, __('telegram.messages.insufficient_balance', ['url' => config('app.url') . '/wallet']));
             return;
         }
 
@@ -832,7 +806,7 @@ class TelegramBotService
                 'error' => $e->getMessage()
             ]);
 
-            $this->sendMessage($chatId, "Failed to create order. Please try again or contact support.");
+            $this->sendMessage($chatId, __('telegram.messages.order_failed'));
         }
     }
 
@@ -845,13 +819,8 @@ class TelegramBotService
         if (!$customer) return;
 
         if (empty($params)) {
-            $message = "📞 Support Options\n\n";
-            $message .= "🔗 Web Support: " . config('app.url') . "/support\n";
-            $message .= "📧 Email: support@1000proxy.io\n";
-            $message .= "📱 Telegram: Use /support [your message] to send a message\n\n";
-            $message .= "💡 Example: /support I can't connect to my proxy";
-
-            $this->sendMessage($chatId, $message);
+            $text = $this->renderView('telegram.support_options');
+            $this->sendMessage($chatId, $text);
             return;
         }
 
@@ -867,14 +836,12 @@ class TelegramBotService
         // Here you would typically save to a support tickets table
         Log::info('Telegram support ticket created', $ticket);
 
-        $message = "📩 Support Ticket Created\n\n";
-        $message .= "Your message has been sent to our support team. We'll respond as soon as possible.\n\n";
-        $message .= "📋 Ticket Details:\n";
-    $message .= "👤 User: {$customer->name}\n";
-        $message .= "📝 Message: {$params}\n\n";
-        $message .= "💬 You can also visit " . config('app.url') . "/support for more options.";
+        $text = $this->renderView('telegram.support_sent', [
+            'customerName' => $customer->name,
+            'messageText' => $params,
+        ]);
 
-        $this->sendMessage($chatId, $message);
+        $this->sendMessage($chatId, $text);
     }
 
     /**
@@ -882,32 +849,8 @@ class TelegramBotService
      */
     protected function handleHelp(int $chatId): void
     {
-        $message = "🤖 1000proxy Bot Commands\n\n";
-        $message .= "👤 Account Management:\n";
-        $message .= "/start - Initialize bot and link account\n";
-        $message .= "/balance - Check wallet balance\n";
-        $message .= "/topup - Top up wallet balance\n\n";
-        $message .= "🔐 Proxy Management:\n";
-        $message .= "/myproxies - List your active services\n";
-        $message .= "/config [client_id] - Get configuration\n";
-        $message .= "/reset [client_id] - Reset traffic with confirmation\n";
-        $message .= "/status [client_id] - Check service status\n\n";
-        $message .= "🌐 Server & Orders:\n";
-        $message .= "/plans - Browse available plans\n";
-        $message .= "/orders - View order history\n";
-        $message .= "/buy [plan_id] - Purchase service\n\n";
-        $message .= "🆘 Support:\n";
-        $message .= "/support [message] - Contact support\n";
-        $message .= "/help - Show this help message\n\n";
-        $message .= "💡 Examples:\n";
-        $message .= "• /buy 1 - Purchase plan with ID 1\n";
-        $message .= "• /config 1a2b-uuid - Get config for client\n";
-        $message .= "• /reset 1a2b-uuid - Reset traffic for client\n";
-        $message .= "• /status 1a2b-uuid - Check status of client\n";
-        $message .= "• /support Can't connect to proxy - Send support message\n\n";
-        $message .= "🔗 Web Dashboard: " . config('app.url');
-
-        $this->sendMessage($chatId, $message);
+    $text = $this->renderView('telegram.help');
+    $this->sendMessage($chatId, $text);
     }
 
     /**
@@ -920,20 +863,20 @@ class TelegramBotService
 
         $client = ServerClient::where('customer_id', $customer->id)->find($clientId);
         if (!$client) {
-            $this->sendMessage($chatId, "❌ Client not found or already reset.");
+            $this->sendMessage($chatId, __('telegram.messages.client_not_found_or_reset'));
             return;
         }
 
         try {
             // Prefer local reset with sync; fallback to service
             $client->resetTraffic();
-            $message = "✅ Traffic Reset Successfully!\n\n";
-            $message .= "� Plan: " . ($client->plan->name ?? '—') . "\n";
-            $message .= "🌐 Server: " . ($client->inbound->server->ip ?? '—') . "\n";
-            $message .= "📊 Statistics cleared\n\n";
-            $message .= "🔗 Config: /config_{$client->id}";
+            $text = $this->renderView('telegram.reset_success', [
+                'planName' => $client->plan->name ?? '—',
+                'server' => $client->inbound->server->ip ?? '—',
+                'clientId' => $client->id,
+            ]);
 
-            $this->sendMessage($chatId, $message);
+            $this->sendMessage($chatId, $text);
 
         } catch (\Exception $e) {
             Log::error('Telegram bot client reset failed', [
@@ -969,51 +912,41 @@ class TelegramBotService
         $totalPages = max(1, (int) ceil($totalPlans / $perPage));
 
         if ($plans->isEmpty()) {
-            $this->sendMessage($chatId, "No plans found on page {$page}.");
+            $this->sendMessage($chatId, __('telegram.messages.no_plans_page', ['page' => $page]));
             return;
         }
 
-        $message = "🌐 Available Plans (Page {$page}/{$totalPages})\n\n";
+        // Render plans page
+        $text = $this->renderView('telegram.plans', [
+            'plans' => $plans,
+            'page' => $page,
+            'totalPages' => $totalPages,
+        ]);
 
-        foreach ($plans as $plan) {
-            $loc = $plan->server->country ?? $plan->server->ip ?? '—';
-            $message .= "� {$plan->name}\n";
-            $message .= "� {$loc}\n";
-            $message .= "� $" . number_format((float)$plan->price, 2) . "\n\n";
-        }
-
-    // Create pagination keyboard
-    $keyboard = ['inline_keyboard' => []];
-        $buttons = [];
-
+        // Build keyboard (pagination + buy buttons)
+        $kb = Keyboard::make()->inline();
+        $nav = [];
         if ($page > 1) {
-            $buttons[] = ['text' => '◀️ Previous', 'callback_data' => "server_page_" . ($page - 1)];
+            $nav[] = Keyboard::inlineButton(['text' => '◀️ ' . __('telegram.common.prev'), 'callback_data' => 'server_page_' . ($page - 1)]);
         }
-
+        $nav[] = Keyboard::inlineButton(['text' => '📄 ' . $page . '/' . $totalPages, 'callback_data' => 'noop']);
         if ($page < $totalPages) {
-            $buttons[] = ['text' => 'Next ▶️', 'callback_data' => "server_page_" . ($page + 1)];
+            $nav[] = Keyboard::inlineButton(['text' => __('telegram.common.next') . ' ▶️', 'callback_data' => 'server_page_' . ($page + 1)]);
         }
-
-        if (!empty($buttons)) {
-            $keyboard['inline_keyboard'][] = $buttons;
+        if (!empty($nav)) {
+            $kb->row(...$nav);
         }
-
-        // Add purchase buttons
         foreach ($plans as $plan) {
-            $keyboard['inline_keyboard'][] = [
-                ['text' => "🛒 Buy {$plan->name} - $" . number_format((float)$plan->price, 2),
-                 'callback_data' => "buy_plan_{$plan->id}"]
-            ];
+            $kb->row(Keyboard::inlineButton([
+                'text' => '🛒 ' . __('telegram.buttons.buy_plan', ['name' => $plan->name, 'price' => '$' . number_format((float)$plan->price, 2)]),
+                'callback_data' => 'buy_plan_' . $plan->id,
+            ]));
         }
-
-        // For guests, offer quick signup CTA
         if (!$isLinked) {
-            $keyboard['inline_keyboard'][] = [
-                ['text' => '🆕 Create Account', 'callback_data' => 'signup_start']
-            ];
+            $kb->row(Keyboard::inlineButton(['text' => '🆕 ' . __('telegram.common.create_account'), 'callback_data' => 'signup_start']));
         }
 
-        $this->sendMessageWithKeyboard($chatId, $message, $keyboard);
+        $this->sendMessageWithKeyboard($chatId, $text, $kb);
     }
 
     /**
@@ -1026,21 +959,21 @@ class TelegramBotService
 
         $plan = ServerPlan::with('server')->find($planId);
         if (!$plan || !$plan->isAvailable()) {
-            $this->sendMessage($chatId, "❌ Plan not available.");
+            $this->sendMessage($chatId, __('telegram.messages.plan_not_available'));
             return;
         }
 
         $wallet = $customer->wallet;
         if (!$wallet || $wallet->balance < $plan->price) {
-            $message = "❌ Insufficient balance.\n\n";
-            $message .= "💰 Required: $" . number_format((float)$plan->price, 2) . "\n";
-            $message .= "💳 Current: $" . number_format($wallet ? $wallet->balance : 0, 2) . "\n\n";
-            $message .= "Top up your wallet, then come back to confirm.";
+            $message = __('telegram.messages.buy_insufficient') . "\n\n";
+            $message .= "💰 " . __('telegram.messages.required_amount', ['amount' => '$' . number_format((float)$plan->price, 2)]) . "\n";
+            $message .= "💳 " . __('telegram.messages.current_balance', ['amount' => '$' . number_format($wallet ? $wallet->balance : 0, 2)]) . "\n\n";
+            $message .= __('telegram.messages.buy_topup_hint');
 
             $keyboard = [
                 'inline_keyboard' => [
-                    [ ['text' => '💳 Top up wallet', 'url' => config('app.url') . '/wallet'] ],
-                    [ ['text' => '🔄 I topped up, refresh', 'callback_data' => 'refresh_balance'] ],
+                    [ ['text' => '💳 ' . __('telegram.buttons.topup_wallet'), 'url' => config('app.url') . '/wallet'] ],
+                    [ ['text' => '🔄 ' . __('telegram.buttons.topped_up_refresh'), 'callback_data' => 'refresh_balance'] ],
                 ]
             ];
 
@@ -1049,22 +982,18 @@ class TelegramBotService
         }
 
         // Create confirmation keyboard
-        $keyboard = [
-            'inline_keyboard' => [
-                [
-                    ['text' => '✅ Confirm Purchase', 'callback_data' => "confirm_buy_{$planId}"],
-                    ['text' => '❌ Cancel', 'callback_data' => 'cancel_buy']
-                ]
-            ]
-        ];
+        $keyboard = Keyboard::make()->inline()->row(
+            Keyboard::inlineButton(['text' => '✅ ' . __('telegram.buttons.confirm_purchase'), 'callback_data' => "confirm_buy_{$planId}"]),
+            Keyboard::inlineButton(['text' => '❌ ' . __('telegram.buttons.cancel'), 'callback_data' => 'cancel_buy'])
+        );
 
-        $message = "🛒 Confirm Purchase\n\n";
-        $message .= "📦 Plan: {$plan->name}\n";
-        $message .= "🌐 Server: " . ($plan->server->country ?? $plan->server->ip ?? '—') . "\n";
-        $message .= "💵 Price: $" . number_format((float)$plan->price, 2) . "\n";
-        $message .= "💰 Your Balance: $" . number_format($wallet->balance, 2) . "\n";
-        $message .= "💳 After Purchase: $" . number_format($wallet->balance - (float)$plan->price, 2) . "\n\n";
-        $message .= "Proceed with purchase?";
+        $message = '🛒 ' . __('telegram.messages.buy_confirm_title') . "\n\n";
+        $message .= '📦 ' . __('telegram.messages.buy_confirm_plan', ['plan' => $plan->name]) . "\n";
+        $message .= '🌐 ' . __('telegram.messages.buy_confirm_server', ['server' => ($plan->server->country ?? $plan->server->ip ?? '—')]) . "\n";
+        $message .= '💵 ' . __('telegram.messages.buy_confirm_price', ['price' => '$' . number_format((float)$plan->price, 2)]) . "\n";
+        $message .= '💰 ' . __('telegram.messages.buy_confirm_balance', ['balance' => '$' . number_format($wallet->balance, 2)]) . "\n";
+        $message .= '💳 ' . __('telegram.messages.buy_confirm_after', ['after' => '$' . number_format($wallet->balance - (float)$plan->price, 2)]) . "\n\n";
+        $message .= __('telegram.messages.buy_confirm_proceed');
 
         $this->sendMessageWithKeyboard($chatId, $message, $keyboard);
     }
@@ -1074,32 +1003,28 @@ class TelegramBotService
      */
     protected function handleAdminPanel(int $chatId, int $userId): void
     {
-        $user = $this->getAuthenticatedUser($chatId, $userId);
+    $user = $this->getAuthenticatedUser($chatId, $userId);
     if (!$user || !$this->isAdmin($user)) {
-            $this->sendMessage($chatId, "❌ Access denied. Admin privileges required.");
+        $this->sendMessage($chatId, __('telegram.messages.access_denied'));
             return;
         }
 
-        $keyboard = [
-            'inline_keyboard' => [
-                [
-                    ['text' => '👥 Users', 'callback_data' => 'user_stats'],
-                    ['text' => '🌐 Servers', 'callback_data' => 'server_health']
-                ],
-                [
-                    ['text' => '📊 Statistics', 'callback_data' => 'system_stats'],
-                    ['text' => '📢 Broadcast', 'callback_data' => 'admin_broadcast']
-                ],
-                [
-                    ['text' => '🔄 Refresh', 'callback_data' => 'admin_panel']
-                ]
-            ]
-        ];
+    $keyboard = Keyboard::make()->inline()
+            ->row(
+                Keyboard::inlineButton(['text' => '👥 ' . __('telegram.buttons.users'), 'callback_data' => 'user_stats']),
+                Keyboard::inlineButton(['text' => '🌐 ' . __('telegram.buttons.servers'), 'callback_data' => 'server_health'])
+            )
+            ->row(
+                Keyboard::inlineButton(['text' => '📊 ' . __('telegram.buttons.statistics'), 'callback_data' => 'system_stats']),
+                Keyboard::inlineButton(['text' => '📢 ' . __('telegram.buttons.broadcast'), 'callback_data' => 'admin_broadcast'])
+            )
+            ->row(
+                Keyboard::inlineButton(['text' => '🔄 ' . __('telegram.buttons.refresh'), 'callback_data' => 'admin_panel'])
+            );
 
-        $message = "🔧 Admin Panel\n\n";
-        $message .= "Choose an option to manage the system:";
+    $text = $this->renderView('telegram.admin.panel');
 
-        $this->sendMessageWithKeyboard($chatId, $message, $keyboard);
+    $this->sendMessageWithKeyboard($chatId, $text, $keyboard);
     }
 
     /**
@@ -1109,7 +1034,7 @@ class TelegramBotService
     {
         $staff = $this->getStaffUser($chatId, $userId);
         if (!$staff || !$this->isAdmin($staff)) {
-            $this->sendMessage($chatId, "❌ Access denied. Admin privileges required.");
+            $this->sendMessage($chatId, __('telegram.messages.access_denied'));
             return;
         }
 
@@ -1120,14 +1045,14 @@ class TelegramBotService
             $telegramUsers = Customer::whereNotNull('telegram_chat_id')->count();
             $recentUsers = Customer::where('created_at', '>=', now()->subDays(7))->count();
 
-            $message = "👥 User Statistics\n\n";
-            $message .= "📊 Total Users: {$totalUsers}\n";
-            $message .= "✅ Active Users: {$activeUsers}\n";
-            $message .= "📱 Telegram Linked: {$telegramUsers}\n";
-            $message .= "🆕 New (7 days): {$recentUsers}\n\n";
-            $message .= "💡 Use /users [email] to search for specific user";
+            $text = $this->renderView('telegram.admin.user_stats', [
+                'totalUsers' => $totalUsers,
+                'activeUsers' => $activeUsers,
+                'telegramUsers' => $telegramUsers,
+                'recentUsers' => $recentUsers,
+            ]);
 
-            $this->sendMessage($chatId, $message);
+            $this->sendMessage($chatId, $text);
             return;
         }
 
@@ -1137,66 +1062,87 @@ class TelegramBotService
             ->first();
 
         if (!$searchUser) {
-            $this->sendMessage($chatId, "❌ User not found: {$params}");
+            $this->sendMessage($chatId, __('telegram.messages.user_not_found', ['q' => $params]));
             return;
         }
-
-    $orders = $searchUser->orders()->count();
-    $activeOrders = $searchUser->clients()->count();
-    $wallet = $searchUser->wallet;
+        $orders = $searchUser->orders()->count();
+        $activeOrders = $searchUser->clients()->count();
+        $wallet = $searchUser->wallet;
         $balance = $wallet ? $wallet->balance : 0;
 
-        $message = "👤 User Details\n\n";
-        $message .= "📧 Email: {$searchUser->email}\n";
-        $message .= "👤 Name: {$searchUser->name}\n";
-        $message .= "💰 Balance: $" . number_format($balance, 2) . "\n";
-        $message .= "📋 Total Orders: {$orders}\n";
-        $message .= "✅ Active Proxies: {$activeOrders}\n";
-    $message .= "📱 Telegram: " . ($searchUser->telegram_chat_id ? 'Linked' : 'Not Linked') . "\n";
-        $message .= "📅 Joined: {$searchUser->created_at->format('M j, Y')}\n";
-    $message .= "🔄 Last Login: " . ($searchUser->last_login_at ? $searchUser->last_login_at->format('M j, Y H:i') : 'Never');
+        $text = $this->renderView('telegram.admin.user_details', [
+            'email' => $searchUser->email,
+            'name' => $searchUser->name,
+            'balance' => $balance,
+            'orders' => $orders,
+            'activeOrders' => $activeOrders,
+            'telegramLinked' => (bool)$searchUser->telegram_chat_id,
+            'joined' => $searchUser->created_at->format('M j, Y'),
+            'lastLogin' => ($searchUser->last_login_at ? $searchUser->last_login_at->format('M j, Y H:i') : 'Never'),
+        ]);
 
-        $this->sendMessage($chatId, $message);
+        $this->sendMessage($chatId, $text);
     }
 
     /**
      * Handle server health
      */
-    protected function handleServerHealth(int $chatId, int $userId): void
+    protected function handleServerHealth(int $chatId, int $userId, int $page = 1): void
     {
     $staff = $this->getStaffUser($chatId, $userId);
     if (!$staff || !$this->isAdmin($staff)) {
-            $this->sendMessage($chatId, "❌ Access denied. Admin privileges required.");
+            $this->sendMessage($chatId, __('telegram.messages.access_denied'));
             return;
         }
 
-        $servers = Server::with(['brand', 'category'])->get();
-        $totalServers = $servers->count();
-        $activeServers = $servers->where('status', 'active')->count();
-        $inactiveServers = $servers->where('status', 'inactive')->count();
+        $perPage = 10;
+        $offset = ($page - 1) * $perPage;
+        $query = Server::with(['brand', 'category']);
+        $totalServers = (clone $query)->count();
+        $activeServers = (clone $query)->where('status', 'active')->count();
+        $inactiveServers = (clone $query)->where('status', 'inactive')->count();
+        $totalPages = max(1, (int) ceil($totalServers / $perPage));
 
-        $message = "🌐 Server Health Report\n\n";
-        $message .= "📊 Total Servers: {$totalServers}\n";
-        $message .= "✅ Active: {$activeServers}\n";
-        $message .= "❌ Inactive: {$inactiveServers}\n\n";
+        $servers = Server::with(['brand', 'category'])
+            ->orderBy('location')
+            ->skip($offset)
+            ->take($perPage)
+            ->get();
 
-        $message .= "🔍 Server Details:\n";
-        foreach ($servers->take(10) as $server) {
-            $statusIcon = $server->status === 'active' ? '✅' : '❌';
-            $loadColor = $server->load > 80 ? '🔴' : ($server->load > 60 ? '🟡' : '🟢');
-
-            $message .= "{$statusIcon} {$server->location}\n";
-            $message .= "   {$loadColor} Load: " . ($server->load ?? 0) . "%\n";
-            $message .= "   💰 Price: $" . number_format($server->price, 2) . "\n\n";
+        $serversList = [];
+        foreach ($servers as $server) {
+            $serversList[] = [
+                'statusIcon' => $server->status === 'active' ? '✅' : '❌',
+                'location' => $server->location,
+                'loadIcon' => ($server->load > 80 ? '🔴' : ($server->load > 60 ? '🟡' : '🟢')),
+                'load' => (int)($server->load ?? 0),
+                'price' => (float)($server->price ?? 0),
+            ];
         }
 
-        if ($totalServers > 10) {
-            $message .= "... and " . ($totalServers - 10) . " more servers\n\n";
+        $text = $this->renderView('telegram.admin.server_health', [
+            'totalServers' => $totalServers,
+            'activeServers' => $activeServers,
+            'inactiveServers' => $inactiveServers,
+            'servers' => $serversList,
+            'remaining' => max(0, $totalServers - ($page * $perPage)),
+        ]);
+
+        // Pagination keyboard
+        $kb = Keyboard::make()->inline();
+        $nav = [];
+        if ($page > 1) {
+            $nav[] = Keyboard::inlineButton(['text' => '◀️ ' . __('telegram.common.prev'), 'callback_data' => 'server_health_page_' . ($page - 1)]);
+        }
+        $nav[] = Keyboard::inlineButton(['text' => '📄 ' . $page . '/' . $totalPages, 'callback_data' => 'noop']);
+        if ($page < $totalPages) {
+            $nav[] = Keyboard::inlineButton(['text' => __('telegram.common.next') . ' ▶️', 'callback_data' => 'server_health_page_' . ($page + 1)]);
+        }
+        if (!empty($nav)) {
+            $kb->row(...$nav);
         }
 
-        $message .= "🔗 Full details available in admin dashboard";
-
-        $this->sendMessage($chatId, $message);
+        $this->sendMessageWithKeyboard($chatId, $text, $kb);
     }
 
     /**
@@ -1214,7 +1160,7 @@ class TelegramBotService
     {
         $user = $this->getAuthenticatedUser($chatId, $userId);
         if (!$user || !$this->isAdmin($user)) {
-            $this->sendMessage($chatId, "❌ Access denied. Admin privileges required.");
+            $this->sendMessage($chatId, __('telegram.messages.access_denied'));
             return;
         }
 
@@ -1229,28 +1175,26 @@ class TelegramBotService
             ->sum('grand_amount'));
         $todayOrders = Order::whereDate('created_at', today())->count();
 
-        $message = "📊 System Statistics\n\n";
-        $message .= "👥 Total Users: {$totalUsers}\n";
-        $message .= "📋 Total Orders: {$totalOrders}\n";
-        $message .= "✅ Completed: {$completedOrders}\n";
-        $message .= "⏳ Pending: {$pendingOrders}\n\n";
-        $message .= "💰 Total Revenue: $" . number_format($totalRevenue, 2) . "\n";
-        $message .= "📅 Today's Revenue: $" . number_format($todayRevenue, 2) . "\n";
-        $message .= "📋 Today's Orders: {$todayOrders}\n\n";
-
         // Server statistics
-    $totalServers = \App\Models\Server::count();
-    $activeServers = \App\Models\Server::where('status', 'up')->count();
-    $avgLoad = \App\Models\Server::where('status', 'up')->avg('load') ?? 0;
+        $totalServers = \App\Models\Server::count();
+        $activeServers = \App\Models\Server::where('status', 'up')->count();
+        $avgLoad = \App\Models\Server::where('status', 'up')->avg('load') ?? 0;
 
-        $message .= "🌐 Server Stats:\n";
-        $message .= "   Total: {$totalServers}\n";
-        $message .= "   Active: {$activeServers}\n";
-        $message .= "   Avg Load: " . number_format($avgLoad, 1) . "%\n\n";
+        $text = $this->renderView('telegram.admin.system_stats', [
+            'totalUsers' => $totalUsers,
+            'totalOrders' => $totalOrders,
+            'completedOrders' => $completedOrders,
+            'pendingOrders' => $pendingOrders,
+            'totalRevenue' => $totalRevenue,
+            'todayRevenue' => $todayRevenue,
+            'todayOrders' => $todayOrders,
+            'totalServers' => $totalServers,
+            'activeServers' => $activeServers,
+            'avgLoad' => $avgLoad,
+            'updatedAt' => now()->format('H:i:s'),
+        ]);
 
-        $message .= "🔄 Last Updated: " . now()->format('H:i:s');
-
-        $this->sendMessage($chatId, $message);
+        $this->sendMessage($chatId, $text);
     }
 
     /**
@@ -1260,18 +1204,13 @@ class TelegramBotService
     {
         $staff = $this->getStaffUser($chatId, $userId);
         if (!$staff || !$this->isAdmin($staff)) {
-            $this->sendMessage($chatId, "❌ Access denied. Admin privileges required.");
+            $this->sendMessage($chatId, __('telegram.messages.access_denied'));
             return;
         }
 
         if (empty($params)) {
-            $message = "📢 Broadcast Message\n\n";
-            $message .= "Send a message to all Telegram users:\n\n";
-            $message .= "Usage: /broadcast [your message]\n\n";
-            $message .= "Example:\n";
-            $message .= "/broadcast Important maintenance scheduled for tonight at 2 AM UTC. All services will be temporarily unavailable.";
-
-            $this->sendMessage($chatId, $message);
+            $text = $this->renderView('telegram.admin.broadcast_help');
+            $this->sendMessage($chatId, $text);
             return;
         }
 
@@ -1280,8 +1219,7 @@ class TelegramBotService
         $sentCount = 0;
         $failedCount = 0;
 
-        $broadcastMessage = "📢 System Announcement\n\n{$params}\n\n";
-        $broadcastMessage .= "—\n1000proxy Team";
+    $broadcastMessage = __('telegram.messages.broadcast_title') . "\n\n{$params}\n\n" . __('telegram.messages.broadcast_footer');
 
         foreach ($telegramUsers as $telegramUser) {
             try {
@@ -1300,12 +1238,13 @@ class TelegramBotService
             }
         }
 
-        $resultMessage = "✅ Broadcast Complete\n\n";
-        $resultMessage .= "📤 Sent: {$sentCount}\n";
-        $resultMessage .= "❌ Failed: {$failedCount}\n";
-        $resultMessage .= "📊 Total Users: " . $telegramUsers->count();
+        $text = $this->renderView('telegram.admin.broadcast_result', [
+            'sent' => $sentCount,
+            'failed' => $failedCount,
+            'total' => $telegramUsers->count(),
+        ]);
 
-        $this->sendMessage($chatId, $resultMessage);
+        $this->sendMessage($chatId, $text);
 
         Log::info('Admin broadcast sent', [
             'admin_user_id' => $staff->id,
@@ -1331,7 +1270,7 @@ class TelegramBotService
         $customer = Customer::where('telegram_chat_id', $chatId)->first();
 
         if (!$customer) {
-            $this->sendMessage($chatId, "❌ Please link your account first.\n\nVisit your account settings at " . config('app.url') . " and link your Telegram account.");
+            $this->sendMessage($chatId, __('telegram.messages.link_account_first', ['url' => config('app.url')]));
             return null;
         }
 
@@ -1356,21 +1295,21 @@ class TelegramBotService
         $webUserId = cache()->get($cacheKey);
 
         if (!$webUserId) {
-            $this->sendMessage($chatId, "❌ Invalid or expired linking code. Please generate a new one from your account settings.");
+            $this->sendMessage($chatId, __('telegram.messages.code_invalid'));
             return;
         }
 
         // Get customer from database
         $customer = Customer::find($webUserId);
         if (!$customer) {
-            $this->sendMessage($chatId, "❌ User not found. Please try again.");
+            $this->sendMessage($chatId, __('telegram.messages.user_not_found_simple'));
             return;
         }
 
         // Check if this Telegram account is already linked to another user
         $existingCustomer = Customer::where('telegram_chat_id', $chatId)->first();
         if ($existingCustomer && $existingCustomer->id !== $customer->id) {
-            $this->sendMessage($chatId, "❌ This Telegram account is already linked to another user. Please unlink it first.");
+            $this->sendMessage($chatId, __('telegram.messages.telegram_already_linked'));
             return;
         }
 
@@ -1387,7 +1326,7 @@ class TelegramBotService
         cache()->forget($cacheKey);
 
         // Send success message
-        $this->sendMessage($chatId, "✅ Account linked successfully!\n\nWelcome, {$customer->name}! 🎉\n\nYour Telegram account is now connected to your 1000proxy account. Type /help to see available commands.");
+    $this->sendMessage($chatId, __('telegram.messages.linking_success', ['name' => $customer->name]));
 
         Log::info('Telegram account linked', [
             'customer_id' => $customer->id,
@@ -1436,17 +1375,80 @@ class TelegramBotService
     /**
      * Send message with inline keyboard
      */
-    protected function sendMessageWithKeyboard(int $chatId, string $text, array $keyboard): void
+    protected function sendMessageWithKeyboard(int $chatId, string $text, $keyboard): void
     {
         try {
+            // Allow Keyboard builder instance or plain array
+            $replyMarkup = $keyboard;
+            if (is_array($keyboard)) {
+                $replyMarkup = json_encode($keyboard);
+            }
             $this->telegram->sendMessage([
                 'chat_id' => $chatId,
                 'text' => $text,
                 'parse_mode' => 'HTML',
-                'reply_markup' => json_encode($keyboard)
+                'reply_markup' => $replyMarkup
             ]);
         } catch (\Exception $e) {
             Log::error('Failed to send Telegram message with keyboard', [
+                'chat_id' => $chatId,
+                'error' => $e->getMessage()
+            ]);
+        }
+    }
+
+    /**
+     * Render a Blade view into a Telegram-safe HTML message.
+     */
+    protected function renderView(string $view, array $data = []): string
+    {
+        try {
+            $html = trim(view($view, $data)->render());
+            // Telegram supports a subset of HTML; keep it simple
+            return $html;
+        } catch (\Throwable $e) {
+            Log::error('Telegram view render failed', ['view' => $view, 'error' => $e->getMessage()]);
+            return '⚠️ Failed to render message.';
+        }
+    }
+
+    /**
+     * Send a persistent reply keyboard with common commands so it's always visible.
+     */
+    protected function sendPersistentCommandMenu(int $chatId): void
+    {
+        $isLinked = Customer::where('telegram_chat_id', $chatId)->exists();
+        $keyboard = $isLinked
+            ? [
+                'keyboard' => [
+                    [ ['text' => '✨ ' . __('telegram.buttons.menu')], ['text' => '🛒 ' . __('telegram.buttons.plans')], ['text' => '📦 ' . __('telegram.buttons.orders')] ],
+                    [ ['text' => '🧰 ' . __('telegram.buttons.my_services')], ['text' => '💳 ' . __('telegram.buttons.wallet')], ['text' => '🆘 ' . __('telegram.buttons.support')] ],
+                    [ ['text' => '👤 ' . __('telegram.buttons.profile')] ],
+                ],
+                'resize_keyboard' => true,
+                'is_persistent' => true,
+                'one_time_keyboard' => false,
+                'input_field_placeholder' => __('telegram.messages.quick_actions_placeholder'),
+            ]
+            : [
+                'keyboard' => [
+                    [ ['text' => '🛒 ' . __('telegram.buttons.plans')], ['text' => '🆕 ' . __('telegram.buttons.sign_up')], ['text' => '🆘 ' . __('telegram.buttons.support')] ],
+                ],
+                'resize_keyboard' => true,
+                'is_persistent' => true,
+                'one_time_keyboard' => false,
+                'input_field_placeholder' => __('telegram.messages.quick_actions_guest_placeholder'),
+            ];
+
+        try {
+            $this->telegram->sendMessage([
+                'chat_id' => $chatId,
+                'text' => __('telegram.messages.quick_actions_below'),
+                'parse_mode' => 'HTML',
+                'reply_markup' => json_encode($keyboard)
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Failed to send persistent command menu', [
                 'chat_id' => $chatId,
                 'error' => $e->getMessage()
             ]);
@@ -1490,26 +1492,35 @@ class TelegramBotService
      */
     public function sendOrderNotification(Order $order): void
     {
-        $user = $order->user;
-
-        if (!$user->telegram_id) {
+        $customer = $order->customer;
+        if (!$customer || !$customer->telegram_chat_id) {
             return;
         }
 
-        $message = "🎉 Your Proxy is Ready!\n\n";
-        $message .= "📋 Order ID: #{$order->id}\n";
-        $message .= "🌐 Server: {$order->server->location}\n";
-        $message .= "📊 Status: {$order->status}\n\n";
+        // Resolve a user-friendly server label from the first order item
+        $firstItem = $order->items()->with('serverPlan.server')->first();
+        $server = $firstItem?->serverPlan?->server;
+        $serverLabel = $server->location
+            ?? $server->country
+            ?? $server->ip
+            ?? '—';
 
-        if ($order->status === 'completed') {
-            $message .= "🔗 Configuration:\n";
-            $message .= "Visit " . config('app.url') . "/orders/{$order->id} to get your proxy configuration.\n\n";
-            $message .= "📱 QR Code and setup instructions are available on your dashboard.";
+        $status = $order->order_status ?? $order->status ?? '-';
+
+        $message = __('telegram.messages.order_ready_title') . "\n\n";
+        $message .= __('telegram.messages.order_id_line', ['id' => $order->id]) . "\n";
+        $message .= __('telegram.messages.order_server_line', ['server' => $serverLabel]) . "\n";
+        $message .= __('telegram.messages.order_status_line', ['status' => ucfirst((string)$status)]) . "\n\n";
+
+        if ($status === 'completed' || $order->isFullyProvisioned()) {
+            $message .= __('telegram.messages.order_completed_block', [
+                'url' => config('app.url') . "/orders/{$order->id}"
+            ]);
         } else {
-            $message .= "❌ There was an issue with your order. Please contact support or visit your dashboard for more details.";
+            $message .= __('telegram.messages.order_issue');
         }
 
-        $this->sendMessage($user->telegram_id, $message);
+        $this->sendMessage($customer->telegram_chat_id, $message);
     }
 
     /**
@@ -1520,23 +1531,25 @@ class TelegramBotService
         $chatId = $callbackQuery->getMessage()->getChat()->getId();
         $data = $callbackQuery->getData();
         $userId = $callbackQuery->getFrom()->getId();
-
         // Handle different callback actions
         if (str_starts_with($data, 'reset_confirm_')) {
             $clientId = substr($data, 14);
             $this->handleResetConfirm($chatId, $userId, $clientId);
         } elseif (str_starts_with($data, 'reset_cancel_')) {
             $cid = substr($data, 13);
-            $this->sendMessage($chatId, "❌ Reset cancelled for client {$cid}");
+            $this->sendMessage($chatId, __('telegram.messages.reset_cancelled_client', ['cid' => $cid]));
         } elseif (str_starts_with($data, 'server_page_')) {
             $page = (int) substr($data, 12);
             $this->handleServersPage($chatId, $userId, $page);
+        } elseif (str_starts_with($data, 'server_health_page_')) {
+            $page = (int) substr($data, 20);
+            $this->handleServerHealth($chatId, $userId, $page);
         } elseif (str_starts_with($data, 'buy_plan_')) {
             $planId = (int) substr($data, 9);
             // If not linked yet, store pending buy and start signup
             if (!Customer::where('telegram_chat_id', $chatId)->exists()) {
                 cache()->put("tg_pending_buy_{$chatId}", $planId, now()->addMinutes(10));
-                $this->sendMessage($chatId, "🛒 You'll need an account to purchase. Let's create one first.");
+                $this->sendMessage($chatId, __('telegram.messages.need_account_purchase'));
                 $this->handleSignup($chatId, $userId);
             } else {
                 $this->handleBuyConfirm($chatId, $userId, $planId);
@@ -1546,8 +1559,11 @@ class TelegramBotService
             // Proceed to create order immediately
             $this->handleBuy($chatId, $userId, (string) $planId);
         } elseif ($data === 'cancel_buy') {
-            $this->sendMessage($chatId, '🛑 Purchase cancelled.');
-    } else {
+                $this->sendMessage($chatId, __('telegram.messages.purchase_cancelled'));
+        } elseif ($data === 'noop') {
+            // No operation: acknowledge tap without sending a new message
+            // Optionally could edit message to show the same content; do nothing here
+        } else {
             switch ($data) {
                 case 'refresh_balance':
                     $this->handleBalance($chatId, $userId);
@@ -1556,19 +1572,6 @@ class TelegramBotService
                 case 'view_servers':
                     $this->handleServersPage($chatId, $userId, 1);
                     break;
-
-                case 'view_myproxies':
-                    $this->handleMyProxies($chatId, $userId);
-                    break;
-
-                case 'view_orders':
-                    $this->handleOrders($chatId, $userId);
-                    break;
-
-                case 'admin_panel':
-                    $this->handleAdminPanel($chatId, $userId);
-                    break;
-
                 case 'server_health':
                     $this->handleServerHealth($chatId, $userId);
                     break;
@@ -1611,35 +1614,14 @@ class TelegramBotService
     protected function handleSignup(int $chatId, int $userId): void
     {
         if (Customer::where('telegram_chat_id', $chatId)->exists()) {
-            $this->sendMessage($chatId, '✅ Your Telegram is already linked. Use /menu.');
+            $this->sendMessage($chatId, __('telegram.messages.already_linked'));
             return;
         }
         cache()->put("tg_flow_{$chatId}", [
             'name' => 'signup',
             'step' => 'email'
         ], now()->addMinutes(10));
-        $this->sendMessage($chatId, "🆕 Let's create your account.\nPlease enter your email address:");
-    }
-
-    /**
-     * View or update profile (name/email) for linked customers
-     */
-    protected function handleProfile(int $chatId, int $userId): void
-    {
-        $customer = Customer::where('telegram_chat_id', $chatId)->first();
-        if (!$customer) {
-            $this->sendMessage($chatId, 'You need an account to manage your profile. Tap "🆕 Create Account".');
-            return;
-        }
-
-        $text = "👤 Your Profile\n\n";
-        $text .= "Name: " . ($customer->name ?: '—') . "\n";
-        $text .= "Email: " . ($customer->email ?: '—') . "\n\n";
-        $kb = [ 'inline_keyboard' => [
-            [ ['text' => '✏️ Update Name', 'callback_data' => 'profile_update_name'] ],
-            [ ['text' => '✉️ Update Email', 'callback_data' => 'profile_update_email'] ],
-        ]];
-        $this->sendMessageWithKeyboard($chatId, $text, $kb);
+        $this->sendMessage($chatId, __('telegram.messages.signup_start'));
     }
 
     /**
@@ -1655,19 +1637,19 @@ class TelegramBotService
             if (($state['step'] ?? null) === 'email') {
                 $email = trim($text);
                 if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
-                    $this->sendMessage($chatId, '❌ Invalid email. Please enter a valid email address.');
+                    $this->sendMessage($chatId, __('telegram.messages.invalid_email'));
                     return true;
                 }
                 $state['email'] = $email;
                 $state['step'] = 'name';
                 cache()->put("tg_flow_{$chatId}", $state, now()->addMinutes(10));
-                $this->sendMessage($chatId, 'Great! Now enter your name:');
+                $this->sendMessage($chatId, __('telegram.messages.enter_name'));
                 return true;
             }
             if (($state['step'] ?? null) === 'name') {
                 $name = trim($text);
                 if ($name === '' || mb_strlen($name) < 2) {
-                    $this->sendMessage($chatId, 'Please enter a valid name (at least 2 characters).');
+                    $this->sendMessage($chatId, __('telegram.messages.invalid_name'));
                     return true;
                 }
                 // Create customer if email free; otherwise attach if unlinked
@@ -1675,7 +1657,7 @@ class TelegramBotService
                 $existing = Customer::where('email', $email)->first();
                 if ($existing) {
                     if ($existing->telegram_chat_id && $existing->telegram_chat_id != $chatId) {
-                        $this->sendMessage($chatId, '❌ This email is already linked to another Telegram.');
+                        $this->sendMessage($chatId, __('telegram.messages.email_linked_other'));
                         cache()->forget("tg_flow_{$chatId}");
                         return true;
                     }
@@ -1694,12 +1676,12 @@ class TelegramBotService
                 $customer->save();
 
                 cache()->forget("tg_flow_{$chatId}");
-                $this->sendMessage($chatId, "✅ Account ready, {$customer->name}!\nYou're linked to this Telegram chat.");
+                $this->sendMessage($chatId, __('telegram.messages.signup_success', ['name' => $customer->name]));
 
                 // If there is a pending buy, resume it
                 $pendingPlanId = cache()->pull("tg_pending_buy_{$chatId}");
                 if ($pendingPlanId) {
-                    $this->sendMessage($chatId, '🔁 Resuming your pending purchase…');
+                    $this->sendMessage($chatId, __('telegram.messages.resuming_purchase'));
                     $this->handleBuyConfirm($chatId, $userId, (int) $pendingPlanId);
                 } else {
                     // Otherwise open menu
@@ -1713,14 +1695,14 @@ class TelegramBotService
         if (($state['name'] ?? null) === 'profile_update_name') {
             $name = trim($text);
             if ($name === '' || mb_strlen($name) < 2) {
-                $this->sendMessage($chatId, 'Please enter a valid name (at least 2 characters).');
+                $this->sendMessage($chatId, __('telegram.messages.invalid_name'));
                 return true;
             }
             $customer = Customer::where('telegram_chat_id', $chatId)->first();
             if ($customer) {
                 $customer->name = $name;
                 $customer->save();
-                $this->sendMessage($chatId, '✅ Name updated.');
+                $this->sendMessage($chatId, __('telegram.messages.name_updated'));
             }
             cache()->forget("tg_flow_{$chatId}");
             return true;
@@ -1729,18 +1711,18 @@ class TelegramBotService
         if (($state['name'] ?? null) === 'profile_update_email') {
             $email = trim($text);
             if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
-                $this->sendMessage($chatId, '❌ Invalid email. Please enter a valid email address.');
+                $this->sendMessage($chatId, __('telegram.messages.invalid_email'));
                 return true;
             }
             if (Customer::where('email', $email)->where('telegram_chat_id', '!=', $chatId)->exists()) {
-                $this->sendMessage($chatId, '❌ That email is already used by another account.');
+                $this->sendMessage($chatId, __('telegram.messages.email_in_use'));
                 return true;
             }
             $customer = Customer::where('telegram_chat_id', $chatId)->first();
             if ($customer) {
                 $customer->email = $email;
                 $customer->save();
-                $this->sendMessage($chatId, '✅ Email updated.');
+                $this->sendMessage($chatId, __('telegram.messages.email_updated'));
             }
             cache()->forget("tg_flow_{$chatId}");
             return true;
@@ -1755,12 +1737,12 @@ class TelegramBotService
     protected function handleProfileUpdateCallback(int $chatId, string $type): void
     {
         if (!Customer::where('telegram_chat_id', $chatId)->exists()) {
-            $this->sendMessage($chatId, 'You need an account to manage your profile. Tap "🆕 Create Account".');
+            $this->sendMessage($chatId, __('telegram.messages.need_account_profile'));
             return;
         }
         $stateName = $type === 'name' ? 'profile_update_name' : 'profile_update_email';
         cache()->put("tg_flow_{$chatId}", [ 'name' => $stateName ], now()->addMinutes(10));
-        $prompt = $type === 'name' ? 'Please enter your new name:' : 'Please enter your new email:';
+        $prompt = $type === 'name' ? __('telegram.messages.prompt_new_name') : __('telegram.messages.prompt_new_email');
         $this->sendMessage($chatId, $prompt);
     }
 }
