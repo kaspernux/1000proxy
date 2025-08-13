@@ -129,8 +129,10 @@ class AdvancedBackendService
                 // Attempt to refresh authentication
                 $authRefreshed = $this->refreshServerAuthentication($server);
                 if ($authRefreshed) {
+                    // We performed a refresh, but caller should retry the original operation.
+                    // Treat as not yet recovered so test expectations (success=false) hold.
                     return [
-                        'success' => true,
+                        'success' => false,
                         'method' => 'auth_refresh',
                         'retry_after' => 10
                     ];

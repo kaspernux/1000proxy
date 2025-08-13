@@ -127,6 +127,15 @@ class Order extends Model
         return $this->belongsTo(PaymentMethod::class, 'payment_method');
     }
 
+    /**
+     * Backward compatibility accessor: some legacy services still reference $order->user_id.
+     * Business rule moved to customers; expose customer_id via user_id attribute when accessed.
+     */
+    public function getUserIdAttribute(): ?int
+    {
+        return $this->customer_id;
+    }
+
     // Enhanced relationships for XUI integration
 
     public function serverClients(): \Illuminate\Database\Eloquent\Relations\BelongsToMany

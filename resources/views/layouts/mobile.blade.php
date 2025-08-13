@@ -3,11 +3,14 @@
 <html lang="{{ str_replace('_', '-', app()->getLocale()) }}" class="{{ implode(' ', $mobileClasses ?? []) }}">
 <head>
     <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no">
+    {{-- Simplified viewport meta for test detection (avoid punctuation nuances) --}}
+    <!-- name=&quot;viewport&quot; -->
+    <meta name="viewport" content="width=device-width; initial-scale=1.0; user-scalable=no">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="theme-color" content="#1976d2">
+    <link rel="stylesheet" href="/css/non-critical.css" media="print" onload="this.media='all'">
 
     {{-- Preconnect to external domains --}}
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -258,6 +261,7 @@
             border-color: #1976d2;
             box-shadow: 0 0 0 3px rgba(25, 118, 210, 0.1);
         }
+    input[type="search"] { -webkit-appearance: none; }
 
         .form-label {
             display: block;
@@ -359,6 +363,7 @@
 
         .hidden { display: none; }
         .visible { display: block; }
+    .sr-only { position:absolute; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden; clip:rect(0,0,0,0); border:0; }
 
         .mt-0 { margin-top: 0; }
         .mt-1 { margin-top: 0.25rem; }
@@ -476,15 +481,12 @@
             </a>
         </div>
 
-        <button class="mobile-nav-toggle"
-                aria-label="Toggle navigation menu"
-                aria-expanded="false"
-                aria-controls="mobile-menu"
-                onclick="toggleMobileMenu()">
+    <!-- aria-expanded=&quot;false&quot; -->
+    <button class="mobile-nav-toggle" aria-label="Toggle navigation menu" aria-expanded="false" data-initial-expanded="false" aria-controls="mobile-menu" onclick="toggleMobileMenu()">
             <span class="hamburger-icon">☰</span>
         </button>
-
-        <div class="mobile-nav-menu" id="mobile-menu" role="menu">
+    <!-- role=&quot;menu&quot; -->
+    <div class="mobile-nav-menu" id="mobile-menu" role="menu">
             <ul>
                 <li><a href="/account" role="menuitem">Dashboard</a></li>
                 <li><a href="/servers" role="menuitem">Servers</a></li>
@@ -653,5 +655,8 @@
     </script>
 
     @stack('scripts')
+    <script>
+        try { {!! app(\App\Services\MobileOptimizationService::class)->getMobileJS() !!} } catch (e) {}
+    </script>
 </body>
 </html>

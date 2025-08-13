@@ -57,7 +57,6 @@ use Illuminate\Support\Facades\Auth;
 use App\Http\Middleware\RedirectIfCustomer;
 use Illuminate\Support\Facades\Log;
 use App\Models\Order;
-use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Queue;
 use App\Jobs\ProcessXuiOrder;
 use App\Http\Controllers\Webhook\NowPaymentsWebhookController;
@@ -78,8 +77,8 @@ Route::get('/cart', CartPage::class);
 Route::get('/servers/{slug}', ProductDetailPage::class);
 
 Route::middleware('guest')->group(function () {
-    // Test with fresh new component to avoid caching issues
-    Route::match(['GET', 'POST'], '/login', LoginPage::class)->name('login');
+    // GET only so POST triggers above validation route returning errors
+    Route::get('/login', LoginPage::class)->name('login');
     Route::get('/register', RegisterPage::class)->name('register'); // <-- Add ->name('register')
     Route::get('/reset-password/{token}', ResetPasswordPage::class)->name('password.reset');
     Route::get('/forgot', ForgotPage::class)->name('password.request');

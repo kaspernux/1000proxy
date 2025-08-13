@@ -44,11 +44,14 @@ class PaymentController extends Controller
             $orderId = $validated['order_id'] ?? null;
             // Support both customer (separate table) & standard user models under Sanctum.
             // Attempt most specific guards first.
-            $user = Auth::guard('customer_api')->user()
-                ?? Auth::guard('customer')->user()
-                ?? Auth::user();
+            // Primary actor for order payments is a Customer (business rule: users cannot place orders directly)
+            $customer = Auth::guard('customer_api')->user()
+                ?? Auth::guard('customer')->user();
+            // Fallback legacy user (admin/staff) – still allowed for certain standalone payments
+            $user = Auth::user();
+            $actor = $customer ?? $user; // Unified reference for downstream logic
 
-            if (!$user) {
+            if (!$actor) {
                 return response()->json([
                     'success' => false,
                     'error' => 'Unauthenticated'
@@ -64,10 +67,10 @@ class PaymentController extends Controller
             }
 
             // Order payment logic
-            if ($orderId) {
+            if ($orderId) { // Order payment flow (customer only)
                 $order = Order::findOrFail($orderId);
-                if ($order->user_id !== $user->id) {
-                    abort(403, 'Unauthorized access to order.');
+                if (!$customer || $order->customer_id !== $customer->id) {
+                    abort(403, 'Only the owning customer can pay for this order.');
                 }
                 if ($order->payment_status === 'paid') {
                     return response()->json(['error' => 'Order already paid'], 422);
@@ -93,7 +96,8 @@ class PaymentController extends Controller
                             'metadata' => [
                                 'order_id' => $order->id,
                                 'invoice_id' => $invoice->id,
-                                'user_id' => $user->id
+                                'customer_id' => $customer->id,
+                                'user_id' => $customer->id // legacy key maintained for backward compatibility
                             ]
                         ]);
                         break;
@@ -105,7 +109,8 @@ class PaymentController extends Controller
                             'metadata' => [
                                 'order_id' => $order->id,
                                 'invoice_id' => $invoice->id,
-                                'user_id' => $user->id
+                                'customer_id' => $customer->id,
+                                'user_id' => $customer->id
                             ]
                         ]);
                         break;
@@ -117,7 +122,8 @@ class PaymentController extends Controller
                             'metadata' => [
                                 'order_id' => $order->id,
                                 'invoice_id' => $invoice->id,
-                                'user_id' => $user->id
+                                'customer_id' => $customer->id,
+                                'user_id' => $customer->id
                             ]
                         ]);
                         break;
@@ -135,7 +141,8 @@ class PaymentController extends Controller
                             'metadata' => [
                                 'order_id' => $order->id,
                                 'invoice_id' => $invoice->id,
-                                'user_id' => $user->id
+                                'customer_id' => $customer->id,
+                                'user_id' => $customer->id
                             ]
                         ]);
                         // Safety check: if gateway responded with different order_id, log it for diagnostics
@@ -149,14 +156,14 @@ class PaymentController extends Controller
                         break;
                     case 'wallet':
                         // Direct wallet payment
-                        $wallet = $user->wallet ?? $user->getWallet();
+                        $wallet = $customer->wallet ?? $customer->getWallet();
                         if ($wallet->balance < $amount) {
                             return response()->json(['success' => false, 'error' => 'Insufficient wallet balance'], 422);
                         }
                         $wallet->decrement('balance', $amount);
                         $wallet->transactions()->create([
                             'type' => 'payment',
-                            'customer_id' => $user->id,
+                            'customer_id' => $customer->id,
                             'amount' => -$amount,
                             'status' => 'completed',
                             'gateway' => 'wallet',
@@ -186,14 +193,15 @@ class PaymentController extends Controller
             }
 
             // Standalone gateway payment (no wallet/order)
-            switch ($gateway) {
+            switch ($gateway) { // Standalone payments (may be initiated by admin/staff users)
                 case 'stripe':
                     $stripeService = app(\App\Services\PaymentGateways\StripePaymentService::class);
                     $result = $stripeService->createPayment([
                         'amount' => $amount,
                         'currency' => $currency,
                         'metadata' => [
-                            'user_id' => $user->id
+                            'customer_id' => $customer?->id,
+                            'user_id' => $actor->id
                         ]
                     ]);
                     break;
@@ -203,7 +211,8 @@ class PaymentController extends Controller
                         'amount' => $amount,
                         'currency' => $currency,
                         'metadata' => [
-                            'user_id' => $user->id
+                            'customer_id' => $customer?->id,
+                            'user_id' => $actor->id
                         ]
                     ]);
                     break;
@@ -213,7 +222,8 @@ class PaymentController extends Controller
                         'amount' => $amount,
                         'currency' => $currency,
                         'metadata' => [
-                            'user_id' => $user->id
+                            'customer_id' => $customer?->id,
+                            'user_id' => $actor->id
                         ]
                     ]);
                     break;
@@ -225,18 +235,19 @@ class PaymentController extends Controller
                         'description' => 'Standalone Payment',
                         'crypto_currency' => $request->input('crypto_currency'),
                         'metadata' => [
-                            'user_id' => $user->id
+                            'customer_id' => $customer?->id,
+                            'user_id' => $actor->id
                         ]
                     ]);
                     break;
                 case 'wallet':
                     // For Customer model use getWallet() helper to ensure creation; for User fallback to relation or method if available
-                    if (method_exists($user, 'getWallet')) {
-                        $wallet = $user->getWallet();
-                    } elseif (property_exists($user, 'wallet') && $user->wallet) {
-                        $wallet = $user->wallet;
-                    } elseif (method_exists($user, 'wallet')) {
-                        $wallet = $user->wallet()->first();
+                    if ($customer && method_exists($customer, 'getWallet')) {
+                        $wallet = $customer->getWallet();
+                    } elseif ($customer && property_exists($customer, 'wallet') && $customer->wallet) {
+                        $wallet = $customer->wallet;
+                    } elseif ($customer && method_exists($customer, 'wallet')) {
+                        $wallet = $customer->wallet()->first();
                     } else {
                         $wallet = null;
                     }
@@ -249,7 +260,7 @@ class PaymentController extends Controller
                     $wallet->decrement('balance', $amount);
                     $wallet->transactions()->create([
                         'type' => 'payment',
-                        'customer_id' => $user->id,
+                        'customer_id' => $customer?->id ?? $actor->id,
                         'amount' => -$amount,
                         'status' => 'completed',
                         'gateway' => 'wallet',

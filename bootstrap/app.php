@@ -10,6 +10,8 @@ use App\Http\Middleware\SessionSecurity;
 use App\Http\Middleware\EnhancedCsrfProtection;
 use App\Http\Middleware\TelegramRateLimit;
 use App\Http\Middleware\StaffRoleMiddleware;
+use App\Http\Middleware\MobileAnalyticsMiddleware;
+use App\Http\Middleware\TestMobileEnhancementsMiddleware;
 use Illuminate\Console\Scheduling\Schedule;
 use App\Jobs\PruneOldExportsJob;
 // Console Commands (migrated from Console Kernel / auto-discovery consolidation)
@@ -121,7 +123,9 @@ return Application::configure(basePath: dirname(__DIR__))
 
         // Existing middleware
         $middleware->append(RedirectIfCustomer::class);
-        $middleware->append(EnhancedErrorHandling::class);
+    $middleware->append(EnhancedErrorHandling::class);
+    $middleware->append(MobileAnalyticsMiddleware::class);
+    $middleware->append(TestMobileEnhancementsMiddleware::class);
 
         // Named middleware for specific routes
         $middleware->alias([

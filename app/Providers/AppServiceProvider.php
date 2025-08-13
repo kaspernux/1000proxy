@@ -117,6 +117,17 @@ class AppServiceProvider extends ServiceProvider
         // Configure rate limiting
         $this->configureRateLimiting();
 
+        // Share mobileClasses across all views if not set
+        View::composer('*', function($view) {
+            if (!array_key_exists('mobileClasses', $view->getData())) {
+                $ua = request()->userAgent();
+                $classes = ['device-mobile'];
+                if ($ua && preg_match('/iPad|Tablet/i', $ua)) { $classes = ['device-tablet']; }
+                if ($ua && preg_match('/Android 4|SM-G355H/i', $ua)) { $classes[] = 'performance-low'; }
+                $view->with('mobileClasses', $classes);
+            }
+        });
+
     if (auth('customer')->check() && request()->isMethod('post')) {
             $user = auth('customer')->user();
             session()->put('locale', $user->locale ?? config('app.locale'));

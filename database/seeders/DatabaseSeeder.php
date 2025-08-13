@@ -103,7 +103,6 @@ class DatabaseSeeder extends Seeder
             ServerTagSeeder::class,
             ServerReviewSeeder::class,
             SubscriptionSeeder::class,
-            MobileDeviceSeeder::class,
         ]);
 
         $this->command->info('✅ Database seeding completed successfully!');
