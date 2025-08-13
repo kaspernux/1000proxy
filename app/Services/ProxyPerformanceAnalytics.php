@@ -335,7 +335,7 @@ class ProxyPerformanceAnalytics
     {
         return Order::where('user_id', $userId)
             ->where('payment_status', 'paid')
-            ->where('status', 'active')
+            ->where('status', 'up')
             ->with(['serverPlan.server'])
             ->get();
     }

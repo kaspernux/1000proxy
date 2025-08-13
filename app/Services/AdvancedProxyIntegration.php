@@ -433,7 +433,7 @@ class AdvancedProxyIntegration
     {
         // Get load balancer status from cache or service
         return [
-            'status' => 'active',
+            'status' => 'up',
             'algorithm' => 'weighted_round_robin',
             'endpoints_healthy' => 5,
             'endpoints_total' => 5,

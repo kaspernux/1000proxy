@@ -51,6 +51,7 @@ class ServerPlanFactory extends Factory
             'volume' => $this->faker->numberBetween(10, 1000),
             'is_active' => $this->faker->boolean(80),
             'is_featured' => $this->faker->boolean(20),
+            'is_popular' => $this->faker->boolean(15),
             'in_stock' => $this->faker->boolean(90),
             'on_sale' => $this->faker->boolean(15),
         ];

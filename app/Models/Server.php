@@ -204,10 +204,10 @@ class Server extends Model
         return $this->inbounds()
             ->where('is_default', true)
             ->where('provisioning_enabled', true)
-            ->where('status', 'active')
+            ->whereIn('status', ['up', 'active'])
             ->first() ?: $this->inbounds()
                 ->where('provisioning_enabled', true)
-                ->where('status', 'active')
+                ->whereIn('status', ['up', 'active'])
                 ->orderBy('current_clients', 'asc')
                 ->first();
     }
@@ -219,7 +219,7 @@ class Server extends Model
     {
         return $this->inbounds()
             ->where('provisioning_enabled', true)
-            ->where('status', 'active')
+            ->whereIn('status', ['up', 'active'])
             ->where(function ($query) use ($quantity) {
                 $query->whereNull('capacity')
                       ->orWhereRaw('current_clients + ? <= capacity', [$quantity]);
@@ -265,7 +265,7 @@ class Server extends Model
         $totalClients = $this->inbounds()->sum('current_clients');
         $activeClients = ServerClient::whereHas('inbound', function ($query) {
             $query->where('server_id', $this->id);
-        })->where('status', 'active')->count();
+    })->where('status', 'up')->count();
 
         $totalTrafficMb = ServerClient::whereHas('inbound', function ($query) {
             $query->where('server_id', $this->id);
@@ -297,7 +297,7 @@ class Server extends Model
     {
         $inbounds = $this->inbounds()
             ->where('provisioning_enabled', true)
-            ->where('status', 'active')
+            ->where('status', 'up')
             ->get();
 
         if ($inbounds->contains(fn($inbound) => $inbound->capacity === null)) {

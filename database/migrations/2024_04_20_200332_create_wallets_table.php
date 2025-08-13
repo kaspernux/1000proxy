@@ -10,6 +10,8 @@ return new class extends Migration {
             $table->id();
             $table->foreignId('customer_id')->constrained('customers')->cascadeOnDelete();
             $table->decimal('balance', 18, 8)->default(0);
+            // Primary display currency (ISO 4217) - tests expect this
+            $table->string('currency', 3)->default('USD');
             $table->string('btc_address')->nullable();
             $table->string('xmr_address')->nullable();
             $table->string('sol_address')->nullable();

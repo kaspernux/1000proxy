@@ -14,6 +14,7 @@ class Wallet extends Model
     protected $fillable = [
         'customer_id',
         'balance',
+    'currency',
         'btc_address',
         'xmr_address',
         'sol_address',
@@ -78,6 +79,9 @@ class Wallet extends Model
     // ✨ Generate crypto deposit addresses and QRs dynamically
     public function generateDepositAddresses()
     {
+        if (empty($this->currency)) {
+            $this->currency = 'usd';
+        }
         $this->btc_address = 'btc_' . Str::random(34);
         $this->xmr_address = 'xmr_' . Str::random(64);
         $this->sol_address = 'sol_' . Str::random(44);

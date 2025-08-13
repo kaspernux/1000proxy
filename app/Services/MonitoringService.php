@@ -211,8 +211,9 @@ class MonitoringService
     private function checkServersHealth(): array
     {
         try {
-            $activeServers = Server::where('status', 'active')->count();
-            $inactiveServers = Server::where('status', 'inactive')->count();
+            // Map legacy test expectations to current enum values (up/down/paused)
+            $activeServers = Server::where('status', 'up')->count();
+            $inactiveServers = Server::where('status', 'down')->count();
             $totalServers = Server::count();
 
             $status = 'healthy';
@@ -227,8 +228,10 @@ class MonitoringService
             }
 
             // Check server capacity
-            $highCapacityServers = Server::where('status', 'active')
-                ->whereRaw('(current_clients / max_clients) > 0.8')
+            $highCapacityServers = Server::where('status', 'up')
+                ->where(function($q){
+                    $q->whereRaw('max_clients > 0 AND (current_clients / max_clients) > 0.8');
+                })
                 ->count();
 
             if ($highCapacityServers > 0) {
@@ -265,18 +268,28 @@ class MonitoringService
             // Check recent orders
             $recentOrders = Order::where('created_at', '>=', Carbon::now()->subHour())->count();
 
-            // Check failed orders
-            $failedOrders = Order::where('status', 'failed')
+            // Check failed orders - schema uses order_status & payment_status
+            $failedOrders = Order::where(function($q){
+                    $q->where('order_status', 'dispute')
+                      ->orWhere('payment_status', 'failed');
+                })
                 ->where('created_at', '>=', Carbon::now()->subHour())
                 ->count();
 
             if ($failedOrders > 0) {
-                $status = 'warning';
+                $status = ($failedOrders > 10) ? 'critical' : (($status === 'healthy') ? 'warning' : $status);
                 $issues[] = "$failedOrders orders failed in the last hour";
             }
 
-            // Check active users
-            $activeUsers = User::where('last_active_at', '>=', Carbon::now()->subMinutes(30))->count();
+            // Check active users if column exists
+            $activeUsers = 0;
+            try {
+                if (\Schema::hasColumn('users', 'last_active_at')) {
+                    $activeUsers = User::where('last_active_at', '>=', Carbon::now()->subMinutes(30))->count();
+                }
+            } catch (\Throwable $e) {
+                // ignore if schema missing
+            }
 
             // Check disk space
             $diskUsage = disk_free_space('/') / disk_total_space('/');

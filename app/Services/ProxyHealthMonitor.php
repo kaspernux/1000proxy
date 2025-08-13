@@ -273,12 +273,12 @@ class ProxyHealthMonitor
     {
         return collect(User::whereHas('orders', function ($query) {
             $query->where('payment_status', 'paid')
-                  ->where('status', 'active');
+                  ->where('status', 'up');
         })->with(['orders.serverPlan.server'])
           ->get()
           ->flatMap(function ($user) {
               return $user->orders->where('payment_status', 'paid')
-                                 ->where('status', 'active')
+                                 ->where('status', 'up')
                                  ->map(function ($order) {
                                      return [
                                          'order' => $order,
@@ -297,7 +297,7 @@ class ProxyHealthMonitor
 
         return collect($user->orders()
             ->where('payment_status', 'paid')
-            ->where('status', 'active')
+            ->where('status', 'up')
             ->with(['serverPlan.server'])
             ->get()
             ->map(function ($order) {

@@ -1734,7 +1734,7 @@ class TelegramBotService
         $offset = ($page - 1) * $perPage;
         $query = Server::with(['brand', 'category']);
         $totalServers = (clone $query)->count();
-        $activeServers = (clone $query)->where('status', 'active')->count();
+    $activeServers = (clone $query)->where('status', 'up')->count();
         $inactiveServers = (clone $query)->where('status', 'inactive')->count();
         $totalPages = max(1, (int) ceil($totalServers / $perPage));
 

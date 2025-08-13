@@ -42,7 +42,7 @@ Route::middleware(['throttle:api'])->group(function () {
         Route::post('/login', [AuthController::class, 'login']);
     });
 
-    // Protected routes
+    // Protected routes (general user endpoints guarded by sanctum only)
     Route::middleware(['auth:sanctum', 'throttle:60,1'])->group(function () {
         // User routes
         Route::get('/user', [AuthController::class, 'user']);
@@ -65,35 +65,14 @@ Route::middleware(['throttle:api'])->group(function () {
         Route::get('/server-plans', [ServerPlanFilterController::class, 'index']);
         Route::get('/server-plans/filters', [ServerPlanFilterController::class, 'getFilters']);
 
-        // Direct Payment API routes (new root-level group to satisfy unified endpoint requirements)
-        Route::prefix('payment')->middleware(['auth:sanctum,customer','throttle:60,1'])->group(function () {
-            Route::post('/create', [\App\Http\Controllers\PaymentController::class, 'createPayment']);
-            Route::post('/topup', [\App\Http\Controllers\PaymentController::class, 'topUpWallet']);
-            Route::post('/refund', [\App\Http\Controllers\PaymentController::class, 'refundPayment']);
-            Route::get('/status/{orderId}', [\App\Http\Controllers\PaymentController::class, 'getPaymentStatusByOrder']);
-            Route::get('/status-by-id/{paymentId}', [\App\Http\Controllers\PaymentController::class, 'getPaymentStatus']);
-            Route::get('/gateways', [\App\Http\Controllers\PaymentController::class, 'getAvailableGateways']);
-            Route::get('/currencies', [\App\Http\Controllers\PaymentController::class, 'getCurrencies']);
-            Route::post('/webhook/{gateway}', [\App\Http\Controllers\PaymentController::class, 'handleWebhook']);
-        });
+    // (Payment routes moved out; see below unified multi-guard group)
 
         // Advanced Proxy Management API Routes (legacy grouping retained for backward compatibility)
         Route::prefix('advanced-proxy')->group(function () {
             Route::post('/initialize-setup', [AdvancedProxyController::class, 'initializeSetup']);
             Route::get('/dashboard', [AdvancedProxyController::class, 'getDashboard']);
             Route::post('/enable-auto-rotation', [AdvancedProxyController::class, 'enableAutoRotation']);
-                // Payment API routes (Sanctum protected)
-                Route::prefix('payment')->group(function () {
-                    Route::post('/create', [\App\Http\Controllers\PaymentController::class, 'createPayment']);
-                    Route::post('/topup', [\App\Http\Controllers\PaymentController::class, 'topUpWallet']);
-                    Route::post('/refund', [\App\Http\Controllers\PaymentController::class, 'refundPayment']);
-                    Route::get('/status/{orderId}', [\App\Http\Controllers\PaymentController::class, 'getPaymentStatusByOrder']);
-                    Route::get('/status-by-id/{paymentId}', [\App\Http\Controllers\PaymentController::class, 'getPaymentStatus']);
-                    Route::get('/gateways', [\App\Http\Controllers\PaymentController::class, 'getAvailableGateways']);
-                    Route::get('/currencies', [\App\Http\Controllers\PaymentController::class, 'getCurrencies']);
-                    Route::get('/invoice/{order}', [\App\Http\Controllers\PaymentController::class, 'showInvoice']);
-                    Route::post('/webhook/{gateway}', [\App\Http\Controllers\PaymentController::class, 'handleWebhook']);
-                });
+                // (Legacy payment routes removed; replaced by unified multi-guard group below)
             Route::post('/setup-load-balancer', [AdvancedProxyController::class, 'setupLoadBalancer']);
             Route::post('/setup-health-monitoring', [AdvancedProxyController::class, 'setupHealthMonitoring']);
             Route::get('/performance-analytics', [AdvancedProxyController::class, 'getPerformanceAnalytics']);
@@ -140,6 +119,23 @@ Route::middleware(['throttle:api'])->group(function () {
             Route::post('/optimal-size', [QrCodeController::class, 'getOptimalSize']);
             Route::post('/validate', [QrCodeController::class, 'validateData']);
         });
+    });
+});
+
+// Unified Payment API routes allowing either API token (sanctum) or customer session guard.
+// Ordering: placed after public + auth group definitions so it isn't nested inside sanctum-only group.
+// NOTE: This file is already within /api route group by RouteServiceProvider; avoid duplicating 'api'.
+Route::prefix('payment')->middleware(['throttle:60,1'])->group(function () {
+    // Accept either sanctum (api/customer_api) or session customer guard
+    Route::middleware(['auth:sanctum,customer,customer_api'])->group(function () {
+        Route::post('/create', [\App\Http\Controllers\PaymentController::class, 'createPayment']);
+        Route::post('/topup', [\App\Http\Controllers\PaymentController::class, 'topUpWallet']);
+        Route::post('/refund', [\App\Http\Controllers\PaymentController::class, 'refundPayment']);
+        Route::get('/status/{orderId}', [\App\Http\Controllers\PaymentController::class, 'getPaymentStatusByOrder']);
+        Route::get('/status-by-id/{paymentId}', [\App\Http\Controllers\PaymentController::class, 'getPaymentStatus']);
+        Route::get('/gateways', [\App\Http\Controllers\PaymentController::class, 'getAvailableGateways']);
+        Route::get('/currencies', [\App\Http\Controllers\PaymentController::class, 'getCurrencies']);
+        Route::post('/webhook/{gateway}', [\App\Http\Controllers\PaymentController::class, 'handleWebhook']);
     });
 });
 

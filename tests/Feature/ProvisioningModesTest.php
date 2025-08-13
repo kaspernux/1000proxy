@@ -24,7 +24,7 @@ class ProvisioningModesTest extends TestCase
     public function shared_plan_uses_existing_inbound()
     {
         $server = Server::factory()->create(['auto_provisioning' => true, 'status' => 'up', 'health_status' => 'healthy']);
-        $inbound = ServerInbound::factory()->create(['server_id' => $server->id, 'provisioning_enabled' => true, 'status' => 'active', 'capacity' => 100]);
+    $inbound = ServerInbound::factory()->create(['server_id' => $server->id, 'provisioning_enabled' => true, 'status' => 'active', 'capacity' => 100]);
         $plan = ServerPlan::factory()->create(['server_id' => $server->id, 'type' => 'multiple', 'preferred_inbound_id' => $inbound->id, 'is_active' => true, 'in_stock' => true, 'on_sale' => true]);
         $order = Order::factory()->create(['payment_status' => 'paid']);
         if (!$order->customer) {
@@ -51,7 +51,7 @@ class ProvisioningModesTest extends TestCase
     public function dedicated_plan_creates_new_inbound()
     {
         $server = Server::factory()->create(['auto_provisioning' => true, 'status' => 'up', 'health_status' => 'healthy']);
-        $templateInbound = ServerInbound::factory()->create(['server_id' => $server->id, 'provisioning_enabled' => true, 'status' => 'active', 'capacity' => 100]);
+    $templateInbound = ServerInbound::factory()->create(['server_id' => $server->id, 'provisioning_enabled' => true, 'status' => 'active', 'capacity' => 100]);
         $plan = ServerPlan::factory()->create(['server_id' => $server->id, 'type' => 'single', 'preferred_inbound_id' => $templateInbound->id, 'is_active' => true, 'in_stock' => true, 'on_sale' => true]);
         $order = Order::factory()->create(['payment_status' => 'paid']);
         if (!$order->customer) {

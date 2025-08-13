@@ -236,7 +236,7 @@ class IPRotationScheduler
         // Get all users with active rotation configurations
         $users = User::whereHas('orders', function ($query) {
             $query->where('payment_status', 'paid')
-                  ->where('status', 'active');
+                  ->where('status', 'up');
         })->get();
 
         foreach ($users as $user) {
@@ -256,7 +256,7 @@ class IPRotationScheduler
     {
         return collect($user->orders()
             ->where('payment_status', 'paid')
-            ->where('status', 'active')
+            ->where('status', 'up')
             ->with(['serverPlan.server'])
             ->get()
             ->map(function ($order) {

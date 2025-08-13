@@ -143,7 +143,7 @@ class FilamentPanelTestSuite extends TestCase
             'port' => 2053,
             'username' => 'admin',
             'password' => 'password123',
-            'status' => 'active',
+            'status' => 'up',
             'location' => 'US',
             'provider' => 'DigitalOcean',
         ];
@@ -180,7 +180,7 @@ class FilamentPanelTestSuite extends TestCase
             'description' => 'High-speed premium proxy service',
             'price' => 19.99,
             'billing_cycle' => 'monthly',
-            'status' => 'active',
+            'status' => 'up',
             'features' => ['unlimited_bandwidth', 'multiple_locations'],
         ];
 
@@ -257,7 +257,7 @@ class FilamentPanelTestSuite extends TestCase
         $order = Order::factory()->create([
             'user_id' => $this->customerUser->id,
             'service_id' => $service->id,
-            'status' => 'active',
+            'status' => 'up',
         ]);
 
         $this->actingAs($this->customerUser)
@@ -313,7 +313,7 @@ class FilamentPanelTestSuite extends TestCase
     /** @test */
     public function filament_tables_can_filter_data()
     {
-        $activeUser = User::factory()->create(['status' => 'active']);
+    $activeUser = User::factory()->create(['status' => 'active']); // user status unaffected
         $inactiveUser = User::factory()->create(['status' => 'inactive']);
 
         Livewire::actingAs($this->adminUser)

@@ -302,7 +302,8 @@ class CacheOptimizationService
     {
         try {
             // Cache active servers
-            $activeServers = \App\Models\Server::where('status', 'active')->get();
+            // Server status enum migrated to: up, down, paused
+            $activeServers = \App\Models\Server::where('status', 'up')->get();
             $this->cacheServerData('active_servers', $activeServers, self::LONG_TTL);
             
             // Cache popular server plans

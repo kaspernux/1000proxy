@@ -53,7 +53,9 @@ class CheckoutPageTest extends TestCase
     /** @test */
     public function checkout_page_renders_successfully_with_cart_items()
     {
-        Livewire::test(CheckoutPage::class)
+    // Authenticate as customer (customer guard) to satisfy mount() auth check
+    $this->be($this->customer, 'customer');
+    Livewire::test(CheckoutPage::class)
             ->assertStatus(200)
             ->assertViewIs('livewire.checkout-page')
             ->assertSee($this->serverPlan->name);
@@ -64,6 +66,7 @@ class CheckoutPageTest extends TestCase
     {
         CartManagement::clearCartItems();
 
+        $this->be($this->customer, 'customer');
         $this->get(route('checkout'))
             ->assertRedirect(route('products'))
             ->assertSessionHas('warning');

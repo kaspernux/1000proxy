@@ -30,6 +30,7 @@ class ServerPlan extends Model
         'volume',
         'is_active',
         'is_featured',
+        'is_popular',
         'in_stock',
         'on_sale',
         'preferred_inbound_id',
@@ -56,6 +57,7 @@ class ServerPlan extends Model
     protected $casts = [
         'is_active' => 'boolean',
         'is_featured' => 'boolean',
+        'is_popular' => 'boolean',
         'in_stock' => 'boolean',
         'on_sale' => 'boolean',
         'auto_provision' => 'boolean',

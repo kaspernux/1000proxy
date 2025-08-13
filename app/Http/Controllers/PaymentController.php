@@ -42,7 +42,18 @@ class PaymentController extends Controller
             $amount = $validated['amount'];
             $currency = strtolower($validated['currency']);
             $orderId = $validated['order_id'] ?? null;
-            $user = Auth::user();
+            // Support both customer (separate table) & standard user models under Sanctum.
+            // Attempt most specific guards first.
+            $user = Auth::guard('customer_api')->user()
+                ?? Auth::guard('customer')->user()
+                ?? Auth::user();
+
+            if (!$user) {
+                return response()->json([
+                    'success' => false,
+                    'error' => 'Unauthenticated'
+                ], 401);
+            }
             // Strict separation: wallet top-ups must use /payment/topup endpoint
             // If client mistakenly sends wallet_topup flag, reject (defensive)
             if ($request->boolean('wallet_topup')) {
@@ -144,11 +155,11 @@ class PaymentController extends Controller
                         }
                         $wallet->decrement('balance', $amount);
                         $wallet->transactions()->create([
-                            'type' => 'debit',
+                            'type' => 'payment',
+                            'customer_id' => $user->id,
                             'amount' => -$amount,
                             'status' => 'completed',
-                            'payment_method' => 'wallet',
-                            'currency' => $currency,
+                            'gateway' => 'wallet',
                             'reference' => 'Order_' . $order->id,
                         ]);
                         $order->update(['payment_status' => 'paid']);
@@ -219,17 +230,29 @@ class PaymentController extends Controller
                     ]);
                     break;
                 case 'wallet':
-                    $wallet = $user->wallet ?? $user->getWallet();
+                    // For Customer model use getWallet() helper to ensure creation; for User fallback to relation or method if available
+                    if (method_exists($user, 'getWallet')) {
+                        $wallet = $user->getWallet();
+                    } elseif (property_exists($user, 'wallet') && $user->wallet) {
+                        $wallet = $user->wallet;
+                    } elseif (method_exists($user, 'wallet')) {
+                        $wallet = $user->wallet()->first();
+                    } else {
+                        $wallet = null;
+                    }
+                    if (!$wallet) {
+                        return response()->json(['success' => false, 'error' => 'Wallet not available'], 422);
+                    }
                     if ($wallet->balance < $amount) {
                         return response()->json(['success' => false, 'error' => 'Insufficient wallet balance'], 422);
                     }
                     $wallet->decrement('balance', $amount);
                     $wallet->transactions()->create([
-                        'type' => 'debit',
+                        'type' => 'payment',
+                        'customer_id' => $user->id,
                         'amount' => -$amount,
                         'status' => 'completed',
-                        'payment_method' => 'wallet',
-                        'currency' => $currency,
+                        'gateway' => 'wallet',
                         'reference' => 'Standalone_' . strtoupper(uniqid()),
                     ]);
                     $result = ['success' => true, 'message' => 'Standalone payment with wallet'];
@@ -249,10 +272,12 @@ class PaymentController extends Controller
             Log::error('Unified payment creation failed', [
                 'user_id' => Auth::id(),
                 'error' => $e->getMessage(),
+                'trace' => app()->environment('testing') ? collect(explode("\n", $e->getTraceAsString()))->take(5) : null,
+                'payload' => app()->environment('testing') ? $request->all() : [],
             ]);
             return response()->json([
                 'success' => false,
-                'error' => 'Payment creation failed. Please try again.',
+                'error' => app()->environment('testing') ? ('Payment failed: '.$e->getMessage()) : 'Payment creation failed. Please try again.',
                 'data' => []
             ], 500);
         }
@@ -477,7 +502,7 @@ class PaymentController extends Controller
             if (!$transaction) {
                 return response()->json(['success' => false, 'error' => 'Transaction not found'], 404);
             }
-            $gateway = $transaction->payment_method;
+            $gateway = $transaction->gateway ?? $transaction->payment_method ?? null;
             switch ($gateway) {
                 case 'stripe':
                     $stripeService = app(\App\Services\PaymentGateways\StripePaymentService::class);

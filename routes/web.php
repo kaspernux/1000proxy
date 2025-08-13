@@ -72,6 +72,8 @@ use App\Livewire\Components\PaymentProcessor;
 Route::get('/', HomePage::class);
 Route::get('/categories', CategoriesPage::class);
 Route::get('/servers', ProductsPage::class)->name('servers.index');
+// Legacy/alternate products route name used by tests & services
+Route::get('/products', ProductsPage::class)->name('products');
 Route::get('/cart', CartPage::class);
 Route::get('/servers/{slug}', ProductDetailPage::class);
 

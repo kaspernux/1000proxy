@@ -26,7 +26,7 @@ class CacheOptimizationServiceTest extends TestCase
     
     public function test_cache_server_data_stores_data_with_prefix()
     {
-        $testData = ['server_id' => 1, 'status' => 'active'];
+    $testData = ['server_id' => 1, 'status' => 'up'];
         
         $result = $this->cacheService->cacheServerData('test_server', $testData);
         
@@ -36,7 +36,7 @@ class CacheOptimizationServiceTest extends TestCase
     
     public function test_get_cached_server_data_retrieves_data()
     {
-        $testData = ['server_id' => 1, 'status' => 'active'];
+    $testData = ['server_id' => 1, 'status' => 'up'];
         Cache::put('server:test_server', $testData, 300);
         
         $result = $this->cacheService->getCachedServerData('test_server');
@@ -139,8 +139,15 @@ class CacheOptimizationServiceTest extends TestCase
     public function test_warm_up_cache_caches_critical_data()
     {
         // Create test data
-        $activeServers = Server::factory()->count(3)->create(['status' => 'active']);
-        $popularPlans = ServerPlan::factory()->count(2)->create(['is_popular' => true]);
+    $activeServers = Server::factory()->count(3)->create(['status' => 'up']);
+        // IMPORTANT: Explicitly associate popular plans with existing servers to avoid implicit
+        // Server::factory() relationship creation in ServerPlanFactory which inflated the
+        // active server count (was 5 instead of expected 3 when two additional servers were created).
+        $popularPlans = ServerPlan::factory()->count(2)->create([
+            'is_popular' => true,
+            // Reuse one existing server id (first) so no new servers are created
+            'server_id' => $activeServers->first()->id,
+        ]);
         $settings = Setting::factory()->count(5)->create();
         
         $result = $this->cacheService->warmUpCache();
