@@ -4,6 +4,7 @@ namespace Database\Factories;
 
 use App\Models\ServerBrand;
 use Illuminate\Database\Eloquent\Factories\Factory;
+use Illuminate\Support\Str;
 
 /**
  * @extends \Illuminate\Database\Eloquent\Factories\Factory<\App\Models\ServerBrand>
@@ -19,12 +20,18 @@ class ServerBrandFactory extends Factory
      */
     public function definition(): array
     {
-        $name = $this->faker->company . ' Proxy';
+    $name = $this->faker->company . ' Proxy';
+
+    // Ensure unique slug within a single test run to prevent unique constraint violations
+    static $brandSlugCounters = [];
+    $baseSlug = Str::slug($name);
+    $brandSlugCounters[$baseSlug] = ($brandSlugCounters[$baseSlug] ?? 0) + 1;
+    $slug = $brandSlugCounters[$baseSlug] === 1 ? $baseSlug : $baseSlug.'-'.$brandSlugCounters[$baseSlug];
 
         return [
             'name' => $name,
-            'slug' => \Illuminate\Support\Str::slug($name),
-            'image' => 'server_brands/' . \Illuminate\Support\Str::slug($name) . '.png',
+            'slug' => $slug,
+            'image' => 'server_brands/' . $slug . '.png',
             'desc' => $this->faker->paragraph(3),
             'is_active' => $this->faker->boolean(80), // 80% chance of being active
         ];

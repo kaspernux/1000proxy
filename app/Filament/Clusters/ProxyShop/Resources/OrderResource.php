@@ -77,6 +77,7 @@ class OrderResource extends Resource
                                     ->getOptionLabelFromRecordUsing(fn (Customer $record): string =>
                                         "{$record->name} ({$record->email})")
                                     ->helperText('Select the customer for this order'),
+                                // user_id intentionally omitted: managed via assignManager action only
 
                                 TextInput::make('grand_amount')
                                     ->label('Total Amount')
@@ -135,6 +136,10 @@ class OrderResource extends Resource
                                 ->maxLength(1000)
                                 ->placeholder('Enter any order notes or special instructions')
                                 ->helperText('Internal notes for this order'),
+                            Placeholder::make('manager_info')
+                                ->label('Managing Staff User')
+                                ->content(fn (?Order $record): string => $record && $record->user_id ? 'User ID: '.$record->user_id : 'Unassigned')
+                                ->visible(fn (?Order $record) => $record !== null),
                         ])->columns(1),
 
                     Section::make('📊 Order Status')
@@ -477,6 +482,23 @@ class OrderResource extends Resource
                     ->color('info')
                     ->url(fn (Order $record): string =>
                         route('filament.admin.proxy-shop.resources.order-items.index', ['order' => $record->id])),
+                Action::make('assign_manager')
+                    ->label('Assign Me')
+                    ->icon('heroicon-o-user-plus')
+                    ->color('primary')
+                    ->requiresConfirmation()
+                    ->visible(fn (Order $record): bool => auth()->check())
+                    ->action(function (Order $record) {
+                        $user = auth()->user();
+                        if ($user instanceof \App\Models\User) {
+                            $record->assignManager($user);
+                            Notification::make()
+                                ->title('Order assigned')
+                                ->body('You are now the managing staff user for order #'.$record->id)
+                                ->success()
+                                ->send();
+                        }
+                    }),
             ])
             ->bulkActions([
                 BulkActionGroup::make([

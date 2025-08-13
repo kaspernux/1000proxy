@@ -14,11 +14,8 @@ class ListOrders extends ListRecords
 
     protected function getHeaderActions(): array
     {
-        return [
-            Actions\CreateAction::make()
-                ->label('Create Order')
-                ->icon('heroicon-o-plus'),
-        ];
+    // Creation is disabled; orders originate from customer checkout only.
+    return [];
     }
 
     public function getTabs(): array

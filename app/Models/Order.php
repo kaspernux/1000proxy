@@ -16,6 +16,7 @@ class Order extends Model
 {
     use \App\Traits\LogsActivity;
 
+
     protected static function booted(): void
     {
         static::updated(function(self $order) {
@@ -23,6 +24,7 @@ class Order extends Model
                 event(new \App\Events\OrderPaid($order));
             }
         });
+    // (No creation mutation now; constraint dropped by migration if present)
     }
     use HasFactory;
 
@@ -30,6 +32,8 @@ class Order extends Model
 
     protected $fillable = [
         'customer_id',
+    // Legacy staff management field (not used for customer placement)
+    'user_id',
         'order_number',
         'grand_amount',
         'currency',
@@ -62,6 +66,7 @@ class Order extends Model
     protected $casts = [
         'payment_details' => 'array',
     ];
+
 
     public function markAsPaid(string $url): void
     {
@@ -122,6 +127,11 @@ class Order extends Model
         return $this->hasMany(OrderItem::class);
     }
 
+    public function orderItems(): HasMany
+    {
+        return $this->hasMany(OrderItem::class); // alias for legacy tests
+    }
+
     public function paymentMethod(): BelongsTo
     {
         return $this->belongsTo(PaymentMethod::class, 'payment_method');
@@ -133,7 +143,18 @@ class Order extends Model
      */
     public function getUserIdAttribute(): ?int
     {
-        return $this->customer_id;
+        if (array_key_exists('user_id', $this->attributes) && !is_null($this->attributes['user_id'])) {
+            return (int) $this->attributes['user_id'];
+        }
+        return $this->customer_id; // fallback
+    }
+
+    /**
+     * Assign (or update) the staff user managing this order (e.g. refund, support action).
+     */
+    public function assignManager(\App\Models\User $user): void
+    {
+    $this->forceFill(['user_id' => $user->id])->saveQuietly();
     }
 
     // Enhanced relationships for XUI integration

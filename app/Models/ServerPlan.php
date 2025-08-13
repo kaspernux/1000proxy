@@ -52,6 +52,10 @@ class ServerPlan extends Model
         'supports_ipv6',          // IPv6 support for filtering
         'popularity_score',       // Popularity for sorting
         'server_status',          // Server status for filtering
+    // Legacy / compatibility fields referenced in tests & docs
+    'duration_days',          // Mirror of days for clarity
+    'max_connections',        // Legacy naming for concurrent_connections
+    'bandwidth_limit_gb',     // Legacy naming for data_limit_gb
     ];
 
     protected $casts = [
@@ -70,6 +74,9 @@ class ServerPlan extends Model
         'data_limit_gb' => 'decimal:2',
         'popularity_score' => 'integer',
         'bandwidth_mbps' => 'integer',
+    'duration_days' => 'integer',
+    'max_connections' => 'integer',
+    'bandwidth_limit_gb' => 'integer',
     ];
 
     /**
@@ -197,6 +204,52 @@ class ServerPlan extends Model
     public function getTotalPrice(): float
     {
         return (float) ($this->price + $this->setup_fee);
+    }
+
+    /**
+     * Accessor to keep tests that expect duration_days in sync with days
+     */
+    public function getDurationDaysAttribute(): ?int
+    {
+        return $this->attributes['duration_days'] ?? $this->attributes['days'] ?? null;
+    }
+
+    public function setDurationDaysAttribute($value): void
+    {
+        // Keep both columns if duration_days column exists; always reflect into days primary field
+        $this->attributes['days'] = (int) $value;
+        if (array_key_exists('duration_days', $this->attributes)) {
+            $this->attributes['duration_days'] = (int) $value;
+        }
+    }
+
+    public function getMaxConnectionsAttribute(): ?int
+    {
+        return $this->attributes['max_connections']
+            ?? $this->attributes['concurrent_connections']
+            ?? null;
+    }
+
+    public function setMaxConnectionsAttribute($value): void
+    {
+        $this->attributes['concurrent_connections'] = (int) $value;
+        if (array_key_exists('max_connections', $this->attributes)) {
+            $this->attributes['max_connections'] = (int) $value;
+        }
+    }
+
+    public function getBandwidthLimitGbAttribute(): ?int
+    {
+        return $this->attributes['bandwidth_limit_gb']
+            ?? (isset($this->attributes['data_limit_gb']) ? (int) $this->attributes['data_limit_gb'] : null);
+    }
+
+    public function setBandwidthLimitGbAttribute($value): void
+    {
+        $this->attributes['data_limit_gb'] = (int) $value;
+        if (array_key_exists('bandwidth_limit_gb', $this->attributes)) {
+            $this->attributes['bandwidth_limit_gb'] = (int) $value;
+        }
     }
 
     /**

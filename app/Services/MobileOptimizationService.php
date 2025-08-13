@@ -485,8 +485,6 @@ class MobileOptimizationService
             'description' => 'Advanced Proxy Management Platform',
             'start_url' => '/',
             'display' => 'standalone',
-            'theme_color' => '#1976d2',
-            'background_color' => '#ffffff',
             'orientation' => 'portrait-primary',
             'icons' => [
                 [

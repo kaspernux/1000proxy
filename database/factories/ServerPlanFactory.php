@@ -7,6 +7,7 @@ use App\Models\Server;
 use App\Models\ServerBrand;
 use App\Models\ServerCategory;
 use Illuminate\Database\Eloquent\Factories\Factory;
+use Illuminate\Support\Str;
 
 /**
  * @extends \Illuminate\Database\Eloquent\Factories\Factory<\App\Models\ServerPlan>
@@ -27,7 +28,13 @@ class ServerPlanFactory extends Factory
         $types = ['single', 'multiple', 'dedicated', 'branded'];
         $countries = ['US', 'UK', 'DE', 'FR', 'JP', 'CA', 'AU', 'NL', 'SE', 'SG'];
 
-        $name = $this->faker->randomElement($planTypes) . ' ' . $this->faker->randomElement(['Proxy', 'VPN', 'Server']);
+    $name = $this->faker->randomElement($planTypes) . ' ' . $this->faker->randomElement(['Proxy', 'VPN', 'Server']);
+
+    // Deterministic unique slug generation to avoid DB unique constraint violations in heavy factory usage
+    static $slugCounters = [];
+    $baseSlug = Str::slug($name);
+    $slugCounters[$baseSlug] = ($slugCounters[$baseSlug] ?? 0) + 1;
+    $slug = $slugCounters[$baseSlug] === 1 ? $baseSlug : $baseSlug.'-'.$slugCounters[$baseSlug];
 
         return [
             'server_id' => Server::factory(),
@@ -41,8 +48,8 @@ class ServerPlanFactory extends Factory
             'popularity_score' => $this->faker->numberBetween(0, 100),
             'server_status' => $this->faker->randomElement(['online', 'offline', 'maintenance']),
             'name' => $name,
-            'slug' => \Illuminate\Support\Str::slug($name),
-            'product_image' => 'server_plans/' . \Illuminate\Support\Str::slug($name) . '.jpg',
+            'slug' => $slug,
+            'product_image' => 'server_plans/' . $slug . '.jpg',
             'description' => $this->faker->paragraph(2),
             'capacity' => $this->faker->numberBetween(50, 1000),
             'price' => $this->faker->randomFloat(2, 5, 100),
@@ -54,6 +61,10 @@ class ServerPlanFactory extends Factory
             'is_popular' => $this->faker->boolean(15),
             'in_stock' => $this->faker->boolean(90),
             'on_sale' => $this->faker->boolean(15),
+            // Legacy compatibility fields used in some tests & API docs
+            'duration_days' => 30,
+            'max_connections' => $this->faker->numberBetween(1, 10),
+            'bandwidth_limit_gb' => $this->faker->numberBetween(10, 500),
         ];
     }
 

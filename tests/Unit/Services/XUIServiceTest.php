@@ -14,7 +14,7 @@ class XUIServiceTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
-        $this->xuiService = new XUIService();
+        $this->xuiService = XUIService::makeLegacy();
     }
 
     public function test_can_authenticate_with_xui_panel()
@@ -128,36 +128,37 @@ class XUIServiceTest extends TestCase
     public function test_can_delete_client()
     {
         Http::fake([
-            '*/panel/api/inbounds/*/delClient/*' => Http::response([
+            '*/panel/api/inbounds/1/delClient/uuid-123' => Http::response([
                 'success' => true,
                 'msg' => 'Client deleted successfully'
             ], 200)
         ]);
 
-        $result = $this->xuiService->deleteClient(1, 'uuid-123', 'session_cookie');
+        $deleted = $this->xuiService->deleteClient(1, 'uuid-123');
 
-        $this->assertTrue($result['success']);
+        $this->assertTrue($deleted);
     }
 
     public function test_can_update_client()
     {
         Http::fake([
-            '*/panel/api/inbounds/updateClient/*' => Http::response([
+            '*/panel/api/inbounds/updateClient/uuid-123' => Http::response([
                 'success' => true,
                 'msg' => 'Client updated successfully'
             ], 200)
         ]);
 
-        $updateData = [
-            'email' => 'updated@example.com',
-            'limit_ip' => 2,
-            'totalGB' => 2147483648, // 2GB
-            'enable' => true,
-        ];
+        $settingsJson = json_encode([
+            'clients' => [[
+                'id' => 'uuid-123',
+                'email' => 'updated@example.com',
+                'enable' => true,
+            ]]
+        ]);
 
-        $result = $this->xuiService->updateClient('uuid-123', $updateData, 'session_cookie');
+        $updated = $this->xuiService->updateClient('uuid-123', 1, $settingsJson);
 
-        $this->assertTrue($result['success']);
+        $this->assertTrue($updated);
     }
 
     public function test_handles_network_errors_gracefully()

@@ -378,5 +378,4 @@ class Customer extends Authenticatable implements MustVerifyEmail
             'telegram_last_name' => null,
         ]);
     }
-
 }

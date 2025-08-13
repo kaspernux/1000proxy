@@ -298,4 +298,15 @@ class User extends Authenticatable implements FilamentUser
     {
         return $this->locale ?: config('locales.default', 'en');
     }
+
+    /**
+     * Orders relationship (staff may view/manage but must not create).
+     * Uses customer-centric orders table where staff are not the owner; exposed
+     * for management dashboards only (no reverse foreign key on orders).
+     */
+    public function orders()
+    {
+    // Legacy relationship: a nullable user_id column (added for legacy tests / management)
+    return $this->hasMany(\App\Models\Order::class, 'user_id');
+    }
 }
