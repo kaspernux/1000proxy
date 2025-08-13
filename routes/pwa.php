@@ -23,6 +23,10 @@ Route::get('/sw.js', [PWAController::class, 'serviceWorker'])
 Route::get('/offline', [PWAController::class, 'offline'])
     ->name('pwa.offline');
 
+// Protocol handler redirect endpoint (used by manifest protocol_handlers)
+Route::get('/handle-proxy', [PWAController::class, 'handleProtocolRedirect'])
+    ->name('pwa.handle-proxy');
+
 // PWA API Routes
 Route::prefix('api/pwa')->group(function () {
     // Public endpoints

@@ -486,12 +486,12 @@
 
         <div class="mobile-nav-menu" id="mobile-menu" role="menu">
             <ul>
-                <li><a href="/dashboard" role="menuitem">Dashboard</a></li>
+                <li><a href="/account" role="menuitem">Dashboard</a></li>
                 <li><a href="/servers" role="menuitem">Servers</a></li>
-                <li><a href="/services" role="menuitem">Services</a></li>
-                <li><a href="/orders" role="menuitem">Orders</a></li>
+                <li><a href="/account/my-active-servers" role="menuitem">Services</a></li>
+                <li><a href="/account/order-management" role="menuitem">Orders</a></li>
                 <li><a href="/support" role="menuitem">Support</a></li>
-                <li><a href="/profile" role="menuitem">Profile</a></li>
+                <li><a href="/account/user-profile" role="menuitem">Profile</a></li>
                 <li><a href="/logout" role="menuitem">Logout</a></li>
             </ul>
         </div>

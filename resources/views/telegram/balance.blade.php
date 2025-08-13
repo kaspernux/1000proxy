@@ -4,3 +4,5 @@
 
 💡 {{ __('telegram.wallet.menu_hint') }}
 💳 {{ __('telegram.wallet.topup_hint') }}
+
+🔘 <a href="{{ rtrim(config('app.url'), '/') }}/wallet/usd/top-up">{{ __('telegram.buttons.topup_wallet') }}</a>

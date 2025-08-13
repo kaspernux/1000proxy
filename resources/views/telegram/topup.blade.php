@@ -2,7 +2,7 @@
 
 💰 {{ __('telegram.topup.current') }}: <b>${{ number_format((float)($currentBalance ?? 0), 2) }}</b>
 
-🔗 <a href="{{ config('app.url') }}/wallet">{{ __('telegram.common.open_dashboard') }}</a>
+🔗 <a href="{{ config('app.url') }}/wallet/usd/top-up">{{ __('telegram.common.open_dashboard') }}</a>
 
 💡 {{ __('telegram.topup.methods') }}:
 • 💳 {{ __('telegram.topup.method_cards') }}

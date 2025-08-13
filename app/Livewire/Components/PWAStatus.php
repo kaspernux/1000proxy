@@ -266,7 +266,7 @@ class PWAStatus extends Component
         $this->notificationTitle = 'Test Notification';
         $this->notificationBody = 'This is a test notification from your PWA dashboard.';
         $this->notificationIcon = '/images/icons/icon-192x192.png';
-        $this->notificationUrl = '/dashboard';
+    $this->notificationUrl = '/account';
     }
 
     /**

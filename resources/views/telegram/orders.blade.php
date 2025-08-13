@@ -16,12 +16,14 @@
       $serverLabel = $firstItem?->serverPlan?->server?->country ?? $firstItem?->serverPlan?->server?->ip ?? '—';
       $amount = $order->grand_amount ?? $order->total_amount ?? 0;
     @endphp
-    <b>{{ $icon }} Order #{{ $order->id }}</b><br/>
-    🌐 {{ $serverLabel }}<br/>
-    💰 ${{ number_format((float)$amount, 2) }}<br/>
-    📅 {{ $order->created_at->format('M j, Y') }}<br/>
-    📊 {{ $order->payment_status ?? '—' }} / {{ $order->order_status ?? '—' }}
-    <br/><br/>
+    <br/>┏━━━━━━━━━━━━━━━━━
+    <br/><b>{{ $icon }} Order #{{ $order->id }}</b>
+    <br/>🌐 {{ $serverLabel }}
+    <br/>💰 ${{ number_format((float)$amount, 2) }}
+    <br/>📅 {{ $order->created_at->format('M j, Y') }}
+    <br/>📊 {{ $order->payment_status ?? '—' }} / {{ $order->order_status ?? '—' }}
+    <br/>━━━━━━━━━━━━━━━━━┛
+    <br/>
   @empty
     <i>�️ {{ __('telegram.orders.empty') }}</i>
   @endforelse

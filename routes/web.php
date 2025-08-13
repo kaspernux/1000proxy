@@ -46,8 +46,11 @@ use App\Http\Controllers\{
     Admin\BusinessGrowthController,
     Admin\ThirdPartyIntegrationController,
     Admin\MarketingAutomationController,
-    CheckoutController
+    CheckoutController,
+    MagicLoginController
 };
+// Magic login for customers (signed URL)
+Route::get('/auth/magic', MagicLoginController::class)->name('magic.login');
 
 // (Route facade already imported at top)
 use Illuminate\Support\Facades\Auth;
@@ -132,6 +135,7 @@ Route::middleware(['auth:customer'])->group(function () {
         Route::post('/{currency}/top-up', [WalletController::class, 'topUp'])->name('wallet.topup.submit');
         Route::get('/{currency}/insufficient', [WalletController::class, 'insufficient'])->name('wallet.insufficient');
     });
+
 
     // Transaction routes
     Route::get('/transactions', \App\Livewire\Transactions::class)->name('transactions.index');

@@ -14,4 +14,4 @@
 @endif
 
 🧭 {{ __('telegram.config.dashboard') }}
-<a href="{{ config('app.url') }}/dashboard">{{ __('telegram.common.open_dashboard') }}</a>
+<a href="{{ config('app.url') }}/account">{{ __('telegram.common.open_dashboard') }}</a>

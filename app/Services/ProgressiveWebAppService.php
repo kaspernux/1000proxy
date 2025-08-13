@@ -123,7 +123,7 @@ class ProgressiveWebAppService
                         'name' => 'My Proxies',
                         'short_name' => 'Proxies',
                         'description' => 'View and manage your proxy services',
-                        'url' => '/dashboard/proxies',
+                        'url' => '/account/my-active-servers',
                         'icons' => [
                             [
                                 'src' => '/images/icons/shortcut-proxies.png',
@@ -147,7 +147,7 @@ class ProgressiveWebAppService
                         'name' => 'Account',
                         'short_name' => 'Account',
                         'description' => 'Manage your account settings',
-                        'url' => '/dashboard/profile',
+                        'url' => '/account/user-profile',
                         'icons' => [
                             [
                                 'src' => '/images/icons/shortcut-account.png',
@@ -263,7 +263,7 @@ self.addEventListener('fetch', event => {
     } else if (isStaticAsset(url.pathname)) {
         // Static assets - Cache first
         event.respondWith(handleStaticAsset(request));
-    } else if (url.pathname.startsWith('/dashboard') || url.pathname === '/') {
+    } else if (url.pathname.startsWith('/account') || url.pathname === '/') {
         // App pages - Network first with offline fallback
         event.respondWith(handleAppPage(request));
     } else {

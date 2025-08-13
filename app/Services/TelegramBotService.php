@@ -19,16 +19,22 @@ use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Str;
 use Telegram\Bot\Keyboard\Keyboard;
 use Illuminate\Support\Facades\Lang;
+use App\Services\TemplateRenderer;
+use SimpleSoftwareIO\QrCode\Facades\QrCode;
+use Illuminate\Support\Facades\Storage;
+use App\Services\LocaleService;
 
 class TelegramBotService
 {
     protected $telegram;
     protected bool $enhanced = true;
+    protected TemplateRenderer $templates;
 
     public function __construct()
     {
         $this->telegram = new Api(config('services.telegram.bot_token'));
         $this->enhanced = (bool) (config('services.telegram.enhanced') ?? env('TELEGRAM_BOT_ENHANCED', true));
+    $this->templates = app(TemplateRenderer::class);
     }
 
     /**
@@ -56,9 +62,9 @@ class TelegramBotService
             $buildCommands = function (string $locale): array {
                 $key = fn(string $k) => Lang::get("telegram.commands.$k", [], $locale);
                 return [
-                    ['command' => 'start', 'description' => (string) $key('start')],
                     ['command' => 'menu', 'description' => (string) $key('menu')],
                     ['command' => 'help', 'description' => (string) $key('help')],
+                    ['command' => 'login', 'description' => (string) $key('login')],
                     ['command' => 'balance', 'description' => (string) $key('balance')],
                     ['command' => 'topup', 'description' => (string) $key('topup')],
                     ['command' => 'myproxies', 'description' => (string) $key('myproxies')],
@@ -304,31 +310,7 @@ class TelegramBotService
     {
         try {
             $update = new Update($update);
-
-            // Locale detection: prefer Telegram user's language_code, map to supported locales
-            try {
-                $langCode = null;
-                if ($update->getMessage()) {
-                    $langCode = $update->getMessage()->getFrom()->getLanguageCode();
-                } elseif ($update->getCallbackQuery()) {
-                    $langCode = $update->getCallbackQuery()->getFrom()->getLanguageCode();
-                }
-                $supported = ['en','ru','fr','zh','ar','hi','es','pt'];
-                $map = [
-                    'en' => 'en', 'en-us' => 'en', 'en-gb' => 'en',
-                    'ru' => 'ru', 'fr' => 'fr', 'zh' => 'zh', 'zh-hans' => 'zh', 'zh-cn' => 'zh', 'zh-hant' => 'zh',
-                    'ar' => 'ar', 'hi' => 'hi', 'es' => 'es', 'pt' => 'pt', 'pt-br' => 'pt',
-                ];
-                $code = strtolower((string) $langCode);
-                $locale = $map[$code] ?? ($map[substr($code, 0, 2)] ?? 'en');
-                if (!in_array($locale, $supported, true)) {
-                    $locale = 'en';
-                }
-                app()->setLocale($locale);
-            } catch (\Throwable $e) {
-                // Default to English on any error
-                app()->setLocale('en');
-            }
+            $this->applyLocale($update);
 
             if ($update->getMessage()) {
                 $message = $update->getMessage();
@@ -349,6 +331,55 @@ class TelegramBotService
     }
 
     /**
+     * Resolve and apply locale for this update.
+     */
+    protected function applyLocale(Update $update): void
+    {
+        $chatId = null;
+        $telegramLang = null;
+        try {
+            if ($msg = $update->getMessage()) {
+                $chatId = $msg->getChat()->getId();
+                $telegramLang = $msg->getFrom()->getLanguageCode();
+            } elseif ($cb = $update->getCallbackQuery()) {
+                $chatId = $cb->getMessage()->getChat()->getId();
+                $telegramLang = $cb->getFrom()->getLanguageCode();
+            }
+
+            $entity = null;
+            if ($chatId) {
+                $entity = Customer::where('telegram_chat_id', $chatId)->first();
+                if (!$entity) {
+                    $entity = User::where('telegram_chat_id', $chatId)->first();
+                }
+            }
+
+            if ($entity && $entity->locale) {
+                $locale = LocaleService::normalize($entity->locale);
+            } else {
+                $localeCandidate = $telegramLang ? LocaleService::normalize(strtolower($telegramLang)) : config('locales.default', 'en');
+                $locale = $localeCandidate;
+                if ($entity && !$entity->locale) {
+                    try {
+                        $entity->locale = $locale;
+                        $entity->saveQuietly();
+                    } catch (\Throwable $e) {
+                        Log::warning('Failed persisting detected locale', ['error' => $e->getMessage()]);
+                    }
+                }
+            }
+
+            if (!LocaleService::isSupported($locale)) {
+                $locale = config('locales.default', 'en');
+            }
+            app()->setLocale($locale);
+        } catch (\Throwable $e) {
+            Log::warning('Locale resolution failure, falling back to default', ['error' => $e->getMessage()]);
+            app()->setLocale(config('locales.default', 'en'));
+        }
+    }
+
+    /**
      * Handle incoming messages
      */
     protected function handleMessage(Message $message): void
@@ -357,10 +388,25 @@ class TelegramBotService
         $text = $message->getText();
         $userId = $message->getFrom()->getId();
 
-        // Map pretty reply-keyboard labels to commands (no leading '/')
+        // Inbound anti-spam: limit messages per chat (e.g., 30/min)
+        if (class_exists(\Illuminate\Support\Facades\RateLimiter::class)) {
+            $keyIn = 'tg_in:' . $chatId;
+            if (\Illuminate\Support\Facades\RateLimiter::tooManyAttempts($keyIn, 30)) {
+                // After cooldown window, send a friendly notice once
+                $coolKey = $keyIn . ':cool_notice';
+                $last = cache()->get($coolKey);
+                if (!$last || now()->diffInSeconds($last) > 60) {
+                    cache()->put($coolKey, now(), 120);
+                    $this->sendMessage($chatId, __('telegram.messages.rate_limited') ?: '⏳ You are sending messages too fast. Please slow down.');
+                }
+                return;
+            }
+            \Illuminate\Support\Facades\RateLimiter::hit($keyIn, 60);
+        }
+
+        // Map common labels/emojis to commands (even without reply keyboards)
         if ($text && !str_starts_with($text, '/')) {
             $normalized = trim(preg_replace('/\s+/', ' ', $text));
-
             // 1) Emoji-first mapping (language-agnostic)
             $emojiMap = [
                 '✨' => '/menu',
@@ -378,36 +424,35 @@ class TelegramBotService
                     break;
                 }
             }
-
-            // 2) If not matched by emoji, try label maps for current locale and English fallback
-            if (!str_starts_with($text, '/')) {
+            // 2) Localized label mapping (current locale)
+            if ($text && !str_starts_with($text, '/')) {
                 $currentLocaleMap = [
-                    '✨ ' . __('telegram.buttons.menu') => '/menu',
-                    '🛒 ' . __('telegram.buttons.plans') => '/plans',
-                    '📦 ' . __('telegram.buttons.orders') => '/orders',
-                    '🧰 ' . __('telegram.buttons.my_services') => '/myproxies',
-                    '💳 ' . __('telegram.buttons.wallet') => '/balance',
-                    '🆘 ' . __('telegram.buttons.support') => '/support',
-                    '👤 ' . __('telegram.buttons.profile') => '/profile',
-                    '🆕 ' . __('telegram.buttons.sign_up') => '/signup',
+                    '✨ ' . $this->trans('telegram.buttons.menu') => '/menu',
+                    '🛒 ' . $this->trans('telegram.buttons.plans') => '/plans',
+                    '📦 ' . $this->trans('telegram.buttons.orders') => '/orders',
+                    '🧰 ' . $this->trans('telegram.buttons.my_services') => '/myproxies',
+                    '💳 ' . $this->trans('telegram.buttons.wallet') => '/balance',
+                    '🆘 ' . $this->trans('telegram.buttons.support') => '/support',
+                    '👤 ' . $this->trans('telegram.buttons.profile') => '/profile',
+                    '🆕 ' . $this->trans('telegram.buttons.sign_up') => '/signup',
                 ];
-
-                // English fallback mapping in case labels were shown in EN but locale resolved differently
-                $en = function (string $k) { return \Illuminate\Support\Facades\Lang::get("telegram.buttons.$k", [], 'en'); };
-                $englishMap = [
-                    '✨ ' . $en('menu') => '/menu',
-                    '🛒 ' . $en('plans') => '/plans',
-                    '📦 ' . $en('orders') => '/orders',
-                    '🧰 ' . $en('my_services') => '/myproxies',
-                    '💳 ' . $en('wallet') => '/balance',
-                    '🆘 ' . $en('support') => '/support',
-                    '👤 ' . $en('profile') => '/profile',
-                    '🆕 ' . $en('sign_up') => '/signup',
-                ];
-
                 if (isset($currentLocaleMap[$normalized])) {
                     $text = $currentLocaleMap[$normalized];
-                } elseif (isset($englishMap[$normalized])) {
+                }
+            }
+            // 3) Hardcoded English labels as last resort
+            if ($text && !str_starts_with($text, '/')) {
+                $englishMap = [
+                    '✨ Menu' => '/menu',
+                    '🛒 Plans' => '/plans',
+                    '📦 Orders' => '/orders',
+                    '🧰 My Proxies' => '/myproxies',
+                    '💳 Wallet' => '/balance',
+                    '🆘 Support' => '/support',
+                    '👤 Profile' => '/profile',
+                    '🆕 Sign Up' => '/signup',
+                ];
+                if (isset($englishMap[$normalized])) {
                     $text = $englishMap[$normalized];
                 }
             }
@@ -418,7 +463,7 @@ class TelegramBotService
         $params = trim(substr($text, strlen($command)));
 
         // Support compact commands like /config_123 or /reset_abc-uuid
-        if (preg_match('/^\/(config|reset|status|buy)_(.+)$/', $text, $m)) {
+    if (preg_match('/^\/(config|reset|status|buy|qrcode)_(.+)$/', $text, $m)) {
             $compactCmd = '/' . $m[1];
             $compactParam = $m[2];
             $command = $compactCmd;
@@ -427,7 +472,7 @@ class TelegramBotService
 
         switch ($command) {
             case '/start':
-                $this->handleStart($chatId, $userId, $params);
+                $this->handleStart($chatId, $userId, $params, $message);
                 break;
 
             case '/menu':
@@ -460,11 +505,21 @@ class TelegramBotService
                 break;
 
             case '/topup':
+                $url = rtrim(config('app.url'), '/') . '/wallet/usd/top-up';
+                $this->sendMessage($chatId, '🔗 ' . $url);
                 $this->handleTopup($chatId, $userId);
                 break;
 
             case '/config':
                 $this->handleConfig($chatId, $userId, $params);
+                break;
+
+            case '/login':
+                $this->handleLogin($chatId, $userId, $message);
+                break;
+
+            case '/qrcode':
+                $this->handleQrCode($chatId, $userId, $params);
                 break;
 
             case '/reset':
@@ -489,6 +544,10 @@ class TelegramBotService
 
             case '/profile':
                 $this->handleProfile($chatId, $userId);
+                break;
+
+            case '/more':
+                $this->handleMore($chatId, $userId);
                 break;
 
             // Admin Commands
@@ -521,52 +580,177 @@ class TelegramBotService
                     if ($this->handleOngoingFlow($chatId, $userId, $text)) {
                         // handled
                     } else {
-                        $this->sendMessage($chatId, __('telegram.messages.unknown'));
+                        $this->sendMessage($chatId, $this->trans('telegram.messages.unknown', [], 'Unknown command. Type /help'));
                     }
                 }
         }
     }
 
     /**
+     * Show extended More submenu
+     */
+    protected function handleMore(int $chatId, int $userId): void
+    {
+        $kb = Keyboard::make()->inline();
+        $kb->row([
+            Keyboard::inlineButton(['text' => '🛍 ' . $this->trans('telegram.buttons.plans', [], 'Plans'), 'callback_data' => 'open_plans']),
+            Keyboard::inlineButton(['text' => '🧾 ' . $this->trans('telegram.buttons.orders', [], 'Orders'), 'callback_data' => 'open_orders'])
+        ]);
+        $kb->row([
+            Keyboard::inlineButton(['text' => '🧪 ' . $this->trans('telegram.buttons.status', [], 'Status'), 'callback_data' => 'open_status']),
+            Keyboard::inlineButton(['text' => '🛠 ' . $this->trans('telegram.buttons.filters', [], 'Filters'), 'callback_data' => 'server_filters'])
+        ]);
+        $kb = $this->appendBackToMenu($kb, $chatId, $userId);
+        $this->sendMessageWithKeyboard($chatId, $this->trans('telegram.messages.more_menu', [], 'More options:'), $kb);
+    }
+
+    /**
      * Handle /start command
      */
-    protected function handleStart(int $chatId, int $userId, string $params): void
+    protected function handleStart(int $chatId, int $userId, string $params, ?Message $message = null): void
     {
-        // Always show a persistent command keyboard first
-        $this->sendPersistentCommandMenu($chatId);
+    // Remove any old reply keyboards; we use inline keyboards only now
+    $this->hideReplyKeyboard($chatId);
 
-        // If a customer is already linked, jump to main menu
-        $customer = Customer::where('telegram_chat_id', $chatId)->first();
-        if ($customer) {
-            $this->handleMenu($chatId, $userId);
-            return;
+    // Resolve current identities
+    $customer = Customer::where('telegram_chat_id', $chatId)->first();
+    $staff = $this->getStaffUser($chatId, $userId);
+
+        // If not linked, and we can identify a previously linked account by username, offer magic login
+        if (!$customer && $message) {
+            try {
+                $username = $message->getFrom()->getUsername();
+                if ($username) {
+                    $maybe = Customer::where('telegram_username', $username)->first();
+                    if ($maybe && !$maybe->telegram_chat_id) {
+                        $url = \App\Http\Controllers\MagicLoginController::generateFor($maybe, 60 * 24);
+                        $text = $this->templates->render('magic_login', 'telegram', [
+                            'url' => $url,
+                            'name' => $maybe->name ?? 'there',
+                        ]);
+                        if ($text === 'magic_login') {
+                            $text = '🔑 Welcome back, :name!\n\nTap to sign in: :url';
+                            $text = str_replace([':name', ':url'], [$maybe->name ?? 'there', $url], $text);
+                        }
+                        $kb = Keyboard::make()->inline()->row([
+                            Keyboard::inlineButton(['text' => '🔑 ' . __('telegram.common.open'), 'url' => $url])
+                        ]);
+                        $this->sendMessageWithKeyboard($chatId, $text, $kb);
+                    }
+                }
+            } catch (\Throwable $e) {
+                // ignore
+            }
         }
 
-    // Not linked: friendly onboarding with CTAs (localized)
-    $message = __('telegram.messages.start_welcome', ['url' => config('app.url')]);
+        // Tailored welcome + centralized menu
+        if ($customer) {
+            $text = $this->templates->render('welcome_customer', 'telegram', [
+                'name' => $customer->name ?? 'there',
+                'url' => config('app.url')
+            ]);
+            if ($text === 'welcome_customer') {
+                $text = '👋 ' . $this->trans('telegram.menu.title', [], 'Welcome back!') . "\n\n" . $this->trans('telegram.admin.open_dashboard', ['url' => config('app.url') . '/account'], 'Dashboard: :url');
+            }
+            // Build main inline menu and attach it to the welcome visual/message directly
+            $keyboard = $this->buildMainInlineMenu(true, (bool)$this->getStaffUser($chatId, $userId));
+            $this->sendWelcomeVisualWithMenu($chatId, $text, $keyboard);
+        } elseif ($staff) {
+            $text = $this->templates->render('welcome_staff', 'telegram', [
+                'name' => $staff->name ?? 'there',
+                'url' => config('app.url') . '/admin'
+            ]);
+            if ($text === 'welcome_staff') {
+                $text = '🛠 ' . $this->trans('telegram.admin.panel_title', [], 'Admin Panel') . "\n\n" . $this->trans('telegram.admin.open_dashboard', ['url' => config('app.url') . '/admin'], 'Dashboard: :url');
+            }
+            // Attach main inline menu directly
+            $keyboard = $this->buildMainInlineMenu(false, true);
+            $this->sendWelcomeVisualWithMenu($chatId, $text, $keyboard);
+        } else {
+            $text = $this->templates->render('welcome_guest', 'telegram', [
+                'url' => config('app.url')
+            ]);
+            if ($text === 'welcome_guest') {
+                $text = $this->trans('telegram.messages.start_welcome', ['url' => config('app.url')], 'Welcome to 1000proxy! Open: :url');
+            }
+            // Attach guest menu directly
+            $keyboard = $this->buildMainInlineMenu(false, false);
+            $this->sendWelcomeVisualWithMenu($chatId, $text, $keyboard);
+        }
+    }
 
-        $keyboard = [
-            'inline_keyboard' => [
-                [ ['text' => '🌐 ' . __('telegram.common.browse_plans'), 'callback_data' => 'view_servers'] ],
-                [ ['text' => '🆕 ' . __('telegram.common.create_account'), 'callback_data' => 'signup_start'] ],
-                [ ['text' => '❓ ' . __('telegram.common.help'), 'callback_data' => 'open_support'] ],
-            ]
+    /**
+     * Prefer sending a styled welcome image with caption if present.
+     */
+    protected function sendWelcomeVisual(int $chatId, string $caption, Keyboard $kb): void
+    {
+        // Try common paths under public/
+        $candidates = [
+            public_path('shield-proxy.png'),
         ];
-    $this->sendMessageWithKeyboard($chatId, $message, $keyboard);
+        foreach ($candidates as $path) {
+            if (is_readable($path)) {
+                $this->sendPhoto($chatId, $path, $caption);
+                // Send the keyboard after the photo as a separate message for better UX
+                $this->sendMessageWithKeyboard($chatId, __('telegram.menu.title'), $kb);
+                return;
+            }
+        }
+        // Fallback to plain message with keyboard
+        $this->sendMessageWithKeyboard($chatId, $caption, $kb);
+    }
+
+    /**
+     * Variant of welcome visual that does NOT send any keyboard. Used by /start.
+     */
+    protected function sendWelcomeVisualNoMenu(int $chatId, string $caption): void
+    {
+        $candidates = [
+            public_path('shield-proxy.png'),
+        ];
+        foreach ($candidates as $path) {
+            if (is_readable($path)) {
+                $this->sendPhoto($chatId, $path, $caption);
+                return;
+            }
+        }
+        $this->sendMessage($chatId, $caption);
+    }
+
+    /**
+     * Send welcome visual with the main menu attached as an inline keyboard in the same message when possible.
+     */
+    protected function sendWelcomeVisualWithMenu(int $chatId, string $caption, $keyboard): void
+    {
+        $candidates = [
+            public_path('shield-proxy.png'),
+        ];
+        foreach ($candidates as $path) {
+            if (is_readable($path)) {
+                $this->sendPhotoWithKeyboard($chatId, $path, $caption, $keyboard);
+                return;
+            }
+        }
+        // Fallback to text + keyboard if no image is available
+        $this->sendMessageWithKeyboard($chatId, $caption, $keyboard);
     }
 
     /**
      * Handle /myproxies command
      */
-    protected function handleMyProxies(int $chatId, int $userId): void
+    protected function handleMyProxies(int $chatId, int $userId, int $page = 1): void
     {
         $customer = $this->getAuthenticatedCustomer($chatId, $userId);
         if (!$customer) return;
 
-        $clients = $customer->clients()->latest()->take(10)->get();
+        $perPage = 5;
+        $offset = max(0, ($page - 1) * $perPage);
+        $total = $customer->clients()->count();
+        $totalPages = max(1, (int) ceil($total / $perPage));
+        $clients = $customer->clients()->latest()->skip($offset)->take($perPage)->get();
 
         if ($clients->isEmpty()) {
-            $this->sendMessage($chatId, __('telegram.messages.no_services'));
+            $this->sendMessageWithKeyboard($chatId, __('telegram.messages.no_services'), $this->backKeyboard());
             return;
         }
         // Precompute used
@@ -578,7 +762,30 @@ class TelegramBotService
             'clients' => $clients,
             'usedMap' => $usedMap,
         ]);
-    $this->sendMessage($chatId, $text . "\n" . __('telegram.messages.use_config_hint') . "\n" . __('telegram.messages.open_dashboard', ['url' => config('app.url') . '/dashboard']));
+        // Simple inline actions per context + pagination + back
+        $kb = Keyboard::make()->inline();
+        foreach ($clients as $client) {
+            $cfgText = '🔗 ' . $this->trans('telegram.buttons.config', [], 'Config') . ' #' . substr((string)$client->id, 0, 6);
+            $rstText = '🔄 ' . $this->trans('telegram.buttons.reset', [], 'Reset');
+            $kb->row([
+                Keyboard::inlineButton(['text' => $cfgText, 'callback_data' => 'config_open_' . $client->id]),
+                Keyboard::inlineButton(['text' => $rstText, 'callback_data' => 'reset_open_' . $client->id])
+            ]);
+        }
+        // Pagination row
+        $nav = [];
+        if ($page > 1) {
+            $nav[] = Keyboard::inlineButton(['text' => '◀️ ' . __('telegram.common.prev'), 'callback_data' => 'myproxies_page_' . ($page - 1)]);
+        }
+        $nav[] = Keyboard::inlineButton(['text' => '📄 ' . $page . '/' . $totalPages, 'callback_data' => 'noop']);
+        if ($page < $totalPages) {
+            $nav[] = Keyboard::inlineButton(['text' => __('telegram.common.next') . ' ▶️', 'callback_data' => 'myproxies_page_' . ($page + 1)]);
+        }
+        if (!empty($nav)) { $kb->row($nav); }
+    $kb = $this->appendBackToMenu($kb, $chatId, $userId);
+        $hint = $this->trans('telegram.admin.use_config_hint', [], 'Tap a proxy to open its configuration.');
+    $dash = $this->trans('telegram.admin.open_dashboard', ['url' => config('app.url') . '/account'], 'Dashboard: :url');
+    $this->sendMessageWithKeyboard($chatId, $text . "\n" . $hint . "\n" . $dash, $kb);
     }
 
     /**
@@ -596,18 +803,19 @@ class TelegramBotService
         ]);
 
         // Create inline keyboard for quick top-up amounts via builder
-    $kb = Keyboard::make()->inline()
+            $kb = Keyboard::make()->inline()
             ->row([
-                Keyboard::inlineButton(['text' => '$10', 'url' => config('app.url') . '/wallet?amount=10']),
-                Keyboard::inlineButton(['text' => '$25', 'url' => config('app.url') . '/wallet?amount=25']),
-                Keyboard::inlineButton(['text' => '$50', 'url' => config('app.url') . '/wallet?amount=50'])
+                Keyboard::inlineButton(['text' => '$15', 'url' => config('app.url') . '/wallet/usd/top-up?amount=15']),
+                Keyboard::inlineButton(['text' => '$30', 'url' => config('app.url') . '/wallet/usd/top-up?amount=30']),
+                Keyboard::inlineButton(['text' => '$50', 'url' => config('app.url') . '/wallet/usd/top-up?amount=50'])
             ])
             ->row([
-                Keyboard::inlineButton(['text' => '$100', 'url' => config('app.url') . '/wallet?amount=100']),
-        Keyboard::inlineButton(['text' => __('telegram.buttons.custom_amount'), 'url' => config('app.url') . '/wallet'])
+                Keyboard::inlineButton(['text' => '$100', 'url' => config('app.url') . '/wallet/usd/top-up?amount=100']),
+                Keyboard::inlineButton(['text' => __('telegram.buttons.custom_amount'), 'url' => config('app.url') . '/wallet/usd/top-up'])
             ]);
 
-    $this->sendMessageWithKeyboard($chatId, $message, $kb);
+        $kb = $this->appendBackToMenu($kb, $chatId, $userId);
+        $this->sendMessageWithKeyboard($chatId, $message, $kb);
     }
 
     /**
@@ -619,7 +827,7 @@ class TelegramBotService
         if (!$customer) return;
 
         if (empty($params)) {
-            $this->sendMessage($chatId, __('telegram.messages.config_need_id'));
+            $this->sendMessageWithKeyboard($chatId, __('telegram.messages.config_need_id'), $this->backKeyboard());
             return;
         }
 
@@ -638,20 +846,132 @@ class TelegramBotService
         }
 
         if (!$client) {
-            $this->sendMessage($chatId, __('telegram.messages.config_not_found'));
+            $this->sendMessageWithKeyboard($chatId, __('telegram.messages.config_not_found'), $this->backKeyboard());
             return;
         }
 
         $config = $client->getDownloadableConfig();
-        $text = $this->renderView('telegram.config', [
-            'planName' => $client->plan->name ?? '—',
-            'server' => $client->inbound->server->ip ?? '—',
-            'clientLink' => $config['client_link'] ?? null,
-            'subscriptionLink' => $config['subscription_link'] ?? null,
-            'jsonLink' => $config['json_link'] ?? null,
-        ]);
+        $clientLink = $config['client_link'] ?? $client->client_link ?? null;
+        $subscriptionLink = $config['subscription_link'] ?? $client->remote_sub_link ?? null;
+        $jsonLink = $config['json_link'] ?? $client->remote_json_link ?? null;
 
-        $this->sendMessage($chatId, $text);
+        // Build caption with richer details
+        $server = $client->inbound->server ?? null;
+        $location = $server?->country ?? $server?->ip ?? '—';
+        $protocol = strtolower($client->serverInbound?->protocol ?? $client->inbound?->protocol ?? 'vless');
+        $status = $client->status ?? ($client->enable ? 'active' : 'inactive');
+        $usedBytes = (int)($client->remote_up ?? 0) + (int)($client->remote_down ?? 0);
+        $limitBytes = (int)($client->total_gb_bytes ?? 0);
+        $usedText = $this->formatTraffic($usedBytes);
+        $limitText = $limitBytes > 0 ? $this->formatTraffic($limitBytes) : '—';
+    $expMs = (int) ($client->expiry_time ?? 0);
+    $expires = $expMs > 0 ? \Carbon\Carbon::createFromTimestampMs($expMs)->format('M j, Y') : '—';
+        $caption = "🔐 " . __('telegram.config.title') . "\n";
+        $caption .= "📦 " . __('telegram.config.plan') . ": <b>" . ($client->plan->name ?? '—') . "</b>\n";
+        $caption .= "🌐 " . __('telegram.config.server') . ": <b>{$location}</b>\n";
+        $caption .= "🛠 Protocol: <b>" . strtoupper($protocol) . "</b>\n";
+        $caption .= "📈 " . __('telegram.services.traffic') . ": <b>{$usedText}</b> / <b>{$limitText}</b>\n";
+        $caption .= "📅 " . __('telegram.services.expires') . ": <b>{$expires}</b>\n";
+        $caption .= "🆔 <code>" . $client->id . "</code>";
+
+        // Prepare QR image (subscription preferred; fallback to client link)
+        $qrRel = $client->qr_code_sub ?: null;
+        $qrPath = null;
+        if ($qrRel && Storage::disk('public')->exists($qrRel)) {
+            $qrPath = Storage::disk('public')->path($qrRel);
+        } else {
+            $qrTarget = $subscriptionLink ?: $clientLink;
+            if ($qrTarget) {
+                try {
+                    $png = QrCode::format('png')->size(512)->margin(1)->generate($qrTarget);
+                    $hash = substr(md5($qrTarget), 0, 8);
+                    $prefix = $subscriptionLink ? 'sub' : 'client';
+                    $filename = "qrcodes/{$prefix}_" . $customer->id . '_' . $client->id . '_' . $hash . '.png';
+                    Storage::disk('public')->put($filename, $png);
+                    $qrPath = Storage::disk('public')->path($filename);
+                    $qrRel = $filename;
+                } catch (\Throwable $e) {
+                    // fallback to text mode below
+                }
+            }
+        }
+
+        // Build inline buttons
+        $kb = Keyboard::make()->inline();
+        if (!empty($clientLink)) {
+            $kb->row([Keyboard::inlineButton(['text' => '📱 ' . __('telegram.common.open'), 'url' => $clientLink])]);
+        }
+        if (!empty($subscriptionLink)) {
+            $kb->row([Keyboard::inlineButton(['text' => '🔗 ' . __('telegram.config.subscription'), 'url' => $subscriptionLink])]);
+        }
+        if (!empty($jsonLink)) {
+            $kb->row([Keyboard::inlineButton(['text' => '🧾 JSON', 'url' => $jsonLink])]);
+        }
+        if ($qrRel) {
+            $kb->row([Keyboard::inlineButton(['text' => '⬇️ ' . __('telegram.buttons.download_qr'), 'url' => Storage::disk('public')->url($qrRel)])]);
+        } else {
+            // Offer on-demand QR via callback
+            $kb->row([Keyboard::inlineButton(['text' => '🧿 QR Code', 'callback_data' => 'qrcode_' . $client->id])]);
+        }
+        $kb = $this->appendBackToMenu($kb, $chatId, $userId);
+
+        if ($qrPath && is_readable($qrPath)) {
+            $this->sendPhoto($chatId, $qrPath, $caption);
+            // Send buttons under a short label
+            $this->sendMessageWithKeyboard($chatId, __('telegram.common.actions'), $kb);
+        } else {
+            // Fallback to text view
+            $text = $this->renderView('telegram.config', [
+                'planName' => $client->plan->name ?? '—',
+                'server' => $location,
+                'clientLink' => $clientLink,
+                'subscriptionLink' => $subscriptionLink,
+                'jsonLink' => $jsonLink,
+            ]);
+            $this->sendMessageWithKeyboard($chatId, $text, $kb);
+        }
+    }
+
+    /**
+     * Handle /qrcode command or callback to show a QR code for the subscription link when available.
+     */
+    protected function handleQrCode(int $chatId, int $userId, string $params): void
+    {
+        $customer = $this->getAuthenticatedCustomer($chatId, $userId);
+        if (!$customer) return;
+
+        if (empty($params)) {
+            $this->sendMessageWithKeyboard($chatId, __('telegram.messages.config_need_id'), $this->backKeyboard());
+            return;
+        }
+        $client = ServerClient::where('customer_id', $customer->id)->find(trim($params));
+        if (!$client) {
+            $this->sendMessageWithKeyboard($chatId, __('telegram.messages.service_not_found'), $this->backKeyboard());
+            return;
+        }
+        $config = $client->getDownloadableConfig();
+        $sub = $config['subscription_link'] ?? $config['client_link'] ?? null;
+        if (!$sub) {
+            $this->sendMessageWithKeyboard($chatId, __('telegram.messages.config_not_found'), $this->backKeyboard());
+            return;
+        }
+        // If QrCode is available, generate an image and send it inline; else link to dashboard QR
+        try {
+            if (class_exists(\SimpleSoftwareIO\QrCode\Facades\QrCode::class)) {
+                $png = QrCode::format('png')->size(512)->margin(1)->generate($sub);
+                $filename = 'qrcodes/sub_' . $customer->id . '_' . $client->id . '_' . substr(md5($sub), 0, 8) . '.png';
+                Storage::disk('public')->put($filename, $png);
+                $path = Storage::disk('public')->path($filename);
+                $this->sendPhoto($chatId, $path, '🔗 ' . __('telegram.config.subscription'));
+                // Follow-up with a back button
+                $this->sendMessageWithKeyboard($chatId, __('telegram.common.actions'), $this->backKeyboard());
+                return;
+            }
+        } catch (\Throwable $e) {
+            \Log::warning('QR generation failed', ['error' => $e->getMessage()]);
+        }
+    $qrUrl = config('app.url') . '/account/my-active-servers';
+    $this->sendMessageWithKeyboard($chatId, __('telegram.config.dashboard') . ' ' . $qrUrl, $this->backKeyboard());
     }
 
     /**
@@ -663,13 +983,13 @@ class TelegramBotService
         if (!$customer) return;
 
         if (empty($params)) {
-            $this->sendMessage($chatId, __('telegram.messages.reset_need_id'));
+            $this->sendMessageWithKeyboard($chatId, __('telegram.messages.reset_need_id'), $this->backKeyboard());
             return;
         }
 
         $client = ServerClient::where('customer_id', $customer->id)->find(trim($params));
         if (!$client) {
-            $this->sendMessage($chatId, __('telegram.messages.client_not_found'));
+            $this->sendMessageWithKeyboard($chatId, __('telegram.messages.client_not_found'), $this->backKeyboard());
             return;
         }
 
@@ -684,6 +1004,7 @@ class TelegramBotService
             'server' => $client->inbound->server->ip ?? '—',
         ]);
 
+        $keyboard = $this->appendBackToMenu($keyboard, $chatId, $userId);
         $this->sendMessageWithKeyboard($chatId, $text, $keyboard);
     }
 
@@ -706,14 +1027,14 @@ class TelegramBotService
                 'memberSince' => $customer->created_at->format('M j, Y'),
             ]);
 
-            $this->sendMessage($chatId, $text);
+            $this->sendMessageWithKeyboard($chatId, $text, $this->backKeyboard());
             return;
         }
 
         // Show specific client status
         $client = ServerClient::where('customer_id', $customer->id)->find(trim($params));
         if (!$client) {
-            $this->sendMessage($chatId, __('telegram.messages.service_not_found'));
+            $this->sendMessageWithKeyboard($chatId, __('telegram.messages.service_not_found'), $this->backKeyboard());
             return;
         }
 
@@ -729,7 +1050,7 @@ class TelegramBotService
             'clientId' => $client->id,
         ]);
 
-        $this->sendMessage($chatId, $text);
+    $this->sendMessageWithKeyboard($chatId, $text, $this->backKeyboard());
     }
 
     /**
@@ -737,32 +1058,112 @@ class TelegramBotService
      */
     protected function handleMenu(int $chatId, int $userId): void
     {
-        $keyboard = Keyboard::make()->inline();
-        $keyboard->row([
-            Keyboard::inlineButton(['text' => '🧰 ' . __('telegram.buttons.my_services'), 'callback_data' => 'view_myproxies']),
-            Keyboard::inlineButton(['text' => '🛒 ' . __('telegram.buttons.plans'), 'callback_data' => 'view_servers'])
-        ]);
-        $keyboard->row([
-            Keyboard::inlineButton(['text' => '💳 ' . __('telegram.buttons.wallet'), 'callback_data' => 'refresh_balance']),
-            Keyboard::inlineButton(['text' => '📦 ' . __('telegram.buttons.orders'), 'callback_data' => 'view_orders'])
-        ]);
-        $keyboard->row([
-            Keyboard::inlineButton(['text' => '🆘 ' . __('telegram.buttons.support'), 'callback_data' => 'open_support'])
-        ]);
-
-        // Direct link to Dashboard (opens website inside Telegram)
-        $keyboard->row([
-            Keyboard::inlineButton(['text' => '🔗 ' . __('telegram.common.open_dashboard'), 'url' => config('app.url')])
-        ]);
-
-        // If linked staff, add admin row
+    // Ensure legacy reply keyboards are removed
+    $this->hideReplyKeyboard($chatId);
+        $customer = Customer::where('telegram_chat_id', $chatId)->first();
         $staff = $this->getStaffUser($chatId, $userId);
-        if ($staff && in_array($staff->role, ['admin', 'support_manager', 'sales_support'])) {
-            $keyboard->row([Keyboard::inlineButton(['text' => '🛠 ' . __('telegram.buttons.admin'), 'callback_data' => 'admin_panel'])]);
+
+        // Unified main menu for all users
+        $keyboard = $this->buildMainInlineMenu((bool)$customer, (bool)$staff);
+    // Use a single, clean title to avoid stray template content and ensure a unified menu
+    $prefix = $staff && !$customer ? '🛠 ' : '🔥 ';
+    $titleKey = $staff && !$customer ? 'telegram.admin.panel_title' : 'telegram.menu.title';
+    $text = $prefix . $this->trans($titleKey, [], $staff && !$customer ? 'Admin Panel' : 'Main Menu');
+        $this->sendMessageWithKeyboard($chatId, $text, $keyboard);
+    }
+
+    protected function buildCustomerInlineMenu(): Keyboard
+    {
+        return $this->buildMainInlineMenu(true, false);
+    }
+
+    protected function buildStaffInlineMenu(): Keyboard
+    {
+        $kb = Keyboard::make()->inline();
+        $kb->row([
+            Keyboard::inlineButton(['text' => '👥 ' . __('telegram.buttons.users'), 'callback_data' => 'user_stats']),
+            Keyboard::inlineButton(['text' => '🌐 ' . __('telegram.buttons.servers'), 'callback_data' => 'server_health'])
+        ]);
+        $kb->row([
+            Keyboard::inlineButton(['text' => '📊 ' . __('telegram.buttons.statistics'), 'callback_data' => 'system_stats']),
+            Keyboard::inlineButton(['text' => '📢 ' . __('telegram.buttons.broadcast'), 'callback_data' => 'admin_broadcast'])
+        ]);
+        $kb->row([
+            Keyboard::inlineButton(['text' => '🔗 ' . __('telegram.common.open_dashboard'), 'url' => config('app.url') . '/admin'])
+        ]);
+        return $kb;
+    }
+
+    protected function buildGuestInlineMenu(): Keyboard
+    {
+        $kb = Keyboard::make()->inline();
+        $kb->row([
+            Keyboard::inlineButton(['text' => '🌐 ' . __('telegram.common.browse_plans'), 'callback_data' => 'view_servers'])
+        ]);
+        $kb->row([
+            Keyboard::inlineButton(['text' => '🆕 ' . __('telegram.common.create_account'), 'callback_data' => 'signup_start'])
+        ]);
+        $kb->row([
+            Keyboard::inlineButton(['text' => '❓ ' . __('telegram.common.help'), 'callback_data' => 'open_support'])
+        ]);
+        return $kb;
+    }
+
+    /**
+     * Unified 4-option main inline menu: Buy, My Proxies, Support, Promotions (+ Admin for staff)
+     */
+    protected function buildMainInlineMenu(bool $isCustomer, bool $isStaff): Keyboard
+    {
+        $kb = Keyboard::make()->inline();
+
+        // Determine safe, localized labels with fallbacks
+    $buyText = '🛒 ' . $this->trans('telegram.buttons.plans');
+    $myText = '🧰 ' . $this->trans('telegram.buttons.my_services');
+    $supportText = '🆘 ' . $this->trans('telegram.buttons.support');
+    $promoText = '🎁 ' . $this->trans('telegram.buttons.promotions');
+
+        // Row 1: Buy + My Proxies
+        $kb->row([
+            Keyboard::inlineButton(['text' => $buyText, 'callback_data' => 'view_servers']),
+            Keyboard::inlineButton(['text' => $myText, 'callback_data' => 'view_myproxies'])
+        ]);
+
+        // Row 2: Support + Promotions
+        $kb->row([
+            Keyboard::inlineButton(['text' => $supportText, 'callback_data' => 'open_support']),
+            Keyboard::inlineButton(['text' => $promoText, 'callback_data' => 'view_promotions'])
+        ]);
+
+        // Row 3: Wallet + Orders (from "More")
+        $kb->row([
+            Keyboard::inlineButton(['text' => '💳 ' . $this->trans('telegram.buttons.wallet'), 'callback_data' => 'open_balance']),
+            Keyboard::inlineButton(['text' => '📦 ' . $this->trans('telegram.buttons.orders'), 'callback_data' => 'view_orders'])
+        ]);
+
+        // Row 4: Profile + Top Up (from "More")
+        $kb->row([
+            Keyboard::inlineButton(['text' => '👤 ' . $this->trans('telegram.buttons.profile'), 'callback_data' => 'open_profile']),
+            Keyboard::inlineButton(['text' => '➕ ' . $this->trans('telegram.buttons.topup_wallet'), 'callback_data' => 'open_topup'])
+        ]);
+
+        // Row 5: More (opens extended submenu)
+        $kb->row([
+            Keyboard::inlineButton(['text' => '➕ ' . $this->trans('telegram.common.more'), 'callback_data' => 'open_more'])
+        ]);
+
+        // Staff-only quick access to Admin Panel
+        if ($isStaff) {
+            $kb->row([
+                Keyboard::inlineButton(['text' => '🛠 ' . $this->trans('telegram.admin.panel_title', [], 'Admin Panel'), 'callback_data' => 'admin_panel'])
+            ]);
         }
 
-        $text = $this->renderView('telegram.menu');
-        $this->sendMessageWithKeyboard($chatId, $text, $keyboard);
+        // Optional: dashboard link for everyone
+        $kb->row([
+            Keyboard::inlineButton(['text' => '🔗 ' . $this->trans('telegram.common.open_dashboard'), 'url' => config('app.url') . '/account'])
+        ]);
+
+        return $kb;
     }
 
     /**
@@ -775,61 +1176,61 @@ class TelegramBotService
 
         $wallet = $customer->wallet;
         $balance = $wallet ? $wallet->balance : 0;
-
-        $text = $this->renderView('telegram.balance', [
-            'balance' => $balance,
+        $text = $this->templates->render('balance_summary', 'telegram', [
+            'amount' => '$' . number_format((float)$balance, 2)
         ]);
-
-        $this->sendMessage($chatId, $text);
-    }
-
-    /**
-     * Handle /servers command
-     */
-    protected function handlePlans(int $chatId, int $userId): void
-    {
-        $customer = Customer::where('telegram_chat_id', $chatId)->first();
-
-        $plans = ServerPlan::where('is_active', true)
-            ->where('in_stock', true)
-            ->where('on_sale', true)
-            ->with(['server','category','brand'])
-            ->orderBy('popularity_score', 'desc')
-            ->take(10)
-            ->get();
-
-        if ($plans->isEmpty()) {
-            $this->sendMessage($chatId, __('telegram.messages.no_plans'));
-            return;
+        if ($text === 'balance_summary') {
+            $text = $this->renderView('telegram.balance', [ 'balance' => $balance ]);
         }
-
-        $text = $this->renderView('telegram.plans', [
-            'plans' => $plans,
-            'page' => 1,
-            'totalPages' => 1,
+        // Build inline keyboard: Top Up + Back
+        $kb = Keyboard::make()->inline();
+        $kb->row([
+            Keyboard::inlineButton(['text' => '💳 ' . __('telegram.buttons.topup_wallet'), 'url' => config('app.url') . '/wallet/usd/top-up'])
         ]);
-
-        if ($customer) {
-            $this->sendMessage($chatId, $text . "\n" . __('telegram.messages.use_buy_compact'));
-        } else {
-            $keyboard = Keyboard::make()->inline()->row([
-                Keyboard::inlineButton(['text' => '🆕 ' . __('telegram.common.create_account'), 'callback_data' => 'signup_start'])
-            ])->row([
-                Keyboard::inlineButton(['text' => '📋 ' . __('telegram.buttons.how_to_link_later'), 'callback_data' => 'open_support'])
+        // Append standard back keyboard row (if backKeyboard returns array structure, adapt accordingly)
+        try {
+            $backKb = $this->backKeyboard();
+            // If backKeyboard returns Keyboard instance, merge rows
+            if ($backKb instanceof Keyboard) {
+                // Extract rows from backKb by reflection to avoid SDK private props (fallback: add a Back button)
+                $kb->row([
+                    Keyboard::inlineButton(['text' => '⬅️ ' . __('telegram.common.back'), 'callback_data' => 'back_menu'])
+                ]);
+            } elseif (is_array($backKb) && isset($backKb['inline_keyboard'])) {
+                foreach ($backKb['inline_keyboard'] as $row) {
+                    // Ensure row is an array of buttons
+                    if (is_array($row)) {
+                        $kb->row($row);
+                    }
+                }
+            } else {
+                $kb->row([
+                    Keyboard::inlineButton(['text' => '⬅️ ' . __('telegram.common.back'), 'callback_data' => 'back_menu'])
+                ]);
+            }
+        } catch (\Throwable $e) {
+            // Fallback back button
+            $kb->row([
+                Keyboard::inlineButton(['text' => '⬅️ ' . __('telegram.common.back'), 'callback_data' => 'back_menu'])
             ]);
-            $this->sendMessageWithKeyboard($chatId, $text . "\n" . __('telegram.messages.purchase_requires_account'), $keyboard);
         }
+        $this->sendMessageWithKeyboard($chatId, $text, $kb);
     }
+
 
     /**
      * Handle /orders command
      */
-    protected function handleOrders(int $chatId, int $userId): void
+    protected function handleOrders(int $chatId, int $userId, int $page = 1): void
     {
         $customer = $this->getAuthenticatedCustomer($chatId, $userId);
         if (!$customer) return;
 
-        $orders = $customer->orders()->latest()->take(5)->get();
+        $perPage = 5;
+        $offset = max(0, ($page - 1) * $perPage);
+        $total = $customer->orders()->count();
+        $totalPages = max(1, (int) ceil($total / $perPage));
+        $orders = $customer->orders()->latest()->skip($offset)->take($perPage)->get();
 
         if ($orders->isEmpty()) {
             $this->sendMessage($chatId, __('telegram.messages.no_orders'));
@@ -838,19 +1239,30 @@ class TelegramBotService
         $text = $this->renderView('telegram.orders', [
             'orders' => $orders,
         ]);
-        $kb = Keyboard::make()->inline();
+    $kb = Keyboard::make()->inline();
         foreach ($orders as $order) {
             $icon = $this->getOrderStatusIcon($order->order_status ?? '');
             $amount = (float) ($order->grand_amount ?? $order->total_amount ?? 0);
             $kb->row([Keyboard::inlineButton([
                 'text' => $icon . ' #' . $order->id . ' • $' . number_format($amount, 2),
-                'url' => config('app.url') . '/orders/' . $order->id,
+                'url' => config('app.url') . '/account/order-management?order=' . $order->id,
             ])]);
         }
+        // Pagination row
+        $nav = [];
+        if ($page > 1) {
+            $nav[] = Keyboard::inlineButton(['text' => '◀️ ' . __('telegram.common.prev'), 'callback_data' => 'orders_page_' . ($page - 1)]);
+        }
+        $nav[] = Keyboard::inlineButton(['text' => '📄 ' . $page . '/' . $totalPages, 'callback_data' => 'noop']);
+        if ($page < $totalPages) {
+            $nav[] = Keyboard::inlineButton(['text' => __('telegram.common.next') . ' ▶️', 'callback_data' => 'orders_page_' . ($page + 1)]);
+        }
+        if (!empty($nav)) { $kb->row($nav); }
         $kb->row([Keyboard::inlineButton([
             'text' => '🧾 ' . __('telegram.buttons.open_orders'),
-            'url' => config('app.url') . '/orders'
+            'url' => config('app.url') . '/account/order-management'
         ])]);
+    $kb = $this->appendBackToMenu($kb, $chatId, $userId);
         $this->sendMessageWithKeyboard($chatId, $text, $kb);
     }
 
@@ -871,13 +1283,17 @@ class TelegramBotService
         }
 
         if (!$planId) {
-            $this->sendMessage($chatId, __('telegram.messages.buy_need_plan'));
+            $msg = $this->templates->render('buy_need_plan', 'telegram');
+            if ($msg === 'buy_need_plan') { $msg = __('telegram.messages.buy_need_plan'); }
+            $this->sendMessage($chatId, $msg);
             return;
         }
 
         $plan = ServerPlan::with('server')->find($planId);
         if (!$plan || !$plan->isAvailable()) {
-            $this->sendMessage($chatId, __('telegram.messages.plan_unavailable'));
+            $msg = $this->templates->render('plan_unavailable', 'telegram');
+            if ($msg === 'plan_unavailable') { $msg = __('telegram.messages.plan_unavailable'); }
+            $this->sendMessage($chatId, $msg);
             return;
         }
 
@@ -885,7 +1301,9 @@ class TelegramBotService
         $wallet = $customer->wallet;
         $price = (float) $plan->getTotalPrice();
         if (!$wallet || $wallet->balance < $price) {
-            $this->sendMessage($chatId, __('telegram.messages.insufficient_balance', ['url' => config('app.url') . '/wallet']));
+            $msg = $this->templates->render('insufficient_balance', 'telegram', ['url' => config('app.url') . '/wallet/usd/top-up']);
+            if ($msg === 'insufficient_balance') { $msg = __('telegram.messages.insufficient_balance', ['url' => config('app.url') . '/wallet/usd/top-up']); }
+            $this->sendMessage($chatId, $msg);
             return;
         }
 
@@ -953,7 +1371,7 @@ class TelegramBotService
 
         if (empty($params)) {
             $text = $this->renderView('telegram.support_options');
-            $this->sendMessage($chatId, $text);
+            $this->sendMessageWithKeyboard($chatId, $text, $this->backKeyboard());
             return;
         }
 
@@ -974,7 +1392,7 @@ class TelegramBotService
             'messageText' => $params,
         ]);
 
-        $this->sendMessage($chatId, $text);
+    $this->sendMessageWithKeyboard($chatId, $text, $this->backKeyboard());
     }
 
     /**
@@ -982,8 +1400,12 @@ class TelegramBotService
      */
     protected function handleHelp(int $chatId): void
     {
-    $text = $this->renderView('telegram.help');
-    $this->sendMessage($chatId, $text);
+        // Prefer DB template for help content; fallback to our view
+        $help = $this->templates->render('help', 'telegram');
+        if ($help === 'help' || trim($help) === '') {
+            $help = $this->renderView('telegram.help');
+        }
+    $this->sendMessageWithKeyboard($chatId, $help, $this->backKeyboard());
     }
 
     /**
@@ -1032,20 +1454,42 @@ class TelegramBotService
         $perPage = 5;
         $offset = ($page - 1) * $perPage;
 
-        $plans = ServerPlan::where('is_active', true)
+        // Read current filters from cache for this chat
+        $filters = $this->getPlanFilters($chatId);
+
+        $baseQuery = ServerPlan::where('is_active', true)
             ->where('in_stock', true)
-            ->where('on_sale', true)
+            ->where('on_sale', true);
+
+        // Apply filters (country, category, days) if present
+        if (!empty($filters['country'])) {
+            $baseQuery->where('country_code', $filters['country']);
+        }
+        if (!empty($filters['category'])) {
+            $baseQuery->where('server_category_id', (int) $filters['category']);
+        }
+        if (!empty($filters['days'])) {
+            $baseQuery->where('days', (int) $filters['days']);
+        }
+
+        $plans = (clone $baseQuery)
             ->with('server')
             ->orderBy('popularity_score', 'desc')
             ->skip($offset)
             ->take($perPage)
             ->get();
 
-        $totalPlans = ServerPlan::where('is_active', true)->where('in_stock', true)->where('on_sale', true)->count();
+        $totalPlans = (clone $baseQuery)->count();
         $totalPages = max(1, (int) ceil($totalPlans / $perPage));
 
         if ($plans->isEmpty()) {
-            $this->sendMessage($chatId, __('telegram.messages.no_plans_page', ['page' => $page]));
+            $kb = Keyboard::make()->inline();
+            // Filters and clear
+            $filterBtn = Keyboard::inlineButton(['text' => '🔎 ' . $this->trans('telegram.buttons.filters', [], 'Filters'), 'callback_data' => 'server_filters']);
+            $clearBtn = Keyboard::inlineButton(['text' => '🧹 ' . $this->trans('telegram.buttons.clear_filters', [], 'Clear Filters'), 'callback_data' => 'server_filter_clear']);
+            $kb->row([$filterBtn, $clearBtn]);
+            $kb = $this->appendBackToMenu($kb, $chatId, $userId);
+            $this->sendMessageWithKeyboard($chatId, __('telegram.messages.no_plans_page', ['page' => $page]), $kb);
             return;
         }
 
@@ -1056,8 +1500,24 @@ class TelegramBotService
             'totalPages' => $totalPages,
         ]);
 
+        // Append a compact filters summary when any filter is active
+        $active = [];
+        if (!empty($filters['country'])) { $active[] = '🌍 ' . strtoupper($filters['country']); }
+        if (!empty($filters['category'])) { $active[] = '🗂 #' . (int)$filters['category']; }
+        if (!empty($filters['days'])) { $active[] = '📅 ' . (int)$filters['days'] . 'd'; }
+        if (!empty($active)) {
+            $text .= "\n\n" . '🔎 ' . $this->trans('telegram.messages.active_filters', [], 'Active filters') . ': ' . implode(' • ', $active);
+        }
+
         // Build keyboard (pagination + buy buttons)
         $kb = Keyboard::make()->inline();
+        // Filters row first
+        $filterBtn = Keyboard::inlineButton(['text' => '🔎 ' . $this->trans('telegram.buttons.filters', [], 'Filters'), 'callback_data' => 'server_filters']);
+        if (!empty($active)) {
+            $kb->row([$filterBtn, Keyboard::inlineButton(['text' => '🧹 ' . $this->trans('telegram.buttons.clear_filters', [], 'Clear'), 'callback_data' => 'server_filter_clear'])]);
+        } else {
+            $kb->row([$filterBtn]);
+        }
         $nav = [];
         if ($page > 1) {
             $nav[] = Keyboard::inlineButton(['text' => '◀️ ' . __('telegram.common.prev'), 'callback_data' => 'server_page_' . ($page - 1)]);
@@ -1079,7 +1539,8 @@ class TelegramBotService
             $kb->row([Keyboard::inlineButton(['text' => '🆕 ' . __('telegram.common.create_account'), 'callback_data' => 'signup_start'])]);
         }
 
-        $this->sendMessageWithKeyboard($chatId, $text, $kb);
+    $kb = $this->appendBackToMenu($kb, $chatId, $userId);
+    $this->sendMessageWithKeyboard($chatId, $text, $kb);
     }
 
     /**
@@ -1105,7 +1566,7 @@ class TelegramBotService
 
             $keyboard = [
                 'inline_keyboard' => [
-                    [ ['text' => '💳 ' . __('telegram.buttons.topup_wallet'), 'url' => config('app.url') . '/wallet'] ],
+                    [ ['text' => '💳 ' . __('telegram.buttons.topup_wallet'), 'url' => config('app.url') . '/wallet/usd/top-up'] ],
                     [ ['text' => '🔄 ' . __('telegram.buttons.topped_up_refresh'), 'callback_data' => 'refresh_balance'] ],
                 ]
             ];
@@ -1129,6 +1590,47 @@ class TelegramBotService
         $message .= __('telegram.messages.buy_confirm_proceed');
 
         $this->sendMessageWithKeyboard($chatId, $message, $keyboard);
+    }
+
+    /**
+     * Handle /login command: send a magic login link to previously linked users.
+     */
+    protected function handleLogin(int $chatId, int $userId, ?Message $message = null): void
+    {
+    // Ensure legacy reply keyboards are removed
+    $this->hideReplyKeyboard($chatId);
+        // If already linked, generate a signin link anyway for convenience
+        $customer = Customer::where('telegram_chat_id', $chatId)->first();
+        if (!$customer && $message) {
+            $username = $message->getFrom()->getUsername();
+            if ($username) {
+                $customer = Customer::where('telegram_username', $username)->first();
+            }
+        }
+
+        if (!$customer) {
+            $this->sendMessage($chatId, __('telegram.messages.user_not_found_simple'));
+            return;
+        }
+
+        try {
+            $url = \App\Http\Controllers\MagicLoginController::generateFor($customer, 60 * 24);
+            $text = $this->templates->render('magic_login', 'telegram', [
+                'url' => $url,
+                'name' => $customer->name ?? 'there',
+            ]);
+            if ($text === 'magic_login') {
+                $text = '🔑 Welcome back, :name!\n\nTap to sign in: :url';
+                $text = str_replace([':name', ':url'], [$customer->name ?? 'there', $url], $text);
+            }
+            $kb = Keyboard::make()->inline()->row([
+                Keyboard::inlineButton(['text' => '🔑 ' . __('telegram.common.open'), 'url' => $url])
+            ]);
+            $kb = $this->appendBackToMenu($kb, $chatId, $userId);
+            $this->sendMessageWithKeyboard($chatId, $text, $kb);
+        } catch (\Throwable $e) {
+            $this->sendMessage($chatId, __('telegram.messages.order_failed'));
+        }
     }
 
     /**
@@ -1347,37 +1849,56 @@ class TelegramBotService
             return;
         }
 
-        // Get all users with Telegram linked
-    $telegramUsers = Customer::whereNotNull('telegram_chat_id')->get();
-        $sentCount = 0;
-        $failedCount = 0;
+        // Get all users with Telegram linked, optional segmentation and opt-out
+        $query = Customer::whereNotNull('telegram_chat_id');
+        // Segment: active customers only if requested (prefix 'active: ')
+        $onlyActive = false;
+        if (str_starts_with($params, 'active:')) {
+            $onlyActive = true;
+            $params = trim(substr($params, strlen('active:')));
+        }
+        if ($onlyActive) {
+            $query->whereHas('clients');
+        }
+        // Opt-out flag (expects boolean column telegram_opt_out)
+        if (\Schema::hasColumn('customers', 'telegram_opt_out')) {
+            $query->where(function($q){ $q->whereNull('telegram_opt_out')->orWhere('telegram_opt_out', false); });
+        }
+        $telegramUsers = $query->pluck('telegram_chat_id')->all();
 
-    $broadcastMessage = __('telegram.messages.broadcast_title') . "\n\n{$params}\n\n" . __('telegram.messages.broadcast_footer');
+        // Prefer DB template; fallback to legacy text
+        $broadcastMessage = $this->templates->render('broadcast_generic', 'telegram', [
+            'message' => $params,
+        ]);
+        if ($broadcastMessage === 'broadcast_generic') {
+            $broadcastMessage = __('telegram.messages.broadcast_title') . "\n\n{$params}\n\n" . __('telegram.messages.broadcast_footer');
+        }
 
-        foreach ($telegramUsers as $telegramUser) {
+    // Chunk dispatch to a queue for scalability
+    $sentCount = 0;
+    $failedCount = 0;
+        $chunks = array_chunk($telegramUsers, 500);
+        foreach ($chunks as $idx => $chunk) {
             try {
-                $this->sendMessage($telegramUser->telegram_chat_id, $broadcastMessage);
-                $sentCount++;
-
-                // Add small delay to avoid rate limiting
-                usleep(100000); // 0.1 second
-            } catch (\Exception $e) {
-                $failedCount++;
-                Log::warning('Broadcast message failed', [
-                    'user_id' => $telegramUser->id,
-                    'telegram_chat_id' => $telegramUser->telegram_chat_id,
-                    'error' => $e->getMessage()
-                ]);
+                \App\Jobs\TelegramBroadcastChunk::dispatch($chunk, $broadcastMessage)->onQueue('telegram');
+                $sentCount += count($chunk); // optimistic counting; worker reports failures
+            } catch (\Throwable $e) {
+                $failedCount += count($chunk);
+                Log::warning('Failed to dispatch broadcast chunk', [ 'error' => $e->getMessage(), 'chunk' => $idx ]);
             }
         }
 
         $text = $this->renderView('telegram.admin.broadcast_result', [
             'sent' => $sentCount,
             'failed' => $failedCount,
-            'total' => $telegramUsers->count(),
+            'total' => count($telegramUsers),
         ]);
 
         $this->sendMessage($chatId, $text);
+        // Also send a lightweight summary message back to admin via queue (does not wait for completion accuracy)
+        try {
+            \App\Jobs\TelegramBroadcastSummary::dispatch($chatId, count($telegramUsers), $sentCount, $failedCount)->onQueue('telegram');
+        } catch (\Throwable $e) { /* ignore */ }
 
         Log::info('Admin broadcast sent', [
             'admin_user_id' => $staff->id,
@@ -1403,7 +1924,7 @@ class TelegramBotService
         $customer = Customer::where('telegram_chat_id', $chatId)->first();
 
         if (!$customer) {
-            $this->sendMessage($chatId, __('telegram.messages.link_account_first', ['url' => config('app.url')]));
+            $this->sendMessage($chatId, __('telegram.admin.link_account_first', ['url' => config('app.url')]));
             return null;
         }
 
@@ -1428,21 +1949,21 @@ class TelegramBotService
         $webUserId = cache()->get($cacheKey);
 
         if (!$webUserId) {
-            $this->sendMessage($chatId, __('telegram.messages.code_invalid'));
+            $this->sendMessage($chatId, __('telegram.admin.code_invalid'));
             return;
         }
 
         // Get customer from database
         $customer = Customer::find($webUserId);
         if (!$customer) {
-            $this->sendMessage($chatId, __('telegram.messages.user_not_found_simple'));
+            $this->sendMessage($chatId, __('telegram.admin.user_not_found_simple'));
             return;
         }
 
         // Check if this Telegram account is already linked to another user
         $existingCustomer = Customer::where('telegram_chat_id', $chatId)->first();
         if ($existingCustomer && $existingCustomer->id !== $customer->id) {
-            $this->sendMessage($chatId, __('telegram.messages.telegram_already_linked'));
+            $this->sendMessage($chatId, __('telegram.admin.telegram_already_linked'));
             return;
         }
 
@@ -1458,8 +1979,9 @@ class TelegramBotService
         // Remove the linking code from cache
         cache()->forget($cacheKey);
 
-        // Send success message
-    $this->sendMessage($chatId, __('telegram.messages.linking_success', ['name' => $customer->name]));
+    // Send success message and show the main menu
+    $this->sendMessage($chatId, __('telegram.admin.linking_success', ['name' => $customer->name]));
+    $this->handleMenu($chatId, $userId);
 
         Log::info('Telegram account linked', [
             'customer_id' => $customer->id,
@@ -1531,6 +2053,96 @@ class TelegramBotService
     }
 
     /**
+     * Show a quick loading preview by editing in-place if possible.
+     */
+    protected function previewLoading(int $chatId, int $messageId): void
+    {
+        try {
+            $this->telegram->editMessageText([
+                'chat_id' => $chatId,
+                'message_id' => $messageId,
+                'text' => '⏳ ' . $this->trans('telegram.common.loading', [], 'Loading...'),
+                'parse_mode' => 'HTML'
+            ]);
+        } catch (\Throwable $e) {
+            // Fallback: send a separate loading message (Ignored rate limit concerns for brevity)
+            $this->sendMessage($chatId, '⏳ ' . $this->trans('telegram.common.loading', [], 'Loading...'));
+        }
+    }
+
+    /**
+     * Attempt to edit existing message (navigation) else send new.
+     */
+    protected function editOrSend(int $chatId, int $messageId, string $text, $keyboard): void
+    {
+        try {
+            $replyMarkup = $keyboard;
+            if ($keyboard instanceof Keyboard) {
+                $replyMarkup = $keyboard;
+            } elseif (is_array($keyboard)) {
+                $replyMarkup = json_encode($keyboard);
+            }
+            $this->telegram->editMessageText([
+                'chat_id' => $chatId,
+                'message_id' => $messageId,
+                'text' => $text,
+                'parse_mode' => 'HTML',
+                'reply_markup' => $replyMarkup,
+            ]);
+        } catch (\Throwable $e) {
+            $this->sendMessageWithKeyboard($chatId, $text, $keyboard);
+        }
+    }
+
+    /**
+     * Send a local photo file to a Telegram chat with optional caption.
+     */
+    protected function sendPhoto(int $chatId, string $filePath, ?string $caption = null): void
+    {
+        try {
+            if (!is_readable($filePath)) {
+                throw new \RuntimeException('Photo not readable: ' . $filePath);
+            }
+            $this->telegram->sendPhoto([
+                'chat_id' => $chatId,
+                'photo' => fopen($filePath, 'rb'),
+                'caption' => $caption,
+                'parse_mode' => 'HTML',
+            ]);
+        } catch (\Throwable $e) {
+            Log::error('Failed to send photo', ['chat_id' => $chatId, 'error' => $e->getMessage()]);
+        }
+    }
+
+    /**
+     * Send a local photo with an inline keyboard attached (for welcome + menu in one message).
+     */
+    protected function sendPhotoWithKeyboard(int $chatId, string $filePath, ?string $caption, $keyboard): void
+    {
+        try {
+            if (!is_readable($filePath)) {
+                throw new \RuntimeException('Photo not readable: ' . $filePath);
+            }
+            $replyMarkup = $keyboard;
+            if (is_array($keyboard)) {
+                $replyMarkup = json_encode($keyboard);
+            }
+            $this->telegram->sendPhoto([
+                'chat_id' => $chatId,
+                'photo' => fopen($filePath, 'rb'),
+                'caption' => $caption,
+                'parse_mode' => 'HTML',
+                'reply_markup' => $replyMarkup,
+            ]);
+        } catch (\Throwable $e) {
+            Log::error('Failed to send photo with keyboard', ['chat_id' => $chatId, 'error' => $e->getMessage()]);
+            // Fallback: send without keyboard, then send keyboard message separately
+            $this->sendPhoto($chatId, $filePath, $caption);
+            $this->sendMessageWithKeyboard($chatId, __('telegram.menu.title'), $keyboard);
+        }
+    }
+
+    /**
      * Render a Blade view into a Telegram-safe HTML message.
      */
     protected function renderView(string $view, array $data = []): string
@@ -1567,6 +2179,9 @@ class TelegramBotService
         // Strip all tags except Telegram-allowed subset
         $html = strip_tags($html, '<b><strong><i><em><u><s><code><pre><a><br>');
 
+        // Replace any leaked translation keys (e.g., telegram.xxx) with safe fallbacks
+        $html = $this->replaceTranslationKeys($html);
+
         // Collapse excessive blank lines and spaces
         $html = preg_replace("/\n{3,}/", "\n\n", $html);
         $html = trim($html);
@@ -1575,46 +2190,89 @@ class TelegramBotService
     }
 
     /**
+     * Replace translation-like tokens (telegram.*) with localized fallback text.
+     */
+    protected function replaceTranslationKeys(string $text): string
+    {
+        return preg_replace_callback('/(?<![A-Za-z0-9_\-])telegram\.[A-Za-z0-9_\.\-]+/', function($m) {
+            $key = $m[0];
+            return $this->trans($key);
+        }, $text);
+    }
+
+    /**
+     * Safe translation with fallback to default locale (en) and a humanized last segment.
+     */
+    protected function trans(string $key, array $replace = [], ?string $fallback = null): string
+    {
+        try {
+            $value = (string) \Illuminate\Support\Facades\Lang::get($key, $replace);
+            if ($value !== $key && $value !== '') {
+                return $value;
+            }
+            // Fallback to English
+            $en = (string) \Illuminate\Support\Facades\Lang::get($key, $replace, 'en');
+            if ($en !== $key && $en !== '') {
+                return $en;
+            }
+        } catch (\Throwable $e) {
+            // ignore and use fallback below
+        }
+        if ($fallback !== null && $fallback !== '') {
+            return $fallback;
+        }
+        // Humanize last segment of the key as a last resort
+        $last = trim(strrchr($key, '.') ?: $key, '.');
+        $human = ucwords(str_replace(['_', '-'], ' ', $last));
+        return $human ?: $key;
+    }
+
+    /**
      * Send a persistent reply keyboard with common commands so it's always visible.
      */
     protected function sendPersistentCommandMenu(int $chatId): void
     {
-        $isLinked = Customer::where('telegram_chat_id', $chatId)->exists();
-        $keyboard = $isLinked
-            ? [
-                'keyboard' => [
-                    [ ['text' => '✨ ' . __('telegram.buttons.menu')], ['text' => '🛒 ' . __('telegram.buttons.plans')], ['text' => '📦 ' . __('telegram.buttons.orders')] ],
-                    [ ['text' => '🧰 ' . __('telegram.buttons.my_services')], ['text' => '💳 ' . __('telegram.buttons.wallet')], ['text' => '🆘 ' . __('telegram.buttons.support')] ],
-                    [ ['text' => '👤 ' . __('telegram.buttons.profile')] ],
-                ],
-                'resize_keyboard' => true,
-                'is_persistent' => true,
-                'one_time_keyboard' => false,
-                'input_field_placeholder' => __('telegram.messages.quick_actions_placeholder'),
-            ]
-            : [
-                'keyboard' => [
-                    [ ['text' => '🛒 ' . __('telegram.buttons.plans')], ['text' => '🆕 ' . __('telegram.buttons.sign_up')], ['text' => '🆘 ' . __('telegram.buttons.support')] ],
-                ],
-                'resize_keyboard' => true,
-                'is_persistent' => true,
-                'one_time_keyboard' => false,
-                'input_field_placeholder' => __('telegram.messages.quick_actions_guest_placeholder'),
-            ];
+        // No-op: legacy reply keyboard removed. Ensure any old keyboard is hidden.
+        $this->hideReplyKeyboard($chatId);
+    }
 
+    /**
+     * Remove any existing reply keyboard (legacy); sends an unobtrusive message.
+     */
+    protected function hideReplyKeyboard(int $chatId): void
+    {
         try {
-            $this->telegram->sendMessage([
+            // Send a temporary, invisible message to remove keyboard, then delete it
+            $resp = $this->telegram->sendMessage([
                 'chat_id' => $chatId,
-                'text' => __('telegram.messages.quick_actions_below'),
-                'parse_mode' => 'HTML',
-                'reply_markup' => json_encode($keyboard)
+                'text' => "\u{200B}", // zero-width space
+                'reply_markup' => json_encode(['remove_keyboard' => true]),
+                'disable_notification' => true,
             ]);
-        } catch (\Exception $e) {
-            Log::error('Failed to send persistent command menu', [
-                'chat_id' => $chatId,
-                'error' => $e->getMessage()
-            ]);
+            if (method_exists($resp, 'getMessageId')) {
+                $this->telegram->deleteMessage([
+                    'chat_id' => $chatId,
+                    'message_id' => $resp->getMessageId(),
+                ]);
+            }
+        } catch (\Throwable $e) {
+            Log::debug('Failed to remove reply keyboard', ['chat_id' => $chatId, 'error' => $e->getMessage()]);
         }
+    }
+
+    /**
+     * Append a unified Back to Menu row to an inline keyboard.
+     */
+    protected function appendBackToMenu(Keyboard $kb, int $chatId, int $userId): Keyboard
+    {
+        $label = __('telegram.common.back');
+        if (Lang::has('telegram.buttons.back_to_menu')) {
+            $label = __('telegram.buttons.back_to_menu');
+        }
+        $kb->row([
+            Keyboard::inlineButton(['text' => '⬅️ ' . $label, 'callback_data' => 'open_menu'])
+        ]);
+        return $kb;
     }
 
     /**
@@ -1650,6 +2308,34 @@ class TelegramBotService
     }
 
     /**
+     * Convert ISO country code to flag + short name label.
+     * Uses a minimal inline map; falls back to code.
+     */
+    protected function countryLabel(string $iso2): string
+    {
+        $iso2 = strtoupper($iso2);
+        // Normalise legacy / incorrect codes (e.g. UK -> GB)
+        if ($iso2 === 'UK') { $iso2 = 'GB'; }
+        // Flag from regional indicator symbols (only for true 2-letter A-Z)
+        $flag = ctype_alpha($iso2) && strlen($iso2) === 2 ? $this->countryFlagEmoji($iso2) : '';
+        // Common set; keep short to avoid unnecessary memory; extend as needed
+        static $names = [
+            'US' => 'United States','GB' => 'United Kingdom','DE' => 'Germany','FR' => 'France','JP' => 'Japan','CA' => 'Canada','AU' => 'Australia','NL' => 'Netherlands','SG' => 'Singapore','SE' => 'Sweden','NO' => 'Norway','FI' => 'Finland','DK' => 'Denmark','IT' => 'Italy','ES' => 'Spain','PT' => 'Portugal','BR' => 'Brazil','PL' => 'Poland','UA' => 'Ukraine','RU' => 'Russia','CN' => 'China','IN' => 'India','TR' => 'Turkey','AE' => 'UAE','SA' => 'Saudi Arabia','IR' => 'Iran','IQ' => 'Iraq','HK' => 'Hong Kong','TW' => 'Taiwan'
+        ];
+        $name = $names[$iso2] ?? $iso2;
+        return trim(($flag ? $flag . ' ' : '') . $name);
+    }
+
+    protected function countryFlagEmoji(string $iso2): string
+    {
+        if (strlen($iso2) !== 2) return '';
+        $iso2 = strtoupper($iso2);
+        $codePoints = [ord($iso2[0]) - 65 + 0x1F1E6, ord($iso2[1]) - 65 + 0x1F1E6];
+        return mb_convert_encoding('&#' . $codePoints[0] . ';', 'UTF-8', 'HTML-ENTITIES')
+             . mb_convert_encoding('&#' . $codePoints[1] . ';', 'UTF-8', 'HTML-ENTITIES');
+    }
+
+    /**
      * Send order completion notification
      */
     public function sendOrderNotification(Order $order): void
@@ -1669,17 +2355,26 @@ class TelegramBotService
 
         $status = $order->order_status ?? $order->status ?? '-';
 
-        $message = __('telegram.messages.order_ready_title') . "\n\n";
-        $message .= __('telegram.messages.order_id_line', ['id' => $order->id]) . "\n";
-        $message .= __('telegram.messages.order_server_line', ['server' => $serverLabel]) . "\n";
-        $message .= __('telegram.messages.order_status_line', ['status' => ucfirst((string)$status)]) . "\n\n";
+        // Prefer DB template for order_ready
+        $message = $this->templates->render('order_ready', 'telegram', [
+            'id' => $order->id,
+            'server' => $serverLabel,
+            'status' => ucfirst((string)$status),
+            'url' => config('app.url') . "/account/order-management?order={$order->id}",
+        ]);
+        if ($message === 'order_ready') {
+            $message = __('telegram.messages.order_ready_title') . "\n\n";
+            $message .= __('telegram.messages.order_id_line', ['id' => $order->id]) . "\n";
+            $message .= __('telegram.messages.order_server_line', ['server' => $serverLabel]) . "\n";
+            $message .= __('telegram.messages.order_status_line', ['status' => ucfirst((string)$status)]) . "\n\n";
 
-        if ($status === 'completed' || $order->isFullyProvisioned()) {
-            $message .= __('telegram.messages.order_completed_block', [
-                'url' => config('app.url') . "/orders/{$order->id}"
-            ]);
-        } else {
-            $message .= __('telegram.messages.order_issue');
+            if ($status === 'completed' || $order->isFullyProvisioned()) {
+                $message .= __('telegram.messages.order_completed_block', [
+                    'url' => config('app.url') . "/account/order-management?order={$order->id}"
+                ]);
+            } else {
+                $message .= __('telegram.messages.order_issue');
+            }
         }
 
         $this->sendMessage($customer->telegram_chat_id, $message);
@@ -1693,6 +2388,7 @@ class TelegramBotService
         $chatId = $callbackQuery->getMessage()->getChat()->getId();
         $data = $callbackQuery->getData();
         $userId = $callbackQuery->getFrom()->getId();
+    $messageId = $callbackQuery->getMessage()->getMessageId();
         // Handle different callback actions
         if (str_starts_with($data, 'reset_confirm_')) {
             $clientId = substr($data, 14);
@@ -1700,11 +2396,58 @@ class TelegramBotService
         } elseif (str_starts_with($data, 'reset_cancel_')) {
             $cid = substr($data, 13);
             $this->sendMessage($chatId, __('telegram.messages.reset_cancelled_client', ['cid' => $cid]));
+        } elseif (str_starts_with($data, 'qrcode_')) {
+            $cid = substr($data, 7);
+            $this->handleQrCode($chatId, $userId, $cid);
+        } elseif ($data === 'server_filters') {
+            $this->previewLoading($chatId, $messageId);
+            $this->showFilterMenu($chatId, $userId);
+        } elseif (str_starts_with($data, 'server_filter_country_')) {
+            $cc = strtoupper(substr($data, strlen('server_filter_country_')));
+            if ($cc === 'ANY' || $cc === 'ALL' || $cc === 'CLEAR' || $cc === 'NONE') {
+                $this->setPlanFilter($chatId, 'country', null);
+            } else {
+                $this->setPlanFilter($chatId, 'country', $cc);
+            }
+            $this->previewLoading($chatId, $messageId);
+            $this->handleServersPage($chatId, $userId, 1);
+        } elseif (str_starts_with($data, 'server_filter_category_')) {
+            $cat = substr($data, strlen('server_filter_category_'));
+            if (in_array(strtolower($cat), ['any','all','clear','none'], true)) {
+                $this->setPlanFilter($chatId, 'category', null);
+            } else {
+                $this->setPlanFilter($chatId, 'category', (int) $cat);
+            }
+            $this->previewLoading($chatId, $messageId);
+            $this->handleServersPage($chatId, $userId, 1);
+        } elseif (str_starts_with($data, 'server_filter_days_')) {
+            $days = substr($data, strlen('server_filter_days_'));
+            if (in_array(strtolower($days), ['any','all','clear','none'], true)) {
+                $this->setPlanFilter($chatId, 'days', null);
+            } else {
+                $this->setPlanFilter($chatId, 'days', (int) $days);
+            }
+            $this->previewLoading($chatId, $messageId);
+            $this->handleServersPage($chatId, $userId, 1);
+        } elseif ($data === 'server_filter_clear') {
+            $this->clearPlanFilters($chatId);
+            $this->previewLoading($chatId, $messageId);
+            $this->handleServersPage($chatId, $userId, 1);
         } elseif (str_starts_with($data, 'server_page_')) {
             $page = (int) substr($data, 12);
+            $this->previewLoading($chatId, $messageId);
             $this->handleServersPage($chatId, $userId, $page);
+        } elseif (str_starts_with($data, 'myproxies_page_')) {
+            $page = (int) substr($data, 15);
+            $this->previewLoading($chatId, $messageId);
+            $this->handleMyProxies($chatId, $userId, $page);
+        } elseif (str_starts_with($data, 'orders_page_')) {
+            $page = (int) substr($data, 12);
+            $this->previewLoading($chatId, $messageId);
+            $this->handleOrders($chatId, $userId, $page);
         } elseif (str_starts_with($data, 'server_health_page_')) {
             $page = (int) substr($data, 20);
+            $this->previewLoading($chatId, $messageId);
             $this->handleServerHealth($chatId, $userId, $page);
         } elseif (str_starts_with($data, 'buy_plan_')) {
             $planId = (int) substr($data, 9);
@@ -1725,33 +2468,96 @@ class TelegramBotService
         } elseif ($data === 'noop') {
             // No operation: acknowledge tap without sending a new message
             // Optionally could edit message to show the same content; do nothing here
+        } elseif (str_starts_with($data, 'config_open_')) {
+            $this->handleConfig($chatId, $userId, substr($data, strlen('config_open_')));
+        } elseif (str_starts_with($data, 'reset_open_')) {
+            $this->handleReset($chatId, $userId, substr($data, strlen('reset_open_')));
         } else {
             switch ($data) {
+                case 'admin_panel':
+                    $this->previewLoading($chatId, $messageId);
+                    $this->handleAdminPanel($chatId, $userId);
+                    break;
+                case 'open_menu':
+                    $this->previewLoading($chatId, $messageId);
+                    $this->handleMenu($chatId, $userId);
+                    break;
+                case 'open_more':
+                    $this->previewLoading($chatId, $messageId);
+                    $this->handleMore($chatId, $userId);
+                    break;
+
                 case 'refresh_balance':
+                    $this->previewLoading($chatId, $messageId);
+                    $this->handleBalance($chatId, $userId);
+                    break;
+                case 'open_balance':
+                    $this->previewLoading($chatId, $messageId);
                     $this->handleBalance($chatId, $userId);
                     break;
 
                 case 'view_servers':
+                    $this->previewLoading($chatId, $messageId);
                     $this->handleServersPage($chatId, $userId, 1);
                     break;
                 case 'server_health':
+                    $this->previewLoading($chatId, $messageId);
                     $this->handleServerHealth($chatId, $userId);
                     break;
 
                 case 'user_stats':
+                    $this->previewLoading($chatId, $messageId);
                     $this->handleUserStats($chatId, $userId);
                     break;
 
                 case 'system_stats':
+                    $this->previewLoading($chatId, $messageId);
                     $this->handleSystemStats($chatId, $userId);
                     break;
 
+                case 'view_myproxies':
+                    $this->previewLoading($chatId, $messageId);
+                    $this->handleMyProxies($chatId, $userId);
+                    break;
+
+                case 'view_orders':
+                    $this->previewLoading($chatId, $messageId);
+                    $this->handleOrders($chatId, $userId);
+                    break;
+                case 'open_topup':
+                    $this->previewLoading($chatId, $messageId);
+                    $this->handleTopup($chatId, $userId);
+                    break;
+
+                case 'admin_broadcast':
+                    // Show usage/help for broadcast; actual broadcast text should be sent as /broadcast <message>
+                    $text = $this->renderView('telegram.admin.broadcast_help');
+                    $this->sendMessage($chatId, $text);
+                    break;
+
                 case 'open_support':
+                    $this->previewLoading($chatId, $messageId);
                     $this->handleSupport($chatId, $userId, '');
                     break;
 
+                case 'view_promotions':
+                    $this->previewLoading($chatId, $messageId);
+                    $this->handlePromotions($chatId, $userId);
+                    break;
+
+                case 'open_referrals':
+                    $this->previewLoading($chatId, $messageId);
+                    $this->handleReferrals($chatId, $userId);
+                    break;
+
                 case 'signup_start':
+                    $this->previewLoading($chatId, $messageId);
                     $this->handleSignup($chatId, $userId);
+                    break;
+
+                case 'open_profile':
+                    $this->previewLoading($chatId, $messageId);
+                    $this->handleProfile($chatId, $userId);
                     break;
 
                 case 'profile_update_name':
@@ -1768,6 +2574,52 @@ class TelegramBotService
         $this->telegram->answerCallbackQuery([
             'callback_query_id' => $callbackQuery->getId()
         ]);
+    }
+
+    /**
+     * Show current promotions or referral program info.
+     */
+    protected function handlePromotions(int $chatId, int $userId): void
+    {
+        // For now, pull from DB template with fallback to a simple message
+        $text = $this->templates->render('promotions_overview', 'telegram', [
+            'url' => config('app.url') . '/promotions'
+        ]);
+        if ($text === 'promotions_overview') {
+            $text = '🎁 ' . (Lang::has('telegram.messages.promotions_default') ? __('telegram.messages.promotions_default') : 'Discover limited-time deals and earn rewards for referrals.');
+        }
+
+        $kb = Keyboard::make()->inline();
+    $referText = '💸 ' . $this->trans('telegram.buttons.refer_friend', [], 'Refer a Friend');
+    $couponText = '🎟 ' . $this->trans('telegram.buttons.coupons', [], 'Coupons & Deals');
+        $kb->row([
+            Keyboard::inlineButton(['text' => $referText, 'callback_data' => 'open_referrals']),
+            Keyboard::inlineButton(['text' => $couponText, 'url' => config('app.url') . '/promotions'])
+        ]);
+    $kb = $this->appendBackToMenu($kb, $chatId, $userId);
+    $this->sendMessageWithKeyboard($chatId, $text, $kb);
+    }
+
+    /**
+     * Show referral link and basic stats (placeholder).
+     */
+    protected function handleReferrals(int $chatId, int $userId): void
+    {
+        $customer = Customer::where('telegram_chat_id', $chatId)->first();
+        $refUrl = config('app.url') . '/referrals';
+        $text = $this->templates->render('referrals_overview', 'telegram', [
+            'url' => $refUrl,
+            'name' => $customer?->name ?? 'there',
+        ]);
+        if ($text === 'referrals_overview') {
+            $text = '💸 ' . (Lang::has('telegram.messages.referrals_default') ? __('telegram.messages.referrals_default') : 'Share your referral link and earn rewards when friends buy. Open your dashboard to copy your link.');
+        }
+        $kb = Keyboard::make()->inline();
+    $kb->row([
+            Keyboard::inlineButton(['text' => '🔗 ' . $this->trans('telegram.buttons.open_dashboard', [], $this->trans('telegram.common.open_dashboard', [], 'Open Dashboard')), 'url' => $refUrl])
+        ]);
+    $kb = $this->appendBackToMenu($kb, $chatId, $userId);
+    $this->sendMessageWithKeyboard($chatId, $text, $kb);
     }
 
     /**
@@ -1948,7 +2800,142 @@ class TelegramBotService
                 Keyboard::inlineButton(['text' => '✏️ ' . __('telegram.buttons.edit_name'), 'callback_data' => 'profile_update_name']),
                 Keyboard::inlineButton(['text' => '✉️ ' . __('telegram.buttons.edit_email'), 'callback_data' => 'profile_update_email'])
             ]);
+        $kb = $this->appendBackToMenu($kb, $chatId, $userId);
+        $this->sendMessageWithKeyboard($chatId, $text, $kb);
+    }
 
+    /**
+     * Secondary "More" submenu with extra actions.
+     */
+    // Note: "More" submenu removed; items merged into main menu.
+
+    /**
+     * Small helper to return a minimal inline keyboard with just Back to Menu.
+     */
+    protected function backKeyboard(): Keyboard
+    {
+        $kb = Keyboard::make()->inline();
+        $kb->row([
+            Keyboard::inlineButton(['text' => '⬅️ ' . $this->trans('telegram.buttons.back_to_menu', [], 'Back to Menu'), 'callback_data' => 'open_menu'])
+        ]);
+        return $kb;
+    }
+
+    /**
+     * Get current plan filters for a chat.
+     */
+    protected function getPlanFilters(int $chatId): array
+    {
+        $filters = cache()->get("tg_plan_filters_{$chatId}");
+        if (!is_array($filters)) {
+            $filters = [ 'country' => null, 'category' => null, 'days' => null ];
+        }
+        return $filters;
+    }
+
+    /**
+     * Persist a single filter value.
+     */
+    protected function setPlanFilter(int $chatId, string $key, $value): void
+    {
+        $filters = $this->getPlanFilters($chatId);
+        $filters[$key] = $value ?: null;
+        cache()->put("tg_plan_filters_{$chatId}", $filters, now()->addHours(1));
+    }
+
+    /**
+     * Clear all plan filters.
+     */
+    protected function clearPlanFilters(int $chatId): void
+    {
+        cache()->forget("tg_plan_filters_{$chatId}");
+    }
+
+    /**
+     * Show filter selection menu (countries, categories, days).
+     */
+    protected function showFilterMenu(int $chatId, int $userId): void
+    {
+        // Load options from model helpers
+        $countries = ServerPlan::getAvailableCountries(); // -> country_code, plan_count
+        // Restrict categories to those with available plans given current country/days filters
+        $filters = $this->getPlanFilters($chatId);
+        $catQuery = \App\Models\ServerCategory::query()
+            ->where('is_active', true)
+            ->whereHas('plans', function($q) use ($filters) {
+                $q->where('is_active', true)
+                  ->where('in_stock', true)
+                  ->where('on_sale', true);
+                if (!empty($filters['country'])) {
+                    $q->where('country_code', $filters['country']);
+                }
+                if (!empty($filters['days'])) {
+                    $q->where('days', (int)$filters['days']);
+                }
+            })
+            ->orderBy('name');
+        $categories = $catQuery->get(['id', 'name']);
+        // Common durations we support; filter down to those present
+        $dayOptions = [7, 15, 30, 60, 90, 180, 365];
+        $existingDays = ServerPlan::query()
+            ->select('days')
+            ->whereNotNull('days')
+            ->where('is_active', true)
+            ->groupBy('days')
+            ->pluck('days')
+            ->map(fn($d) => (int)$d)
+            ->all();
+        $dayOptions = array_values(array_intersect($dayOptions, $existingDays));
+
+        $kb = Keyboard::make()->inline();
+        // Countries row(s)
+        $kb->row([Keyboard::inlineButton(['text' => '🌍 ' . $this->trans('telegram.filters.country', [], 'Country'), 'callback_data' => 'noop'])]);
+        $row = [];
+        // Add an All/Clear option first
+        $row[] = Keyboard::inlineButton(['text' => $filters['country'] ? '🧹 ' . $this->trans('telegram.common.clear', [], 'Clear') : '⭐ ' . $this->trans('telegram.common.all', [], 'All'), 'callback_data' => 'server_filter_country_' . ($filters['country'] ? 'clear' : 'ANY')]);
+        foreach ($countries as $c) {
+            $code = strtoupper($c->country_code);
+            // Skip invalid codes
+            if (!preg_match('/^[A-Z]{2}$/', $code)) { continue; }
+            $label = $this->countryLabel($code);
+            // Append count for clarity
+            $count = (int) ($c->plan_count ?? 0);
+            if ($count > 0) { $label .= " ({$count})"; }
+            if ($filters['country'] === $code) { $label = '✅ ' . $label; }
+            $row[] = Keyboard::inlineButton(['text' => $label, 'callback_data' => 'server_filter_country_' . $code]);
+            if (count($row) >= 3) { $kb->row($row); $row = []; }
+        }
+        if (!empty($row)) { $kb->row($row); }
+
+        // Categories row(s)
+        $kb->row([Keyboard::inlineButton(['text' => '🗂 ' . $this->trans('telegram.filters.category', [], 'Category'), 'callback_data' => 'noop'])]);
+        $row = [];
+        $row[] = Keyboard::inlineButton(['text' => $filters['category'] ? '🧹 ' . $this->trans('telegram.common.clear', [], 'Clear') : '⭐ ' . $this->trans('telegram.common.all', [], 'All'), 'callback_data' => 'server_filter_category_' . ($filters['category'] ? 'clear' : 'ANY')]);
+        foreach ($categories as $cat) {
+            $name = $cat->name ?: ('#' . $cat->id);
+            if ((int)$filters['category'] === (int)$cat->id) { $name = '✅ ' . $name; }
+            $row[] = Keyboard::inlineButton(['text' => $name, 'callback_data' => 'server_filter_category_' . $cat->id]);
+            if (count($row) >= 3) { $kb->row($row); $row = []; }
+        }
+        if (!empty($row)) { $kb->row($row); }
+
+        // Days row(s)
+        if (!empty($dayOptions)) {
+            $kb->row([Keyboard::inlineButton(['text' => '📅 ' . $this->trans('telegram.filters.duration', [], 'Duration'), 'callback_data' => 'noop'])]);
+            $row = [];
+            $row[] = Keyboard::inlineButton(['text' => $filters['days'] ? '🧹 ' . $this->trans('telegram.common.clear', [], 'Clear') : '⭐ ' . $this->trans('telegram.common.all', [], 'All'), 'callback_data' => 'server_filter_days_' . ($filters['days'] ? 'clear' : 'ANY')]);
+            foreach ($dayOptions as $d) {
+                $name = $d . 'd';
+                if ((int)$filters['days'] === (int)$d) { $name = '✅ ' . $name; }
+                $row[] = Keyboard::inlineButton(['text' => $name, 'callback_data' => 'server_filter_days_' . $d]);
+                if (count($row) >= 4) { $kb->row($row); $row = []; }
+            }
+            if (!empty($row)) { $kb->row($row); }
+        }
+
+        $kb = $this->appendBackToMenu($kb, $chatId, $userId);
+
+        $text = '🔎 ' . $this->trans('telegram.messages.choose_filters', [], 'Choose filters to narrow down plans:');
         $this->sendMessageWithKeyboard($chatId, $text, $kb);
     }
 }

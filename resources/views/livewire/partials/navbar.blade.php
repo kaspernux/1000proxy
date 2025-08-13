@@ -66,7 +66,7 @@
             <div class="flex items-center space-x-2 sm:space-x-3 flex-shrink-0">
                 @auth('customer')
                     <!-- Wallet Balance -->
-                    <a href="/wallet" class="hidden sm:flex items-center space-x-2 bg-gradient-to-r from-gray-800/80 to-gray-900/80 backdrop-blur-sm border border-blue-500/30 rounded-xl px-4 py-2.5 hover:border-blue-400/50 transition-all duration-300 group">
+                    <a href="/account/wallet-management" class="hidden sm:flex items-center space-x-2 bg-gradient-to-r from-gray-800/80 to-gray-900/80 backdrop-blur-sm border border-blue-500/30 rounded-xl px-4 py-2.5 hover:border-blue-400/50 transition-all duration-300 group">
                         <div class="w-6 h-6 bg-gradient-to-br from-yellow-400 to-yellow-500 rounded-lg flex items-center justify-center group-hover:scale-110 transition-transform duration-300">
                             <x-heroicon-o-wallet class="w-4 h-4 text-gray-900" />
                         </div>
@@ -145,7 +145,7 @@
                             <!-- Menu Items -->
                             <div class="py-2 bg-white md:bg-gray-800 mobile-force-dark-text md:text-white">
                                 <!-- Dashboard/Profile -->
-                                <a href="/account/dashboard" class="group flex items-center px-4 py-3 text-sm mobile-force-dark-text hover:bg-gradient-to-r hover:from-blue-50 hover:to-blue-100 md:hover:from-blue-600/40 md:hover:to-blue-700/40 hover:text-blue-900 md:hover:text-white transition-all duration-200">
+                                <a href="/account" class="group flex items-center px-4 py-3 text-sm mobile-force-dark-text hover:bg-gradient-to-r hover:from-blue-50 hover:to-blue-100 md:hover:from-blue-600/40 md:hover:to-blue-700/40 hover:text-blue-900 md:hover:text-white transition-all duration-200">
                                     <div class="w-8 h-8 bg-gradient-to-br from-blue-100 to-blue-200 md:from-blue-500/40 md:to-blue-600/40 rounded-lg flex items-center justify-center mr-3 group-hover:scale-110 transition-transform duration-200">
                                         <x-heroicon-o-window class="w-4 h-4 text-blue-600 md:text-blue-300" />
                                     </div>
@@ -176,7 +176,7 @@
                                     <span class="group-hover:text-blue-900 md:group-hover:text-blue-200 transition-colors">My Orders</span>
                                 </a>
 
-                                <a href="/wallet" class="group flex items-center px-4 py-3 text-sm mobile-force-dark-text hover:bg-gradient-to-r hover:from-green-50 hover:to-green-100 md:hover:from-green-600/40 md:hover:to-green-700/40 hover:text-green-900 md:hover:text-white transition-all duration-200">
+                                <a href="/account/wallet-management" class="group flex items-center px-4 py-3 text-sm mobile-force-dark-text hover:bg-gradient-to-r hover:from-green-50 hover:to-green-100 md:hover:from-green-600/40 md:hover:to-green-700/40 hover:text-green-900 md:hover:text-white transition-all duration-200">
                                     <div class="w-8 h-8 bg-gradient-to-br from-green-100 to-green-200 md:from-green-500/40 md:to-green-600/40 rounded-lg flex items-center justify-center mr-3 group-hover:scale-110 transition-transform duration-200">
                                         <x-heroicon-o-wallet class="w-4 h-4 text-green-600 md:text-green-300" />
                                     </div>
@@ -199,7 +199,7 @@
 
                                 <div class="border-t border-gray-300 md:border-gray-600/80 my-2"></div>
 
-                                <a href="/account-settings" class="group flex items-center px-4 py-3 text-sm mobile-force-dark-text hover:bg-gradient-to-r hover:from-purple-50 hover:to-purple-100 md:hover:from-purple-600/40 md:hover:to-purple-700/40 hover:text-purple-900 md:hover:text-white transition-all duration-200">
+                                <a href="/account/user-profile" class="group flex items-center px-4 py-3 text-sm mobile-force-dark-text hover:bg-gradient-to-r hover:from-purple-50 hover:to-purple-100 md:hover:from-purple-600/40 md:hover:to-purple-700/40 hover:text-purple-900 md:hover:text-white transition-all duration-200">
                                     <div class="w-8 h-8 bg-gradient-to-br from-purple-100 to-purple-200 md:from-purple-500/40 md:to-purple-600/40 rounded-lg flex items-center justify-center mr-3 group-hover:scale-110 transition-transform duration-200">
                                         <x-heroicon-o-user-circle class="w-4 h-4 text-purple-600 md:text-purple-300" />
                                     </div>

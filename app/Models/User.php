@@ -35,6 +35,7 @@ class User extends Authenticatable implements FilamentUser
         'telegram_username',
         'telegram_first_name',
         'telegram_last_name',
+    'locale',
     ];
 
     /**
@@ -259,5 +260,21 @@ class User extends Authenticatable implements FilamentUser
             'support_manager' => 'Support Manager',
             'sales_support' => 'Sales Support',
         ];
+    }
+
+    /**
+     * Locale helpers
+     */
+    public function setLocale(string $locale): void
+    {
+        if ($this->locale !== $locale) {
+            $this->locale = $locale;
+            $this->saveQuietly();
+        }
+    }
+
+    public function getLocaleOrDefault(): string
+    {
+        return $this->locale ?: config('locales.default', 'en');
     }
 }

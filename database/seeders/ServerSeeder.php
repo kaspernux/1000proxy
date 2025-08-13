@@ -8,6 +8,7 @@ use App\Models\ServerBrand;
 use App\Models\ServerCategory;
 use Illuminate\Database\Seeder;
 use Faker\Factory as Faker;
+use Illuminate\Support\Str;
 
 class ServerSeeder extends Seeder
 {
@@ -24,8 +25,19 @@ class ServerSeeder extends Seeder
             return;
         }
 
-        // Create servers across different countries
+        // Create servers across different countries (full names)
         $countries = ['United States', 'United Kingdom', 'Germany', 'Japan', 'Canada', 'France', 'Netherlands', 'Singapore'];
+        // Proper ISO 3166-1 alpha-2 codes mapping
+        $countryIsoMap = [
+            'United States' => 'US',
+            'United Kingdom' => 'GB', // Use GB (official); previously we derived "UN" which is invalid
+            'Germany' => 'DE',
+            'Japan' => 'JP',
+            'Canada' => 'CA',
+            'France' => 'FR',
+            'Netherlands' => 'NL',
+            'Singapore' => 'SG',
+        ];
 
         foreach ($countries as $country) {
             foreach ($brands->take(2) as $brand) { // 2 brands per country
@@ -70,7 +82,8 @@ class ServerSeeder extends Seeder
                             'server_id' => $server->id,
                             'server_brand_id' => $brand->id,
                             'server_category_id' => $planCategory->id,
-                            'country_code' => substr(str_replace(' ', '', $country), 0, 2), // Simple country code
+                            // Use proper ISO2 code; fallback to best-effort first 2 letters if unmapped
+                            'country_code' => $countryIsoMap[$country] ?? Str::upper(substr(preg_replace('/[^A-Za-z]/','',$country), 0, 2)),
                             'region' => $faker->state(),
                             'protocol' => $faker->randomElement(['vless', 'vmess', 'trojan', 'shadowsocks']),
                             'bandwidth_mbps' => $faker->numberBetween(50, 500),

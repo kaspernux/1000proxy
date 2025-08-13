@@ -334,12 +334,12 @@ class PWAController extends Controller
 
             // Parse the protocol URL (e.g., web+proxy://server.example.com:8080)
             if (str_starts_with($url, 'web+proxy://')) {
-                $proxyUrl = str_replace('web+proxy://', '', $url);
+                // Forward users to a valid customer panel page and keep the original URL as a query param
+                $target = route('filament.customer.pages.my-active-servers') . '?import_url=' . urlencode($url);
 
-                // Redirect to proxy configuration page
                 return response()->json([
                     'status' => 'success',
-                    'redirect' => '/dashboard/proxies/configure?url=' . urlencode($proxyUrl)
+                    'redirect' => $target,
                 ]);
             }
 
@@ -356,6 +356,31 @@ class PWAController extends Controller
                 'message' => 'Protocol handling failed'
             ], 500);
         }
+    }
+
+    /**
+     * Redirect-capable handler for protocol URLs used by the Web App Manifest.
+     * This endpoint performs an HTTP redirect to the customer panel.
+     */
+    public function handleProtocolRedirect(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'url' => 'required|string',
+        ]);
+
+        if ($validator->fails()) {
+            return redirect()->to('/');
+        }
+
+        $url = $request->input('url');
+
+        if (str_starts_with($url, 'web+proxy://')) {
+            $target = route('filament.customer.pages.my-active-servers') . '?import_url=' . urlencode($url);
+            // Let Filament auth middleware handle unauthenticated users by redirecting to /account/login
+            return redirect()->to($target);
+        }
+
+        return redirect()->to('/');
     }
 
     /**

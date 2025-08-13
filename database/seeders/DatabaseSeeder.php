@@ -111,6 +111,10 @@ class DatabaseSeeder extends Seeder
 
         // Display test credentials
         $this->displayTestCredentials();
+
+            $this->call([
+                NotificationTemplateSeeder::class,
+            ]);
     }
 
     private function displayTestCredentials()

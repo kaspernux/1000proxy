@@ -62,6 +62,8 @@ return Application::configure(basePath: dirname(__DIR__))
         commands: __DIR__.'/../routes/console.php',
         then: function () {
             Route::middleware('web')->group(base_path('routes/test-routes.php'));
+            // Register PWA routes under the web middleware group
+            Route::middleware('web')->group(base_path('routes/pwa.php'));
         },
         health: '/up',
     )

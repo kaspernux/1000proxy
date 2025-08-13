@@ -4,15 +4,22 @@
   $totalPages = $totalPages ?? 1;
 @endphp
 <div>
-  <b>🌐 {{ __('telegram.plans.title') }} ({{ __('telegram.plans.page', ['page' => $page, 'total' => $totalPages]) }})</b>
+  <b>🌐 {{ __('telegram.plans.title') }}</b>
   <br/>
   @foreach($plans as $plan)
-    <b>• {{ $plan->name }}</b><br/>
-    <span>📍 {{ $plan->server->country ?? $plan->server->ip ?? '—' }}</span><br/>
-    <span>🛠️ {{ $plan->protocol ?? $plan->server->type ?? '—' }}</span> • 
-    <span>⏱️ {{ $plan->days ? __('telegram.plans.days', ['days' => $plan->days]) : __('telegram.plans.monthly') }}</span> • 
-    <span>📶 {{ $plan->data_limit_gb ? ($plan->data_limit_gb.' GB') : ($plan->volume ? ($plan->volume.' GB') : __('telegram.plans.unlimited')) }}</span><br/>
-    <span>💵 ${{ number_format((float)$plan->price, 2) }}</span>
-    <br/><br/>
+    @php
+      $country = $plan->server->country ?? $plan->server->ip ?? '—';
+      $protocol = $plan->protocol ?? $plan->server->type ?? '—';
+      $term = $plan->days ? __('telegram.plans.days', ['days' => $plan->days]) : __('telegram.plans.monthly');
+      $data = $plan->data_limit_gb ? ($plan->data_limit_gb.' GB') : ($plan->volume ? ($plan->volume.' GB') : __('telegram.plans.unlimited'));
+    @endphp
+    <br/>┏━━━━━━━━━━━━━━━━━
+    <br/><b>📦 {{ $plan->name }}</b>
+    <br/>📍 {{ $country }}
+    <br/>🛠️ {{ $protocol }} • ⏱️ {{ $term }} • 📶 {{ $data }}
+    <br/>💵 ${{ number_format((float)$plan->price, 2) }}
+    <br/>🧾 ID: {{ $plan->id }}
+    <br/>━━━━━━━━━━━━━━━━━┛
+    <br/>
   @endforeach
 </div>
