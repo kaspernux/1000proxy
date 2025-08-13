@@ -25,8 +25,9 @@ class UpdateProfileRequest extends FormRequest
     {
         return [
             'name' => 'sometimes|required|string|max:255|regex:/^[a-zA-Z\s]+$/',
-            'username' => 'sometimes|required|string|max:50|alpha_dash|unique:customers,username,' . auth()->id(),
-            'email' => 'sometimes|required|email|max:255|unique:customers,email,' . auth()->id(),
+            // Use users table (legacy tests & code previously referenced customers)
+            'username' => 'sometimes|required|string|max:50|alpha_dash|unique:users,username,' . auth()->id(),
+            'email' => 'sometimes|required|email|max:255|unique:users,email,' . auth()->id(),
             'phone' => 'nullable|string|max:20|regex:/^[\+]?[0-9\s\-\(\)]+$/',
             'locale' => 'nullable|string|in:en,fr,es,ru,ar,zh',
             'timezone' => 'nullable|string|max:50',
