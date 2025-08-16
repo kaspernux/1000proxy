@@ -10,6 +10,16 @@ class ListServerPlans extends ListRecords
 {
     protected static string $resource = ServerPlanResource::class;
 
+    public function getTitle(): string
+    {
+        return 'Server Plans';
+    }
+
+    public function getHeading(): string
+    {
+        return 'Server Plans';
+    }
+
     protected function getHeaderActions(): array
     {
         return [

@@ -2,7 +2,7 @@
 
 namespace Tests\Feature\Api;
 
-use App\Models\User;
+use App\Models\Customer;
 use App\Models\Order;
 use App\Models\ServerPlan;
 use Tests\TestCase;
@@ -13,16 +13,16 @@ class PaymentControllerTest extends TestCase
 {
     use RefreshDatabase;
 
-    protected User $user;
+    protected Customer $customer;
     protected Order $order;
 
     protected function setUp(): void
     {
         parent::setUp();
         
-        $this->user = User::factory()->create();
+        $this->customer = Customer::factory()->create();
         $this->order = Order::factory()->create([
-            'user_id' => $this->user->id,
+            'customer_id' => $this->customer->id,
             'grand_amount' => 99.99,
             'payment_status' => 'pending',
         ]);
@@ -42,7 +42,7 @@ class PaymentControllerTest extends TestCase
             ], 200)
         ]);
 
-        $response = $this->actingAs($this->user)
+    $response = $this->actingAs($this->customer, 'customer')
             ->postJson('/api/payments/crypto', [
                 'order_id' => $this->order->id,
                 'payment_method' => 'crypto',
@@ -63,10 +63,10 @@ class PaymentControllerTest extends TestCase
 
     public function test_user_cannot_create_payment_for_others_order()
     {
-        $otherUser = User::factory()->create();
-        $otherOrder = Order::factory()->create(['user_id' => $otherUser->id]);
+    $otherCustomer = Customer::factory()->create();
+    $otherOrder = Order::factory()->create(['customer_id' => $otherCustomer->id]);
 
-        $response = $this->actingAs($this->user)
+    $response = $this->actingAs($this->customer, 'customer')
             ->postJson('/api/payments/crypto', [
                 'order_id' => $otherOrder->id,
                 'payment_method' => 'crypto',
@@ -91,7 +91,7 @@ class PaymentControllerTest extends TestCase
 
     public function test_create_payment_validates_required_fields()
     {
-        $response = $this->actingAs($this->user)
+    $response = $this->actingAs($this->customer, 'customer')
             ->postJson('/api/payments/crypto', []);
 
         $response->assertStatus(422)
@@ -100,7 +100,7 @@ class PaymentControllerTest extends TestCase
 
     public function test_create_payment_validates_currency()
     {
-        $response = $this->actingAs($this->user)
+    $response = $this->actingAs($this->customer, 'customer')
             ->postJson('/api/payments/crypto', [
                 'order_id' => $this->order->id,
                 'payment_method' => 'crypto',
@@ -126,12 +126,14 @@ class PaymentControllerTest extends TestCase
         $this->order->invoice()->create([
             'payment_id' => 'payment_123',
             'invoice_url' => 'https://example.com',
-            'status' => 'pending',
-            'amount' => 99.99,
-            'currency' => 'BTC',
+            'payment_status' => 'pending',
+            'price_amount' => 99.99,
+            'price_currency' => 'BTC',
+            'customer_id' => $this->order->customer_id,
+            'payment_method_id' => \App\Models\PaymentMethod::factory()->create()->id,
         ]);
 
-        $response = $this->actingAs($this->user)
+    $response = $this->actingAs($this->customer, 'customer')
             ->getJson("/api/payments/status/payment_123");
 
         $response->assertStatus(200)
@@ -146,18 +148,20 @@ class PaymentControllerTest extends TestCase
 
     public function test_user_cannot_get_payment_status_for_others_payment()
     {
-        $otherUser = User::factory()->create();
-        $otherOrder = Order::factory()->create(['user_id' => $otherUser->id]);
+    $otherCustomer = Customer::factory()->create();
+    $otherOrder = Order::factory()->create(['customer_id' => $otherCustomer->id]);
         
         $otherOrder->invoice()->create([
             'payment_id' => 'payment_123',
             'invoice_url' => 'https://example.com',
-            'status' => 'pending',
-            'amount' => 99.99,
-            'currency' => 'BTC',
+            'payment_status' => 'pending',
+            'price_amount' => 99.99,
+            'price_currency' => 'BTC',
+            'customer_id' => $otherOrder->customer_id,
+            'payment_method_id' => \App\Models\PaymentMethod::factory()->create()->id,
         ]);
 
-        $response = $this->actingAs($this->user)
+    $response = $this->actingAs($this->customer, 'customer')
             ->getJson("/api/payments/status/payment_123");
 
         $response->assertStatus(403);
@@ -171,7 +175,7 @@ class PaymentControllerTest extends TestCase
             ], 200)
         ]);
 
-        $response = $this->actingAs($this->user)
+    $response = $this->actingAs($this->customer, 'customer')
             ->getJson('/api/payments/currencies');
 
         $response->assertStatus(200)
@@ -185,7 +189,7 @@ class PaymentControllerTest extends TestCase
 
     public function test_get_estimate_price_validates_input()
     {
-        $response = $this->actingAs($this->user)
+        $response = $this->actingAs($this->customer, 'customer')
             ->postJson('/api/payments/estimate', [
                 'amount' => 'invalid',
                 'currency_from' => 'INVALID',
@@ -207,7 +211,7 @@ class PaymentControllerTest extends TestCase
             ], 200)
         ]);
 
-        $response = $this->actingAs($this->user)
+        $response = $this->actingAs($this->customer, 'customer')
             ->postJson('/api/payments/estimate', [
                 'amount' => 100,
                 'currency_from' => 'USD',
@@ -231,9 +235,11 @@ class PaymentControllerTest extends TestCase
         $this->order->invoice()->create([
             'payment_id' => 'payment_123',
             'invoice_url' => 'https://example.com',
-            'status' => 'pending',
-            'amount' => 99.99,
-            'currency' => 'BTC',
+            'payment_status' => 'pending',
+            'price_amount' => 99.99,
+            'price_currency' => 'BTC',
+            'customer_id' => $this->order->customer_id,
+            'payment_method_id' => \App\Models\PaymentMethod::factory()->create()->id,
         ]);
 
         $webhookPayload = [
@@ -275,7 +281,7 @@ class PaymentControllerTest extends TestCase
     {
         // Make 61 requests (exceeding the limit of 60)
         for ($i = 0; $i < 61; $i++) {
-            $response = $this->actingAs($this->user)
+            $response = $this->actingAs($this->customer, 'customer')
                 ->postJson('/api/payments/crypto', [
                     'order_id' => $this->order->id,
                     'payment_method' => 'crypto',
@@ -289,7 +295,7 @@ class PaymentControllerTest extends TestCase
         }
 
         // The 61st request should be rate limited
-        $response = $this->actingAs($this->user)
+    $response = $this->actingAs($this->customer, 'customer')
             ->postJson('/api/payments/crypto', [
                 'order_id' => $this->order->id,
                 'payment_method' => 'crypto',

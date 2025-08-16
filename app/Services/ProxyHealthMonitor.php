@@ -495,8 +495,8 @@ class ProxyHealthMonitor
 
     private function handleUnhealthyProxy($proxy, $healthResult): void
     {
-        $userId = $proxy['order']->user_id;
-        $monitoringConfig = Cache::get("health_monitoring_{$userId}");
+    $customerId = $proxy['order']->customer_id;
+    $monitoringConfig = Cache::get("health_monitoring_{$customerId}");
 
         if ($monitoringConfig && ($monitoringConfig['notification_settings']['email_alerts'] ?? false)) {
             $this->sendHealthAlert($proxy, $healthResult, $monitoringConfig);
@@ -506,7 +506,7 @@ class ProxyHealthMonitor
     private function sendHealthAlert($proxy, $healthResult, $config): void
     {
         $this->notificationService->sendEmail(
-            $proxy['order']->user->email,
+            $proxy['order']->customer->email,
             'Proxy Health Alert',
             "Your proxy (ID: {$proxy['order']->id}) is experiencing health issues. Status: {$healthResult['status']}"
         );
@@ -514,8 +514,8 @@ class ProxyHealthMonitor
 
     private function applyAutoRemediation($proxy, $healthResult): void
     {
-        $userId = $proxy['order']->user_id;
-        $monitoringConfig = Cache::get("health_monitoring_{$userId}");
+    $customerId = $proxy['order']->customer_id;
+    $monitoringConfig = Cache::get("health_monitoring_{$customerId}");
 
         if (!$monitoringConfig || !($monitoringConfig['auto_remediation']['enabled'] ?? false)) {
             return;

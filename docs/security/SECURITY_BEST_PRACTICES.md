@@ -1,5 +1,13 @@
 # Security Best Practices
 
+- Enforce HTTPS everywhere
+- Use key-only SSH on non-standard port
+- Principle of least privilege for users and services
+- Rotate credentials regularly; prefer secrets managers
+- Enable audit logging and monitor alerts
+- Keep system and dependencies updated
+- Back up data securely and test restores
+
 This document outlines comprehensive security measures, best practices, and guidelines for the 1000proxy platform.
 
 ## Table of Contents

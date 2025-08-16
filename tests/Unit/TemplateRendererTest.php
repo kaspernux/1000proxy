@@ -6,13 +6,14 @@ use App\Models\NotificationTemplate;
 use App\Services\TemplateRenderer;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
+use PHPUnit\Framework\Attributes\Test;
 
 class TemplateRendererTest extends TestCase
 {
     use RefreshDatabase;
 
-    /** @test */
-    public function it_renders_db_template_with_placeholders_and_locale_fallback()
+    #[Test]
+    public function it_renders_db_template_with_placeholders_and_locale_fallback(): void
     {
         NotificationTemplate::create([
             'key' => 'greeting',
@@ -31,8 +32,8 @@ class TemplateRendererTest extends TestCase
         $this->assertSame('Hello, Alice!', $text);
     }
 
-    /** @test */
-    public function it_falls_back_to_translation_key_when_no_template()
+    #[Test]
+    public function it_falls_back_to_translation_key_when_no_template(): void
     {
         // Assuming lang/en/telegram.php contains messages.unknown => 'Unknown command.'
         $this->app->setLocale('en');

@@ -44,6 +44,7 @@ return [
     'nowpayments' => [
         'key' => env('NOWPAYMENTS_API_KEY'),
         'api_url' => env('NOWPAYMENTS_API_URL', 'https://api.nowpayments.io/v1'),
+    'webhook_secret' => env('NOWPAYMENTS_WEBHOOK_SECRET', 'test_webhook_secret'),
     ],
 
     'paystack' => [

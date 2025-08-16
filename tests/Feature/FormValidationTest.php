@@ -10,6 +10,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Foundation\Testing\WithFaker;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
+use PHPUnit\Framework\Attributes\Test;
 
 class FormValidationTest extends TestCase
 {
@@ -33,8 +34,8 @@ class FormValidationTest extends TestCase
         ]);
     }
 
-    /** @test */
-    public function user_registration_validates_required_fields()
+    #[Test]
+    public function user_registration_validates_required_fields(): void
     {
         $response = $this->post('/register', []);
 
@@ -46,8 +47,8 @@ class FormValidationTest extends TestCase
         ]);
     }
 
-    /** @test */
-    public function user_registration_validates_email_format()
+    #[Test]
+    public function user_registration_validates_email_format(): void
     {
         $response = $this->post('/register', [
             'name' => 'Test User',
@@ -60,8 +61,8 @@ class FormValidationTest extends TestCase
         $response->assertSessionHasErrors(['email']);
     }
 
-    /** @test */
-    public function user_registration_validates_unique_email()
+    #[Test]
+    public function user_registration_validates_unique_email(): void
     {
         $existingUser = User::factory()->create();
 
@@ -76,8 +77,8 @@ class FormValidationTest extends TestCase
         $response->assertSessionHasErrors(['email']);
     }
 
-    /** @test */
-    public function user_registration_validates_password_confirmation()
+    #[Test]
+    public function user_registration_validates_password_confirmation(): void
     {
         $response = $this->post('/register', [
             'name' => 'Test User',
@@ -90,8 +91,8 @@ class FormValidationTest extends TestCase
         $response->assertSessionHasErrors(['password']);
     }
 
-    /** @test */
-    public function user_registration_validates_password_strength()
+    #[Test]
+    public function user_registration_validates_password_strength(): void
     {
         $response = $this->post('/register', [
             'name' => 'Test User',
@@ -104,8 +105,8 @@ class FormValidationTest extends TestCase
         $response->assertSessionHasErrors(['password']);
     }
 
-    /** @test */
-    public function login_validates_required_fields()
+    #[Test]
+    public function login_validates_required_fields(): void
     {
         $response = $this->post('/login', []);
 
@@ -115,8 +116,8 @@ class FormValidationTest extends TestCase
         ]);
     }
 
-    /** @test */
-    public function login_validates_email_format()
+    #[Test]
+    public function login_validates_email_format(): void
     {
         $response = $this->post('/login', [
             'email' => 'invalid-email',
@@ -126,10 +127,10 @@ class FormValidationTest extends TestCase
         $response->assertSessionHasErrors(['email']);
     }
 
-    /** @test */
-    public function profile_update_validates_required_fields()
+    #[Test]
+    public function profile_update_validates_required_fields(): void
     {
-        $response = $this->actingAs($this->user)
+        $response = $this->actingAs($this->user, 'web')
             ->put('/profile', [
                 'name' => '',
                 'email' => ''
@@ -141,12 +142,12 @@ class FormValidationTest extends TestCase
         ]);
     }
 
-    /** @test */
-    public function profile_update_validates_email_uniqueness()
+    #[Test]
+    public function profile_update_validates_email_uniqueness(): void
     {
         $otherUser = User::factory()->create();
 
-        $response = $this->actingAs($this->user)
+        $response = $this->actingAs($this->user, 'web')
             ->put('/profile', [
                 'name' => 'Updated Name',
                 'email' => $otherUser->email
@@ -155,10 +156,10 @@ class FormValidationTest extends TestCase
         $response->assertSessionHasErrors(['email']);
     }
 
-    /** @test */
-    public function profile_update_allows_same_email()
+    #[Test]
+    public function profile_update_allows_same_email(): void
     {
-        $response = $this->actingAs($this->user)
+        $response = $this->actingAs($this->user, 'web')
             ->put('/profile', [
                 'name' => 'Updated Name',
                 'email' => $this->user->email
@@ -168,10 +169,10 @@ class FormValidationTest extends TestCase
         $response->assertRedirect();
     }
 
-    /** @test */
-    public function password_change_validates_current_password()
+    #[Test]
+    public function password_change_validates_current_password(): void
     {
-        $response = $this->actingAs($this->user)
+        $response = $this->actingAs($this->user, 'web')
             ->put('/password', [
                 'current_password' => 'wrong_password',
                 'password' => 'new_password123',
@@ -181,10 +182,10 @@ class FormValidationTest extends TestCase
         $response->assertSessionHasErrors(['current_password']);
     }
 
-    /** @test */
-    public function password_change_validates_new_password_confirmation()
+    #[Test]
+    public function password_change_validates_new_password_confirmation(): void
     {
-        $response = $this->actingAs($this->user)
+        $response = $this->actingAs($this->user, 'web')
             ->put('/password', [
                 'current_password' => 'password',
                 'password' => 'new_password123',
@@ -194,8 +195,8 @@ class FormValidationTest extends TestCase
         $response->assertSessionHasErrors(['password']);
     }
 
-    /** @test */
-    public function server_creation_validates_required_fields()
+    #[Test]
+    public function server_creation_validates_required_fields(): void
     {
         $response = $this->actingAs($this->admin)
             ->post('/admin/servers', []);
@@ -210,8 +211,8 @@ class FormValidationTest extends TestCase
         ]);
     }
 
-    /** @test */
-    public function server_creation_validates_host_format()
+    #[Test]
+    public function server_creation_validates_host_format(): void
     {
         $response = $this->actingAs($this->admin)
             ->post('/admin/servers', [
@@ -226,8 +227,8 @@ class FormValidationTest extends TestCase
         $response->assertSessionHasErrors(['host']);
     }
 
-    /** @test */
-    public function server_creation_validates_port_range()
+    #[Test]
+    public function server_creation_validates_port_range(): void
     {
         $response = $this->actingAs($this->admin)
             ->post('/admin/servers', [
@@ -242,8 +243,8 @@ class FormValidationTest extends TestCase
         $response->assertSessionHasErrors(['port']);
     }
 
-    /** @test */
-    public function server_creation_validates_unique_host_port_combination()
+    #[Test]
+    public function server_creation_validates_unique_host_port_combination(): void
     {
         $existingServer = Server::factory()->create([
             'host' => '192.168.1.100',
@@ -263,8 +264,8 @@ class FormValidationTest extends TestCase
         $response->assertSessionHasErrors(['host']);
     }
 
-    /** @test */
-    public function service_creation_validates_required_fields()
+    #[Test]
+    public function service_creation_validates_required_fields(): void
     {
         $response = $this->actingAs($this->admin)
             ->post('/admin/services', []);
@@ -277,8 +278,8 @@ class FormValidationTest extends TestCase
         ]);
     }
 
-    /** @test */
-    public function service_creation_validates_price_format()
+    #[Test]
+    public function service_creation_validates_price_format(): void
     {
         $response = $this->actingAs($this->admin)
             ->post('/admin/services', [
@@ -291,8 +292,8 @@ class FormValidationTest extends TestCase
         $response->assertSessionHasErrors(['price']);
     }
 
-    /** @test */
-    public function service_creation_validates_negative_price()
+    #[Test]
+    public function service_creation_validates_negative_price(): void
     {
         $response = $this->actingAs($this->admin)
             ->post('/admin/services', [
@@ -305,11 +306,11 @@ class FormValidationTest extends TestCase
         $response->assertSessionHasErrors(['price']);
     }
 
-    /** @test */
-    public function order_creation_validates_required_fields()
+    #[Test]
+    public function order_creation_validates_required_fields(): void
     {
         $response = $this->actingAs($this->user)
-            ->post('/orders', []);
+            ->post('/orders', []); // legacy web route; retained for backward-compat tests
 
         $response->assertSessionHasErrors([
             'server_id',
@@ -317,8 +318,8 @@ class FormValidationTest extends TestCase
         ]);
     }
 
-    /** @test */
-    public function order_creation_validates_server_exists()
+    #[Test]
+    public function order_creation_validates_server_exists(): void
     {
         $response = $this->actingAs($this->user)
             ->post('/orders', [
@@ -329,8 +330,8 @@ class FormValidationTest extends TestCase
         $response->assertSessionHasErrors(['server_id']);
     }
 
-    /** @test */
-    public function order_creation_validates_billing_cycle_options()
+    #[Test]
+    public function order_creation_validates_billing_cycle_options(): void
     {
         $server = Server::factory()->create();
 
@@ -343,8 +344,8 @@ class FormValidationTest extends TestCase
         $response->assertSessionHasErrors(['billing_cycle']);
     }
 
-    /** @test */
-    public function file_upload_validates_file_type()
+    #[Test]
+    public function file_upload_validates_file_type(): void
     {
         Storage::fake('public');
 
@@ -358,8 +359,8 @@ class FormValidationTest extends TestCase
         $response->assertSessionHasErrors(['file']);
     }
 
-    /** @test */
-    public function file_upload_validates_file_size()
+    #[Test]
+    public function file_upload_validates_file_size(): void
     {
         Storage::fake('public');
 
@@ -373,8 +374,8 @@ class FormValidationTest extends TestCase
         $response->assertSessionHasErrors(['file']);
     }
 
-    /** @test */
-    public function support_ticket_validates_required_fields()
+    #[Test]
+    public function support_ticket_validates_required_fields(): void
     {
         $response = $this->actingAs($this->user)
             ->post('/support/tickets', []);
@@ -386,8 +387,8 @@ class FormValidationTest extends TestCase
         ]);
     }
 
-    /** @test */
-    public function support_ticket_validates_message_length()
+    #[Test]
+    public function support_ticket_validates_message_length(): void
     {
         $response = $this->actingAs($this->user)
             ->post('/support/tickets', [
@@ -399,8 +400,8 @@ class FormValidationTest extends TestCase
         $response->assertSessionHasErrors(['message']);
     }
 
-    /** @test */
-    public function support_ticket_validates_priority_options()
+    #[Test]
+    public function support_ticket_validates_priority_options(): void
     {
         $response = $this->actingAs($this->user)
             ->post('/support/tickets', [
@@ -412,8 +413,8 @@ class FormValidationTest extends TestCase
         $response->assertSessionHasErrors(['priority']);
     }
 
-    /** @test */
-    public function payment_method_validates_required_fields()
+    #[Test]
+    public function payment_method_validates_required_fields(): void
     {
         $response = $this->actingAs($this->user)
             ->post('/payment-methods', []);
@@ -427,8 +428,8 @@ class FormValidationTest extends TestCase
         ]);
     }
 
-    /** @test */
-    public function payment_method_validates_card_number_format()
+    #[Test]
+    public function payment_method_validates_card_number_format(): void
     {
         $response = $this->actingAs($this->user)
             ->post('/payment-methods', [
@@ -442,8 +443,8 @@ class FormValidationTest extends TestCase
         $response->assertSessionHasErrors(['card_number']);
     }
 
-    /** @test */
-    public function payment_method_validates_expiry_date()
+    #[Test]
+    public function payment_method_validates_expiry_date(): void
     {
         $response = $this->actingAs($this->user)
             ->post('/payment-methods', [
@@ -457,8 +458,8 @@ class FormValidationTest extends TestCase
         $response->assertSessionHasErrors(['expiry_year']);
     }
 
-    /** @test */
-    public function two_factor_setup_validates_code_format()
+    #[Test]
+    public function two_factor_setup_validates_code_format(): void
     {
         $response = $this->actingAs($this->user)
             ->post('/two-factor/verify', [
@@ -468,8 +469,8 @@ class FormValidationTest extends TestCase
         $response->assertSessionHasErrors(['code']);
     }
 
-    /** @test */
-    public function api_key_creation_validates_permissions()
+    #[Test]
+    public function api_key_creation_validates_permissions(): void
     {
         $response = $this->actingAs($this->user)
             ->post('/api-keys', [
@@ -480,8 +481,8 @@ class FormValidationTest extends TestCase
         $response->assertSessionHasErrors(['permissions']);
     }
 
-    /** @test */
-    public function webhook_url_validates_format()
+    #[Test]
+    public function webhook_url_validates_format(): void
     {
         $response = $this->actingAs($this->user)
             ->post('/webhooks', [
@@ -493,8 +494,8 @@ class FormValidationTest extends TestCase
         $response->assertSessionHasErrors(['url']);
     }
 
-    /** @test */
-    public function webhook_url_validates_https_requirement()
+    #[Test]
+    public function webhook_url_validates_https_requirement(): void
     {
         $response = $this->actingAs($this->user)
             ->post('/webhooks', [
@@ -506,8 +507,8 @@ class FormValidationTest extends TestCase
         $response->assertSessionHasErrors(['url']);
     }
 
-    /** @test */
-    public function bulk_actions_validate_selected_items()
+    #[Test]
+    public function bulk_actions_validate_selected_items(): void
     {
         $response = $this->actingAs($this->admin)
             ->post('/admin/users/bulk-delete', [
@@ -517,8 +518,8 @@ class FormValidationTest extends TestCase
         $response->assertSessionHasErrors(['selected_ids']);
     }
 
-    /** @test */
-    public function date_range_filters_validate_date_format()
+    #[Test]
+    public function date_range_filters_validate_date_format(): void
     {
         $response = $this->actingAs($this->admin)
             ->get('/admin/orders', [
@@ -529,8 +530,8 @@ class FormValidationTest extends TestCase
         $response->assertSessionHasErrors(['start_date']);
     }
 
-    /** @test */
-    public function date_range_filters_validate_logical_order()
+    #[Test]
+    public function date_range_filters_validate_logical_order(): void
     {
         $response = $this->actingAs($this->admin)
             ->get('/admin/orders', [
@@ -541,8 +542,8 @@ class FormValidationTest extends TestCase
         $response->assertSessionHasErrors(['end_date']);
     }
 
-    /** @test */
-    public function custom_validation_rules_work()
+    #[Test]
+    public function custom_validation_rules_work(): void
     {
         // Test custom validation rule for proxy configuration
         $response = $this->actingAs($this->admin)
@@ -558,8 +559,8 @@ class FormValidationTest extends TestCase
         $response->assertSessionHasErrors(['credentials.username', 'credentials.password']);
     }
 
-    /** @test */
-    public function ajax_validation_returns_json_errors()
+    #[Test]
+    public function ajax_validation_returns_json_errors(): void
     {
         $response = $this->actingAs($this->user)
             ->postJson('/api/profile', [
@@ -571,8 +572,8 @@ class FormValidationTest extends TestCase
             ->assertJsonValidationErrors(['name', 'email']);
     }
 
-    /** @test */
-    public function conditional_validation_works()
+    #[Test]
+    public function conditional_validation_works(): void
     {
         // Test that certain fields are required only when specific conditions are met
         $response = $this->actingAs($this->admin)
@@ -588,8 +589,8 @@ class FormValidationTest extends TestCase
         $response->assertSessionHasErrors(['private_key']);
     }
 
-    /** @test */
-    public function validation_messages_are_user_friendly()
+    #[Test]
+    public function validation_messages_are_user_friendly(): void
     {
         $response = $this->post('/register', [
             'email' => 'invalid-email'
@@ -599,8 +600,8 @@ class FormValidationTest extends TestCase
         $this->assertStringContainsString('valid email address', $errors->first('email'));
     }
 
-    /** @test */
-    public function honeypot_validation_prevents_spam()
+    #[Test]
+    public function honeypot_validation_prevents_spam(): void
     {
         $response = $this->post('/register', [
             'name' => 'Test User',

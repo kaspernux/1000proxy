@@ -18,8 +18,16 @@ class PaymentMethodSeeder extends Seeder
                 'name' => 'Wallet',
                 'slug' => Str::slug('Wallet'),
                 'type' => 'wallet',
-                'notes' => 'Payments made directly from user wallet balance.',
+                'notes' => 'Payments made directly from customer wallet balance.',
                 'image' => 'payment_methods/wallet.svg',
+                'is_active' => true,
+            ],
+            [
+                'name' => 'Ethereum',
+                'slug' => Str::slug('Ethereum'),
+                'type' => 'ethereum',
+                'notes' => 'Crypto payments with ETH network.',
+                'image' => 'payment_methods/ethereum.svg',
                 'is_active' => true,
             ],
             [

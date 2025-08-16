@@ -132,11 +132,11 @@ class LiveOrderTracker extends Component
 
             $orders = $query->orderBy('created_at', 'desc')->get();
 
-            $this->orders = $orders->map(function ($order) {
+        $this->orders = $orders->map(function ($order) {
                 return [
                     'id' => $order->id,
-                    'user_name' => $order->user->name ?? 'Guest',
-                    'user_email' => $order->user->email ?? 'N/A',
+            'user_name' => $order->customer->name ?? 'Guest',
+            'user_email' => $order->customer->email ?? 'N/A',
                     'status' => $order->status,
                     'payment_status' => $order->payment_status,
                     'payment_method' => $order->payment_method,
@@ -263,7 +263,7 @@ class LiveOrderTracker extends Component
             
             for ($i = 0; $i < $item->quantity; $i++) {
                 $clientData = [
-                    'email' => $order->user->email . '_' . $item->id . '_' . ($i + 1),
+                    'email' => ($order->customer->email ?? ('order'.$order->id.'@example.com')) . '_' . $item->id . '_' . ($i + 1),
                     'uuid' => \Str::uuid(),
                     'expiryTime' => now()->addDays($item->duration)->timestamp * 1000,
                     'limitIp' => $serverPlan->max_connections,

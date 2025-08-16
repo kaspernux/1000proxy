@@ -17,8 +17,9 @@ return new class extends Migration
             $table->string('username');
             $table->string('password');
             $table->boolean('is_active')->default(true);
-            $table->foreignId('server_category_id')->constrained()->onDelete('cascade')->nullable();
-            $table->foreignId('server_brand_id')->constrained()->onDelete('cascade')->nullable();
+            // Note: nullable() must come before constrained() for some MySQL/MariaDB versions
+            $table->foreignId('server_category_id')->nullable()->constrained()->nullOnDelete();
+            $table->foreignId('server_brand_id')->nullable()->constrained()->nullOnDelete();
             $table->string('country')->nullable();
             $table->string('flag')->nullable();
             $table->text('description')->nullable();

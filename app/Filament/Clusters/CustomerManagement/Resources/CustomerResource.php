@@ -116,6 +116,23 @@ class CustomerResource extends Resource
                                     ->helperText('Customer preferred language'),
                             ]),
 
+                            Grid::make(2)->schema([
+                                TextInput::make('password')
+                                    ->password()
+                                    ->required(fn (string $operation): bool => $operation === 'create')
+                                    ->minLength(6)
+                                    ->maxLength(255)
+                                    ->dehydrateStateUsing(fn ($state) => filled($state) ? $state : null)
+                                    ->dehydrated(fn ($state) => filled($state))
+                                    ->helperText('Set a password on create, or leave blank to keep existing.'),
+
+                                TextInput::make('password_confirmation')
+                                    ->password()
+                                    ->same('password')
+                                    ->dehydrated(false)
+                                    ->helperText('Confirm password (on create/change).'),
+                            ]),
+
                             Grid::make(3)->schema([
                                 TextInput::make('refcode')
                                     ->label('Referral Code')
@@ -233,38 +250,38 @@ class CustomerResource extends Resource
                         ->schema([
                             Placeholder::make('created_at')
                                 ->label('Registration Date')
-                                ->content(fn (Customer $record): string =>
-                                    $record->created_at ? $record->created_at->format('M j, Y g:i A') : 'Not set')
+                                ->content(fn (?Customer $record): string =>
+                                    $record?->created_at ? $record->created_at->format('M j, Y g:i A') : 'Not set')
                                 ->extraAttributes(['class' => 'text-sm']),
 
                             Placeholder::make('last_login')
                                 ->label('Last Login')
-                                ->content(fn (Customer $record): string =>
-                                    $record->updated_at ? $record->updated_at->diffForHumans() : 'Never')
+                                ->content(fn (?Customer $record): string =>
+                                    $record?->updated_at ? $record->updated_at->diffForHumans() : 'Never')
                                 ->extraAttributes(['class' => 'text-sm']),
 
                             Placeholder::make('orders_count')
                                 ->label('Total Orders')
-                                ->content(fn (Customer $record): string =>
-                                    $record->orders()->count() . ' orders')
+                                ->content(fn (?Customer $record): string =>
+                                    $record ? ($record->orders()->count() . ' orders') : '0 orders')
                                 ->extraAttributes(['class' => 'text-sm']),
 
                             Placeholder::make('total_spent')
                                 ->label('Total Spent')
-                                ->content(fn (Customer $record): string =>
-                                    '$' . number_format($record->orders()->where('payment_status', 'paid')->sum('grand_amount'), 2))
+                                ->content(fn (?Customer $record): string =>
+                                    '$' . number_format($record ? $record->orders()->where('payment_status', 'paid')->sum('grand_amount') : 0, 2))
                                 ->extraAttributes(['class' => 'text-sm']),
 
                             Placeholder::make('wallet_balance')
                                 ->label('Wallet Balance')
-                                ->content(fn (Customer $record): string =>
-                                    $record->wallet ? '$' . number_format($record->wallet->balance, 2) : 'No wallet')
+                                ->content(fn (?Customer $record): string =>
+                                    $record?->wallet ? '$' . number_format($record->wallet->balance, 2) : 'No wallet')
                                 ->extraAttributes(['class' => 'text-sm']),
 
                             Placeholder::make('referrals_count')
                                 ->label('Referrals Made')
-                                ->content(fn (Customer $record): string =>
-                                    $record->referredCustomers()->count() . ' customers')
+                                ->content(fn (?Customer $record): string =>
+                                    $record ? ($record->referredCustomers()->count() . ' customers') : '0 customers')
                                 ->extraAttributes(['class' => 'text-sm']),
                         ]),
 
@@ -579,6 +596,10 @@ class CustomerResource extends Resource
                 EditAction::make()
                     ->label('Edit')
                     ->icon('heroicon-o-pencil'),
+
+                Tables\Actions\DeleteAction::make()
+                    ->label('Delete')
+                    ->icon('heroicon-o-trash'),
 
                 Action::make('toggle_status')
                     ->label(fn (Customer $record): string => $record->is_active ? 'Deactivate' : 'Activate')

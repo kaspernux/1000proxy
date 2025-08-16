@@ -22,6 +22,20 @@ class Server extends Model
                 event(new \App\Events\ServerStatusUpdated($server));
             }
         });
+        // Keep alias column `location` in sync with `country`
+        static::saving(function (self $server) {
+            if (array_key_exists('country', $server->getAttributes())) {
+                $server->attributes['location'] = $server->attributes['country'];
+            }
+            if (array_key_exists('location', $server->getAttributes()) && empty($server->attributes['country'])) {
+                $server->attributes['country'] = $server->attributes['location'];
+            }
+            // Map legacy ip_address input to ip (do not set ip_address attribute as column doesn't exist)
+            if (array_key_exists('ip_address', $server->getAttributes()) && empty($server->attributes['ip'])) {
+                $server->attributes['ip'] = $server->attributes['ip_address'];
+                unset($server->attributes['ip_address']);
+            }
+        });
     }
     use HasFactory;
 
@@ -29,11 +43,12 @@ class Server extends Model
 
     protected $fillable = [
         'name',
-        'username',
-        'password',
+    'username', // legacy alias: panel_username
+    'password', // legacy alias: panel_password
         'server_category_id',
         'server_brand_id',
-        'country',
+    'country', // legacy alias: location
+    'location', // physical alias column for tests
         'flag',
         'description',
         'status',
@@ -41,7 +56,7 @@ class Server extends Model
         'panel_port',
         'web_base_path',
         'panel_url',
-        'ip',
+    'ip', // legacy alias: ip_address
         'port',
         'sni',
         'header_type',
@@ -113,6 +128,50 @@ class Server extends Model
         'auto_cleanup_depleted' => 'boolean',
         'backup_notifications_enabled' => 'boolean',
     ];
+
+    /**
+     * Legacy attribute aliases for backward compatibility with tests/fixtures.
+     * Map deprecated attribute names to current column names.
+     */
+    public function getLocationAttribute(): ?string
+    {
+        return $this->country;
+    }
+
+    public function setLocationAttribute($value): void
+    {
+        $this->attributes['country'] = $value;
+    }
+
+    public function getIpAddressAttribute(): ?string
+    {
+        return $this->ip;
+    }
+
+    public function setIpAddressAttribute($value): void
+    {
+        $this->attributes['ip'] = $value;
+    }
+
+    public function getPanelUsernameAttribute(): ?string
+    {
+        return $this->username;
+    }
+
+    public function setPanelUsernameAttribute($value): void
+    {
+        $this->attributes['username'] = $value;
+    }
+
+    public function getPanelPasswordAttribute(): ?string
+    {
+        return $this->password;
+    }
+
+    public function setPanelPasswordAttribute($value): void
+    {
+        $this->attributes['password'] = $value;
+    }
 
     public function category(): BelongsTo
     {
@@ -353,7 +412,16 @@ class Server extends Model
     // URL helper methods (existing)
     public function getPanelHost(): ?string
     {
-        return parse_url($this->panel_url, PHP_URL_HOST);
+        // Prefer explicit host attribute when present; fallback to panel_url host
+        if (!empty($this->host)) {
+            // Strip any scheme from host attribute
+            $raw = preg_replace('#^https?://#i', '', $this->host);
+            // Also strip any trailing path if accidentally included
+            $clean = parse_url('http://' . ltrim($raw, '/'), PHP_URL_HOST);
+            return $clean ?: $raw;
+        }
+        $host = parse_url($this->panel_url ?? '', PHP_URL_HOST);
+        return $host ?: null;
     }
 
     public function getPanelPort(): ?int
@@ -464,6 +532,7 @@ class Server extends Model
             // Strip any accidental scheme remnants from host
             $host = preg_replace('#^https?://#i', '', $host);
 
+            // Always return a fully-qualified base URL with scheme and port
             $url = $scheme . '://' . $host . ':' . $this->panel_port;
 
             // Prefer explicit web_base_path; if empty fall back to path segment in original panel_url
@@ -481,7 +550,18 @@ class Server extends Model
             return rtrim($url, '/');
         }
 
-        // Fallback to old panel_url structure for backward compatibility
+        // Fallback to old panel_url structure for backward compatibility; if host set but port missing, build host-only
+        if ($this->host && !$this->panel_port) {
+            $hostOnly = preg_replace('#^https?://#i', '', $this->host);
+            $scheme = (stripos($this->host, 'https://') === 0) ? 'https' : 'http';
+            $url = $scheme . '://' . $hostOnly;
+            $basePath = trim($this->web_base_path ?? '', '/');
+            if ($basePath) {
+                $url .= '/' . $basePath;
+            }
+            return rtrim($url, '/');
+        }
+
         $url = rtrim($this->panel_url ?? '', '/');
         $basePath = trim($this->web_base_path ?? '', '/');
 

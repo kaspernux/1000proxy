@@ -2,7 +2,7 @@
 
 namespace Tests\Feature\Api;
 
-use App\Models\User;
+use App\Models\Customer;
 use App\Models\Server;
 use App\Models\ServerPlan;
 use App\Models\Wallet;
@@ -13,7 +13,7 @@ class CreateOrderRequestTest extends TestCase
 {
     use RefreshDatabase;
 
-    protected User $user;
+    protected Customer $customer;
     protected Server $server;
     protected ServerPlan $serverPlan;
 
@@ -21,20 +21,17 @@ class CreateOrderRequestTest extends TestCase
     {
         parent::setUp();
 
-        $this->user = User::factory()->create();
+    $this->customer = Customer::factory()->create();
         $this->server = Server::factory()->create(['is_active' => true]);
         $this->serverPlan = ServerPlan::factory()->create(['server_id' => $this->server->id]);
 
         // Create wallet with sufficient balance
-        Wallet::factory()->create([
-            'user_id' => $this->user->id,
-            'balance' => 1000.00,
-        ]);
+    $this->customer->wallet()->update(['balance' => 1000.00]);
     }
 
     public function test_create_order_with_valid_data()
     {
-        $response = $this->actingAs($this->user)
+    $response = $this->actingAs($this->customer, 'customer')
             ->postJson('/api/orders', [
                 'server_id' => $this->server->id,
                 'plan_id' => $this->serverPlan->id,
@@ -48,7 +45,7 @@ class CreateOrderRequestTest extends TestCase
                 'message',
                 'data' => [
                     'id',
-                    'user_id',
+                    'customer_id',
                     'server_id',
                     'total_amount',
                     'status',
@@ -60,7 +57,7 @@ class CreateOrderRequestTest extends TestCase
 
     public function test_create_order_requires_server_id()
     {
-        $response = $this->actingAs($this->user)
+    $response = $this->actingAs($this->customer, 'customer')
             ->postJson('/api/orders', [
                 'plan_id' => $this->serverPlan->id,
                 'quantity' => 1,
@@ -72,7 +69,7 @@ class CreateOrderRequestTest extends TestCase
 
     public function test_create_order_validates_server_exists()
     {
-        $response = $this->actingAs($this->user)
+    $response = $this->actingAs($this->customer, 'customer')
             ->postJson('/api/orders', [
                 'server_id' => 999999,
                 'plan_id' => $this->serverPlan->id,
@@ -88,7 +85,7 @@ class CreateOrderRequestTest extends TestCase
         $otherServer = Server::factory()->create(['is_active' => true]);
         $otherPlan = ServerPlan::factory()->create(['server_id' => $otherServer->id]);
 
-        $response = $this->actingAs($this->user)
+    $response = $this->actingAs($this->customer, 'customer')
             ->postJson('/api/orders', [
                 'server_id' => $this->server->id,
                 'plan_id' => $otherPlan->id,
@@ -101,7 +98,7 @@ class CreateOrderRequestTest extends TestCase
 
     public function test_create_order_validates_quantity_range()
     {
-        $response = $this->actingAs($this->user)
+    $response = $this->actingAs($this->customer, 'customer')
             ->postJson('/api/orders', [
                 'server_id' => $this->server->id,
                 'plan_id' => $this->serverPlan->id,
@@ -111,7 +108,7 @@ class CreateOrderRequestTest extends TestCase
         $response->assertStatus(422)
             ->assertJsonValidationErrors(['quantity']);
 
-        $response = $this->actingAs($this->user)
+    $response = $this->actingAs($this->customer, 'customer')
             ->postJson('/api/orders', [
                 'server_id' => $this->server->id,
                 'plan_id' => $this->serverPlan->id,
@@ -124,7 +121,7 @@ class CreateOrderRequestTest extends TestCase
 
     public function test_create_order_validates_duration_range()
     {
-        $response = $this->actingAs($this->user)
+    $response = $this->actingAs($this->customer, 'customer')
             ->postJson('/api/orders', [
                 'server_id' => $this->server->id,
                 'plan_id' => $this->serverPlan->id,
@@ -135,7 +132,7 @@ class CreateOrderRequestTest extends TestCase
         $response->assertStatus(422)
             ->assertJsonValidationErrors(['duration']);
 
-        $response = $this->actingAs($this->user)
+    $response = $this->actingAs($this->customer, 'customer')
             ->postJson('/api/orders', [
                 'server_id' => $this->server->id,
                 'plan_id' => $this->serverPlan->id,
@@ -150,9 +147,9 @@ class CreateOrderRequestTest extends TestCase
     public function test_create_order_fails_with_insufficient_balance()
     {
         // Update wallet with insufficient balance
-        $this->user->wallet->update(['balance' => 1.00]);
+    $this->customer->wallet->update(['balance' => 1.00]);
 
-        $response = $this->actingAs($this->user)
+    $response = $this->actingAs($this->customer, 'customer')
             ->postJson('/api/orders', [
                 'server_id' => $this->server->id,
                 'plan_id' => $this->serverPlan->id,
@@ -175,7 +172,7 @@ class CreateOrderRequestTest extends TestCase
     {
         $this->server->update(['is_active' => false]);
 
-        $response = $this->actingAs($this->user)
+    $response = $this->actingAs($this->customer, 'customer')
             ->postJson('/api/orders', [
                 'server_id' => $this->server->id,
                 'plan_id' => $this->serverPlan->id,

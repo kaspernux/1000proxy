@@ -67,7 +67,7 @@ Content-Type: application/json
 ```http
 POST /api/auth/refresh
 Authorization: Bearer current_token
-```
+### Customer Endpoints
 
 #### Logout
 ```http

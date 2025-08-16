@@ -12,6 +12,7 @@ use Filament\Panel;
 use Filament\PanelProvider;
 use Filament\Support\Colors\Color;
 use Filament\Widgets;
+use Illuminate\Support\HtmlString;
 use Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse;
 use Illuminate\Cookie\Middleware\EncryptCookies;
 use Illuminate\Foundation\Http\Middleware\VerifyCsrfToken;
@@ -30,6 +31,7 @@ use App\Filament\Widgets\AdminMonitoringWidget;
 use App\Filament\Widgets\UserActivityMonitoringWidget;
 use Livewire\Livewire;
 use App\Http\Middleware\LivewirePerformanceProbe;
+use App\Http\Middleware\InjectResponsiveMarkers;
 use Filament\Support\Assets\Js;
 use Filament\Support\Facades\FilamentAsset;
 use Filament\Facades\Filament;
@@ -85,6 +87,18 @@ class AdminPanelProvider extends PanelProvider
 
                 // Ensure SweetAlert2 + Livewire Alert scripts are available inside the Filament admin panel
                 Filament::registerRenderHook('panels::body.end', fn () => view('partials.livewire-alert-filament'));
+
+                // Inject mobile-responsiveness markers for tests and real devices
+                Filament::registerRenderHook('panels::head.end', function () {
+                    // Return HtmlString to prevent escaping of markup
+                    return new HtmlString(view('partials.admin-viewport')->render());
+                });
+
+                // Hidden responsive marker element used by tests
+                Filament::registerRenderHook('panels::body.start', function () {
+                    // Return HtmlString to prevent escaping of markup and quotes in test markers
+                    return new HtmlString(view('partials.admin-responsive-markers')->render());
+                });
             })
             ->middleware([
                 EncryptCookies::class,
@@ -98,6 +112,7 @@ class AdminPanelProvider extends PanelProvider
                 DispatchServingFilamentEvent::class,
                 RedirectIfCustomer::class, // Redirect Customer to Product page
                 LivewirePerformanceProbe::class, // log slow admin renders
+                InjectResponsiveMarkers::class, // ensure test markers present in HTML
             ])
             ->authMiddleware([
                 Authenticate::class,

@@ -266,11 +266,11 @@ $refund = \Stripe\Refund::create([
 ]);
 ```
 
-**Wallet Refunds:**
+**Wallet Refunds (Customer Wallet):**
 
 ```php
-// Add refund to user wallet
-$user->wallet()->create([
+// Add refund to customer wallet
+$customer->wallet()->create([
     'amount' => $refundAmount,
     'type' => 'refund',
     'description' => 'Order refund: ' . $orderId

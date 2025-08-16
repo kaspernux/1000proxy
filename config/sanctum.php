@@ -33,7 +33,10 @@ return [
     |
     */
 
-    'guard' => ['web'],
+    // Important: Only include session-based guards here to avoid recursion.
+    // Sanctum will fall back to personal access tokens automatically.
+    // Never list sanctum-driven guards (like 'api' or 'customer_api') here.
+    'guard' => ['web', 'customer'],
 
     /*
     |--------------------------------------------------------------------------

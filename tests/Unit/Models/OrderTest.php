@@ -3,7 +3,7 @@
 namespace Tests\Unit\Models;
 
 use App\Models\Order;
-use App\Models\User;
+use App\Models\Customer;
 use App\Models\OrderItem;
 use App\Models\Invoice;
 use Tests\TestCase;
@@ -15,27 +15,27 @@ class OrderTest extends TestCase
 
     public function test_order_can_be_created()
     {
-        $user = User::factory()->create();
+        $customer = Customer::factory()->create();
         $order = Order::factory()->create([
-            'user_id' => $user->id,
+            'customer_id' => $customer->id,
             'total_amount' => 99.99,
             'status' => 'pending',
         ]);
 
         $this->assertDatabaseHas('orders', [
-            'user_id' => $user->id,
+            'customer_id' => $customer->id,
             'total_amount' => 99.99,
             'status' => 'pending',
         ]);
     }
 
-    public function test_order_belongs_to_user()
+    public function test_order_belongs_to_customer()
     {
-        $user = User::factory()->create();
-        $order = Order::factory()->create(['user_id' => $user->id]);
+        $customer = Customer::factory()->create();
+        $order = Order::factory()->create(['customer_id' => $customer->id]);
 
-        $this->assertInstanceOf(User::class, $order->user);
-        $this->assertEquals($user->id, $order->user->id);
+        $this->assertInstanceOf(Customer::class, $order->customer);
+        $this->assertEquals($customer->id, $order->customer->id);
     }
 
     public function test_order_can_have_invoice()
@@ -70,9 +70,9 @@ class OrderTest extends TestCase
         ]);
 
         $expectedTotal = (2 * 50.00) + (1 * 25.00); // 125.00
-        
-        // Assuming there's a method to calculate total
-        // $this->assertEquals($expectedTotal, $order->calculateTotal());
+    // Minimal assertion using relationship aggregation
+    $actual = $order->orderItems->sum(fn($i) => $i->quantity * $i->unit_amount);
+    $this->assertEquals($expectedTotal, $actual);
     }
 
     public function test_order_can_be_marked_as_paid()
@@ -99,7 +99,7 @@ class OrderTest extends TestCase
         $fillable = $order->getFillable();
 
         $expectedFillable = [
-            'user_id', 'status', 'payment_status', 'total_amount', 'grand_amount'
+            'customer_id', 'status', 'payment_status', 'total_amount', 'grand_amount'
         ];
 
         foreach ($expectedFillable as $attribute) {
@@ -123,9 +123,8 @@ class OrderTest extends TestCase
         Order::factory()->create(['payment_status' => 'pending']);
         Order::factory()->create(['payment_status' => 'paid']);
 
-        // Assuming there's a paid scope
-        // $paidOrders = Order::paid()->get();
-        // $this->assertCount(2, $paidOrders);
+    // Minimal assertion without relying on a scope
+    $this->assertEquals(2, Order::where('payment_status', 'paid')->count());
     }
 
     public function test_order_scope_completed()
@@ -134,8 +133,7 @@ class OrderTest extends TestCase
         Order::factory()->create(['status' => 'pending']);
         Order::factory()->create(['status' => 'completed']);
 
-        // Assuming there's a completed scope
-        // $completedOrders = Order::completed()->get();
-        // $this->assertCount(2, $completedOrders);
+    // Minimal assertion without relying on a scope
+    $this->assertEquals(2, Order::where('status', 'completed')->count());
     }
 }

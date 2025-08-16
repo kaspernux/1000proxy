@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\User;
+use App\Models\Customer;
 use App\Models\Order;
 use App\Models\ServerClient;
 use App\Models\WalletTransaction;
@@ -32,7 +33,7 @@ class RealTimeFeaturesService
             // Update real-time cache
             $this->updateOrderCache($order);
 
-            // Broadcast to user's channel
+            // Broadcast to customer's channel
             broadcast(new OrderStatusChanged($order, $oldStatus, $newStatus))
                 ->toOthers();
 
@@ -79,7 +80,7 @@ class RealTimeFeaturesService
             // Update real-time cache
             $this->updateClientCache($client);
 
-            // Broadcast to user's channel
+            // Broadcast to customer's channel
             broadcast(new ClientStatusChanged($client, $oldStatus, $newStatus))
                 ->toOthers();
 
@@ -117,27 +118,34 @@ class RealTimeFeaturesService
     public function broadcastWalletBalanceChange(WalletTransaction $transaction): void
     {
         try {
-            $user = $transaction->wallet->user;
+            $customer = $transaction->wallet->customer;
             $newBalance = $transaction->wallet->balance;
 
             // Update real-time cache
-            $this->updateWalletCache($user, $newBalance);
+            if ($customer) {
+                $this->updateWalletCache($customer, $newBalance);
+            }
 
-            // Broadcast to user's channel
-            broadcast(new WalletBalanceChanged($user, $transaction, $newBalance))
+            // Broadcast to customer's channel
+            if ($customer) {
+                broadcast(new WalletBalanceChanged($customer, $transaction, $newBalance))
                 ->toOthers();
+            }
 
             // Store in activity stream
-            $this->addToActivityStream($user->id, 'wallet_balance_changed', [
+            if ($customer) {
+                $this->addToActivityStream($customer->id, 'wallet_balance_changed', [
                 'transaction_id' => $transaction->id,
                 'type' => $transaction->type,
                 'amount' => $transaction->amount,
                 'new_balance' => $newBalance,
                 'timestamp' => now()->toISOString(),
-            ]);
+                ]);
+            }
 
             // Send real-time notification
-            $this->sendRealTimeNotification($user->id, [
+            if ($customer) {
+                $this->sendRealTimeNotification($customer->id, [
                 'type' => 'wallet_balance_changed',
                 'title' => 'Wallet Updated',
                 'message' => ucfirst($transaction->type) . " of $" . number_format($transaction->amount, 2) . " processed",
@@ -146,7 +154,8 @@ class RealTimeFeaturesService
                     'amount' => $transaction->amount,
                     'new_balance' => $newBalance,
                 ],
-            ]);
+                ]);
+            }
 
         } catch (\Exception $e) {
             Log::error('Failed to broadcast wallet balance change', [
@@ -248,7 +257,7 @@ class RealTimeFeaturesService
         $this->redis->rpush($key, json_encode($messageData));
         $this->redis->expire($key, 86400); // Expire after 24 hours
 
-        // Broadcast to user and admin channels
+    // Broadcast to customer and admin channels
         $this->broadcastChatMessage($userId, $messageData);
     }
 
@@ -316,7 +325,7 @@ class RealTimeFeaturesService
     /**
      * Update wallet cache
      */
-    private function updateWalletCache(User $user, float $balance): void
+    private function updateWalletCache(Customer $user, float $balance): void
     {
         $key = "wallet:{$user->id}";
         $this->redis->setex($key, 3600, json_encode([

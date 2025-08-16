@@ -12,6 +12,7 @@ use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Laravel\Dusk\Browser;
 use Tests\DuskTestCase;
+use PHPUnit\Framework\Attributes\Test;
 
 class VisualRegressionTestSuite extends DuskTestCase
 {
@@ -81,7 +82,7 @@ class VisualRegressionTestSuite extends DuskTestCase
         ]);
     }
 
-    /** @test */
+    #[Test]
     public function homepage_visual_regression_test()
     {
         $this->browse(function (Browser $browser) {
@@ -103,7 +104,7 @@ class VisualRegressionTestSuite extends DuskTestCase
         });
     }
 
-    /** @test */
+    #[Test]
     public function theme_switching_visual_test()
     {
         $this->browse(function (Browser $browser) {
@@ -124,7 +125,7 @@ class VisualRegressionTestSuite extends DuskTestCase
         });
     }
 
-    /** @test */
+    #[Test]
     public function product_listing_visual_test()
     {
         $this->browse(function (Browser $browser) {
@@ -151,7 +152,7 @@ class VisualRegressionTestSuite extends DuskTestCase
         });
     }
 
-    /** @test */
+    #[Test]
     public function cart_and_checkout_visual_test()
     {
         $this->browse(function (Browser $browser) {
@@ -180,7 +181,7 @@ class VisualRegressionTestSuite extends DuskTestCase
         });
     }
 
-    /** @test */
+    #[Test]
     public function admin_panel_visual_test()
     {
         $this->browse(function (Browser $browser) {
@@ -207,7 +208,7 @@ class VisualRegressionTestSuite extends DuskTestCase
         });
     }
 
-    /** @test */
+    #[Test]
     public function customer_panel_visual_test()
     {
         $this->browse(function (Browser $browser) {
@@ -233,7 +234,7 @@ class VisualRegressionTestSuite extends DuskTestCase
         });
     }
 
-    /** @test */
+    #[Test]
     public function form_validation_visual_test()
     {
         $this->browse(function (Browser $browser) {
@@ -260,7 +261,7 @@ class VisualRegressionTestSuite extends DuskTestCase
         });
     }
 
-    /** @test */
+    #[Test]
     public function loading_states_visual_test()
     {
         $this->browse(function (Browser $browser) {
@@ -292,7 +293,7 @@ class VisualRegressionTestSuite extends DuskTestCase
         });
     }
 
-    /** @test */
+    #[Test]
     public function responsive_breakpoints_visual_test()
     {
         $this->browse(function (Browser $browser) {
@@ -330,7 +331,7 @@ class VisualRegressionTestSuite extends DuskTestCase
         });
     }
 
-    /** @test */
+    #[Test]
     public function modal_and_popup_visual_test()
     {
         $this->browse(function (Browser $browser) {
@@ -355,7 +356,7 @@ class VisualRegressionTestSuite extends DuskTestCase
         });
     }
 
-    /** @test */
+    #[Test]
     public function accessibility_visual_indicators_test()
     {
         $this->browse(function (Browser $browser) {
@@ -379,7 +380,7 @@ class VisualRegressionTestSuite extends DuskTestCase
         });
     }
 
-    /** @test */
+    #[Test]
     public function error_pages_visual_test()
     {
         $this->browse(function (Browser $browser) {
@@ -413,7 +414,7 @@ class VisualRegressionTestSuite extends DuskTestCase
         });
     }
 
-    /** @test */
+    #[Test]
     public function animation_and_transition_visual_test()
     {
         $this->browse(function (Browser $browser) {
@@ -446,7 +447,7 @@ class VisualRegressionTestSuite extends DuskTestCase
         });
     }
 
-    /** @test */
+    #[Test]
     public function print_layout_visual_test()
     {
         $this->browse(function (Browser $browser) {
@@ -466,7 +467,7 @@ class VisualRegressionTestSuite extends DuskTestCase
         });
     }
 
-    /** @test */
+    #[Test]
     public function cross_browser_compatibility_visual_test()
     {
         // This test would typically be run with different WebDriver configurations
@@ -500,7 +501,7 @@ class VisualRegressionTestSuite extends DuskTestCase
         });
     }
 
-    /** @test */
+    #[Test]
     public function data_visualization_visual_test()
     {
         $this->browse(function (Browser $browser) {
@@ -530,7 +531,7 @@ class VisualRegressionTestSuite extends DuskTestCase
         });
     }
 
-    /** @test */
+    #[Test]
     public function component_library_showcase_visual_test()
     {
         $this->browse(function (Browser $browser) {

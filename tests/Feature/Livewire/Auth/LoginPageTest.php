@@ -23,6 +23,9 @@ class LoginPageTest extends TestCase
     {
         parent::setUp();
 
+    // Ensure rate limiter state is clean for each test so attempts don't leak across tests
+    RateLimiter::clear('login.' . request()->ip());
+
         $this->createTestUsers();
     }
 
@@ -68,7 +71,7 @@ class LoginPageTest extends TestCase
             ->set('email', 'customer@example.com')
             ->set('password', 'password123')
             ->call('save')
-            ->assertRedirect('/customer');
+            ->assertRedirect('/servers');
 
         $this->assertTrue(Auth::guard('customer')->check());
     }
@@ -135,7 +138,7 @@ class LoginPageTest extends TestCase
             ->set('password', 'password123')
             ->set('remember', true)
             ->call('save')
-            ->assertRedirect('/customer');
+            ->assertRedirect('/servers');
 
         // Verify remember token was set
         $this->assertNotNull(Auth::guard('customer')->user()->remember_token);
@@ -255,7 +258,7 @@ class LoginPageTest extends TestCase
     {
         Livewire::test(LoginPage::class)
             ->dispatch('socialLoginSuccess', 'google', ['user' => 'test'])
-            ->assertRedirect('/customer');
+            ->assertRedirect('/servers');
     }
 
     /** @test */
@@ -273,7 +276,7 @@ class LoginPageTest extends TestCase
         Auth::guard('customer')->login($this->customer);
 
         $this->get(route('auth.login'))
-            ->assertRedirect('/customer');
+            ->assertRedirect('/servers');
     }
 
     /** @test */

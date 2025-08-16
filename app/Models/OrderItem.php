@@ -30,6 +30,11 @@ class OrderItem extends Model
     'provisioning_summary' => 'array',
     ];
 
+    protected $appends = [
+        // Make server accessible in JSON payloads similarly to legacy use
+        'server',
+    ];
+
     public function order(): BelongsTo
     {
         return $this->belongsTo(Order::class);

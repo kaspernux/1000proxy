@@ -293,8 +293,12 @@ class ClientLifecycleService
     {
         try {
             // Check wallet balance first
-            if ($customer->wallet_balance >= $order->grand_amount) {
-                $customer->deductFromWallet($order->grand_amount, "Auto-renewal for order #{$order->id}");
+            $walletBalance = $customer->wallet?->balance ?? $customer->wallet_balance ?? 0;
+            if ($walletBalance >= $order->grand_amount) {
+                // Use payFromWallet helper to ensure transaction is recorded
+                if (!$customer->payFromWallet($order->grand_amount, "Auto-renewal for order #{$order->id}")) {
+                    return ['success' => false, 'error' => 'Insufficient wallet balance'];
+                }
                 $order->markAsPaid('wallet_payment');
 
                 return ['success' => true, 'method' => 'wallet'];

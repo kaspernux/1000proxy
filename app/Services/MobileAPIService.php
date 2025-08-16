@@ -42,19 +42,22 @@ class MobileAPIService
             ];
         }
 
-        // Attempt authentication
-        if (!Auth::attempt($credentials)) {
+        // Attempt authentication via customer guard first
+        if (!Auth::guard('customer')->attempt($credentials)) {
+            // Fallback: try default guard then map to Customer
+            if (!Auth::attempt($credentials)) {
             return [
                 'success' => false,
                 'error' => 'Invalid credentials',
                 'error_code' => 'AUTHENTICATION_FAILED'
             ];
+            }
         }
 
-        $user = Auth::user();
+        $user = Auth::guard('customer')->user() ?: Auth::user();
 
-        // Ensure we have a Customer, not a User
-        if (!$user instanceof Customer) {
+    // Ensure we have a Customer instance
+    if (!$user instanceof Customer) {
             // Try to find Customer by email
             $customer = Customer::where('email', $user->email)->first();
             if (!$customer) {
@@ -80,7 +83,7 @@ class MobileAPIService
             'device_type' => $deviceInfo['platform']
         ]);
 
-        return [
+    return [
             'success' => true,
             'access_token' => $token->plainTextToken,
             'token_type' => 'Bearer',
@@ -470,12 +473,23 @@ class MobileAPIService
      */
     protected function formatUserForMobile($user): array
     {
+        // Prefer wallet relation balance, fallback to legacy cached column if present
+        $walletBalance = null;
+        try {
+            $walletBalance = $user->wallet?->balance;
+        } catch (\Throwable $e) {
+            $walletBalance = null;
+        }
+        if ($walletBalance === null && property_exists($user, 'wallet_balance')) {
+            $walletBalance = $user->wallet_balance;
+        }
+
         return [
             'id' => $user->id,
             'name' => $user->name,
             'email' => $user->email,
             'telegram_username' => $user->telegram_username,
-            'wallet_balance' => (float) $user->wallet_balance,
+            'wallet_balance' => (float) ($walletBalance ?? 0),
             'status' => $user->status,
             'member_since' => $user->created_at->format('Y-m-d'),
             'total_orders' => $user->orders()->count(),

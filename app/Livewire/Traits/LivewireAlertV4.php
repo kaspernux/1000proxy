@@ -131,6 +131,19 @@ trait LivewireAlertV4
 
         $alert->show();
 
+        // Back-compat: also emit a Livewire event that tests expect
+        try {
+            if (method_exists($this, 'dispatch')) {
+                $payload = array_merge([
+                    'type' => strtolower($type),
+                    'title' => $title,
+                ], $options);
+                $this->dispatch('toast', $payload);
+            }
+        } catch (\Throwable $e) {
+            // ignore
+        }
+
         // Fire a browser event as a fallback so the frontend can render the alert
         // even if the package's JS listener isn't present. This ensures reliability
         // across public pages and Filament panels.

@@ -33,12 +33,13 @@ class ServerCategoryFactory extends Factory
             'Development'
         ];
 
-        $name = $this->faker->randomElement($categories) . ' ' . $this->faker->randomElement(['Proxy', 'VPN', 'Server']);
-        $baseSlug = Str::slug($name);
-        $slug = $baseSlug;
-        if (ServerCategory::where('slug', $slug)->exists()) {
-            $slug = $baseSlug . '-' . Str::random(6);
-        }
+    $name = $this->faker->randomElement($categories) . ' ' . $this->faker->randomElement(['Proxy', 'VPN', 'Server']);
+
+    // Deterministic unique slug generation within test run to minimize DB lookups & race conditions
+    static $slugCounters = [];
+    $baseSlug = Str::slug($name);
+    $slugCounters[$baseSlug] = ($slugCounters[$baseSlug] ?? 0) + 1;
+    $slug = $slugCounters[$baseSlug] === 1 ? $baseSlug : $baseSlug.'-'.$slugCounters[$baseSlug];
 
         return [
             'name' => $name,

@@ -17,6 +17,7 @@ class ServerBrand extends Model
         'name',
         'slug',
         'image',
+    'description',
         'desc',
         'is_active',
         'website_url',
@@ -42,6 +43,19 @@ class ServerBrand extends Model
                 $model->slug = Str::slug($model->name);
             }
         });
+    }
+
+    // Backward/forward compatibility for description vs desc
+    public function getDescriptionAttribute(): ?string
+    {
+        return $this->attributes['description'] ?? $this->attributes['desc'] ?? null;
+    }
+
+    public function setDescriptionAttribute($value): void
+    {
+        $this->attributes['description'] = $value;
+        // Keep legacy column in sync if present
+        $this->attributes['desc'] = $value;
     }
 
     public function serverCategories(): HasMany

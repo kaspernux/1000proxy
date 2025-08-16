@@ -11,6 +11,7 @@ use App\Models\ServerBrand;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
+use PHPUnit\Framework\Attributes\Test;
 
 class CrossBrowserCompatibilityTestSuite extends TestCase
 {
@@ -80,7 +81,7 @@ class CrossBrowserCompatibilityTestSuite extends TestCase
         ]);
     }
 
-    /** @test */
+    #[Test]
     public function chrome_user_agent_compatibility()
     {
         $response = $this->withHeaders([
@@ -92,7 +93,7 @@ class CrossBrowserCompatibilityTestSuite extends TestCase
             ->assertSee('chrome', false);
     }
 
-    /** @test */
+    #[Test]
     public function firefox_user_agent_compatibility()
     {
         $response = $this->withHeaders([
@@ -104,7 +105,7 @@ class CrossBrowserCompatibilityTestSuite extends TestCase
             ->assertSee('firefox', false);
     }
 
-    /** @test */
+    #[Test]
     public function safari_user_agent_compatibility()
     {
         $response = $this->withHeaders([
@@ -116,7 +117,7 @@ class CrossBrowserCompatibilityTestSuite extends TestCase
             ->assertSee('safari', false);
     }
 
-    /** @test */
+    #[Test]
     public function edge_user_agent_compatibility()
     {
         $response = $this->withHeaders([
@@ -128,7 +129,7 @@ class CrossBrowserCompatibilityTestSuite extends TestCase
             ->assertSee('edge', false);
     }
 
-    /** @test */
+    #[Test]
     public function mobile_chrome_compatibility()
     {
         $response = $this->withHeaders([
@@ -141,7 +142,7 @@ class CrossBrowserCompatibilityTestSuite extends TestCase
             ->assertSee('touch', false);
     }
 
-    /** @test */
+    #[Test]
     public function mobile_safari_compatibility()
     {
         $response = $this->withHeaders([
@@ -154,7 +155,7 @@ class CrossBrowserCompatibilityTestSuite extends TestCase
             ->assertSee('webkit', false);
     }
 
-    /** @test */
+    #[Test]
     public function css_grid_fallback_support()
     {
         $response = $this->get('/products');
@@ -165,7 +166,7 @@ class CrossBrowserCompatibilityTestSuite extends TestCase
             ->assertSee('@supports (display: grid)', false);
     }
 
-    /** @test */
+    #[Test]
     public function flexbox_fallback_support()
     {
         $response = $this->get('/products');
@@ -176,7 +177,7 @@ class CrossBrowserCompatibilityTestSuite extends TestCase
             ->assertSee('@supports (display: flex)', false);
     }
 
-    /** @test */
+    #[Test]
     public function vendor_prefixes_are_present()
     {
         $response = $this->get('/');
@@ -188,7 +189,7 @@ class CrossBrowserCompatibilityTestSuite extends TestCase
             ->assertSee('-o-', false);
     }
 
-    /** @test */
+    #[Test]
     public function progressive_enhancement_works()
     {
         $response = $this->get('/products');
@@ -200,7 +201,7 @@ class CrossBrowserCompatibilityTestSuite extends TestCase
             ->assertSee('<noscript>', false); // No-JS fallback content
     }
 
-    /** @test */
+    #[Test]
     public function css_feature_detection()
     {
         $response = $this->get('/');
@@ -211,7 +212,7 @@ class CrossBrowserCompatibilityTestSuite extends TestCase
             ->assertSee('no-js', false);
     }
 
-    /** @test */
+    #[Test]
     public function polyfill_support()
     {
         $response = $this->get('/');
@@ -222,7 +223,7 @@ class CrossBrowserCompatibilityTestSuite extends TestCase
             ->assertSee('Promise', false);
     }
 
-    /** @test */
+    #[Test]
     public function internet_explorer_compatibility()
     {
         $response = $this->withHeaders([
@@ -234,7 +235,7 @@ class CrossBrowserCompatibilityTestSuite extends TestCase
             ->assertSee('upgrade-browser', false);
     }
 
-    /** @test */
+    #[Test]
     public function performance_optimizations_for_different_browsers()
     {
         $response = $this->get('/');
@@ -246,7 +247,7 @@ class CrossBrowserCompatibilityTestSuite extends TestCase
             ->assertSee('preconnect', false);  // Connection preloading
     }
 
-    /** @test */
+    #[Test]
     public function keyboard_navigation_compatibility()
     {
         $response = $this->get('/products');
@@ -258,7 +259,7 @@ class CrossBrowserCompatibilityTestSuite extends TestCase
             ->assertSee('accesskey', false);
     }
 
-    /** @test */
+    #[Test]
     public function touch_device_compatibility()
     {
         $response = $this->withHeaders([
@@ -271,7 +272,7 @@ class CrossBrowserCompatibilityTestSuite extends TestCase
             ->assertSee('user-select', false);
     }
 
-    /** @test */
+    #[Test]
     public function print_media_compatibility()
     {
         $response = $this->get('/orders/1');
@@ -282,7 +283,7 @@ class CrossBrowserCompatibilityTestSuite extends TestCase
             ->assertSee('no-print', false);
     }
 
-    /** @test */
+    #[Test]
     public function screen_reader_compatibility()
     {
         $response = $this->get('/');
@@ -294,7 +295,7 @@ class CrossBrowserCompatibilityTestSuite extends TestCase
             ->assertSee('aria-expanded', false);
     }
 
-    /** @test */
+    #[Test]
     public function color_scheme_compatibility()
     {
         $response = $this->get('/');
@@ -306,7 +307,7 @@ class CrossBrowserCompatibilityTestSuite extends TestCase
             ->assertSee('light', false);
     }
 
-    /** @test */
+    #[Test]
     public function reduced_motion_compatibility()
     {
         $response = $this->get('/');
@@ -317,7 +318,7 @@ class CrossBrowserCompatibilityTestSuite extends TestCase
             ->assertSee('motion-reduce', false);
     }
 
-    /** @test */
+    #[Test]
     public function high_contrast_mode_compatibility()
     {
         $response = $this->get('/');
@@ -328,7 +329,7 @@ class CrossBrowserCompatibilityTestSuite extends TestCase
             ->assertSee('forced-colors', false);
     }
 
-    /** @test */
+    #[Test]
     public function font_display_optimization()
     {
         $response = $this->get('/');
@@ -339,7 +340,7 @@ class CrossBrowserCompatibilityTestSuite extends TestCase
             ->assertSee('fallback', false);
     }
 
-    /** @test */
+    #[Test]
     public function webp_image_fallback()
     {
         $response = $this->get('/');
@@ -350,7 +351,7 @@ class CrossBrowserCompatibilityTestSuite extends TestCase
             ->assertSee('image/jpeg', false);
     }
 
-    /** @test */
+    #[Test]
     public function service_worker_compatibility()
     {
         $response = $this->get('/');
@@ -361,7 +362,7 @@ class CrossBrowserCompatibilityTestSuite extends TestCase
             ->assertSee('sw.js', false);
     }
 
-    /** @test */
+    #[Test]
     public function intersection_observer_fallback()
     {
         $response = $this->get('/');
@@ -372,7 +373,7 @@ class CrossBrowserCompatibilityTestSuite extends TestCase
             ->assertSee('fallback', false);
     }
 
-    /** @test */
+    #[Test]
     public function css_custom_properties_fallback()
     {
         $response = $this->get('/');
@@ -383,7 +384,7 @@ class CrossBrowserCompatibilityTestSuite extends TestCase
             ->assertSee('fallback', false);
     }
 
-    /** @test */
+    #[Test]
     public function es6_module_fallback()
     {
         $response = $this->get('/');
@@ -394,7 +395,7 @@ class CrossBrowserCompatibilityTestSuite extends TestCase
             ->assertSee('defer', false);
     }
 
-    /** @test */
+    #[Test]
     public function responsive_images_compatibility()
     {
         $response = $this->get('/');
@@ -405,7 +406,7 @@ class CrossBrowserCompatibilityTestSuite extends TestCase
             ->assertSee('loading="lazy"', false);
     }
 
-    /** @test */
+    #[Test]
     public function form_validation_compatibility()
     {
         $response = $this->get('/register');
@@ -417,7 +418,7 @@ class CrossBrowserCompatibilityTestSuite extends TestCase
             ->assertSee('data-validation', false);
     }
 
-    /** @test */
+    #[Test]
     public function websocket_fallback_compatibility()
     {
         $response = $this->get('/');
@@ -428,7 +429,7 @@ class CrossBrowserCompatibilityTestSuite extends TestCase
             ->assertSee('polling', false);    // Polling fallback
     }
 
-    /** @test */
+    #[Test]
     public function local_storage_fallback()
     {
         $response = $this->get('/');
@@ -439,7 +440,7 @@ class CrossBrowserCompatibilityTestSuite extends TestCase
             ->assertSee('cookie', false); // Fallback
     }
 
-    /** @test */
+    #[Test]
     public function geolocation_api_compatibility()
     {
         $response = $this->get('/');
@@ -450,7 +451,7 @@ class CrossBrowserCompatibilityTestSuite extends TestCase
             ->assertSee('geo-fallback', false);
     }
 
-    /** @test */
+    #[Test]
     public function payment_api_compatibility()
     {
         $response = $this->get('/checkout');
@@ -461,7 +462,7 @@ class CrossBrowserCompatibilityTestSuite extends TestCase
             ->assertSee('traditional-checkout', false); // Fallback
     }
 
-    /** @test */
+    #[Test]
     public function clipboard_api_compatibility()
     {
         $response = $this->get('/products');
@@ -472,7 +473,7 @@ class CrossBrowserCompatibilityTestSuite extends TestCase
             ->assertSee('execCommand', false); // Fallback
     }
 
-    /** @test */
+    #[Test]
     public function notification_api_compatibility()
     {
         $response = $this->get('/');

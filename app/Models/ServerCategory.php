@@ -15,6 +15,7 @@ class ServerCategory extends Model
 
     protected $fillable = [
         'name',
+    'description',
         'slug',
         'image',
         'is_active',

@@ -13,6 +13,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Tests\TestCase;
+use PHPUnit\Framework\Attributes\Test;
 
 class PerformanceTestSuite extends TestCase
 {
@@ -70,7 +71,7 @@ class PerformanceTestSuite extends TestCase
         ]);
     }
 
-    /** @test */
+    #[Test]
     public function homepage_loads_within_performance_threshold()
     {
         $start = microtime(true);
@@ -83,7 +84,7 @@ class PerformanceTestSuite extends TestCase
         $this->assertLessThan(1.0, $duration, 'Homepage should load within 1 second');
     }
 
-    /** @test */
+    #[Test]
     public function server_listing_with_large_dataset_performs_well()
     {
         $start = microtime(true);
@@ -96,7 +97,7 @@ class PerformanceTestSuite extends TestCase
         $this->assertLessThan(2.0, $duration, 'Server listing should load within 2 seconds with large dataset');
     }
 
-    /** @test */
+    #[Test]
     public function server_filtering_performs_efficiently()
     {
         $start = microtime(true);
@@ -115,7 +116,7 @@ class PerformanceTestSuite extends TestCase
         $this->assertLessThan(1.5, $duration, 'Filtered results should load within 1.5 seconds');
     }
 
-    /** @test */
+    #[Test]
     public function api_endpoints_meet_performance_requirements()
     {
         $endpoints = [
@@ -136,7 +137,7 @@ class PerformanceTestSuite extends TestCase
         }
     }
 
-    /** @test */
+    #[Test]
     public function database_queries_are_optimized()
     {
         DB::enableQueryLog();
@@ -155,7 +156,7 @@ class PerformanceTestSuite extends TestCase
         $this->assertLessThan(5, $maxDuplicates, 'Should not have excessive duplicate queries (N+1 problem)');
     }
 
-    /** @test */
+    #[Test]
     public function caching_improves_performance()
     {
         // First request (cold cache)
@@ -176,7 +177,7 @@ class PerformanceTestSuite extends TestCase
         $this->assertLessThan($duration1 * 0.5, $duration2, 'Cached response should be at least 50% faster');
     }
 
-    /** @test */
+    #[Test]
     public function memory_usage_is_within_acceptable_limits()
     {
         $memoryStart = memory_get_usage();
@@ -190,7 +191,7 @@ class PerformanceTestSuite extends TestCase
         $this->assertLessThan(50 * 1024 * 1024, $memoryUsed, 'Memory usage should be less than 50MB');
     }
 
-    /** @test */
+    #[Test]
     public function concurrent_request_simulation()
     {
         $requests = [];
@@ -219,7 +220,7 @@ class PerformanceTestSuite extends TestCase
         $this->assertLessThan(3.0, $maxDuration, 'Requests under concurrent load should complete within 3 seconds');
     }
 
-    /** @test */
+    #[Test]
     public function large_form_submission_performance()
     {
         $this->actingAs($this->customer, 'customer');
@@ -241,7 +242,7 @@ class PerformanceTestSuite extends TestCase
         $this->assertLessThan(2.0, $duration, 'Bulk cart operations should complete within 2 seconds');
     }
 
-    /** @test */
+    #[Test]
     public function admin_panel_performance_with_large_dataset()
     {
         $this->actingAs($this->admin);
@@ -256,7 +257,7 @@ class PerformanceTestSuite extends TestCase
         $this->assertLessThan(3.0, $duration, 'Admin panel should load within 3 seconds even with large datasets');
     }
 
-    /** @test */
+    #[Test]
     public function search_functionality_performance()
     {
         $searchTerms = ['gaming', 'proxy', 'server', 'titan', 'us'];
@@ -273,7 +274,7 @@ class PerformanceTestSuite extends TestCase
         }
     }
 
-    /** @test */
+    #[Test]
     public function image_loading_optimization()
     {
         $response = $this->get('/products');
@@ -284,7 +285,7 @@ class PerformanceTestSuite extends TestCase
             ->assertSee('srcset', false);          // Responsive images
     }
 
-    /** @test */
+    #[Test]
     public function css_and_js_optimization()
     {
         $response = $this->get('/');
@@ -302,7 +303,7 @@ class PerformanceTestSuite extends TestCase
         $this->assertStringContainsString('rel="prefetch"', $content);
     }
 
-    /** @test */
+    #[Test]
     public function pagination_performance()
     {
         $pages = [1, 5, 10, 20]; // Test various page numbers
@@ -319,7 +320,7 @@ class PerformanceTestSuite extends TestCase
         }
     }
 
-    /** @test */
+    #[Test]
     public function ajax_request_performance()
     {
         $start = microtime(true);
@@ -334,7 +335,7 @@ class PerformanceTestSuite extends TestCase
         $this->assertLessThan(0.8, $duration, 'AJAX requests should complete within 800ms');
     }
 
-    /** @test */
+    #[Test]
     public function livewire_component_performance()
     {
         $start = microtime(true);
@@ -351,7 +352,7 @@ class PerformanceTestSuite extends TestCase
         $response->assertSee('wire:offline', false);
     }
 
-    /** @test */
+    #[Test]
     public function session_performance()
     {
         $start = microtime(true);
@@ -372,7 +373,7 @@ class PerformanceTestSuite extends TestCase
         $this->assertLessThan(1.5, $duration, 'Session-heavy operations should complete within 1.5 seconds');
     }
 
-    /** @test */
+    #[Test]
     public function file_upload_performance()
     {
         $this->actingAs($this->customer, 'customer');
@@ -391,7 +392,7 @@ class PerformanceTestSuite extends TestCase
         $this->assertLessThan(3.0, $duration, 'File upload should complete within 3 seconds');
     }
 
-    /** @test */
+    #[Test]
     public function queue_job_processing_performance()
     {
         $start = microtime(true);
@@ -409,7 +410,7 @@ class PerformanceTestSuite extends TestCase
         $this->assertLessThan(1.0, $duration, 'Job dispatch should complete within 1 second');
     }
 
-    /** @test */
+    #[Test]
     public function cache_hit_ratio_optimization()
     {
         // Clear cache
@@ -452,7 +453,7 @@ class PerformanceTestSuite extends TestCase
         }
     }
 
-    /** @test */
+    #[Test]
     public function database_connection_pooling_efficiency()
     {
         $start = microtime(true);
@@ -467,7 +468,7 @@ class PerformanceTestSuite extends TestCase
         $this->assertLessThan(1.0, $duration, 'Multiple DB operations should complete within 1 second');
     }
 
-    /** @test */
+    #[Test]
     public function response_compression_efficiency()
     {
         $response = $this->withHeaders([
@@ -483,7 +484,7 @@ class PerformanceTestSuite extends TestCase
         }
     }
 
-    /** @test */
+    #[Test]
     public function resource_loading_optimization()
     {
         $response = $this->get('/');
@@ -496,7 +497,7 @@ class PerformanceTestSuite extends TestCase
         $this->assertStringContainsString('rel="preconnect"', $content);
     }
 
-    /** @test */
+    #[Test]
     public function third_party_service_timeout_handling()
     {
         // Mock slow third-party service

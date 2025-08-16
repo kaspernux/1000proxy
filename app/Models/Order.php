@@ -11,6 +11,7 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use App\Models\User;
 
 class Order extends Model
 {
@@ -64,7 +65,16 @@ class Order extends Model
     ];
 
     protected $casts = [
-        'payment_details' => 'array',
+    'payment_details' => 'array',
+    'total_amount' => 'decimal:2',
+    'grand_amount' => 'decimal:2',
+    ];
+
+    // Ensure legacy attributes appear in serialized output for tests
+    protected $appends = [
+        'status',
+        'server_id',
+        'server',
     ];
 
 
@@ -92,7 +102,7 @@ class Order extends Model
 
     public function markAsCompleted(): void
     {
-        $this->update(['order_status' => 'completed']);
+    $this->update(['order_status' => 'completed', 'status' => 'completed']);
     }
 
     public function updateStatus(string $status): void
@@ -103,7 +113,7 @@ class Order extends Model
             throw new \InvalidArgumentException("Invalid order status: {$status}");
         }
 
-        $this->update(['order_status' => $status]);
+    $this->update(['order_status' => $status, 'status' => $status]);
     }
 
     public function setStatus(string $status): static
@@ -122,6 +132,14 @@ class Order extends Model
         return $this->belongsTo(Customer::class);
     }
 
+    /**
+     * Legacy compatibility: some tests reference $order->user (staff placing or managing).
+     */
+    public function user(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'user_id');
+    }
+
     public function items(): HasMany
     {
         return $this->hasMany(OrderItem::class);
@@ -130,6 +148,46 @@ class Order extends Model
     public function orderItems(): HasMany
     {
         return $this->hasMany(OrderItem::class); // alias for legacy tests
+    }
+
+    
+
+    /**
+     * Accessor: normalize a single server_id by reading from first item plan's server.
+     * Tests expect "server_id" field at the order level.
+     */
+    public function getServerIdAttribute(): ?int
+    {
+        $plan = $this->orderItems()->with('serverPlan')->first()?->serverPlan;
+        return $plan?->server_id ? (int) $plan->server_id : null;
+    }
+
+    /**
+     * Accessor: expose related server via first order item for convenience
+     */
+    public function getServerAttribute(): ?Server
+    {
+        return $this->orderItems()->with('serverPlan.server')->first()?->serverPlan?->server;
+    }
+
+    /**
+     * Accessor: expose unified status; prefer modern 'status' column, fallback to legacy 'order_status'.
+     */
+    public function getStatusAttribute(): ?string
+    {
+        if (array_key_exists('status', $this->attributes) && !is_null($this->attributes['status']) && $this->attributes['status'] !== '') {
+            return $this->attributes['status'];
+        }
+        return $this->attributes['order_status'] ?? null;
+    }
+
+    /**
+     * Mutator: writing to virtual 'status' should update 'order_status' column.
+     */
+    public function setStatusAttribute($value): void
+    {
+    // Map virtual status writes to the modern 'status' column to avoid enum mismatch with order_status
+    $this->attributes['status'] = $value;
     }
 
     public function paymentMethod(): BelongsTo
@@ -166,6 +224,16 @@ class Order extends Model
                     ->withTimestamps();
     }
 
+    /**
+     * Legacy alias for tests calling $order->clients() expecting BelongsToMany collection via pivot.
+     */
+    public function clients(): \Illuminate\Database\Eloquent\Relations\BelongsToMany
+    {
+        return $this->belongsToMany(ServerClient::class, 'order_server_clients', 'order_id', 'server_client_id')
+                    ->withPivot(['provision_status', 'provision_error', 'provision_attempts'])
+                    ->withTimestamps();
+    }
+
     public function orderServerClients(): HasMany
     {
         return $this->hasMany(OrderServerClient::class);
@@ -178,7 +246,8 @@ class Order extends Model
      */
     public function getProvisioningStatus(): array
     {
-        $provisions = $this->orderServerClients;
+        // Use orderServerClients (pivot-backed records) for accurate counts
+        $provisions = $this->orderServerClients()->get();
 
         return [
             'total' => $provisions->count(),

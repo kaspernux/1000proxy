@@ -29,7 +29,7 @@ class UserFactory extends Factory
             'email' => fake()->unique()->safeEmail(),
             'email_verified_at' => now(),
             'password' => Hash::make('password'),
-            'role' => fake()->randomElement(['admin', 'support_manager', 'sales_support']),
+            'role' => 'admin',
             'is_active' => true,
             'last_login_at' => fake()->optional()->dateTimeBetween('-1 month', 'now'),
             'telegram_chat_id' => fake()->optional()->numberBetween(100000000, 999999999),

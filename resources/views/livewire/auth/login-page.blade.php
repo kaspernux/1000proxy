@@ -15,7 +15,7 @@
         padding: 0.75rem 1rem;
     }
 </style>
-<div class="relative bg-gradient-to-br from-gray-900 via-blue-900/30 to-gray-800 overflow-hidden min-h-screen flex items-center">
+<div class="relative pt-16 bg-gradient-to-br from-gray-900 via-blue-900/30 to-gray-800 overflow-hidden min-h-screen flex items-center">
     <!-- Animated background elements -->
     <div class="absolute inset-0">
         <div class="absolute inset-0 bg-gradient-to-r from-blue-600/15 to-purple-500/15 animate-pulse"></div>

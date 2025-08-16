@@ -793,10 +793,10 @@ class TelegramBotService
      */
     protected function handleTopup(int $chatId, int $userId): void
     {
-        $user = $this->getAuthenticatedUser($chatId, $userId);
-        if (!$user) return;
+        $customer = $this->getAuthenticatedCustomer($chatId, $userId);
+        if (!$customer) return;
 
-        $wallet = $user->wallet;
+        $wallet = $customer->wallet;
         $currentBalance = $wallet ? $wallet->balance : 0;
         $message = $this->renderView('telegram.topup', [
             'currentBalance' => $currentBalance,
@@ -814,7 +814,7 @@ class TelegramBotService
                 Keyboard::inlineButton(['text' => __('telegram.buttons.custom_amount'), 'url' => config('app.url') . '/wallet/usd/top-up'])
             ]);
 
-        $kb = $this->appendBackToMenu($kb, $chatId, $userId);
+    $kb = $this->appendBackToMenu($kb, $chatId, $userId);
         $this->sendMessageWithKeyboard($chatId, $message, $kb);
     }
 

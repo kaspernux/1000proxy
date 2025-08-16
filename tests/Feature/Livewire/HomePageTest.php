@@ -154,8 +154,17 @@ class HomePageTest extends TestCase
 
         Livewire::test(HomePage::class)
             ->call('addToCart', $plan->id)
-            ->assertDispatched('toast', function ($event) {
-                return $event['type'] === 'error';
+            ->assertDispatched('toast', function ($name, $params) {
+                if ($name !== 'toast') return false;
+                if (! is_array($params)) return false;
+                // Support both Livewire shapes: flat associative or nested first param
+                if (array_key_exists('type', $params)) {
+                    return $params['type'] === 'error';
+                }
+                if (isset($params[0]) && is_array($params[0]) && isset($params[0]['type'])) {
+                    return $params[0]['type'] === 'error';
+                }
+                return false;
             });
     }
 

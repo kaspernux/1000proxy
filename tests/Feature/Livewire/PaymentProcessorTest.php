@@ -14,6 +14,7 @@ use App\Livewire\Components\PaymentProcessor;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Foundation\Testing\WithFaker;
 use Illuminate\Support\Facades\Session;
+use PHPUnit\Framework\Attributes\Test;
 
 /**
  * Payment Processor Livewire Component Tests
@@ -93,7 +94,7 @@ class PaymentProcessorTest extends TestCase
         ]);
     }
 
-    /** @test */
+    #[Test]
     public function payment_processor_component_renders_successfully()
     {
         $this->actingAs($this->user);
@@ -104,7 +105,7 @@ class PaymentProcessorTest extends TestCase
             ->assertViewIs('livewire.components.payment-processor');
     }
 
-    /** @test */
+    #[Test]
     public function payment_processor_displays_order_details()
     {
         $this->actingAs($this->user);
@@ -115,7 +116,7 @@ class PaymentProcessorTest extends TestCase
             ->assertStatus(200);
     }
 
-    /** @test */
+    #[Test]
     public function payment_processor_shows_available_payment_methods()
     {
         $this->actingAs($this->user);
@@ -127,7 +128,7 @@ class PaymentProcessorTest extends TestCase
         }
     }
 
-    /** @test */
+    #[Test]
     public function payment_method_selection_works()
     {
         $this->actingAs($this->user);
@@ -140,7 +141,7 @@ class PaymentProcessorTest extends TestCase
             ->assertStatus(200);
     }
 
-    /** @test */
+    #[Test]
     public function credit_card_payment_processing_works()
     {
         $this->actingAs($this->user);
@@ -158,7 +159,7 @@ class PaymentProcessorTest extends TestCase
             ->assertStatus(200);
     }
 
-    /** @test */
+    #[Test]
     public function crypto_payment_processing_works()
     {
         $this->actingAs($this->user);
@@ -175,7 +176,7 @@ class PaymentProcessorTest extends TestCase
             });
     }
 
-    /** @test */
+    #[Test]
     public function wallet_payment_processing_works()
     {
         $this->actingAs($this->user);
@@ -188,7 +189,7 @@ class PaymentProcessorTest extends TestCase
             ->assertStatus(200);
     }
 
-    /** @test */
+    #[Test]
     public function payment_validation_works_correctly()
     {
         $this->actingAs($this->user);
@@ -206,7 +207,7 @@ class PaymentProcessorTest extends TestCase
             ->assertHasErrors(['cardNumber', 'expiryMonth', 'expiryYear', 'cvv']);
     }
 
-    /** @test */
+    #[Test]
     public function insufficient_wallet_balance_handling()
     {
         $this->actingAs($this->user);
@@ -222,7 +223,7 @@ class PaymentProcessorTest extends TestCase
             ->assertHasErrors(['wallet_balance']);
     }
 
-    /** @test */
+    #[Test]
     public function payment_processing_real_time_updates()
     {
         $this->actingAs($this->user);
@@ -234,7 +235,7 @@ class PaymentProcessorTest extends TestCase
             ->assertSee('Processing payment...');
     }
 
-    /** @test */
+    #[Test]
     public function payment_progress_tracking_works()
     {
         $this->actingAs($this->user);
@@ -248,7 +249,7 @@ class PaymentProcessorTest extends TestCase
             ->assertSet('paymentProgress', 100);
     }
 
-    /** @test */
+    #[Test]
     public function payment_retry_functionality_works()
     {
         $this->actingAs($this->user);
@@ -268,7 +269,7 @@ class PaymentProcessorTest extends TestCase
             ->assertSet('paymentStatus', 'processing');
     }
 
-    /** @test */
+    #[Test]
     public function payment_cancellation_works()
     {
         $this->actingAs($this->user);
@@ -281,7 +282,7 @@ class PaymentProcessorTest extends TestCase
             ->assertDispatched('paymentCancelled');
     }
 
-    /** @test */
+    #[Test]
     public function payment_timeout_handling()
     {
         $this->actingAs($this->user);
@@ -292,7 +293,7 @@ class PaymentProcessorTest extends TestCase
             ->assertSee('Payment timed out');
     }
 
-    /** @test */
+    #[Test]
     public function payment_error_handling()
     {
         $this->actingAs($this->user);
@@ -303,7 +304,7 @@ class PaymentProcessorTest extends TestCase
             ->assertSee('Network error');
     }
 
-    /** @test */
+    #[Test]
     public function payment_success_handling()
     {
         $this->actingAs($this->user);
@@ -318,7 +319,7 @@ class PaymentProcessorTest extends TestCase
             ->assertSee('Payment successful');
     }
 
-    /** @test */
+    #[Test]
     public function payment_receipt_generation()
     {
         $this->actingAs($this->user);
@@ -330,7 +331,7 @@ class PaymentProcessorTest extends TestCase
             ->assertDispatched('receiptGenerated');
     }
 
-    /** @test */
+    #[Test]
     public function payment_security_features()
     {
         $this->actingAs($this->user);
@@ -351,7 +352,7 @@ class PaymentProcessorTest extends TestCase
         $component->assertStatus(200);
     }
 
-    /** @test */
+    #[Test]
     public function payment_component_state_persistence()
     {
         $this->actingAs($this->user);
@@ -369,7 +370,7 @@ class PaymentProcessorTest extends TestCase
                   ->assertSet('savePaymentMethod', true);
     }
 
-    /** @test */
+    #[Test]
     public function payment_component_accessibility()
     {
         $this->actingAs($this->user);
@@ -380,7 +381,7 @@ class PaymentProcessorTest extends TestCase
             ->assertStatus(200);
     }
 
-    /** @test */
+    #[Test]
     public function payment_component_mobile_responsiveness()
     {
         $this->actingAs($this->user);
@@ -392,7 +393,7 @@ class PaymentProcessorTest extends TestCase
             ->assertStatus(200);
     }
 
-    /** @test */
+    #[Test]
     public function payment_component_performance_under_load()
     {
         $this->actingAs($this->user);
@@ -413,7 +414,7 @@ class PaymentProcessorTest extends TestCase
         $this->assertLessThan(5.0, $executionTime, 'Payment processing should handle load efficiently');
     }
 
-    /** @test */
+    #[Test]
     public function payment_webhook_handling()
     {
         $this->actingAs($this->user);
@@ -428,7 +429,7 @@ class PaymentProcessorTest extends TestCase
             ->assertDispatched('webhookProcessed');
     }
 
-    /** @test */
+    #[Test]
     public function payment_refund_processing()
     {
         $this->actingAs($this->user);
@@ -444,7 +445,7 @@ class PaymentProcessorTest extends TestCase
             ->assertDispatched('refundInitiated');
     }
 
-    /** @test */
+    #[Test]
     public function payment_currency_conversion()
     {
         $this->actingAs($this->user);
@@ -458,7 +459,7 @@ class PaymentProcessorTest extends TestCase
             });
     }
 
-    /** @test */
+    #[Test]
     public function payment_history_tracking()
     {
         $this->actingAs($this->user);
@@ -470,7 +471,7 @@ class PaymentProcessorTest extends TestCase
             ->assertViewHas('paymentHistory');
     }
 
-    /** @test */
+    #[Test]
     public function payment_component_event_listeners()
     {
         $this->actingAs($this->user);
@@ -480,7 +481,7 @@ class PaymentProcessorTest extends TestCase
             ->assertStatus(200);
     }
 
-    /** @test */
+    #[Test]
     public function payment_component_cleanup()
     {
         $this->actingAs($this->user);

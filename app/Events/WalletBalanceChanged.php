@@ -3,6 +3,7 @@
 namespace App\Events;
 
 use App\Models\User;
+use App\Models\Customer;
 use App\Models\WalletTransaction;
 use Illuminate\Broadcasting\Channel;
 use Illuminate\Broadcasting\InteractsWithSockets;
@@ -16,14 +17,14 @@ class WalletBalanceChanged implements ShouldBroadcast
 {
     use Dispatchable, InteractsWithSockets, SerializesModels;
 
-    public User $user;
+    public Customer $user;
     public WalletTransaction $transaction;
     public float $newBalance;
 
     /**
      * Create a new event instance.
      */
-    public function __construct(User $user, WalletTransaction $transaction, float $newBalance)
+    public function __construct(Customer $user, WalletTransaction $transaction, float $newBalance)
     {
         $this->user = $user;
         $this->transaction = $transaction;
@@ -36,7 +37,7 @@ class WalletBalanceChanged implements ShouldBroadcast
     public function broadcastOn(): array
     {
         return [
-            new PrivateChannel('user.' . $this->user->id),
+            new PrivateChannel('customer.' . $this->user->id),
             new PrivateChannel('wallet.' . $this->user->id),
         ];
     }
@@ -47,7 +48,7 @@ class WalletBalanceChanged implements ShouldBroadcast
     public function broadcastWith(): array
     {
         return [
-            'user_id' => $this->user->id,
+            'customer_id' => $this->user->id,
             'transaction_id' => $this->transaction->id,
             'transaction_type' => $this->transaction->type,
             'transaction_amount' => $this->transaction->amount,

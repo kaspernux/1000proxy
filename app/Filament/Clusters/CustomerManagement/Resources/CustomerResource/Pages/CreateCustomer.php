@@ -19,4 +19,13 @@ class CreateCustomer extends CreateRecord
     {
         return $this->getResource()::getUrl('index');
     }
+
+    protected function mutateFormDataBeforeCreate(array $data): array
+    {
+        // Ensure password is set to satisfy DB constraints; model will hash via cast
+        if (empty($data['password'])) {
+            $data['password'] = \Illuminate\Support\Str::password(12);
+        }
+        return $data;
+    }
 }

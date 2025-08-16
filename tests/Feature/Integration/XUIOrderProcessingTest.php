@@ -57,13 +57,13 @@ class XUIOrderProcessingTest extends TestCase
 
         // Mock XUI panel authentication
         Http::fake([
-            'test-server.com/login' => Http::response([
+            '*/login' => Http::response([
                 'success' => true,
                 'msg' => 'Login successful',
                 'obj' => 'session_cookie_here'
             ], 200),
             
-            'test-server.com/panel/api/inbounds/addClient' => Http::response([
+            '*/panel/api/inbounds/addClient' => Http::response([
                 'success' => true,
                 'msg' => 'Client added successfully',
                 'obj' => [
@@ -101,12 +101,12 @@ class XUIOrderProcessingTest extends TestCase
     public function test_xui_client_creation_success()
     {
         Http::fake([
-            'test-server.com/login' => Http::response([
+            '*/login' => Http::response([
                 'success' => true,
                 'obj' => 'session_cookie'
             ], 200),
             
-            'test-server.com/panel/api/inbounds/addClient' => Http::response([
+            '*/panel/api/inbounds/addClient' => Http::response([
                 'success' => true,
                 'msg' => 'Client added successfully',
                 'obj' => [
@@ -151,7 +151,7 @@ class XUIOrderProcessingTest extends TestCase
     public function test_xui_authentication_failure_handling()
     {
         Http::fake([
-            'test-server.com/login' => Http::response([
+            '*/login' => Http::response([
                 'success' => false,
                 'msg' => 'Invalid credentials'
             ], 401)
@@ -179,12 +179,12 @@ class XUIOrderProcessingTest extends TestCase
     public function test_xui_client_creation_failure_handling()
     {
         Http::fake([
-            'test-server.com/login' => Http::response([
+            '*/login' => Http::response([
                 'success' => true,
                 'obj' => 'session_cookie'
             ], 200),
             
-            'test-server.com/panel/api/inbounds/addClient' => Http::response([
+            '*/panel/api/inbounds/addClient' => Http::response([
                 'success' => false,
                 'msg' => 'Failed to add client'
             ], 400)
@@ -215,12 +215,12 @@ class XUIOrderProcessingTest extends TestCase
     public function test_subscription_link_generation()
     {
         Http::fake([
-            'test-server.com/login' => Http::response([
+            '*/login' => Http::response([
                 'success' => true,
                 'obj' => 'session_cookie'
             ], 200),
             
-            'test-server.com/panel/api/inbounds/addClient' => Http::response([
+            '*/panel/api/inbounds/addClient' => Http::response([
                 'success' => true,
                 'obj' => [
                     'id' => 'uuid-123',
@@ -257,12 +257,12 @@ class XUIOrderProcessingTest extends TestCase
     public function test_qr_code_generation()
     {
         Http::fake([
-            'test-server.com/login' => Http::response([
+            '*/login' => Http::response([
                 'success' => true,
                 'obj' => 'session_cookie'
             ], 200),
             
-            'test-server.com/panel/api/inbounds/addClient' => Http::response([
+            '*/panel/api/inbounds/addClient' => Http::response([
                 'success' => true,
                 'obj' => [
                     'id' => 'uuid-123',

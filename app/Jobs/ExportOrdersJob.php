@@ -33,7 +33,7 @@ class ExportOrdersJob implements ShouldQueue
             $query->whereDate('created_at', '<=', $this->filters['to']);
         }
 
-        $orders = $query->with(['customer:id,name,email'])->orderBy('id')->get();
+    $orders = $query->with(['customer:id,name,email'])->orderBy('id')->get();
 
         $csv = Writer::createFromFileObject(new SplTempFileObject());
         $csv->insertOne(['ID','Customer','Email','Amount','Currency','Status','Payment Status','Created']);
@@ -50,8 +50,20 @@ class ExportOrdersJob implements ShouldQueue
             ]);
         }
 
-        $filename = 'exports/orders/orders_' . now()->format('Ymd_His') . '_' . Str::random(6) . '.csv';
-        Storage::disk('local')->put($filename, $csv->toString());
+        // Resolve disk and path from config so tests can override safely
+        $disk = config('exports.disk', 'local');
+        $dir = rtrim(config('exports.path', 'exports/orders'), '/');
+
+        // Ensure export directory exists on the chosen disk (important for Storage::fake in tests)
+        try {
+            // makeDirectory returns bool; ensure nested path is created
+            Storage::disk($disk)->makeDirectory($dir);
+        } catch (\Throwable $e) {
+            // ignore; put() will attempt to create as needed
+        }
+
+        $filename = $dir . '/orders_' . now()->format('Ymd_His') . '_' . Str::random(6) . '.csv';
+        Storage::disk($disk)->put($filename, $csv->toString());
 
         if ($this->userId) {
             $user = User::find($this->userId);

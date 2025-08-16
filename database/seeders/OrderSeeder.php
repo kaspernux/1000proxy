@@ -27,7 +27,7 @@ class OrderSeeder extends Seeder
             return;
         }
 
-        foreach ($customers->take(20) as $customer) {
+    foreach ($customers->take(20) as $customer) {
             // Create 1-3 orders per customer
             $orderCount = $faker->numberBetween(1, 3);
 
@@ -61,6 +61,7 @@ class OrderSeeder extends Seeder
                     OrderItem::create([
                         'order_id' => $order->id,
                         'server_plan_id' => $serverPlan->id,
+                        'server_id' => $serverPlan->server_id ?? null,
                         'quantity' => $quantity,
                         'unit_amount' => $unitAmount,
                         'total_amount' => $totalAmount,

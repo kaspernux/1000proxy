@@ -35,7 +35,7 @@ class ClientStatusChanged implements ShouldBroadcast
     public function broadcastOn(): array
     {
         return [
-            new PrivateChannel('user.' . $this->client->user_id),
+            new PrivateChannel('customer.' . ($this->client->customer_id ?? $this->client->user_id)),
             new PrivateChannel('client.' . $this->client->id),
         ];
     }
@@ -47,6 +47,7 @@ class ClientStatusChanged implements ShouldBroadcast
     {
         return [
             'client_id' => $this->client->id,
+            'customer_id' => $this->client->customer_id,
             'old_status' => $this->oldStatus,
             'new_status' => $this->newStatus,
             'client' => $this->client->toArray(),

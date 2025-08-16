@@ -9,7 +9,6 @@ use App\Models\ServerCategory;
 use App\Models\ServerBrand;
 use Livewire\WithPagination;
 use Livewire\Attributes\On;
-use Livewire\Attributes\Reactive;
 use App\Livewire\Traits\LivewireAlertV4;
 
 class ServerBrowser extends Component
@@ -18,34 +17,20 @@ class ServerBrowser extends Component
     use LivewireAlertV4;
 
     // Real-time filtering properties
-    #[Reactive]
+    /*
+     * Public mutable filter + UI state properties.
+     * Removed #[Reactive] attributes because we need to mutate these directly in tests
+     * and component actions; Livewire reactive props are read-only mirrors.
+     */
     public $searchTerm = '';
-
-    #[Reactive]
     public $selectedCountry = '';
-
-    #[Reactive]
     public $selectedCategory = '';
-
-    #[Reactive]
     public $selectedBrand = '';
-
-    #[Reactive]
     public $selectedProtocol = '';
-
-    #[Reactive]
     public $priceRange = [0, 1000];
-
-    #[Reactive]
     public $speedRange = [0, 1000];
-
-    #[Reactive]
     public $sortBy = 'location_first';
-
-    #[Reactive]
     public $viewMode = 'grid'; // grid, list, compact
-
-    #[Reactive]
     public $itemsPerPage = 12;
 
     // Real-time status tracking
@@ -74,12 +59,13 @@ class ServerBrowser extends Component
 
         // Apply search filter
         if ($this->searchTerm) {
-            $query->where(function($q) {
-                $q->where('name', 'like', '%' . $this->searchTerm . '%')
-                  ->orWhere('description', 'like', '%' . $this->searchTerm . '%')
-                  ->orWhereHas('server', function($serverQuery) {
-                      $serverQuery->where('name', 'like', '%' . $this->searchTerm . '%')
-                               ->orWhere('country', 'like', '%' . $this->searchTerm . '%');
+            $term = '%' . $this->searchTerm . '%';
+            $query->where(function($q) use ($term) {
+                $q->where('server_plans.name', 'like', $term)
+                  ->orWhere('server_plans.description', 'like', $term)
+                  ->orWhereHas('server', function($serverQuery) use ($term) {
+                      $serverQuery->where('servers.name', 'like', $term)
+                                   ->orWhere('servers.country', 'like', $term);
                   });
             });
         }
@@ -111,37 +97,40 @@ class ServerBrowser extends Component
         }
 
         // Apply price range filter
-        $query->whereBetween('price', $this->priceRange);
+    $query->whereBetween('server_plans.price', $this->priceRange);
 
-        // Apply speed range filter (assuming speed is in Mbps)
-        $query->whereBetween('max_speed', $this->speedRange);
+    // Apply speed range filter using bandwidth_mbps column (previously referenced non-existent max_speed)
+    $query->whereBetween('server_plans.bandwidth_mbps', $this->speedRange);
 
         // Apply sorting
         switch ($this->sortBy) {
             case 'location_first':
-                $query->join('servers', 'server_plans.server_id', '=', 'servers.id')
-                      ->where('servers.is_active', true)
-                      ->orderBy('servers.country')
-                      ->orderBy('server_plans.price');
+            // Join servers for ordering by country but ensure we don't shadow plan columns (e.g. name)
+            // Selecting server_plans.* prevents the servers.name column from overwriting server_plans.name
+            $query->join('servers', 'server_plans.server_id', '=', 'servers.id')
+                ->select('server_plans.*')
+                ->where('servers.is_active', true)
+                ->orderBy('servers.country')
+                ->orderBy('server_plans.price');
                 break;
             case 'price_low':
-                $query->orderBy('price', 'asc');
+            $query->orderBy('server_plans.price', 'asc');
                 break;
             case 'price_high':
-                $query->orderBy('price', 'desc');
+            $query->orderBy('server_plans.price', 'desc');
                 break;
             case 'speed_high':
-                $query->orderBy('max_speed', 'desc');
+            $query->orderBy('server_plans.bandwidth_mbps', 'desc');
                 break;
             case 'popularity':
-                $query->orderBy('total_orders', 'desc');
+            $query->orderBy('server_plans.total_orders', 'desc');
                 break;
             case 'newest':
-                $query->orderBy('created_at', 'desc');
+            $query->orderBy('server_plans.created_at', 'desc');
                 break;
             default:
-                $query->orderBy('is_featured', 'desc')
-                      ->orderBy('price', 'asc');
+            $query->orderBy('server_plans.is_featured', 'desc')
+                ->orderBy('server_plans.price', 'asc');
         }
 
         $serverPlans = $query->paginate($this->itemsPerPage);

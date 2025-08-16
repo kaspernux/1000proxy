@@ -18,8 +18,10 @@ class WalletTransactionController extends Controller
 {
     public function index()
     {
-        $transactions = WalletTransaction::whereHas('wallet', function ($query) {
-            $query->where('customer_id', Auth::id());
+        $customerId = Auth::guard('customer')->id();
+        abort_unless($customerId, 403);
+        $transactions = WalletTransaction::whereHas('wallet', function ($query) use ($customerId) {
+            $query->where('customer_id', $customerId);
         })->latest()->paginate(20);
 
         return view('wallets.transactions', compact('transactions'));
@@ -29,7 +31,7 @@ class WalletTransactionController extends Controller
     {
         $transaction = WalletTransaction::with('wallet.customer')->findOrFail($id);
 
-        abort_if($transaction->wallet->customer_id !== Auth::id(), 403);
+    abort_if($transaction->wallet->customer_id !== Auth::guard('customer')->id(), 403);
 
         return view('wallets.transaction-detail', compact('transaction'));
     }
@@ -62,7 +64,7 @@ class WalletTransactionController extends Controller
             $data['status'] = 'completed';
         }
 
-        $data['customer_id'] = Auth::id(); // ensure customer ID is linked
+    $data['customer_id'] = Auth::guard('customer')->id(); // ensure customer ID is linked
         $data['reference'] = 'ADMIN_' . strtoupper(\Str::random(10));
 
         WalletTransaction::create($data);

@@ -181,7 +181,7 @@ lib/
 │   │   ├── app_constants.dart
 │   │   └── api_constants.dart
 │   ├── models/
-│   │   ├── user.dart
+│   │   ├── customer.dart
 │   │   ├── server.dart
 │   │   ├── order.dart
 │   │   └── wallet.dart

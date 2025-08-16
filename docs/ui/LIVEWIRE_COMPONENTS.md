@@ -276,8 +276,8 @@ class AccountSettings extends Component
     public function updateProfile()
     {
         $this->validate([
-            'user.name' => 'required|string|max:255',
-            'user.email' => 'required|email|unique:users,email,' . $this->user->id
+            'customer.name' => 'required|string|max:255',
+            'customer.email' => 'required|email|unique:customers,email,' . $this->customer->id
         ]);
         
         $this->user->save();

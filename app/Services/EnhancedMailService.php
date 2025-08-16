@@ -48,19 +48,23 @@ class EnhancedMailService
     public function sendOrderPlacedEmail(Order $order): bool
     {
         try {
-            Mail::to($order->user->email)->send(new OrderPlaced($order));
+            $recipient = $order->customer?->email;
+            if (!$recipient) {
+                throw new \RuntimeException('Order has no associated customer email');
+            }
+            Mail::to($recipient)->send(new OrderPlaced($order));
 
             Log::info('Order placed email sent successfully', [
                 'order_id' => $order->id,
-                'user_id' => $order->user_id,
-                'email' => $order->user->email
+                'customer_id' => $order->customer_id,
+                'email' => $recipient
             ]);
 
             return true;
         } catch (\Exception $e) {
             Log::error('Order placed email failed', [
                 'order_id' => $order->id,
-                'user_id' => $order->user_id,
+                'customer_id' => $order->customer_id,
                 'error' => $e->getMessage()
             ]);
 
@@ -74,11 +78,15 @@ class EnhancedMailService
     public function sendPaymentReceivedEmail(Order $order, string $paymentMethod = 'Unknown', string $transactionId = null): bool
     {
         try {
-            Mail::to($order->user->email)->send(new PaymentReceived($order, $paymentMethod, $transactionId));
+            $recipient = $order->customer?->email;
+            if (!$recipient) {
+                throw new \RuntimeException('Order has no associated customer email');
+            }
+            Mail::to($recipient)->send(new PaymentReceived($order, $paymentMethod, $transactionId));
 
             Log::info('Payment received email sent successfully', [
                 'order_id' => $order->id,
-                'user_id' => $order->user_id,
+                'customer_id' => $order->customer_id,
                 'payment_method' => $paymentMethod,
                 'transaction_id' => $transactionId
             ]);
@@ -87,7 +95,7 @@ class EnhancedMailService
         } catch (\Exception $e) {
             Log::error('Payment received email failed', [
                 'order_id' => $order->id,
-                'user_id' => $order->user_id,
+                'customer_id' => $order->customer_id,
                 'error' => $e->getMessage()
             ]);
 
@@ -101,11 +109,15 @@ class EnhancedMailService
     public function sendServiceActivatedEmail(Order $order, array $serverDetails = []): bool
     {
         try {
-            Mail::to($order->user->email)->send(new ServiceActivated($order, $serverDetails));
+            $recipient = $order->customer?->email;
+            if (!$recipient) {
+                throw new \RuntimeException('Order has no associated customer email');
+            }
+            Mail::to($recipient)->send(new ServiceActivated($order, $serverDetails));
 
             Log::info('Service activated email sent successfully', [
                 'order_id' => $order->id,
-                'user_id' => $order->user_id,
+                'customer_id' => $order->customer_id,
                 'server_count' => count($serverDetails)
             ]);
 
@@ -113,7 +125,7 @@ class EnhancedMailService
         } catch (\Exception $e) {
             Log::error('Service activated email failed', [
                 'order_id' => $order->id,
-                'user_id' => $order->user_id,
+                'customer_id' => $order->customer_id,
                 'error' => $e->getMessage()
             ]);
 
@@ -154,11 +166,15 @@ class EnhancedMailService
     public function sendServiceExpiringEmail(Order $order, int $daysUntilExpiry = 7): bool
     {
         try {
-            Mail::to($order->user->email)->send(new OrderExpiringSoon($order, $daysUntilExpiry));
+            $recipient = $order->customer?->email;
+            if (!$recipient) {
+                throw new \RuntimeException('Order has no associated customer email');
+            }
+            Mail::to($recipient)->send(new OrderExpiringSoon($order, $daysUntilExpiry));
 
             Log::info('Service expiring email sent successfully', [
                 'order_id' => $order->id,
-                'user_id' => $order->user_id,
+                'customer_id' => $order->customer_id,
                 'days_until_expiry' => $daysUntilExpiry
             ]);
 
@@ -166,7 +182,7 @@ class EnhancedMailService
         } catch (\Exception $e) {
             Log::error('Service expiring email failed', [
                 'order_id' => $order->id,
-                'user_id' => $order->user_id,
+                'customer_id' => $order->customer_id,
                 'error' => $e->getMessage()
             ]);
 

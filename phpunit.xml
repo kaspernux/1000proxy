@@ -19,6 +19,7 @@
     </source>
     <php>
         <env name="APP_ENV" value="testing"/>
+    <env name="APP_DEBUG" value="true"/>
         <env name="APP_MAINTENANCE_DRIVER" value="file"/>
         <env name="BCRYPT_ROUNDS" value="4"/>
         <env name="CACHE_STORE" value="array"/>
@@ -27,7 +28,11 @@
         <env name="MAIL_MAILER" value="array"/>
         <env name="PULSE_ENABLED" value="false"/>
         <env name="QUEUE_CONNECTION" value="sync"/>
-        <env name="SESSION_DRIVER" value="array"/>
+    <!-- Use file-based sessions in tests so flash data is persisted consistently across redirects -->
+    <env name="SESSION_DRIVER" value="file"/>
+    <env name="SESSION_DOMAIN" value=""/>
+    <env name="SESSION_SECURE_COOKIE" value="false"/>
+    <env name="SESSION_SAME_SITE" value="lax"/>
         <env name="TELESCOPE_ENABLED" value="false"/>
     </php>
 </phpunit>

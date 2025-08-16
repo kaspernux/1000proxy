@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\Wallet;
 use App\Models\WalletTransaction;
+use App\Models\Customer;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\DB;
@@ -17,16 +18,20 @@ class WalletController extends Controller
      */
     public function index(Request $request): JsonResponse
     {
-        $user = $request->user();
-        $wallet = $user->wallet;
+        $actor = $request->user();
+        if (!$actor instanceof Customer) {
+            return response()->json(['success' => false, 'error' => 'Forbidden'], 403);
+        }
+        $wallet = $actor->wallet;
 
         if (!$wallet) {
             // Create wallet if it doesn't exist
-            $wallet = Wallet::create([
-                'user_id' => $user->id,
+            $wallet = $actor->wallet()->create([
                 'balance' => 0,
                 'currency' => 'USD',
+                'is_default' => true,
             ]);
+            try { $wallet->generateDepositAddresses(); } catch (\Throwable $e) { Log::warning('Wallet address generation failed', ['error' => $e->getMessage()]); }
         }
 
         return response()->json([
@@ -45,8 +50,11 @@ class WalletController extends Controller
      */
     public function transactions(Request $request): JsonResponse
     {
-        $user = $request->user();
-        $wallet = $user->wallet;
+        $actor = $request->user();
+        if (!$actor instanceof Customer) {
+            return response()->json(['success' => false, 'error' => 'Forbidden'], 403);
+        }
+        $wallet = $actor->wallet;
 
         if (!$wallet) {
             return response()->json([
@@ -61,7 +69,7 @@ class WalletController extends Controller
             ]);
         }
 
-        $query = $wallet->transactions()->orderBy('created_at', 'desc');
+    $query = $wallet->transactions()->orderBy('created_at', 'desc');
 
         // Filter by type
         if ($request->has('type')) {
@@ -96,8 +104,11 @@ class WalletController extends Controller
      */
     public function stats(Request $request): JsonResponse
     {
-        $user = $request->user();
-        $wallet = $user->wallet;
+        $actor = $request->user();
+        if (!$actor instanceof Customer) {
+            return response()->json(['success' => false, 'error' => 'Forbidden'], 403);
+        }
+        $wallet = $actor->wallet;
 
         if (!$wallet) {
             return response()->json([
@@ -111,20 +122,13 @@ class WalletController extends Controller
             ]);
         }
 
+        // Normalize to application's transaction types: deposit, withdrawal, payment
         $stats = [
-            'total_deposits' => $wallet->transactions()
-                ->where('type', 'credit')
-                ->where('description', 'not like', '%Refund%')
-                ->sum('amount'),
-            'total_spent' => $wallet->transactions()
-                ->where('type', 'debit')
-                ->sum('amount'),
-            'total_refunds' => $wallet->transactions()
-                ->where('type', 'credit')
-                ->where('description', 'like', '%Refund%')
-                ->sum('amount'),
+            'total_deposits' => (float) $wallet->transactions()->where('type', 'deposit')->sum('amount'),
+            'total_spent' => (float) $wallet->transactions()->whereIn('type', ['withdrawal','payment'])->sum(DB::raw('ABS(amount)')),
+            'total_refunds' => (float) $wallet->transactions()->where('type', 'refund')->sum('amount'),
             'total_transactions' => $wallet->transactions()->count(),
-            'current_balance' => $wallet->balance,
+            'current_balance' => (float) $wallet->balance,
         ];
 
         return response()->json([
@@ -143,15 +147,19 @@ class WalletController extends Controller
             'currency' => 'required|in:BTC,ETH,LTC,XMR,SOL,USDT',
         ]);
 
-        $user = $request->user();
+        $actor = $request->user();
+        if (!$actor instanceof Customer) {
+            return response()->json(['success' => false, 'error' => 'Forbidden'], 403);
+        }
         $amount = $request->amount;
         $currency = $request->currency;
 
         try {
             // Create deposit transaction record
             $transaction = WalletTransaction::create([
-                'wallet_id' => $user->wallet->id,
-                'type' => 'credit',
+                'wallet_id' => $actor->wallet->id,
+                'customer_id' => $actor->id,
+                'type' => 'deposit',
                 'amount' => $amount,
                 'currency' => $currency,
                 'status' => 'pending',
@@ -178,7 +186,7 @@ class WalletController extends Controller
         } catch (\Exception $e) {
             Log::error('Deposit creation failed', [
                 'error' => $e->getMessage(),
-                'user_id' => $user->id,
+                'customer_id' => $actor->id,
                 'amount' => $amount,
                 'currency' => $currency
             ]);
@@ -195,9 +203,12 @@ class WalletController extends Controller
      */
     public function depositStatus(int $transactionId, Request $request): JsonResponse
     {
-        $user = $request->user();
+        $actor = $request->user();
+        if (!$actor instanceof Customer) {
+            return response()->json(['success' => false, 'error' => 'Forbidden'], 403);
+        }
         
-        $transaction = WalletTransaction::where('wallet_id', $user->wallet->id)
+        $transaction = WalletTransaction::where('wallet_id', $actor->wallet->id)
             ->findOrFail($transactionId);
 
         return response()->json([
@@ -274,9 +285,12 @@ class WalletController extends Controller
      */
     public function transaction(int $id, Request $request): JsonResponse
     {
-        $user = $request->user();
+        $actor = $request->user();
+        if (!$actor instanceof Customer) {
+            return response()->json(['success' => false, 'error' => 'Forbidden'], 403);
+        }
         
-        $transaction = WalletTransaction::where('wallet_id', $user->wallet->id)
+        $transaction = WalletTransaction::where('wallet_id', $actor->wallet->id)
             ->findOrFail($id);
 
         return response()->json([

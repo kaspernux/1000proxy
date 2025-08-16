@@ -19,11 +19,12 @@ class DatabaseSeeder extends Seeder
         $this->command->info('🚀 Starting 1000proxy Database Seeding...');
 
         // Clear any existing data first to avoid constraint violations
-        $this->command->info('�️ Clearing existing data...');
+        $this->command->info('🧹 Clearing existing data...');
         DB::statement('SET FOREIGN_KEY_CHECKS=0;');
 
         // Clear tables in reverse dependency order
         $clearTables = [
+            'wallet_transactions',
             'server_clients',
             'server_inbounds',
             'order_items',
@@ -43,7 +44,7 @@ class DatabaseSeeder extends Seeder
         foreach ($clearTables as $table) {
             try {
                 DB::table($table)->truncate();
-            } catch (Exception $e) {
+            } catch (\Exception $e) {
                 $this->command->warn("Could not clear table {$table}: " . $e->getMessage());
             }
         }
@@ -51,10 +52,11 @@ class DatabaseSeeder extends Seeder
         DB::statement('SET FOREIGN_KEY_CHECKS=1;');
 
         // Step 1: Independent core data (no foreign keys)
-        $this->command->info('� Seeding independent core data...');
+        $this->command->info('📦 Seeding independent core data...');
         $this->call([
             SettingSeeder::class,
             UserSeeder::class,
+            RolePermissionSeeder::class,
             PaymentMethodSeeder::class,
             ServerBrandSeeder::class,
             ServerCategorySeeder::class,
@@ -64,6 +66,7 @@ class DatabaseSeeder extends Seeder
         $this->command->info('🖥️ Seeding servers...');
         $this->call([
             ServerSeeder::class,
+            ServerPlanSeeder::class,
         ]);
 
         // Step 3: Customers (independent)
@@ -103,17 +106,14 @@ class DatabaseSeeder extends Seeder
             ServerTagSeeder::class,
             ServerReviewSeeder::class,
             SubscriptionSeeder::class,
+            NotificationTemplateSeeder::class,
         ]);
 
         $this->command->info('✅ Database seeding completed successfully!');
         $this->command->info('🎯 Your 1000proxy application is ready to use.');
 
-        // Display test credentials
-        $this->displayTestCredentials();
-
-            $this->call([
-                NotificationTemplateSeeder::class,
-            ]);
+    // Display test credentials
+    $this->displayTestCredentials();
     }
 
     private function displayTestCredentials()

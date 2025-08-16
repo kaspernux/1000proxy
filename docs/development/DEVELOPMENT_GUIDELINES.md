@@ -24,18 +24,8 @@ This document provides comprehensive guidelines for developers working on the 10
 ```bash
 # Minimum requirements for development
 - OS: Windows 10/11, macOS 10.15+, or Ubuntu 20.04+
-- RAM: 8GB minimum, 16GB recommended
-- Storage: 50GB available space
-- CPU: 4 cores minimum
-
 # Required software
 - PHP 8.3+
-- Composer 2.4+
-- Node.js 18+ with npm
-- MySQL 8.0+ or PostgreSQL 13+
-- Redis 6.0+
-- Git 2.30+
-```
 
 #### Development Tools
 
@@ -91,7 +81,7 @@ php artisan key:generate
 ```bash
 # Install PHP dependencies
 composer install
-
+In cache tagging, prefer `customer.{id}` namespaces for customer-scoped caches.
 # Copy and configure environment
 cp .env.example .env
 php artisan key:generate
@@ -341,11 +331,11 @@ class ServiceController extends Controller
     ) {}
 
     /**
-     * Get user's services
+     * Get customer's services
      */
     public function index(): AnonymousResourceCollection
     {
-        $services = auth()->user()->proxyServices()->active()->get();
+    $services = auth('customer')->user()->proxyServices()->active()->get();
         
         return ServiceResource::collection($services);
     }
@@ -356,7 +346,7 @@ class ServiceController extends Controller
     public function store(CreateServiceRequest $request): JsonResponse
     {
         $service = $this->serviceManager->createService(
-            auth()->user(),
+            auth('customer')->user(),
             $request->validated()
         );
 
@@ -1379,7 +1369,7 @@ class User extends Model
     public function getActiveServicesAttribute()
     {
         return Cache::remember(
-            "user.{$this->id}.active_services",
+            "customer.{$this->id}.active_services",
             now()->addMinutes(10),
             fn () => $this->proxyServices()->active()->get()
         );
@@ -1400,11 +1390,11 @@ public function getPopularServices(): Collection
 }
 
 // Cache tags for selective invalidation
-Cache::tags(['user.' . $userId, 'services'])
-    ->put('user.services.' . $userId, $services, now()->addMinutes(30));
+Cache::tags(['customer.' . $userId, 'services'])
+    ->put('customer.services.' . $userId, $services, now()->addMinutes(30));
 
 // Invalidate specific tags
-Cache::tags(['user.' . $userId])->flush();
+Cache::tags(['customer.' . $userId])->flush();
 ```
 
 ### Database Optimization
@@ -1542,8 +1532,8 @@ info:
 paths:
   /api/services:
     get:
-      summary: Get user's services
-      description: Retrieve a paginated list of the authenticated user's proxy services
+    summary: Get customer's services
+    description: Retrieve a paginated list of the authenticated customer's proxy services
       tags:
         - Services
       security:

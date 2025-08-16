@@ -71,7 +71,7 @@
                             </div>
                         @endif
 
-                        @if($this->serverPlan->featured)
+                        @if($this->serverPlan->is_featured)
                             <div class="absolute top-6 left-6">
                                 <span class="px-4 py-2 bg-gradient-to-r from-yellow-500 to-orange-500 text-white rounded-full text-sm font-bold shadow-lg backdrop-blur-md flex items-center border border-yellow-400/30">
                                     <x-custom-icon name="star" class="w-4 h-4 mr-2" />

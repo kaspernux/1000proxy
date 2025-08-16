@@ -103,6 +103,18 @@ class AppServiceProvider extends ServiceProvider
 
         Model::unguard();
 
+        // Add helpful Livewire testing macros expected by our test suite
+        if (class_exists(\Livewire\Features\SupportTesting\Testable::class)) {
+            \Livewire\Features\SupportTesting\Testable::macro('assertNull', function (string $name) {
+                \PHPUnit\Framework\Assert::assertNull($this->get($name));
+                return $this;
+            });
+            \Livewire\Features\SupportTesting\Testable::macro('assertNotNull', function (string $name) {
+                \PHPUnit\Framework\Assert::assertNotNull($this->get($name));
+                return $this;
+            });
+        }
+
     // Register policies (centralized until AuthServiceProvider is added)
     Gate::policy(\App\Models\User::class, \App\Policies\UserPolicy::class);
     Gate::policy(Order::class, OrderPolicy::class);

@@ -11,6 +11,7 @@ use App\Models\ServerBrand;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
+use PHPUnit\Framework\Attributes\Test;
 
 class AccessibilityTestSuite extends TestCase
 {
@@ -80,7 +81,7 @@ class AccessibilityTestSuite extends TestCase
         ]);
     }
 
-    /** @test */
+    #[Test]
     public function page_has_proper_heading_structure()
     {
         $response = $this->get('/');
@@ -104,7 +105,7 @@ class AccessibilityTestSuite extends TestCase
         $response->assertOk();
     }
 
-    /** @test */
+    #[Test]
     public function images_have_alt_attributes()
     {
         $response = $this->get('/');
@@ -122,7 +123,7 @@ class AccessibilityTestSuite extends TestCase
         $response->assertOk();
     }
 
-    /** @test */
+    #[Test]
     public function forms_have_proper_labels()
     {
         $response = $this->get('/register');
@@ -154,7 +155,7 @@ class AccessibilityTestSuite extends TestCase
         $response->assertOk();
     }
 
-    /** @test */
+    #[Test]
     public function buttons_have_accessible_text()
     {
         $response = $this->get('/products');
@@ -177,7 +178,7 @@ class AccessibilityTestSuite extends TestCase
         $response->assertOk();
     }
 
-    /** @test */
+    #[Test]
     public function links_have_descriptive_text()
     {
         $response = $this->get('/');
@@ -202,7 +203,7 @@ class AccessibilityTestSuite extends TestCase
         $response->assertOk();
     }
 
-    /** @test */
+    #[Test]
     public function page_has_skip_navigation_link()
     {
         $response = $this->get('/');
@@ -216,7 +217,7 @@ class AccessibilityTestSuite extends TestCase
         $response->assertOk();
     }
 
-    /** @test */
+    #[Test]
     public function color_contrast_meets_standards()
     {
         $response = $this->get('/');
@@ -230,7 +231,7 @@ class AccessibilityTestSuite extends TestCase
         $response->assertOk();
     }
 
-    /** @test */
+    #[Test]
     public function focus_indicators_are_visible()
     {
         $response = $this->get('/');
@@ -253,7 +254,7 @@ class AccessibilityTestSuite extends TestCase
         $response->assertOk();
     }
 
-    /** @test */
+    #[Test]
     public function keyboard_navigation_is_supported()
     {
         $response = $this->get('/products');
@@ -282,7 +283,7 @@ class AccessibilityTestSuite extends TestCase
         $response->assertOk();
     }
 
-    /** @test */
+    #[Test]
     public function aria_landmarks_are_present()
     {
         $response = $this->get('/');
@@ -315,7 +316,7 @@ class AccessibilityTestSuite extends TestCase
         $response->assertOk();
     }
 
-    /** @test */
+    #[Test]
     public function form_errors_are_accessible()
     {
         $response = $this->post('/register', [
@@ -345,7 +346,7 @@ class AccessibilityTestSuite extends TestCase
         $this->assertTrue($hasErrorSupport, 'Form errors should be accessible');
     }
 
-    /** @test */
+    #[Test]
     public function tables_have_proper_headers()
     {
         $this->actingAs($this->customer, 'customer');
@@ -363,7 +364,7 @@ class AccessibilityTestSuite extends TestCase
         $response->assertOk();
     }
 
-    /** @test */
+    #[Test]
     public function modals_are_accessible()
     {
         $response = $this->get('/products');
@@ -394,7 +395,7 @@ class AccessibilityTestSuite extends TestCase
         $response->assertOk();
     }
 
-    /** @test */
+    #[Test]
     public function page_language_is_declared()
     {
         $response = $this->get('/');
@@ -407,7 +408,7 @@ class AccessibilityTestSuite extends TestCase
         $response->assertOk();
     }
 
-    /** @test */
+    #[Test]
     public function page_title_is_descriptive()
     {
         $response = $this->get('/');
@@ -426,7 +427,7 @@ class AccessibilityTestSuite extends TestCase
         $response->assertOk();
     }
 
-    /** @test */
+    #[Test]
     public function dropdown_menus_are_accessible()
     {
         $response = $this->get('/');
@@ -456,7 +457,7 @@ class AccessibilityTestSuite extends TestCase
         $response->assertOk();
     }
 
-    /** @test */
+    #[Test]
     public function loading_states_are_announced()
     {
         $response = $this->get('/products');
@@ -486,7 +487,7 @@ class AccessibilityTestSuite extends TestCase
         $response->assertOk();
     }
 
-    /** @test */
+    #[Test]
     public function error_messages_are_announced()
     {
         $response = $this->post('/contact', [
@@ -517,7 +518,7 @@ class AccessibilityTestSuite extends TestCase
         }
     }
 
-    /** @test */
+    #[Test]
     public function interactive_elements_have_sufficient_size()
     {
         $response = $this->get('/products');
@@ -548,7 +549,7 @@ class AccessibilityTestSuite extends TestCase
         $response->assertOk();
     }
 
-    /** @test */
+    #[Test]
     public function content_is_readable_without_css()
     {
         $response = $this->get('/');
@@ -567,7 +568,7 @@ class AccessibilityTestSuite extends TestCase
         $response->assertOk();
     }
 
-    /** @test */
+    #[Test]
     public function navigation_has_current_page_indicator()
     {
         $response = $this->get('/products');
@@ -594,7 +595,7 @@ class AccessibilityTestSuite extends TestCase
         $response->assertOk();
     }
 
-    /** @test */
+    #[Test]
     public function form_instructions_are_clear()
     {
         $response = $this->get('/register');
@@ -623,7 +624,7 @@ class AccessibilityTestSuite extends TestCase
         $response->assertOk();
     }
 
-    /** @test */
+    #[Test]
     public function videos_have_captions_or_transcripts()
     {
         $response = $this->get('/');
@@ -653,7 +654,7 @@ class AccessibilityTestSuite extends TestCase
         $response->assertOk();
     }
 
-    /** @test */
+    #[Test]
     public function page_structure_is_logical()
     {
         $response = $this->get('/');

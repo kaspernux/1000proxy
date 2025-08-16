@@ -56,8 +56,8 @@
 
     <!-- Advanced Filters Section -->
     <section class="mb-6 px-6 pt-6">
-        <div class="bg-white dark:bg-gray-900 rounded-xl shadow-sm p-6 border border-gray-100 dark:border-gray-800">
-            <div class="flex items-center justify-between mb-4" x-data="{ filtersOpen: true }">
+        <div class="bg-white dark:bg-gray-900 rounded-xl shadow-sm p-6 border border-gray-100 dark:border-gray-800" x-data="{ filtersOpen: true }">
+            <div class="flex items-center justify-between mb-4">
                 <h2 class="text-lg font-bold text-gray-900 dark:text-white">Advanced Filters</h2>
                 <div class="flex items-center gap-3">
                     <button
@@ -67,7 +67,8 @@
                     <button
                         @click="filtersOpen = !filtersOpen"
                         class="p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors duration-200"
-                        aria-expanded="{{ filtersOpen ? 'true' : 'false' }}"
+                        {{-- In server-side test context Alpine isn't executed; avoid PHP interpreting filtersOpen as constant --}}
+                        aria-expanded="true"
                         aria-controls="filters-content"
                     >
                         <svg class="w-5 h-5 transition-transform duration-200"
@@ -289,12 +290,12 @@
                                         </svg>
                                         {{ $plan->protocol }}
                                     </span>
-                                    @if($plan->max_speed)
+                                    @if($plan->bandwidth_mbps)
                                         <span class="flex items-center">
                                             <svg class="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
                                                 <path fill-rule="evenodd" d="M11.3 1.046A1 1 0 0112 2v5h4a1 1 0 01.82 1.573l-7 10A1 1 0 018 18v-5H4a1 1 0 01-.82-1.573l7-10a1 1 0 011.12-.38z" clip-rule="evenodd"></path>
                                             </svg>
-                                            {{ $plan->max_speed }} Mbps
+                                            {{ $plan->bandwidth_mbps }} Mbps
                                         </span>
                                     @endif
                                 </div>

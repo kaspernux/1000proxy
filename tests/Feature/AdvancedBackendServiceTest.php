@@ -3,8 +3,9 @@
 namespace Tests\Feature;
 
 use Tests\TestCase;
+use PHPUnit\Framework\Attributes\Test;
 use App\Services\AdvancedBackendService;
-use App\Models\User;
+use App\Models\Customer;
 use App\Models\Server;
 use App\Models\Order;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -17,7 +18,7 @@ class AdvancedBackendServiceTest extends TestCase
     use RefreshDatabase;
 
     private AdvancedBackendService $service;
-    private User $user;
+    private Customer $customer;
     private Server $server;
 
     protected function setUp(): void
@@ -25,11 +26,13 @@ class AdvancedBackendServiceTest extends TestCase
         parent::setUp();
 
         $this->service = new AdvancedBackendService();
-        $this->user = User::factory()->create();
+    $this->customer = Customer::factory()->create();
+    // Ensure default test customer is verified so low-risk transactions are recognized
+    $this->customer->forceFill(['email_verified_at' => now()])->save();
         $this->server = Server::factory()->create();
     }
 
-    /** @test */
+    #[Test]
     public function it_handles_connection_errors_with_smart_recovery()
     {
         $exception = new Exception('Connection timeout');
@@ -43,7 +46,7 @@ class AdvancedBackendServiceTest extends TestCase
         $this->assertEquals('HIGH', $result['error_details']['severity']);
     }
 
-    /** @test */
+    #[Test]
     public function it_handles_auth_errors_with_refresh_attempt()
     {
         $exception = new Exception('Authentication failed');
@@ -57,7 +60,7 @@ class AdvancedBackendServiceTest extends TestCase
         $this->assertEquals('MEDIUM', $result['error_details']['severity']);
     }
 
-    /** @test */
+    #[Test]
     public function it_handles_rate_limit_errors_with_backoff()
     {
         $exception = new Exception('Rate limit exceeded');
@@ -71,7 +74,7 @@ class AdvancedBackendServiceTest extends TestCase
         $this->assertEquals(60, $result['retry_after']);
     }
 
-    /** @test */
+    #[Test]
     public function it_optimizes_performance_across_multiple_areas()
     {
         $result = $this->service->optimizePerformance();
@@ -85,11 +88,11 @@ class AdvancedBackendServiceTest extends TestCase
         $this->assertArrayHasKey('background_jobs', $result['optimizations_applied']);
     }
 
-    /** @test */
+    #[Test]
     public function it_detects_fraud_with_low_risk_for_normal_transaction()
     {
         $transactionData = [
-            'user_id' => $this->user->id,
+            'user_id' => $this->customer->id,
             'amount' => 50,
             'ip_address' => '192.168.1.1',
             'user_agent' => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
@@ -104,17 +107,17 @@ class AdvancedBackendServiceTest extends TestCase
         $this->assertFalse($result['action_required']['manual_review']);
     }
 
-    /** @test */
+    #[Test]
     public function it_detects_fraud_with_high_risk_for_suspicious_transaction()
     {
         // Create multiple recent orders to trigger velocity check
         Order::factory()->count(6)->create([
-            'user_id' => $this->user->id,
+            'user_id' => $this->customer->id,
             'created_at' => now()->subMinutes(30)
         ]);
 
         $transactionData = [
-            'user_id' => $this->user->id,
+            'user_id' => $this->customer->id,
             'amount' => 1500, // High amount
             'ip_address' => '192.168.1.1',
             'user_agent' => 'curl/7.68.0', // Automated tool
@@ -128,10 +131,10 @@ class AdvancedBackendServiceTest extends TestCase
         $this->assertTrue($result['action_required']['manual_review']);
     }
 
-    /** @test */
+    #[Test]
     public function it_detects_new_user_fraud_risk()
     {
-        $newUser = User::factory()->create([
+    $newUser = Customer::factory()->create([
             'created_at' => now()->subHours(2),
             'email_verified_at' => null
         ]);
@@ -151,11 +154,11 @@ class AdvancedBackendServiceTest extends TestCase
         $this->assertGreaterThan(30, $result['fraud_score']);
     }
 
-    /** @test */
+    #[Test]
     public function it_detects_automated_tools()
     {
         $transactionData = [
-            'user_id' => $this->user->id,
+            'user_id' => $this->customer->id,
             'amount' => 100,
             'ip_address' => '192.168.1.1',
             'user_agent' => 'python-requests/2.25.1',
@@ -168,16 +171,16 @@ class AdvancedBackendServiceTest extends TestCase
         $this->assertGreaterThan(35, $result['fraud_score']);
     }
 
-    /** @test */
+    #[Test]
     public function it_handles_high_risk_fraud_with_blocking()
     {
         // Create a very high-risk transaction
         Order::factory()->count(10)->create([
-            'user_id' => $this->user->id,
+            'user_id' => $this->customer->id,
             'created_at' => now()->subMinutes(15)
         ]);
 
-        $newUser = User::factory()->create([
+    $newUser = Customer::factory()->create([
             'created_at' => now()->subHours(1),
             'email_verified_at' => null
         ]);
@@ -200,7 +203,7 @@ class AdvancedBackendServiceTest extends TestCase
         }
     }
 
-    /** @test */
+    #[\PHPUnit\Framework\Attributes\Test]
     public function it_initializes_websocket_monitoring_channels()
     {
         $result = $this->service->initializeWebSocketMonitoring();
@@ -217,20 +220,20 @@ class AdvancedBackendServiceTest extends TestCase
         $this->assertContains('server.offline', $result['channels']['server_status']['events']);
     }
 
-    /** @test */
+    #[\PHPUnit\Framework\Attributes\Test]
     public function it_sets_up_user_activity_monitoring()
     {
         $result = $this->service->initializeWebSocketMonitoring();
         $userActivityChannel = $result['channels']['user_activity'];
 
         $this->assertEquals('user-activity', $userActivityChannel['channel']);
-        $this->assertContains('user.login', $userActivityChannel['events']);
-        $this->assertContains('user.logout', $userActivityChannel['events']);
-        $this->assertContains('user.suspicious_activity', $userActivityChannel['events']);
+        $this->assertContains('customer.login', $userActivityChannel['events']);
+        $this->assertContains('customer.logout', $userActivityChannel['events']);
+        $this->assertContains('customer.suspicious_activity', $userActivityChannel['events']);
         $this->assertEquals(1, $userActivityChannel['update_interval']);
     }
 
-    /** @test */
+    #[\PHPUnit\Framework\Attributes\Test]
     public function it_sets_up_order_processing_monitoring()
     {
         $result = $this->service->initializeWebSocketMonitoring();
@@ -243,7 +246,7 @@ class AdvancedBackendServiceTest extends TestCase
         $this->assertContains('order.failed', $orderChannel['events']);
     }
 
-    /** @test */
+    #[\PHPUnit\Framework\Attributes\Test]
     public function it_sets_up_system_alerts_monitoring()
     {
         $result = $this->service->initializeWebSocketMonitoring();
@@ -255,7 +258,7 @@ class AdvancedBackendServiceTest extends TestCase
         $this->assertContains('alert.fraud_detected', $alertsChannel['events']);
     }
 
-    /** @test */
+    #[\PHPUnit\Framework\Attributes\Test]
     public function it_caches_performance_optimization_results()
     {
         $result1 = $this->service->optimizePerformance();
@@ -268,7 +271,7 @@ class AdvancedBackendServiceTest extends TestCase
         $this->assertIsNumeric($result2['performance_score']);
     }
 
-    /** @test */
+    #[\PHPUnit\Framework\Attributes\Test]
     public function it_provides_performance_recommendations()
     {
         $result = $this->service->optimizePerformance();
@@ -283,13 +286,13 @@ class AdvancedBackendServiceTest extends TestCase
         }
     }
 
-    /** @test */
+    #[\PHPUnit\Framework\Attributes\Test]
     public function it_logs_fraud_detection_results()
     {
         Log::spy();
 
         $transactionData = [
-            'user_id' => $this->user->id,
+            'user_id' => $this->customer->id,
             'amount' => 100,
             'ip_address' => '192.168.1.1',
             'user_agent' => 'Mozilla/5.0',
@@ -303,7 +306,7 @@ class AdvancedBackendServiceTest extends TestCase
             ->once();
     }
 
-    /** @test */
+    #[\PHPUnit\Framework\Attributes\Test]
     public function it_handles_unknown_error_types()
     {
         $exception = new Exception('Some unknown error occurred');
@@ -316,23 +319,23 @@ class AdvancedBackendServiceTest extends TestCase
         $this->assertEquals('MEDIUM', $result['error_details']['severity']);
     }
 
-    /** @test */
+    #[\PHPUnit\Framework\Attributes\Test]
     public function it_calculates_user_velocity_correctly()
     {
         // Create some recent orders
         Order::factory()->count(3)->create([
-            'user_id' => $this->user->id,
+            'customer_id' => $this->customer->id,
             'created_at' => now()->subMinutes(30)
         ]);
 
         // Create some old orders (should not be counted)
         Order::factory()->count(5)->create([
-            'user_id' => $this->user->id,
+            'customer_id' => $this->customer->id,
             'created_at' => now()->subDays(2)
         ]);
 
         $transactionData = [
-            'user_id' => $this->user->id,
+            'user_id' => $this->customer->id,
             'amount' => 100,
             'ip_address' => '192.168.1.1',
             'user_agent' => 'Mozilla/5.0',
@@ -345,7 +348,7 @@ class AdvancedBackendServiceTest extends TestCase
         $this->assertLessThan(75, $result['fraud_score']);
     }
 
-    /** @test */
+    #[\PHPUnit\Framework\Attributes\Test]
     public function it_handles_missing_transaction_data_gracefully()
     {
         $transactionData = [
@@ -362,7 +365,7 @@ class AdvancedBackendServiceTest extends TestCase
         $this->assertArrayHasKey('action_required', $result);
     }
 
-    /** @test */
+    #[\PHPUnit\Framework\Attributes\Test]
     public function it_optimizes_database_queries()
     {
         $result = $this->service->optimizePerformance();
@@ -371,7 +374,7 @@ class AdvancedBackendServiceTest extends TestCase
         $this->assertIsArray($result['optimizations_applied']['database']);
     }
 
-    /** @test */
+    #[\PHPUnit\Framework\Attributes\Test]
     public function it_optimizes_caching_strategy()
     {
         $result = $this->service->optimizePerformance();
@@ -384,11 +387,11 @@ class AdvancedBackendServiceTest extends TestCase
         $this->assertTrue(Cache::has('dashboard.stats'));
     }
 
-    /** @test */
+    #[\PHPUnit\Framework\Attributes\Test]
     public function fraud_detection_returns_consistent_structure()
     {
         $transactionData = [
-            'user_id' => $this->user->id,
+            'user_id' => $this->customer->id,
             'amount' => 100,
             'ip_address' => '192.168.1.1',
             'user_agent' => 'Mozilla/5.0',

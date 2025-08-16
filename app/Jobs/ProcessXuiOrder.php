@@ -24,7 +24,7 @@ class ProcessXuiOrder implements ShouldQueue
         $this->order = $order;
     }
 
-    public function handle(ClientProvisioningService $provisioningService): void
+    public function handle(?ClientProvisioningService $provisioningService = null): void
     {
         Log::info("🚀 Starting enhanced XUI processing for Order #{$this->order->id}");
 
@@ -38,8 +38,10 @@ class ProcessXuiOrder implements ShouldQueue
                 ]);
                 return; // Exit without error so job won't retry prematurely
             }
+            // Resolve provisioning service if not provided
+            $service = $provisioningService ?: app(ClientProvisioningService::class);
             // Use the enhanced provisioning service
-            $results = $provisioningService->provisionOrder($this->order);
+            $results = $service->provisionOrder($this->order);
 
             Log::info("✅ Enhanced XUI processing completed for Order #{$this->order->id}", [
                 'results_summary' => $this->summarizeResults($results),

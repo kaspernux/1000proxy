@@ -130,7 +130,7 @@ class PaymentGatewayService
                 'amount' => $order->total_amount,
                 'currency' => $order->currency,
                 'order_id' => $order->id,
-                'customer_email' => $order->user->email,
+                'customer_email' => $order->customer?->email,
                 'description' => "Order #{$order->id} - 1000proxy",
             ]);
             return [
@@ -1477,9 +1477,9 @@ class PaymentGatewayService
 
     private function sendPaymentConfirmationNotifications(array $paymentData, array $paymentResult): void
     {
-        try {
-            $order = Order::find($paymentData['order_id']);
-            if ($order && $order->user) {
+    try {
+        $order = Order::find($paymentData['order_id']);
+        if ($order && $order->customer) {
                 // Send payment received confirmation
                 $this->mailService->sendPaymentReceivedEmail(
                     $order,
@@ -1490,7 +1490,7 @@ class PaymentGatewayService
                 Log::info('Payment confirmation notifications sent', [
                     'order_id' => $paymentData['order_id'],
                     'transaction_id' => $paymentResult['transaction_id'],
-                    'user_id' => $order->user_id
+            'customer_id' => $order->customer_id
                 ]);
             }
         } catch (\Exception $e) {
@@ -1505,10 +1505,11 @@ class PaymentGatewayService
     {
         try {
             $order = Order::find($paymentData['order_id']);
-            if ($order && $order->user) {
+            if ($order && $order->customer) {
                 // Send payment failed notification
                 $this->mailService->sendPaymentFailedEmail(
-                    $order->user,
+                    // Maintain signature with User type by constructing a lightweight object
+                    new \App\Models\User(['email' => $order->customer->email, 'name' => $order->customer->name, 'id' => 0]),
                     $paymentData['order_id'],
                     $paymentData['amount'] ?? 0,
                     $paymentResult['error'] ?? 'Payment processing failed'
@@ -1516,7 +1517,7 @@ class PaymentGatewayService
 
                 Log::warning('Payment failure notifications sent', [
                     'order_id' => $paymentData['order_id'],
-                    'user_id' => $order->user_id,
+                    'customer_id' => $order->customer_id,
                     'error' => $paymentResult['error']
                 ]);
             }

@@ -11,6 +11,7 @@ use App\Models\ServerBrand;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
+use PHPUnit\Framework\Attributes\Test;
 
 class FilamentIntegrationTest extends TestCase
 {
@@ -37,7 +38,7 @@ class FilamentIntegrationTest extends TestCase
         ]);
     }
 
-    /** @test */
+    #[Test]
     public function admin_panel_routes_are_accessible()
     {
         $this->actingAs($this->admin);
@@ -63,7 +64,7 @@ class FilamentIntegrationTest extends TestCase
         }
     }
 
-    /** @test */
+    #[Test]
     public function customer_panel_routes_are_accessible()
     {
         $this->actingAs($this->customer, 'customer');
@@ -85,7 +86,7 @@ class FilamentIntegrationTest extends TestCase
         }
     }
 
-    /** @test */
+    #[Test]
     public function admin_cannot_access_customer_panel()
     {
         $this->actingAs($this->admin);
@@ -94,7 +95,7 @@ class FilamentIntegrationTest extends TestCase
         $this->assertFalse($response->isOk());
     }
 
-    /** @test */
+    #[Test]
     public function customer_cannot_access_admin_panel()
     {
         $this->actingAs($this->customer, 'customer');
@@ -103,7 +104,7 @@ class FilamentIntegrationTest extends TestCase
         $this->assertEquals(403, $response->status());
     }
 
-    /** @test */
+    #[Test]
     public function unauthenticated_users_are_redirected()
     {
         // Test admin panel
@@ -115,7 +116,7 @@ class FilamentIntegrationTest extends TestCase
             ->assertRedirect('/login');
     }
 
-    /** @test */
+    #[Test]
     public function filament_resources_have_proper_permissions()
     {
         // Test as admin
@@ -133,7 +134,7 @@ class FilamentIntegrationTest extends TestCase
         $this->get('/admin/server-management/servers')->assertStatus(403);
     }
 
-    /** @test */
+    #[Test]
     public function filament_panels_load_with_correct_navigation()
     {
         // Test admin navigation
@@ -156,7 +157,7 @@ class FilamentIntegrationTest extends TestCase
         }
     }
 
-    /** @test */
+    #[Test]
     public function filament_resources_handle_data_correctly()
     {
         $this->actingAs($this->admin);
@@ -198,7 +199,7 @@ class FilamentIntegrationTest extends TestCase
             ->assertSee('Test Server');
     }
 
-    /** @test */
+    #[Test]
     public function filament_forms_validate_input()
     {
         $this->actingAs($this->admin);
@@ -217,7 +218,7 @@ class FilamentIntegrationTest extends TestCase
         );
     }
 
-    /** @test */
+    #[Test]
     public function filament_bulk_actions_work()
     {
         $this->actingAs($this->admin);
@@ -235,7 +236,7 @@ class FilamentIntegrationTest extends TestCase
         }
     }
 
-    /** @test */
+    #[Test]
     public function filament_search_functionality_works()
     {
         $this->actingAs($this->admin);
@@ -254,7 +255,7 @@ class FilamentIntegrationTest extends TestCase
         }
     }
 
-    /** @test */
+    #[Test]
     public function filament_filters_work()
     {
         $this->actingAs($this->admin);
@@ -273,7 +274,7 @@ class FilamentIntegrationTest extends TestCase
         }
     }
 
-    /** @test */
+    #[Test]
     public function filament_pagination_works()
     {
         $this->actingAs($this->admin);
@@ -290,7 +291,7 @@ class FilamentIntegrationTest extends TestCase
         }
     }
 
-    /** @test */
+    #[Test]
     public function customer_wallet_integration_works()
     {
         $this->actingAs($this->customer, 'customer');
@@ -306,7 +307,7 @@ class FilamentIntegrationTest extends TestCase
         }
     }
 
-    /** @test */
+    #[Test]
     public function order_management_integration_works()
     {
         $this->actingAs($this->customer, 'customer');

@@ -27,13 +27,19 @@ class FakeXUIService extends XUIService
         return $record;
     }
 
-    public function addClient(int $inboundId, string $clientSettings): bool
+    public function addClient(int $inboundId, string $clientSettings): array
     {
         $this->addedClients[] = [
             'inbound_id' => $inboundId,
             'settings' => $clientSettings,
         ];
-        return true;
+        return [
+            'success' => true,
+            'obj' => [
+                'id' => $inboundId,
+                'settings' => $clientSettings,
+            ],
+        ];
     }
 
     public function generateUID(): string

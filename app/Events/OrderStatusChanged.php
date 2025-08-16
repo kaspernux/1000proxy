@@ -35,7 +35,8 @@ class OrderStatusChanged implements ShouldBroadcast
     public function broadcastOn(): array
     {
         return [
-            new PrivateChannel('user.' . $this->order->user_id),
+            // Broadcast to the owning customer's private channel
+            new PrivateChannel('customer.' . $this->order->customer_id),
             new PrivateChannel('order.' . $this->order->id),
         ];
     }
@@ -47,6 +48,7 @@ class OrderStatusChanged implements ShouldBroadcast
     {
         return [
             'order_id' => $this->order->id,
+            'customer_id' => $this->order->customer_id,
             'old_status' => $this->oldStatus,
             'new_status' => $this->newStatus,
             'order' => $this->order->toArray(),

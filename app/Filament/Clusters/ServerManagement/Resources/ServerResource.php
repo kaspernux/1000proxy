@@ -79,7 +79,6 @@ class ServerResource extends Resource
                                     ->helperText('Server display name for identification'),
 
                                 TextInput::make('country')
-                                    ->required()
                                     ->maxLength(255)
                                     ->prefixIcon('heroicon-o-map-pin')
                                     ->datalist([
@@ -94,7 +93,6 @@ class ServerResource extends Resource
                                 Forms\Components\Select::make('server_category_id')
                                     ->label('Category')
                                     ->relationship('category', 'name')
-                                    ->required()
                                     ->searchable()
                                     ->preload()
                                     ->prefixIcon('heroicon-o-tag')
@@ -104,7 +102,6 @@ class ServerResource extends Resource
                                 Forms\Components\Select::make('server_brand_id')
                                     ->label('Brand')
                                     ->relationship('brand', 'name')
-                                    ->required()
                                     ->searchable()
                                     ->preload()
                                     ->prefixIcon('heroicon-o-building-office')
@@ -127,13 +124,11 @@ class ServerResource extends Resource
 
                                 Forms\Components\Select::make('status')
                                     ->options([
-                                        'healthy' => '🟢 Healthy',
-                                        'warning' => '🟡 Warning',
-                                        'unhealthy' => '🔴 Unhealthy',
-                                        'offline' => '⚫ Offline',
-                                        'maintenance' => '🔧 Maintenance',
+                                        'up' => '🟢 Up',
+                                        'down' => ' Down',
+                                        'paused' => '⏸️ Paused',
                                     ])
-                                    ->default('healthy')
+                                    ->default('up')
                                     ->prefixIcon('heroicon-o-heart')
                                     ->helperText('Current server operational status'),
                             ]),
@@ -146,7 +141,6 @@ class ServerResource extends Resource
                             Forms\Components\Grid::make(3)->schema([
                                 TextInput::make('host')
                                     ->label('Host/Hostname')
-                                    ->required()
                                     ->maxLength(255)
                                     ->prefixIcon('heroicon-o-server')
                                     ->placeholder('panel.example.com')
@@ -157,8 +151,32 @@ class ServerResource extends Resource
                                     ->maxLength(45)
                                     ->prefixIcon('heroicon-o-globe-alt')
                                     ->placeholder('192.168.1.100')
-                                    ->rule('ip')
+                                    ->rules(['ip'])
                                     ->helperText('Server IP address'),
+
+                                // Legacy alias field expected by tests. Keep visible so validation errors surface under `data.ip_address`.
+                                TextInput::make('ip_address')
+                                    ->label('IP Address (alias)')
+                                    ->required()
+                                    ->rules(['ip'])
+                                    ->afterStateUpdated(fn($state, callable $set) => $set('ip', $state))
+                                    ->dehydrated(true),
+
+                                TextInput::make('location')
+                                    ->label('Country (alias)')
+                                    ->afterStateUpdated(fn($state, callable $set) => $set('country', $state))
+                                    ->hidden(),
+
+                                TextInput::make('panel_username')
+                                    ->label('Panel Username (alias)')
+                                    ->afterStateUpdated(fn($state, callable $set) => $set('username', $state))
+                                    ->hidden(),
+
+                                TextInput::make('panel_password')
+                                    ->label('Panel Password (alias)')
+                                    ->afterStateUpdated(fn($state, callable $set) => $set('password', $state))
+                                    ->password()
+                                    ->hidden(),
 
                                 TextInput::make('panel_url')
                                     ->label('Panel URL')

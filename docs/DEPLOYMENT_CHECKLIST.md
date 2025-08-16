@@ -78,7 +78,7 @@
 - [ ] Alert notifications configured
 
 ## Documentation Review
-- [ ] Read SECURE_SETUP_GUIDE.md completely
+- [ ] Read SECURE_SETUP_GUIDE.md completely (docs hub canonical)
 - [ ] Review generated security reports
 - [ ] Document custom configurations
 - [ ] Save important passwords securely

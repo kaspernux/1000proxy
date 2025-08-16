@@ -13,6 +13,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Session;
 use Tests\TestCase;
+use PHPUnit\Framework\Attributes\Test;
 
 class UIUXTestSuite extends TestCase
 {
@@ -88,7 +89,7 @@ class UIUXTestSuite extends TestCase
         ]);
     }
 
-    /** @test */
+    #[Test]
     public function homepage_loads_with_correct_meta_tags()
     {
         $response = $this->get('/');
@@ -101,7 +102,7 @@ class UIUXTestSuite extends TestCase
             ->assertSee('og:', false); // OpenGraph tags
     }
 
-    /** @test */
+    #[Test]
     public function dark_mode_toggle_functionality_works()
     {
         $response = $this->get('/');
@@ -112,7 +113,7 @@ class UIUXTestSuite extends TestCase
             ->assertSee('localStorage', false);
     }
 
-    /** @test */
+    #[Test]
     public function mobile_navigation_is_responsive()
     {
         $response = $this->get('/', [
@@ -125,7 +126,7 @@ class UIUXTestSuite extends TestCase
             ->assertSee('hamburger', false);
     }
 
-    /** @test */
+    #[Test]
     public function form_validation_provides_user_friendly_errors()
     {
         $response = $this->post('/register', [
@@ -138,7 +139,7 @@ class UIUXTestSuite extends TestCase
             ->assertSee('error-message', false);
     }
 
-    /** @test */
+    #[Test]
     public function loading_states_are_displayed_during_form_submission()
     {
         $response = $this->get('/register');
@@ -149,7 +150,7 @@ class UIUXTestSuite extends TestCase
             ->assertSee('disabled-state', false);
     }
 
-    /** @test */
+    #[Test]
     public function server_cards_display_status_indicators()
     {
         $response = $this->get('/products');
@@ -160,7 +161,7 @@ class UIUXTestSuite extends TestCase
             ->assertSee('online', false);
     }
 
-    /** @test */
+    #[Test]
     public function filtering_system_provides_immediate_feedback()
     {
         $response = $this->get('/products');
@@ -171,7 +172,7 @@ class UIUXTestSuite extends TestCase
             ->assertSee('clear-filters', false);
     }
 
-    /** @test */
+    #[Test]
     public function breadcrumb_navigation_is_present()
     {
         $response = $this->get('/products/detail/1');
@@ -181,7 +182,7 @@ class UIUXTestSuite extends TestCase
             ->assertSee('nav aria-label="breadcrumb"', false);
     }
 
-    /** @test */
+    #[Test]
     public function search_functionality_works_with_autocomplete()
     {
         $response = $this->get('/products');
@@ -192,7 +193,7 @@ class UIUXTestSuite extends TestCase
             ->assertSee('search-suggestions', false);
     }
 
-    /** @test */
+    #[Test]
     public function pagination_is_keyboard_accessible()
     {
         $response = $this->get('/products');
@@ -203,7 +204,7 @@ class UIUXTestSuite extends TestCase
             ->assertSee('aria-label', false);
     }
 
-    /** @test */
+    #[Test]
     public function error_pages_are_user_friendly()
     {
         $response = $this->get('/non-existent-page');
@@ -214,7 +215,7 @@ class UIUXTestSuite extends TestCase
             ->assertSee('home', false); // Link back to home
     }
 
-    /** @test */
+    #[Test]
     public function cart_updates_are_reflected_immediately()
     {
         $this->actingAs($this->customer, 'customer');
@@ -228,7 +229,7 @@ class UIUXTestSuite extends TestCase
             ->assertJsonStructure(['cart_count', 'total']);
     }
 
-    /** @test */
+    #[Test]
     public function payment_forms_include_security_indicators()
     {
         $this->actingAs($this->customer, 'customer');
@@ -241,7 +242,7 @@ class UIUXTestSuite extends TestCase
             ->assertSee('encrypted', false);
     }
 
-    /** @test */
+    #[Test]
     public function tooltips_provide_helpful_information()
     {
         $response = $this->get('/products');
@@ -252,7 +253,7 @@ class UIUXTestSuite extends TestCase
             ->assertSee('title=', false);
     }
 
-    /** @test */
+    #[Test]
     public function buttons_have_proper_focus_states()
     {
         $response = $this->get('/');
@@ -262,7 +263,7 @@ class UIUXTestSuite extends TestCase
             ->assertSee('focus:outline', false);
     }
 
-    /** @test */
+    #[Test]
     public function images_have_proper_alt_attributes()
     {
         $response = $this->get('/');
@@ -271,7 +272,7 @@ class UIUXTestSuite extends TestCase
             ->assertSee('alt=', false);
     }
 
-    /** @test */
+    #[Test]
     public function tables_are_responsive_on_mobile()
     {
         $this->actingAs($this->admin);
@@ -285,7 +286,7 @@ class UIUXTestSuite extends TestCase
             ->assertSee('overflow-x-auto', false);
     }
 
-    /** @test */
+    #[Test]
     public function modals_trap_focus_properly()
     {
         $response = $this->get('/products');
@@ -296,7 +297,7 @@ class UIUXTestSuite extends TestCase
             ->assertSee('aria-hidden', false);
     }
 
-    /** @test */
+    #[Test]
     public function color_contrast_meets_accessibility_standards()
     {
         $response = $this->get('/');
@@ -308,7 +309,7 @@ class UIUXTestSuite extends TestCase
             ->assertDontSee('text-gray-300 bg-gray-200', false); // Low contrast combination
     }
 
-    /** @test */
+    #[Test]
     public function keyboard_shortcuts_are_documented()
     {
         $response = $this->get('/help/shortcuts');
@@ -319,7 +320,7 @@ class UIUXTestSuite extends TestCase
             ->assertSee('Ctrl', false);
     }
 
-    /** @test */
+    #[Test]
     public function loading_animations_are_smooth()
     {
         $response = $this->get('/products');
@@ -330,7 +331,7 @@ class UIUXTestSuite extends TestCase
             ->assertSee('ease', false);
     }
 
-    /** @test */
+    #[Test]
     public function empty_states_provide_clear_guidance()
     {
         // Clear all server plans to test empty state
@@ -344,7 +345,7 @@ class UIUXTestSuite extends TestCase
             ->assertSee('Try', false); // Suggestion text
     }
 
-    /** @test */
+    #[Test]
     public function success_messages_are_displayed_prominently()
     {
         $this->actingAs($this->customer, 'customer');
@@ -358,7 +359,7 @@ class UIUXTestSuite extends TestCase
             ->assertSee('alert-success', false);
     }
 
-    /** @test */
+    #[Test]
     public function form_fields_have_proper_labels()
     {
         $response = $this->get('/register');
@@ -369,7 +370,7 @@ class UIUXTestSuite extends TestCase
             ->assertSee('required', false);
     }
 
-    /** @test */
+    #[Test]
     public function performance_metrics_are_within_acceptable_ranges()
     {
         $start = microtime(true);
@@ -382,7 +383,7 @@ class UIUXTestSuite extends TestCase
         $this->assertLessThan(2.0, $duration, 'Page should load within 2 seconds');
     }
 
-    /** @test */
+    #[Test]
     public function css_and_js_assets_are_minified_in_production()
     {
         config(['app.env' => 'production']);
@@ -394,7 +395,7 @@ class UIUXTestSuite extends TestCase
             ->assertSee('.min.js', false);
     }
 
-    /** @test */
+    #[Test]
     public function progressive_enhancement_works_without_javascript()
     {
         $response = $this->get('/products');
@@ -405,7 +406,7 @@ class UIUXTestSuite extends TestCase
             ->assertSee('noscript', false); // Fallback content
     }
 
-    /** @test */
+    #[Test]
     public function offline_functionality_provides_appropriate_feedback()
     {
         $response = $this->get('/');
@@ -415,7 +416,7 @@ class UIUXTestSuite extends TestCase
             ->assertSee('network', false);
     }
 
-    /** @test */
+    #[Test]
     public function cross_browser_compatibility_elements_are_present()
     {
         $response = $this->get('/');
@@ -426,7 +427,7 @@ class UIUXTestSuite extends TestCase
             ->assertSee('ms', false); // Vendor prefixes
     }
 
-    /** @test */
+    #[Test]
     public function touch_targets_meet_minimum_size_requirements()
     {
         $response = $this->get('/', [
@@ -439,7 +440,7 @@ class UIUXTestSuite extends TestCase
             ->assertSee('touch-target', false);
     }
 
-    /** @test */
+    #[Test]
     public function screen_reader_announcements_are_present()
     {
         $response = $this->get('/products');
@@ -451,7 +452,7 @@ class UIUXTestSuite extends TestCase
             ->assertSee('role=', false);       // ARIA roles
     }
 
-    /** @test */
+    #[Test]
     public function print_styles_are_optimized()
     {
         $response = $this->get('/orders/' . $this->orders->first()->id);
@@ -461,7 +462,7 @@ class UIUXTestSuite extends TestCase
             ->assertSee('@media print', false);
     }
 
-    /** @test */
+    #[Test]
     public function internationalization_elements_are_prepared()
     {
         $response = $this->get('/');
@@ -472,7 +473,7 @@ class UIUXTestSuite extends TestCase
             ->assertSee('translate', false);  // Translation attributes
     }
 
-    /** @test */
+    #[Test]
     public function animation_preferences_are_respected()
     {
         $response = $this->get('/');

@@ -216,18 +216,18 @@
                         <h3 class="text-white font-semibold mb-3">Have a coupon?</h3>
                         <div class="space-y-3">
                             <input type="text"
-                                   wire:model="couponCode"
+                                   wire:model="coupon_code"
                                    placeholder="Enter coupon code"
                                    class="w-full px-4 py-2 bg-white/10 border border-white/20 rounded-lg text-white placeholder-white/50 focus:outline-none focus:border-green-500">
-                            <button wire:click="applyCoupon"
+                            <button wire:click="applyCouponCode"
                                     class="w-full bg-yellow-600 text-white py-2 rounded-lg hover:bg-yellow-700 transition duration-200">
-                                <span wire:loading.remove wire:target="applyCoupon">Apply Coupon</span>
-                                <span wire:loading wire:target="applyCoupon">Applying...</span>
+                                <span wire:loading.remove wire:target="applyCouponCode">Apply Coupon</span>
+                                <span wire:loading wire:target="applyCouponCode">Applying...</span>
                             </button>
                         </div>
                         @if($applied_coupon)
                         <div class="mt-3 p-2 bg-green-500/20 border border-green-500 rounded text-green-100 text-sm">
-                            Coupon "{{ $applied_coupon['code'] }}" applied - {{ $applied_coupon['discount'] }}% off
+                            Coupon "{{ $applied_coupon }}" applied
                         </div>
                         @endif
                     </div>
@@ -242,13 +242,13 @@
                         @if($applied_coupon)
                         <div class="flex justify-between text-green-400">
                             <span>Coupon Discount</span>
-                            <span>-{{ Number::currency($couponDiscount ?? 0) }}</span>
+                            <span>-{{ Number::currency($discount_amount ?? 0) }}</span>
                         </div>
                         @endif
 
                         <div class="flex justify-between text-white/80">
                             <span>Estimated Tax</span>
-                            <span>{{ Number::currency($estimatedTax ?? 0) }}</span>
+                            <span>{{ Number::currency($tax_amount ?? 0) }}</span>
                         </div>
 
                         <div class="flex justify-between text-white/80">
@@ -260,7 +260,8 @@
 
                         <div class="flex justify-between text-xl font-bold text-white">
                             <span>Total</span>
-                            <span>{{ Number::currency($finalAmount ?? $grand_amount) }}</span>
+                            @php($computedTotal = ($grand_amount + ($tax_amount ?? 0) + ($shipping_amount ?? 0) - ($discount_amount ?? 0)))
+                            <span>{{ Number::currency($computedTotal) }}</span>
                         </div>
                     </div>
 

@@ -80,7 +80,7 @@ Enterprise-grade security documentation
 Complete API and integration guides
 
 [📡 API Docs](api/API_DOCUMENTATION.md)<br>
-[🤖 Telegram Bot](../TELEGRAM_BOT_SETUP.md)<br>
+[🤖 Telegram Bot](integrations/TELEGRAM_BOT.md)<br>
 [💳 Payment Setup](configuration/PAYMENT_GATEWAYS.md)<br>
 [🖥️ XUI Integration](integrations/XUI_INTEGRATION.md)
 

@@ -52,9 +52,9 @@ return new class extends Migration
             $table->text('description')->nullable();
             $table->integer('capacity')->nullable();
             $table->decimal('price', 10, 2);
-            $table->enum('type', ['single', 'multiple', 'dedicated', 'branded']);
-            $table->integer('days');
-            $table->integer('volume');
+            $table->enum('type', ['single', 'multiple', 'dedicated', 'branded'])->default('single');
+            $table->integer('days')->default(30);
+            $table->integer('volume')->default(1);
 
             // Status flags
             $table->boolean('is_active')->default(true);

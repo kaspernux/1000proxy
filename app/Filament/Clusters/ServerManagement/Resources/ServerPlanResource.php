@@ -39,7 +39,12 @@ class ServerPlanResource extends Resource
 
     public static function getLabel(): string
     {
-        return 'Plans';
+        return 'Server Plan';
+    }
+
+    public static function getPluralLabel(): string
+    {
+        return 'Server Plans';
     }
 
     public static function form(Form $form): Form
@@ -91,14 +96,12 @@ class ServerPlanResource extends Resource
 
                     Select::make('type')
                         ->options([
-                            'basic' => 'Basic',
-                            'standard' => 'Standard',
-                            'premium' => 'Premium',
-                            'enterprise' => 'Enterprise',
-                            'trial' => 'Trial',
-                            'custom' => 'Custom',
+                            'single' => 'Single',
+                            'multiple' => 'Multiple',
+                            'dedicated' => 'Dedicated',
+                            'branded' => 'Branded',
                         ])
-                        ->default('standard')
+                        ->default('single')
                         ->required()
                         ->columnSpan(1)
                         ->helperText('Plan tier/type'),
@@ -210,8 +213,10 @@ class ServerPlanResource extends Resource
                             'vless' => 'VLESS',
                             'trojan' => 'Trojan',
                             'shadowsocks' => 'Shadowsocks',
-                            'wireguard' => 'WireGuard',
+                            'mixed' => 'Mixed',
                         ])
+                        ->default('vless')
+                        ->required()
                         ->helperText('Primary protocol type'),
 
                     TextInput::make('max_clients')

@@ -5,16 +5,51 @@ The 1000proxy API provides comprehensive endpoints for managing proxy clients, p
 
 ## Authentication
 All API endpoints require authentication using Laravel Sanctum tokens.
+Two principal actors exist:
+- User (admin/staff) via `api` guard
+- Customer (end-user) via `customer_api` guard
 
 ### Login
 ```http
-POST /api/login
+POST /api/login  # User/admin login
 Content-Type: application/json
 
 {
     "email": "user@example.com",
     "password": "password"
 }
+```
+
+### Customer Login
+```http
+POST /api/customer/login
+Content-Type: application/json
+
+{
+    "email": "customer@example.com",
+    "password": "password"
+}
+```
+
+### Customer Register
+```http
+POST /api/customer/register
+Content-Type: application/json
+
+{
+    "name": "Jane Customer",
+    "email": "customer@example.com",
+    "password": "password",
+    "password_confirmation": "password"
+}
+```
+
+### Customer Me / Refresh / Logout
+```http
+GET  /api/customer/me
+POST /api/customer/refresh
+POST /api/customer/logout
+Authorization: Bearer {customer_token}
 ```
 
 ### Response
@@ -57,7 +92,7 @@ Creates a new cryptocurrency payment for an order.
 
 ```http
 POST /api/payments/crypto
-Authorization: Bearer {token}
+Authorization: Bearer {token or customer_token}
 Content-Type: application/json
 
 {
@@ -89,7 +124,7 @@ Creates a payment invoice for an order.
 
 ```http
 POST /api/payments/invoice
-Authorization: Bearer {token}
+Authorization: Bearer {token or customer_token}
 Content-Type: application/json
 
 {
@@ -118,7 +153,7 @@ Retrieves the current status of a payment.
 
 ```http
 GET /api/payments/status/{payment_id}
-Authorization: Bearer {token}
+Authorization: Bearer {token or customer_token}
 ```
 
 #### Response
@@ -141,7 +176,7 @@ Get price estimate for currency conversion.
 
 ```http
 POST /api/payments/estimate
-Authorization: Bearer {token}
+Authorization: Bearer {token or customer_token}
 Content-Type: application/json
 
 {
@@ -169,7 +204,7 @@ Returns list of supported currencies.
 
 ```http
 GET /api/payments/currencies
-Authorization: Bearer {token}
+Authorization: Bearer {token or customer_token}
 ```
 
 #### Response
@@ -189,7 +224,7 @@ Returns all available server plans.
 
 ```http
 GET /api/server-plans
-Authorization: Bearer {token}
+Authorization: Bearer {token or customer_token}
 ```
 
 #### Response
@@ -225,7 +260,7 @@ Creates a new server plan (Admin only).
 
 ```http
 POST /api/server-plans
-Authorization: Bearer {token}
+Authorization: Bearer {token or customer_token}
 Content-Type: application/json
 
 {
@@ -249,7 +284,7 @@ Updates an existing server plan (Admin only).
 
 ```http
 PUT /api/server-plans/{id}
-Authorization: Bearer {token}
+Authorization: Bearer {token or customer_token}
 Content-Type: application/json
 
 {
@@ -314,8 +349,8 @@ Content-Type: application/json
 }
 ```
 
-### Get User Orders
-Returns all orders for the authenticated user.
+### Get Customer Orders
+Returns all orders for the authenticated customer (customer guard).
 
 ```http
 GET /api/orders
@@ -336,10 +371,10 @@ GET /api/orders/{id}
 Authorization: Bearer {token}
 ```
 
-## User Management Endpoints
+## Customer Management Endpoints
 
-### Get User Profile
-Returns the authenticated user's profile.
+### Get Customer Profile
+Returns the authenticated customer's profile.
 
 ```http
 GET /api/user/profile
@@ -353,8 +388,8 @@ Authorization: Bearer {token}
     "data": {
         "id": 1,
         "name": "John Doe",
-        "email": "user@example.com",
-        "role": "user",
+    "email": "customer@example.com",
+    "role": "customer",
         "is_active": true,
         "created_at": "2025-01-01T00:00:00Z",
         "last_login_at": "2025-07-08T12:00:00Z"
@@ -362,8 +397,8 @@ Authorization: Bearer {token}
 }
 ```
 
-### Update User Profile
-Updates the authenticated user's profile.
+### Update Customer Profile
+Updates the authenticated customer's profile.
 
 ```http
 PUT /api/user/profile
@@ -376,8 +411,8 @@ Content-Type: application/json
 }
 ```
 
-### Get User Server Clients
-Returns all server clients for the authenticated user.
+### Get Customer Server Clients
+Returns all server clients for the authenticated customer (customer guard).
 
 ```http
 GET /api/user/server-clients
@@ -467,6 +502,7 @@ All API responses include security headers:
 ## Supported Currencies
 ### Fiat Currencies
 - USD (US Dollar)
+- RUB (Russian Ruble)
 - EUR (Euro)
 - GBP (British Pound)
 - CAD (Canadian Dollar)
@@ -475,6 +511,7 @@ All API responses include security headers:
 
 ### Cryptocurrencies
 - BTC (Bitcoin)
+- USDT (Tether)
 - ETH (Ethereum)
 - XMR (Monero)
 - LTC (Litecoin)
@@ -494,7 +531,7 @@ For API support and questions:
 - Status Page: https://status.1000proxy.io
 
 ## Changelog
-### v1.0.0 (2025-07-08)
+### v1.0.0 (2025-08-16)
 - Initial API release
 - Payment processing endpoints
 - Server management endpoints

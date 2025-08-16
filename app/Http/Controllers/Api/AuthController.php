@@ -107,14 +107,12 @@ class AuthController extends Controller
     {
         $user = $request->user();
         
-        return response()->json([
+    return response()->json([
             'success' => true,
             'data' => [
                 'user' => $user->only(['id', 'name', 'username', 'email', 'role', 'last_login_at']),
-                'wallet' => $user->wallet ? [
-                    'balance' => $user->wallet->balance,
-                    'currency' => 'USD'
-                ] : null,
+        // Staff User model has no wallet; wallet is a Customer feature
+        'wallet' => null,
                 'telegram_linked' => $user->hasTelegramLinked(),
             ]
         ]);

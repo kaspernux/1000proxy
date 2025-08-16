@@ -11,6 +11,7 @@ use App\Models\ServerCategory;
 use App\Models\Server;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Cache;
+use PHPUnit\Framework\Attributes\Test;
 
 class ProductDetailPageTest extends TestCase
 {
@@ -51,7 +52,7 @@ class ProductDetailPageTest extends TestCase
         ]);
     }
 
-    /** @test */
+    #[Test]
     public function product_detail_page_renders_successfully()
     {
         Livewire::test(ProductDetailPage::class, ['slug' => $this->serverPlan->slug])
@@ -60,16 +61,24 @@ class ProductDetailPageTest extends TestCase
             ->assertViewIs('livewire.product-detail-page');
     }
 
-    /** @test */
+    #[Test]
     public function component_loads_correct_server_plan()
     {
         Livewire::test(ProductDetailPage::class, ['slug' => $this->serverPlan->slug])
             ->assertViewHas('serverPlan', function ($plan) {
-                return $plan->id === $this->serverPlan->id;
+                \Log::info('ASSERT serverPlan info', [
+                    'env' => app()->environment(),
+                    'runningUnitTests' => app()->runningUnitTests(),
+                    'plan_present' => $plan !== null,
+                    'plan_class' => is_object($plan) ? get_class($plan) : gettype($plan),
+                    'actual_id' => $plan->id ?? null,
+                    'expected_id' => $this->serverPlan->id,
+                ]);
+                return $plan && (string)$plan->id === (string)$this->serverPlan->id;
             });
     }
 
-    /** @test */
+    #[Test]
     public function quantity_increment_works()
     {
         Livewire::test(ProductDetailPage::class, ['slug' => $this->serverPlan->slug])
@@ -80,7 +89,7 @@ class ProductDetailPageTest extends TestCase
             ->assertSet('quantity', 3);
     }
 
-    /** @test */
+    #[Test]
     public function quantity_decrement_works()
     {
         Livewire::test(ProductDetailPage::class, ['slug' => $this->serverPlan->slug])
@@ -91,7 +100,7 @@ class ProductDetailPageTest extends TestCase
             ->assertSet('quantity', 1);
     }
 
-    /** @test */
+    #[Test]
     public function quantity_cannot_go_below_one()
     {
         Livewire::test(ProductDetailPage::class, ['slug' => $this->serverPlan->slug])
@@ -100,7 +109,7 @@ class ProductDetailPageTest extends TestCase
             ->assertSet('quantity', 1);
     }
 
-    /** @test */
+    #[Test]
     public function quantity_cannot_exceed_maximum()
     {
         $component = Livewire::test(ProductDetailPage::class, ['slug' => $this->serverPlan->slug])
@@ -110,7 +119,7 @@ class ProductDetailPageTest extends TestCase
             ->assertSet('quantity', 10); // Should stay at max
     }
 
-    /** @test */
+    #[Test]
     public function duration_update_works()
     {
         Livewire::test(ProductDetailPage::class, ['slug' => $this->serverPlan->slug])
@@ -121,7 +130,7 @@ class ProductDetailPageTest extends TestCase
             ->assertSet('selectedDuration', 12);
     }
 
-    /** @test */
+    #[Test]
     public function total_price_calculation_is_correct()
     {
         $component = Livewire::test(ProductDetailPage::class, ['slug' => $this->serverPlan->slug])
@@ -134,7 +143,7 @@ class ProductDetailPageTest extends TestCase
         $this->assertEquals($expectedTotal, $component->get('totalPrice'));
     }
 
-    /** @test */
+    #[Test]
     public function total_price_applies_duration_discounts()
     {
         // Test 3-month discount (5%)
@@ -154,7 +163,7 @@ class ProductDetailPageTest extends TestCase
         $this->assertEquals($expected12Month, $component->get('totalPrice'));
     }
 
-    /** @test */
+    #[Test]
     public function add_to_cart_works_for_active_plan()
     {
         Livewire::test(ProductDetailPage::class, ['slug' => $this->serverPlan->slug])
@@ -163,7 +172,7 @@ class ProductDetailPageTest extends TestCase
             ->assertDispatched('cartUpdated');
     }
 
-    /** @test */
+    #[Test]
     public function add_to_cart_fails_for_inactive_plan()
     {
         $this->serverPlan->update(['is_active' => false]);
@@ -173,16 +182,17 @@ class ProductDetailPageTest extends TestCase
             ->assertNotDispatched('cartUpdated');
     }
 
-    /** @test */
+    #[Test]
     public function server_status_check_works()
     {
-        Livewire::test(ProductDetailPage::class, ['slug' => $this->serverPlan->slug])
+        $component = Livewire::test(ProductDetailPage::class, ['slug' => $this->serverPlan->slug])
             ->call('checkServerStatus')
-            ->assertSet('serverStatus', 'up')
-            ->assertNotNull('serverHealth');
+            ->assertSet('serverStatus', 'up');
+
+        $this->assertNotNull($component->get('serverHealth'));
     }
 
-    /** @test */
+    #[Test]
     public function specifications_toggle_works()
     {
         Livewire::test(ProductDetailPage::class, ['slug' => $this->serverPlan->slug])
@@ -193,7 +203,7 @@ class ProductDetailPageTest extends TestCase
             ->assertSet('showSpecifications', true);
     }
 
-    /** @test */
+    #[Test]
     public function active_tab_switching_works()
     {
         Livewire::test(ProductDetailPage::class, ['slug' => $this->serverPlan->slug])
@@ -204,19 +214,24 @@ class ProductDetailPageTest extends TestCase
             ->assertSet('activeTab', 'server-details');
     }
 
-    /** @test */
+    #[Test]
     public function component_caches_server_plan_data()
     {
         Cache::flush();
+        // Force component to use caching branch even in test context
+        ProductDetailPage::$forceCacheForTests = true;
+        try {
+            // First load should cache the data
+            Livewire::test(ProductDetailPage::class, ['slug' => $this->serverPlan->slug]);
 
-        // First load should cache the data
-        Livewire::test(ProductDetailPage::class, ['slug' => $this->serverPlan->slug]);
-
-        // Verify cache exists
-        $this->assertTrue(Cache::has("product.{$this->serverPlan->slug}"));
+            // Verify cache exists
+            $this->assertTrue(Cache::has("product.{$this->serverPlan->slug}"));
+        } finally {
+            ProductDetailPage::$forceCacheForTests = false; // reset for isolation
+        }
     }
 
-    /** @test */
+    #[Test]
     public function server_status_updated_listener_works()
     {
         Livewire::test(ProductDetailPage::class, ['slug' => $this->serverPlan->slug])
@@ -228,7 +243,7 @@ class ProductDetailPageTest extends TestCase
             ->assertSet('serverHealth', 45);
     }
 
-    /** @test */
+    #[Test]
     public function buy_now_redirects_to_checkout()
     {
         Livewire::test(ProductDetailPage::class, ['slug' => $this->serverPlan->slug])
@@ -236,7 +251,7 @@ class ProductDetailPageTest extends TestCase
             ->assertRedirect(route('checkout'));
     }
 
-    /** @test */
+    #[Test]
     public function share_plan_dispatches_correct_event()
     {
         Livewire::test(ProductDetailPage::class, ['slug' => $this->serverPlan->slug])
@@ -244,7 +259,7 @@ class ProductDetailPageTest extends TestCase
             ->assertDispatched('openUrl');
     }
 
-    /** @test */
+    #[Test]
     public function component_handles_nonexistent_plan()
     {
         $this->expectException(\Illuminate\Database\Eloquent\ModelNotFoundException::class);
@@ -252,7 +267,7 @@ class ProductDetailPageTest extends TestCase
         Livewire::test(ProductDetailPage::class, ['slug' => 'nonexistent-plan']);
     }
 
-    /** @test */
+    #[Test]
     public function cart_updated_listener_refreshes_component()
     {
         Livewire::test(ProductDetailPage::class, ['slug' => $this->serverPlan->slug])

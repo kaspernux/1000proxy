@@ -12,6 +12,7 @@ use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Livewire\Livewire;
 use Tests\TestCase;
+use PHPUnit\Framework\Attributes\Test;
 
 class AdminPanelTest extends TestCase
 {
@@ -85,7 +86,7 @@ class AdminPanelTest extends TestCase
         ]);
     }
 
-    /** @test */
+    #[Test]
     public function admin_can_access_admin_panel()
     {
         $this->actingAs($this->admin)
@@ -94,7 +95,7 @@ class AdminPanelTest extends TestCase
             ->assertSee('Dashboard');
     }
 
-    /** @test */
+    #[Test]
     public function admin_can_view_customers_resource()
     {
         $this->actingAs($this->admin)
@@ -103,7 +104,7 @@ class AdminPanelTest extends TestCase
             ->assertSee('Customers');
     }
 
-    /** @test */
+    #[Test]
     public function admin_can_view_orders_resource()
     {
         $this->actingAs($this->admin)
@@ -112,7 +113,7 @@ class AdminPanelTest extends TestCase
             ->assertSee('Orders');
     }
 
-    /** @test */
+    #[Test]
     public function admin_can_view_servers_resource()
     {
         $this->actingAs($this->admin)
@@ -121,7 +122,7 @@ class AdminPanelTest extends TestCase
             ->assertSee('Servers');
     }
 
-    /** @test */
+    #[Test]
     public function admin_can_view_server_plans_resource()
     {
         $this->actingAs($this->admin)
@@ -130,7 +131,7 @@ class AdminPanelTest extends TestCase
             ->assertSee('Server Plans');
     }
 
-    /** @test */
+    #[Test]
     public function admin_can_create_customer()
     {
         $this->actingAs($this->admin);
@@ -153,7 +154,7 @@ class AdminPanelTest extends TestCase
         ]);
     }
 
-    /** @test */
+    #[Test]
     public function admin_can_edit_customer()
     {
         $this->actingAs($this->admin);
@@ -175,7 +176,7 @@ class AdminPanelTest extends TestCase
         ]);
     }
 
-    /** @test */
+    #[Test]
     public function admin_can_delete_customer()
     {
         $this->actingAs($this->admin);
@@ -190,7 +191,7 @@ class AdminPanelTest extends TestCase
         ]);
     }
 
-    /** @test */
+    #[Test]
     public function admin_can_create_server()
     {
         $this->actingAs($this->admin);
@@ -216,7 +217,7 @@ class AdminPanelTest extends TestCase
         ]);
     }
 
-    /** @test */
+    #[Test]
     public function admin_can_create_server_plan()
     {
         $this->actingAs($this->admin);
@@ -241,7 +242,7 @@ class AdminPanelTest extends TestCase
         ]);
     }
 
-    /** @test */
+    #[Test]
     public function admin_can_filter_customers()
     {
         $this->actingAs($this->admin);
@@ -252,7 +253,7 @@ class AdminPanelTest extends TestCase
             ->assertCanSeeTableRecords($this->customers->where('is_active', true));
     }
 
-    /** @test */
+    #[Test]
     public function admin_can_search_customers()
     {
         $this->actingAs($this->admin);
@@ -264,7 +265,7 @@ class AdminPanelTest extends TestCase
             ->assertCanSeeTableRecords([$customer]);
     }
 
-    /** @test */
+    #[Test]
     public function admin_can_bulk_delete_customers()
     {
         $this->actingAs($this->admin);
@@ -281,7 +282,7 @@ class AdminPanelTest extends TestCase
         }
     }
 
-    /** @test */
+    #[Test]
     public function admin_panel_form_validation_works()
     {
         $this->actingAs($this->admin);
@@ -307,7 +308,7 @@ class AdminPanelTest extends TestCase
             ->assertHasFormErrors(['ip_address']);
     }
 
-    /** @test */
+    #[Test]
     public function admin_panel_relationships_work()
     {
         $this->actingAs($this->admin);
@@ -325,7 +326,7 @@ class AdminPanelTest extends TestCase
             ->assertSee($this->customers->first()->name);
     }
 
-    /** @test */
+    #[Test]
     public function admin_panel_is_mobile_responsive()
     {
         $this->actingAs($this->admin);

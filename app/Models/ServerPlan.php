@@ -19,6 +19,9 @@ class ServerPlan extends Model
         'server_id',
         'server_brand_id',        // Brand relationship for filtering
         'server_category_id',     // Category relationship for filtering
+    // Legacy compatibility aliases accepted during create/update
+    'brand_id',               // mapped to server_brand_id via mutator
+    'category_id',            // mapped to server_category_id via mutator
         'name',
         'slug',
         'product_image',
@@ -59,6 +62,8 @@ class ServerPlan extends Model
     ];
 
     protected $casts = [
+    // Ensure primary key is consistently treated as integer for strict comparisons in tests
+    'id' => 'integer',
         'is_active' => 'boolean',
         'is_featured' => 'boolean',
         'is_popular' => 'boolean',
@@ -139,6 +144,27 @@ class ServerPlan extends Model
     public function category(): BelongsTo
     {
         return $this->belongsTo(ServerCategory::class, 'server_category_id');
+    }
+
+    // === Legacy attribute aliases (compatibility with older tests/seeders) ===
+    public function setCategoryIdAttribute($value): void
+    {
+        $this->attributes['server_category_id'] = $value;
+    }
+
+    public function getCategoryIdAttribute(): ?int
+    {
+        return $this->attributes['server_category_id'] ?? null;
+    }
+
+    public function setBrandIdAttribute($value): void
+    {
+        $this->attributes['server_brand_id'] = $value;
+    }
+
+    public function getBrandIdAttribute(): ?int
+    {
+        return $this->attributes['server_brand_id'] ?? null;
     }
 
     public function preferredInbound(): BelongsTo

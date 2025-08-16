@@ -199,7 +199,7 @@ Admin commands are only available to users with admin privileges. Admin access i
   - User management
   - Server monitoring
   - System statistics
-  - Broadcast messaging
+  - Broadcast messaging to customers
 
 #### `/users [email]`
 - **Purpose**: User management and search
@@ -355,7 +355,7 @@ Your Telegram bot is now fully configured and ready for production use. Users ca
 Administrators can:
 - Monitor system health
 - Manage users efficiently
-- Send broadcast announcements
+- Send broadcast announcements to customers
 - Access comprehensive analytics
 
 The bot provides a complete alternative interface to your web platform, enhancing user experience and reducing support overhead.
