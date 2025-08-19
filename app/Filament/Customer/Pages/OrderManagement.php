@@ -36,8 +36,9 @@ class OrderManagement extends Page implements HasTable
     {
         return $table
             ->query($this->getOrdersQuery())
+            ->columnManager()
             ->headerActions([
-                Tables\Actions\ToggleColumnsAction::make(),
+                $table->getColumnManagerTriggerAction()->label('Columns'),
                 \Filament\Actions\ActionGroup::make([
                     \Filament\Actions\Action::make('export_csv')
                         ->label('Export CSV')

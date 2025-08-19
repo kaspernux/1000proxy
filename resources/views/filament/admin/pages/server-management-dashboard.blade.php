@@ -1,5 +1,23 @@
 <x-filament-panels::page>
     <div class="space-y-6">
+        <!-- Admin Server Actions -->
+        <div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
+            <div class="px-6 py-4 bg-gradient-to-r from-primary-50 to-blue-50 dark:from-primary-900/20 dark:to-blue-900/20 border-b border-gray-200 dark:border-gray-700">
+                <div class="flex items-center gap-3">
+                    <div class="p-2 bg-primary-100 dark:bg-primary-900/30 rounded-xl">
+                        <x-heroicon-o-cog-6-tooth class="w-6 h-6 text-primary-600 dark:text-primary-400" />
+                    </div>
+                    <div>
+                        <h3 class="text-lg font-semibold text-gray-900 dark:text-white">Admin Actions</h3>
+                        <p class="text-sm text-gray-600 dark:text-gray-400">Run bulk health checks and refresh the dashboard</p>
+                    </div>
+                </div>
+            </div>
+            <div class="p-6">
+                {{ $this->form }}
+            </div>
+        </div>
+
         <!-- Summary Cards -->
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
             <div class="bg-white dark:bg-gray-800 overflow-hidden shadow rounded-lg">

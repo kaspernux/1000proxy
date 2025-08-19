@@ -21,6 +21,11 @@ use App\Services\QrCodeService;
 use Filament\Notifications\Notification;
 use Filament\Tables\Concerns\InteractsWithTable;
 use Filament\Forms;
+use Filament\Forms\Concerns\InteractsWithForms;
+use Filament\Forms\Form;
+use Filament\Forms\Components\Select;
+use Filament\Forms\Components\Toggle;
+use Filament\Forms\Components\Actions as FormActions;
 use Filament\Tables;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Filters\Filter;
@@ -30,12 +35,15 @@ use BackedEnum;
 
 class MyActiveServers extends Page implements HasTable
 {
-    use InteractsWithTable;
+    use InteractsWithTable, InteractsWithForms;
 
     protected static string | BackedEnum | null $navigationIcon = 'heroicon-o-server-stack';
     protected static ?string $navigationLabel = 'My Active Servers';
     protected string $view = 'filament.customer.pages.my-active-servers';
     protected static ?int $navigationSort = 2;
+
+    // Livewire state for Filament form
+    public ?array $data = [];
 
     public static function getNavigationBadge(): ?string
     {
@@ -61,8 +69,9 @@ class MyActiveServers extends Page implements HasTable
     {
         return $table
             ->query($this->getServerClientsQuery())
+            ->columnManager()
             ->headerActions([
-                Tables\Actions\ToggleColumnsAction::make(),
+                $table->getColumnManagerTriggerAction()->label('Columns'),
                 \Filament\Actions\ActionGroup::make([
                     \Filament\Actions\Action::make('export_csv')
                         ->label('Export CSV')
@@ -348,6 +357,49 @@ class MyActiveServers extends Page implements HasTable
             ->persistSortInSession();
     }
 
+    public function form(Form $form): Form
+    {
+        return $form
+            ->schema([
+                Select::make('operation')
+                    ->label('Operation')
+                    ->options([
+                        'export_json' => 'Export All (JSON)',
+                        'export_csv' => 'Export All (CSV)',
+                        'refresh' => 'Refresh Statuses',
+                    ])
+                    ->default('export_json')
+                    ->required(),
+
+                Toggle::make('include_inactive')
+                    ->label('Include inactive/suspended in export')
+                    ->default(false)
+                    ->helperText('Only applies to CSV export.'),
+
+                FormActions::make([
+                    \Filament\Forms\Components\Actions\Action::make('run')
+                        ->label('Run')
+                        ->color('primary')
+                        ->submit('run'),
+                ])->fullWidth(),
+            ])
+            ->statePath('data');
+    }
+
+    public function run(): void
+    {
+        $state = $this->form->getState();
+        $operation = $state['operation'] ?? null;
+        $includeInactive = (bool)($state['include_inactive'] ?? false);
+
+        match ($operation) {
+            'export_json' => $this->exportAllConfigurations(),
+            'export_csv' => $this->exportActiveServers('csv', $includeInactive),
+            'refresh' => $this->refreshAllStatuses(),
+            default => null,
+        };
+    }
+
     protected function getHeaderActions(): array
     {
         return [
@@ -481,13 +533,18 @@ class MyActiveServers extends Page implements HasTable
             ->send();
     }
 
-    protected function exportActiveServers(string $format = 'csv'): void
+    protected function exportActiveServers(string $format = 'csv', bool $includeInactive = false): void
     {
         $customer = Auth::guard('customer')->user();
-        $clients = ServerClient::where('customer_id', $customer->id)
+        $query = ServerClient::where('customer_id', $customer->id)
             ->with('serverInbound.server')
-            ->latest()
-            ->get();
+            ->latest();
+
+        if (!$includeInactive) {
+            $query->where('status', 'active');
+        }
+
+        $clients = $query->get();
 
         if ($clients->isEmpty()) {
             Notification::make()

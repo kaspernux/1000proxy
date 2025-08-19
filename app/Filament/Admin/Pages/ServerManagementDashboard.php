@@ -11,12 +11,18 @@ use Filament\Actions\Action;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
-use Filament\Forms\Form;
+use Filament\Forms\Form as AdminForm;
 use Filament\Notifications\Notification;
+use Filament\Forms\Concerns\InteractsWithForms;
+use Filament\Forms\Form;
+use Filament\Forms\Components\Select as FormSelect;
+use Filament\Forms\Components\Toggle as FormToggle;
+use Filament\Forms\Components\Actions as FormActions;
 use Illuminate\Support\Facades\Cache;
 
 class ServerManagementDashboard extends Page
 {
+    use InteractsWithForms;
     protected static string | BackedEnum | null $navigationIcon = 'heroicon-o-server-stack';
     protected string $view = 'filament.admin.pages.server-management-dashboard';
     protected static ?string $navigationLabel = 'Server Management';
@@ -26,6 +32,7 @@ class ServerManagementDashboard extends Page
 
     public array $dashboardData = [];
     public array $bulkHealthResults = [];
+    public ?array $data = [];
     public bool $showProvisioningForm = false;
 
     protected ServerManagementService $serverManagementService;
@@ -137,6 +144,50 @@ class ServerManagementDashboard extends Page
                         ->send();
                 }),
         ];
+    }
+
+    public function form(AdminForm $form): AdminForm
+    {
+        return $form
+            ->schema([
+                FormSelect::make('admin_operation')
+                    ->label('Operation')
+                    ->options([
+                        'bulk_health' => 'Run Bulk Health Check',
+                        'refresh' => 'Refresh Dashboard',
+                    ])
+                    ->default('bulk_health')
+                    ->required(),
+
+                FormToggle::make('deep_checks')
+                    ->label('Perform deep checks')
+                    ->default(false),
+
+                FormActions::make([
+                    \Filament\Forms\Components\Actions\Action::make('run_admin')
+                        ->label('Run')
+                        ->color('primary')
+                        ->submit('runAdmin'),
+                ])->fullWidth(),
+            ])
+            ->statePath('data');
+    }
+
+    public function runAdmin(): void
+    {
+        $state = $this->form->getState();
+        $operation = $state['admin_operation'] ?? null;
+
+        match ($operation) {
+            'bulk_health' => $this->runBulkHealthCheck(),
+            'refresh' => $this->loadDashboardData(),
+            default => null,
+        };
+
+        Notification::make()
+            ->title('Action executed')
+            ->success()
+            ->send();
     }
 
     public function runBulkHealthCheck(): void
