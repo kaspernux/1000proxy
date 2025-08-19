@@ -11,7 +11,7 @@ class CacheOptimizationService
 {
     // Cache prefixes for different data types
     const SERVER_CACHE_PREFIX = 'server:';
-    const USER_CACHE_PREFIX = 'customer:';
+    const USER_CACHE_PREFIX = 'user:';
     const ORDER_CACHE_PREFIX = 'order:';
     const ANALYTICS_CACHE_PREFIX = 'analytics:';
     const REAL_TIME_CACHE_PREFIX = 'realtime:';

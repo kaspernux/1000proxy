@@ -29,17 +29,20 @@ class SupportOverviewWidget extends BaseWidget
             Stat::make('Reviews', $reviews)
                 ->icon('heroicon-o-chat-bubble-left-ellipsis')
                 ->description('Feedback submitted')
-                ->color('info'),
+                ->color('info')
+                ->extraAttributes(['class' => 'kp-stat kp-stat--info']),
 
             Stat::make('Ratings', $ratings)
                 ->icon('heroicon-o-star')
                 ->description('Servers rated')
-                ->color('success'),
+                ->color('success')
+                ->extraAttributes(['class' => 'kp-stat kp-stat--success']),
 
             Stat::make('Avg Rating', "⭐ {$avgFmt}")
                 ->icon('heroicon-o-adjustments-horizontal')
                 ->description('Average score')
-                ->color($average >= 4 ? 'success' : ($average >= 2 ? 'warning' : 'danger')),
+                ->color($average >= 4 ? 'success' : ($average >= 2 ? 'warning' : 'danger'))
+                ->extraAttributes(['class' => 'kp-stat ' . ($average >= 4 ? 'kp-stat--success' : ($average >= 2 ? 'kp-stat--warning' : 'kp-stat--danger'))]),
         ];
     }
 }

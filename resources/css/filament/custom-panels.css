@@ -1,0 +1,24 @@
+/* 1000proxy – Filament Panels Custom Theme (Tailwind v4, CSS-first)
+   This file aggregates your existing custom theme CSS and ships it only on Filament pages.
+   It keeps Filament v4's native theme while restoring your prior look & components.
+*/
+
+@import "tailwindcss";
+
+/* Tailwind scan is configured in resources/css/app.css; no need to repeat here. */
+
+/* Your design tokens and full custom theme layers */
+@import "../design-tokens.css";
+@import "../enhanced-theme-system.css";
+@import "../components.css";
+@import "../mobile-responsive.css";
+@import "../ux-enhancements.css";
+
+/* Optional: minimal admin theme tweaks you had previously (kept last so they can refine specifics) */
+@import "./admin/theme.css";
+
+/* Notes:
+   - We deliberately DO NOT override Filament's CSS here; these rules are additive.
+   - Global selectors in imported files only apply on Filament pages because we include this CSS
+     exclusively in Filament panel layouts via a render hook.
+*/

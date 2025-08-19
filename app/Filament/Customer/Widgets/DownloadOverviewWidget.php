@@ -25,7 +25,8 @@ class DownloadOverviewWidget extends BaseWidget
                 ->description('Files included with your services')
                 ->descriptionIcon('heroicon-m-document-text')
                 ->icon('heroicon-o-document-text')
-                ->color('info'),
+                ->color('info')
+                ->extraAttributes(['class' => 'kp-stat kp-stat--info']),
         ];
     }
 }

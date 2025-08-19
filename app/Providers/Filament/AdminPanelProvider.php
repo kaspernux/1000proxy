@@ -153,6 +153,18 @@ class AdminPanelProvider extends PanelProvider
                         \Filament\View\PanelsRenderHook::HEAD_END,
                         fn () => new \Illuminate\Support\HtmlString('<!-- class="responsive" viewport mobile -->'),
                     );
+                
+                    // Inject shared Filament custom CSS (scoped) used by both panels
+                    \Filament\Support\Facades\FilamentView::registerRenderHook(
+                        \Filament\View\PanelsRenderHook::HEAD_END,
+                        fn () => view('partials.filament-custom-theme'),
+                    );
+
+                    // Add aggregated Tailwind custom theme for Filament panels (keeps native theme)
+                    \Filament\Support\Facades\FilamentView::registerRenderHook(
+                        \Filament\View\PanelsRenderHook::HEAD_END,
+                        fn () => new \Illuminate\Support\HtmlString( app(\Illuminate\Foundation\Vite::class)(['resources/css/filament/custom-panels.css']) ),
+                    );
             });
     }
 }

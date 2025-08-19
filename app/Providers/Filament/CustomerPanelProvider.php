@@ -140,13 +140,25 @@ class CustomerPanelProvider extends PanelProvider
                     fn () => view('partials.livewire-alert-filament'),
                 );
 
-                // Add quick actions to the topbar
+                // Inject shared Filament custom CSS (scoped) used by both panels
                 \Filament\Support\Facades\FilamentView::registerRenderHook(
-                    \Filament\View\PanelsRenderHook::TOPBAR_AFTER,
+                    \Filament\View\PanelsRenderHook::HEAD_END,
+                    fn () => view('partials.filament-custom-theme'),
+                );
+
+                // Add aggregated Tailwind custom theme for Filament panels (keeps native theme)
+                \Filament\Support\Facades\FilamentView::registerRenderHook(
+                    \Filament\View\PanelsRenderHook::HEAD_END,
+                    fn () => new \Illuminate\Support\HtmlString( app(\Illuminate\Foundation\Vite::class)(['resources/css/filament/custom-panels.css']) ),
+                );
+
+                // Quick actions: move next to the page title/actions for better context
+                \Filament\Support\Facades\FilamentView::registerRenderHook(
+                    \Filament\View\PanelsRenderHook::PAGE_HEADER_ACTIONS_AFTER,
                     function () {
                         return <<<'HTML'
-                            <div class="hidden md:flex items-center gap-2 pr-2">
-                                <a href="/account/my-active-servers" class="inline-flex items-center gap-1 px-2 py-1 text-sm rounded bg-emerald-600 text-white hover:bg-emerald-700 hs-transition-opacity"> 
+                            <div class="hidden md:flex items-center gap-2">
+                                <!-- <a href="/account/my-active-servers" class="inline-flex items-center gap-1 px-2 py-1 text-sm rounded bg-emerald-600 text-white hover:bg-emerald-700 hs-transition-opacity"> 
                                     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-4"><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 3v11.25A2.25 2.25 0 006 16.5h3.75M3.75 3h16.5M3.75 3H6m14.25 0v11.25A2.25 2.25 0 0118 16.5h-2.25m4.5-13.5H18m0 0H6M9.75 16.5H6m3.75 0h3.75m0 0V21m0-4.5H18" /></svg>
                                     <span>Active</span>
                                 </a>
@@ -157,7 +169,7 @@ class CustomerPanelProvider extends PanelProvider
                                 <a href="/account/wallet-management" class="inline-flex items-center gap-1 px-2 py-1 text-sm rounded bg-amber-600 text-white hover:bg-amber-700 hs-transition-opacity">
                                     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-4"><path stroke-linecap="round" stroke-linejoin="round" d="M21 12.75V8.25A2.25 2.25 0 0018.75 6h-15A2.25 2.25 0 001.5 8.25v7.5A2.25 2.25 0 003.75 18h12.75A2.25 2.25 0 0018.75 15.75V12.75M21 12.75h-3.75a2.25 2.25 0 100 4.5H21v-4.5z" /></svg>
                                     <span>Wallet</span>
-                                </a>
+                                </a> -->
                                 <button id="theme-toggle" type="button" class="inline-flex items-center gap-1 px-2 py-1 text-sm rounded bg-gray-700 text-white hover:bg-gray-800 hs-transition-opacity">
                                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="size-4"><path d="M21.752 15.002A9.718 9.718 0 0019.5 15.75c-5.385 0-9.75-4.365-9.75-9.75 0-.79.091-1.56.263-2.296A9.753 9.753 0 003 11.25C3 16.635 7.365 21 12.75 21a9.753 9.753 0 009.002-5.998z" /></svg>
                                     <span>Theme</span>
@@ -165,16 +177,35 @@ class CustomerPanelProvider extends PanelProvider
                             </div>
                             <script>
                                 (function(){
-                                    const btn = document.getElementById('theme-toggle');
-                                    if (!btn) return;
-                                    btn.addEventListener('click', function(){
-                                        const root = document.documentElement;
-                                        const isDark = root.classList.toggle('dark');
-                                        // Persist to session via fetch to a tiny endpoint (optional/no-op if missing)
-                                        fetch('/api/theme', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content }, body: JSON.stringify({ mode: isDark ? 'dark' : 'light' }) }).catch(()=>{});
+                                    document.addEventListener('click', function(e){
+                                        if (e.target && (e.target.id === 'theme-toggle' || e.target.closest('#theme-toggle'))) {
+                                            const root = document.documentElement;
+                                            const isDark = root.classList.toggle('dark');
+                                            fetch('/api/theme', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content }, body: JSON.stringify({ mode: isDark ? 'dark' : 'light' }) }).catch(()=>{});
+                                        }
                                     });
                                 })();
                             </script>
+                        HTML;
+                    }
+                );
+
+                // Mobile-friendly quick actions below header widgets
+                \Filament\Support\Facades\FilamentView::registerRenderHook(
+                    \Filament\View\PanelsRenderHook::PAGE_HEADER_WIDGETS_AFTER,
+                    function () {
+                        return <<<'HTML'
+                            <div class="md:hidden grid grid-cols-3 gap-2 mt-2">
+                                <!-- <a href="/account/my-active-servers" class="inline-flex items-center justify-center gap-1 px-2 py-2 text-sm rounded bg-emerald-600 text-white hover:bg-emerald-700">
+                                    <span>Active</span>
+                                </a>
+                                <a href="/account/server-browsing" class="inline-flex items-center justify-center gap-1 px-2 py-2 text-sm rounded bg-sky-600 text-white hover:bg-sky-700">
+                                    <span>Browse</span>
+                                </a> -->
+                                <a href="/account/wallet-management" class="inline-flex items-center justify-center gap-1 px-2 py-2 text-sm rounded bg-amber-600 text-white hover:bg-amber-700">
+                                    <span>Wallet</span>
+                                </a>
+                            </div>
                         HTML;
                     }
                 );

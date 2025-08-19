@@ -5,7 +5,6 @@ namespace Tests\Feature\Livewire\Auth;
 use Tests\TestCase;
 use Livewire\Livewire;
 use App\Livewire\Auth\LoginPage;
-use App\Models\User;
 use App\Models\Customer;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
@@ -16,7 +15,6 @@ class LoginPageTest extends TestCase
 {
     use RefreshDatabase;
 
-    protected $adminUser;
     protected $customer;
 
     protected function setUp(): void
@@ -31,12 +29,6 @@ class LoginPageTest extends TestCase
 
     private function createTestUsers()
     {
-        $this->adminUser = User::factory()->create([
-            'email' => 'admin@example.com',
-            'password' => Hash::make('password123'),
-            'role' => 'admin'
-        ]);
-
         $this->customer = Customer::factory()->create([
             'email' => 'customer@example.com',
             'password' => Hash::make('password123')
@@ -50,18 +42,6 @@ class LoginPageTest extends TestCase
             ->assertStatus(200)
             ->assertViewIs('livewire.auth.login-page')
             ->assertSee('Sign In');
-    }
-
-    /** @test */
-    public function admin_login_works_with_valid_credentials()
-    {
-        Livewire::test(LoginPage::class)
-            ->set('email', 'admin@example.com')
-            ->set('password', 'password123')
-            ->call('save')
-            ->assertRedirect('/admin');
-
-        $this->assertTrue(Auth::guard('web')->check());
     }
 
     /** @test */
@@ -85,7 +65,6 @@ class LoginPageTest extends TestCase
             ->call('save')
             ->assertHasErrors('email');
 
-        $this->assertFalse(Auth::guard('web')->check());
         $this->assertFalse(Auth::guard('customer')->check());
     }
 
@@ -103,7 +82,7 @@ class LoginPageTest extends TestCase
     public function password_validation_works()
     {
         Livewire::test(LoginPage::class)
-            ->set('email', 'admin@example.com')
+            ->set('email', 'customer@example.com')
             ->set('password', '123') // Too short
             ->call('save')
             ->assertHasErrors('password');
@@ -157,7 +136,7 @@ class LoginPageTest extends TestCase
         }
 
         // 6th attempt should be rate limited
-        $component->set('email', 'admin@example.com')
+        $component->set('email', 'customer@example.com')
             ->set('password', 'password123')
             ->call('save')
             ->assertHasErrors('email');
@@ -192,7 +171,7 @@ class LoginPageTest extends TestCase
 
         // Successful login should clear attempts
         Livewire::test(LoginPage::class)
-            ->set('email', 'admin@example.com')
+            ->set('email', 'customer@example.com')
             ->set('password', 'password123')
             ->call('save');
 
@@ -204,7 +183,7 @@ class LoginPageTest extends TestCase
     {
         Livewire::test(LoginPage::class)
             ->assertSet('is_loading', false)
-            ->set('email', 'admin@example.com')
+            ->set('email', 'customer@example.com')
             ->set('password', 'password123')
             ->call('save');
 
@@ -215,9 +194,9 @@ class LoginPageTest extends TestCase
     public function password_reset_request_works()
     {
         Livewire::test(LoginPage::class)
-            ->set('email', 'admin@example.com')
+            ->set('email', 'customer@example.com')
             ->call('requestPasswordReset')
-            ->assertRedirect(route('auth.forgot', ['email' => 'admin@example.com']));
+            ->assertRedirect(route('auth.forgot', ['email' => 'customer@example.com']));
     }
 
     /** @test */
@@ -257,17 +236,8 @@ class LoginPageTest extends TestCase
     public function social_login_success_handler_works()
     {
         Livewire::test(LoginPage::class)
-            ->dispatch('socialLoginSuccess', 'google', ['user' => 'test'])
+            ->dispatch('socialLoginSuccess', 'google', ['customer' => 'test'])
             ->assertRedirect('/servers');
-    }
-
-    /** @test */
-    public function authenticated_admin_redirects_to_admin()
-    {
-        Auth::guard('web')->login($this->adminUser);
-
-        $this->get(route('auth.login'))
-            ->assertRedirect('/admin');
     }
 
     /** @test */
@@ -309,7 +279,7 @@ class LoginPageTest extends TestCase
         $oldSessionId = session()->getId();
 
         Livewire::test(LoginPage::class)
-            ->set('email', 'admin@example.com')
+            ->set('email', 'customer@example.com')
             ->set('password', 'password123')
             ->call('save');
 

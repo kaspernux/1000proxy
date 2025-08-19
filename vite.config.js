@@ -9,6 +9,7 @@ export default defineConfig( {
         laravel( {
             input: [
                 'resources/css/app.css',
+                'resources/css/filament/custom-panels.css',
                 'resources/js/app.js',
                 'resources/js/filament-chart-dataset-persistence.js',
                 // Admin panel runtime assets (removed custom admin theme JS)

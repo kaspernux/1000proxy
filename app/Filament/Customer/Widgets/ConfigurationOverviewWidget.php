@@ -35,17 +35,20 @@ class ConfigurationOverviewWidget extends BaseWidget
                 ->icon('heroicon-o-cog-6-tooth')
                 ->description('Total generated')
                 ->color('primary')
+                ->extraAttributes(['class' => 'kp-stat kp-stat--primary'])
                 ->url(route('filament.customer.pages.configuration-guides')),
 
             Stat::make('Active', $active)
                 ->icon('heroicon-o-check-circle')
                 ->description($healthPercent . '% healthy')
-                ->color($healthPercent >= 80 ? 'success' : ($healthPercent >= 50 ? 'warning' : 'danger')),
+                ->color($healthPercent >= 80 ? 'success' : ($healthPercent >= 50 ? 'warning' : 'danger'))
+                ->extraAttributes(['class' => 'kp-stat ' . ($healthPercent >= 80 ? 'kp-stat--success' : ($healthPercent >= 50 ? 'kp-stat--warning' : 'kp-stat--danger'))]),
 
             Stat::make('Issues', $suspended)
                 ->icon('heroicon-o-exclamation-triangle')
                 ->description('Require attention')
-                ->color($suspended > 0 ? 'danger' : 'success'),
+                ->color($suspended > 0 ? 'danger' : 'success')
+                ->extraAttributes(['class' => 'kp-stat ' . ($suspended > 0 ? 'kp-stat--danger' : 'kp-stat--success')]),
         ];
     }
 }

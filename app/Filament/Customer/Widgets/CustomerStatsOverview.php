@@ -33,18 +33,21 @@ class CustomerStatsOverview extends BaseWidget
                 ->icon('heroicon-o-banknotes')
                 ->description('Top-up via BTC, XMR, SOL')
                 ->color($balance > 0 ? 'success' : 'danger')
+                ->extraAttributes(['class' => 'kp-stat ' . ($balance > 0 ? 'kp-stat--success' : 'kp-stat--danger')])
                 ->url(route('filament.customer.pages.wallet-management')),
 
             Stat::make('My Orders', $orders)
                 ->icon('heroicon-o-receipt-refund')
                 ->description('Total orders placed')
                 ->color('info')
+                ->extraAttributes(['class' => 'kp-stat kp-stat--info'])
                 ->url(route('filament.customer.pages.order-management')),
 
             Stat::make('Active Services', $services)
                 ->icon('heroicon-o-server-stack')
                 ->description('Active subscriptions')
                 ->color('primary')
+                ->extraAttributes(['class' => 'kp-stat kp-stat--primary'])
                 ->url(route('filament.customer.pages.my-active-servers')),
         ];
     }
