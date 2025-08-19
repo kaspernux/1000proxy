@@ -6,8 +6,10 @@ use App\Filament\Clusters\CustomerManagement;
 use App\Filament\Clusters\CustomerManagement\Resources\WalletTransactionResource\Pages;
 use App\Filament\Clusters\CustomerManagement\Resources\WalletTransactionResource\RelationManagers;
 use App\Models\WalletTransaction;
+use App\Filament\Concerns\HasPerformanceOptimizations;
 use Filament\Forms;
 use Filament\Forms\Form;
+use Filament\Schemas\Schema;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
@@ -15,34 +17,43 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\SoftDeletingScope;
 use Illuminate\Http\Resources\Json\JsonResource;
 
-use Filament\Tables\Actions\Action;
-use Filament\Infolists\Infolist;
+use Filament\Actions\Action;
 use Filament\Infolists\Components\Tabs;
 use Filament\Infolists\Components\Section;
 use Filament\Infolists\Components\TextEntry;
 use Filament\Infolists\Components\KeyValueEntry;
+use BackedEnum;
 
 class WalletTransactionResource extends Resource
 {
+    use HasPerformanceOptimizations;
     protected static ?string $model = WalletTransaction::class;
-    protected static ?string $navigationIcon = 'heroicon-o-clipboard-document-check';
+    protected static BackedEnum|string|null $navigationIcon = 'heroicon-o-clipboard-document-check';
     protected static ?string $navigationLabel = 'Wallet Transactions';
     protected static ?string $cluster = CustomerManagement::class;
 
-    public static function form(Forms\Form $form): Forms\Form
+    public static function canAccess(): bool
     {
-        return $form->schema([
+        $user = auth()->user();
+        return (bool) ($user?->isAdmin() || $user?->isManager());
+    }
+
+    public static function form(Schema $schema): Schema
+    {
+        return $schema->schema([
             Forms\Components\Select::make('wallet_id')
                 ->label('Wallet')
                 ->relationship('wallet', 'id')
                 ->searchable()
-                ->required(),
+                ->required()
+                ->helperText('Select the wallet this transaction belongs to'),
 
             Forms\Components\Select::make('customer_id')
                 ->label('Customer')
                 ->relationship('customer', 'name')
                 ->searchable()
-                ->required(),
+                ->required()
+                ->helperText('Customer associated with the transaction'),
 
             Forms\Components\Select::make('type')->options([
                 'deposit' => 'Deposit',
@@ -50,32 +61,32 @@ class WalletTransactionResource extends Resource
                 'payment' => 'Payment',
                 'adjustment' => 'Adjustment',
                 'refund' => 'Refund',
-            ])->required(),
+            ])->required()->helperText('Transaction operation type'),
 
-            Forms\Components\TextInput::make('amount')->numeric()->required(),
+            Forms\Components\TextInput::make('amount')->numeric()->required()->helperText('Amount in USD'),
 
             Forms\Components\Select::make('status')->options([
                 'pending' => 'Pending',
                 'completed' => 'Completed',
                 'failed' => 'Failed',
-            ])->required(),
+            ])->required()->helperText('Set completed after on-chain confirmation'),
 
-            Forms\Components\TextInput::make('reference')->required(),
-            Forms\Components\TextInput::make('payment_id')->label('Payment ID')->placeholder('The Blockchain transaction ID'),
+            Forms\Components\TextInput::make('reference')->required()->helperText('External reference or internal note for reconciliation'),
+            Forms\Components\TextInput::make('payment_id')->label('Payment ID')->placeholder('The Blockchain transaction ID')->helperText('Hash/ID of the payment on-chain or provider ID'),
 
-            Forms\Components\TextInput::make('address')->label('Address'),
+            Forms\Components\TextInput::make('address')->label('Address')->helperText('Destination/source address if applicable'),
 
-            Forms\Components\DateTimePicker::make('confirmed_at')->label('Confirmed At'),
+            Forms\Components\DateTimePicker::make('confirmed_at')->label('Confirmed At')->helperText('When the transaction was confirmed'),
 
-            Forms\Components\Textarea::make('description'),
-            Forms\Components\Textarea::make('qr_code_path')->disabled(),
-            Forms\Components\Textarea::make('metadata')->json(),
+            Forms\Components\Textarea::make('description')->helperText('Internal notes about this transaction'),
+            Forms\Components\Textarea::make('qr_code_path')->disabled()->helperText('System field (read-only)'),
+            Forms\Components\Textarea::make('metadata')->json()->helperText('Additional structured data as JSON'),
         ]);
     }
 
     public static function table(Table $table): Table
     {
-        return $table->columns([
+        $table = $table->columns([
             Tables\Columns\TextColumn::make('customer.name')->label('Customer')->searchable(),
             Tables\Columns\BadgeColumn::make('type')->label('Type')->colors([
                 'success' => 'deposit',
@@ -101,11 +112,11 @@ class WalletTransactionResource extends Resource
             Tables\Columns\TextColumn::make('address')->copyable()->toggleable()->label('Address')->limit(16),
 
             Tables\Columns\TextColumn::make('created_at')->dateTime()->label('Created'),
-        ])
-        ->defaultSort('created_at', 'desc')
-        ->actions([
-            Tables\Actions\ViewAction::make(),
-            Tables\Actions\EditAction::make(),
+    ])
+    ->defaultSort('created_at', 'desc')
+    ->actions([
+            \Filament\Actions\ViewAction::make(),
+            \Filament\Actions\EditAction::make(),
 
             // ✅ Admin Manual Confirmation Action
             Action::make('confirmDeposit')
@@ -121,12 +132,21 @@ class WalletTransactionResource extends Resource
                         'description' => $record->description . ' [confirmed manually]',
                     ]);
                 }),
+    ]);
+
+        return self::applyTablePreset($table, [
+            'defaultPage' => 50,
+            'empty' => [
+                'icon' => 'heroicon-o-clipboard-document-check',
+                'heading' => 'No transactions found',
+                'description' => 'No wallet transactions match your filters.',
+            ],
         ]);
     }
 
-    public static function infolist(Infolist $infolist): Infolist
+    public static function infolist(Schema $schema): Schema
     {
-        return $infolist->schema([
+        return $schema->schema([
             Tabs::make('Transaction Details')->tabs([
                 Tabs\Tab::make('Overview')->schema([
                     Section::make('💸 Transaction Info')->columns(2)->schema([

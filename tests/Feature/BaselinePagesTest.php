@@ -32,10 +32,10 @@ class BaselinePagesTest extends TestCase
     }
 
     /** @test */
-    public function dashboard_requires_authentication_and_then_loads()
+    public function admin_requires_authentication_and_then_loads()
     {
-        $this->get('/dashboard')->assertStatus(302);
-        $this->actingAs($this->user)->get('/dashboard')->assertOk();
+        $this->get('/admin')->assertStatus(302);
+        $this->actingAs($this->user)->get('/admin')->assertOk();
     }
 
     /** @test */

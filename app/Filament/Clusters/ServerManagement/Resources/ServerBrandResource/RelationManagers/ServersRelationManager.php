@@ -10,13 +10,14 @@ use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\SoftDeletingScope;
 use App\Models\Server;
-use Filament\Forms\Components\Section;
-use Filament\Forms\Components\Group;
+use Filament\Schemas\Components\Section;
+use Filament\Schemas\Components\Group;
 use Filament\Tables\Columns\BadgeColumn;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Filters\SelectFilter;
 use App\Services\XUIService;
 use Filament\Notifications\Notification;
+use Filament\Schemas\Schema;
 
 class ServersRelationManager extends RelationManager
 {
@@ -25,9 +26,9 @@ class ServersRelationManager extends RelationManager
     protected static ?string $modelLabel = 'Server';
     protected static ?string $pluralModelLabel = 'Servers';
 
-    public function form(Form $form): Form
+    public function form(Schema $schema): Schema
     {
-        return $form
+        return $schema
             ->schema([
                 Group::make([
                     Section::make('Server Basic Information')
@@ -234,14 +235,14 @@ class ServersRelationManager extends RelationManager
                     ->query(fn (Builder $query): Builder => $query->where('is_active', true)),
             ])
             ->headerActions([
-                Tables\Actions\CreateAction::make()
+                \Filament\Actions\CreateAction::make()
                     ->mutateFormDataUsing(function (array $data): array {
                         // Auto-assign the brand from the parent record
                         $data['server_brand_id'] = $this->ownerRecord->id;
                         return $data;
                     }),
 
-                Tables\Actions\Action::make('test_all_connections')
+                \Filament\Actions\Action::make('test_all_connections')
                     ->label('Test All Connections')
                     ->icon('heroicon-o-signal')
                     ->color('info')
@@ -291,7 +292,7 @@ class ServersRelationManager extends RelationManager
                     ->modalDescription('This will test the connection to all servers under this brand. This may take a few moments.'),
             ])
             ->actions([
-                Tables\Actions\Action::make('test_connection')
+                \Filament\Actions\Action::make('test_connection')
                     ->label('Test Connection')
                     ->icon('heroicon-o-signal')
                     ->color('info')
@@ -323,34 +324,34 @@ class ServersRelationManager extends RelationManager
                         }
                     }),
 
-                Tables\Actions\Action::make('view_panel')
+                \Filament\Actions\Action::make('view_panel')
                     ->label('Open Panel')
                     ->icon('heroicon-o-link')
                     ->color('primary')
                     ->url(fn ($record) => $record->getFullPanelUrl())
                     ->openUrlInNewTab(),
 
-                Tables\Actions\ViewAction::make(),
-                Tables\Actions\EditAction::make(),
-                Tables\Actions\DeleteAction::make(),
+                \Filament\Actions\ViewAction::make(),
+                \Filament\Actions\EditAction::make(),
+                \Filament\Actions\DeleteAction::make(),
             ])
             ->bulkActions([
-                Tables\Actions\BulkActionGroup::make([
-                    Tables\Actions\BulkAction::make('activate')
+                \Filament\Actions\BulkActionGroup::make([
+                    \Filament\Actions\BulkAction::make('activate')
                         ->label('Activate Selected')
                         ->icon('heroicon-o-check-circle')
                         ->color('success')
                         ->action(fn ($records) => $records->each(fn ($record) => $record->update(['is_active' => true])))
                         ->requiresConfirmation(),
 
-                    Tables\Actions\BulkAction::make('deactivate')
+                    \Filament\Actions\BulkAction::make('deactivate')
                         ->label('Deactivate Selected')
                         ->icon('heroicon-o-x-circle')
                         ->color('danger')
                         ->action(fn ($records) => $records->each(fn ($record) => $record->update(['is_active' => false])))
                         ->requiresConfirmation(),
 
-                    Tables\Actions\BulkAction::make('test_connections')
+                    \Filament\Actions\BulkAction::make('test_connections')
                         ->label('Test Connections')
                         ->icon('heroicon-o-signal')
                         ->color('info')
@@ -395,7 +396,7 @@ class ServersRelationManager extends RelationManager
                         })
                         ->requiresConfirmation(),
 
-                    Tables\Actions\DeleteBulkAction::make(),
+                    \Filament\Actions\DeleteBulkAction::make(),
                 ]),
             ])
             ->defaultSort('created_at', 'desc');

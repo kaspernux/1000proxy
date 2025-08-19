@@ -218,21 +218,21 @@ class AutomatedMarketingService
     {
         $newCustomers = Customer::where('created_at', '>=', now()->subDays(1))
             ->where('welcome_email_sent', false)
-            ->with('user') // Make sure we have the user relationship
+            ->with('customer') 
             ->get();
 
         $emailsSent = 0;
         foreach ($newCustomers as $customer) {
             try {
                 // Use the enhanced mail service to send welcome email
-                if ($customer->user) {
-                    $success = $this->mailService->sendWelcomeEmail($customer->user);
+                if ($customer->email) {
+                    $success = $this->mailService->sendWelcomeEmail($customer);
                     if ($success) {
                         $customer->update(['welcome_email_sent' => true]);
                         $emailsSent++;
                     }
                 } else {
-                    Log::warning('Customer without user found', ['customer_id' => $customer->id]);
+                    Log::warning('Customer with this email not found', ['customer_id' => $customer->id]);
                 }
 
             } catch (\Exception $e) {

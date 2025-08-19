@@ -2,7 +2,7 @@
 
 namespace App\Services;
 
-use App\Models\User;
+use App\Models\Customer;
 use App\Models\Server;
 use App\Models\ServerLocation;
 use Illuminate\Support\Facades\Cache;
@@ -35,7 +35,7 @@ class GeographicExpansionService
     ];
 
     /**
-     * Get user's geographic location
+     * Get customer's geographic location
      */
     public function getUserLocation(string $ipAddress): array
     {
@@ -59,7 +59,7 @@ class GeographicExpansionService
                     'timezone' => 'UTC',
                 ];
             } catch (\Exception $e) {
-                Log::error('Failed to get user location', [
+                Log::error('Failed to get customer location', [
                     'ip' => $ipAddress,
                     'error' => $e->getMessage()
                 ]);
@@ -77,11 +77,11 @@ class GeographicExpansionService
     }
 
     /**
-     * Get localized content for user
+     * Get localized content for customer
      */
-    public function getLocalizedContent(User $user): array
+    public function getLocalizedContent(Customer $customer): array
     {
-        $location = $this->getUserLocation($user->ip_address ?? request()->ip());
+        $location = $this->getUserLocation($customer->ip_address ?? request()->ip());
         
         return [
             'currency' => $this->getLocalCurrency($location['country']),
@@ -95,7 +95,7 @@ class GeographicExpansionService
     }
 
     /**
-     * Get servers optimized for user's region
+     * Get servers optimized for customer's region
      */
     public function getRegionalServers(string $region): array
     {
@@ -240,7 +240,7 @@ class GeographicExpansionService
      */
     public function getMarketAnalytics(string $country = null): array
     {
-        $query = User::query();
+        $query = Customer::query();
         
         if ($country) {
             $query->where('country', $country);

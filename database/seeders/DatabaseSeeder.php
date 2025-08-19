@@ -64,48 +64,54 @@ class DatabaseSeeder extends Seeder
 
         // Step 2: Servers (depends on brands and categories)
         $this->command->info('🖥️ Seeding servers...');
-        $this->call([
-            ServerSeeder::class,
-            ServerPlanSeeder::class,
-        ]);
+        // Optional: seed a real live X-UI server with concrete credentials
+        // Comment out if you do not want to seed live environment details by default
+        if ($this->command->confirm('Seed the live Amsterdam X-UI server now?', true)) {
+            $this->call([
+                LiveXuiServerSeeder::class,
+                ServerPlanSeeder::class,
+            ]);
+        }
 
         // Step 3: Customers (independent)
         $this->command->info('👥 Seeding customers...');
         $this->call([
-            CustomerSeeder::class,
+            //CustomerSeeder::class,
         ]);
 
         // Step 4: Wallets (depends on customers)
         $this->command->info('💰 Seeding wallets...');
         $this->call([
-            WalletSeeder::class,
+            //WalletSeeder::class,
         ]);
 
         // Step 5: Orders (depends on customers and payment methods)
         $this->command->info('💳 Seeding orders...');
         $this->call([
-            OrderSeeder::class,
+            //OrderSeeder::class,
         ]);
 
         // Step 6: Invoices (depends on orders)
         $this->command->info('📄 Seeding invoices...');
         $this->call([
-            InvoiceSeeder::class,
+            //InvoiceSeeder::class,
         ]);
 
         // Step 7: Server infrastructure (depends on servers)
         $this->command->info('🔧 Seeding server infrastructure...');
         $this->call([
-            ServerInboundSeeder::class,
-            ServerClientSeeder::class,
+            //ServerInboundSeeder::class,
+            //ServerClientSeeder::class,
         ]);
+
+        
 
         // Step 8: Additional features (least dependent)
         $this->command->info('✨ Seeding additional features...');
         $this->call([
-            ServerTagSeeder::class,
-            ServerReviewSeeder::class,
-            SubscriptionSeeder::class,
+            //ServerTagSeeder::class,
+            //ServerReviewSeeder::class,
+            //SubscriptionSeeder::class,
             NotificationTemplateSeeder::class,
         ]);
 
@@ -129,9 +135,17 @@ class DatabaseSeeder extends Seeder
         $this->command->info('   Email: support@1000proxy.io');
         $this->command->info('   Password: Supp0rt#Mgr!2024&');
         $this->command->info('');
+        $this->command->info('👔 Manager:');
+        $this->command->info('   Email: manager@1000proxy.io');
+        $this->command->info('   Password: Manag3r!2024$');
+        $this->command->info('');
         $this->command->info('👑 Sales Team:');
         $this->command->info('   Email: sales@1000proxy.io');
         $this->command->info('   Password: S@les#Team!2024*');
+        $this->command->info('');
+        $this->command->info('📊 Analyst:');
+        $this->command->info('   Email: analyst@1000proxy.io');
+        $this->command->info('   Password: An@lyst!2024%');
         $this->command->info('');
         $this->command->info('👤 Demo Customer Account:');
         $this->command->info('   Email: demo@1000proxy.io');

@@ -2,55 +2,67 @@
 
 namespace App\Filament\Clusters\ServerManagement\Resources;
 
+use UnitEnum;
+use BackedEnum;
+use Filament\Schemas\Schema;
+
 use Filament\Forms;
 use Filament\Tables;
 use Filament\Forms\Form;
 use App\Models\ServerTag;
 use Filament\Tables\Table;
 use Filament\Resources\Resource;
-use Filament\Forms\Components\Group;
-use Filament\Forms\Components\Section;
+use Filament\Schemas\Components\Group;
+use Filament\Schemas\Components\Section;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Select;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Columns\BadgeColumn;
 use Filament\Tables\Filters\SelectFilter;
-use Filament\Tables\Actions\Action;
-use Filament\Tables\Actions\ActionGroup;
-use Filament\Tables\Actions\EditAction;
-use Filament\Tables\Actions\ViewAction;
-use Filament\Tables\Actions\DeleteAction;
-use Filament\Tables\Actions\BulkActionGroup;
-use Filament\Tables\Actions\DeleteBulkAction;
+use Filament\Actions\Action;
+use Filament\Actions\ActionGroup;
+use Filament\Actions\EditAction;
+use Filament\Actions\ViewAction;
+use Filament\Actions\DeleteAction;
+use Filament\Actions\BulkActionGroup;
+use Filament\Actions\DeleteBulkAction;
 use Illuminate\Database\Eloquent\Builder;
 use App\Filament\Clusters\ServerManagement;
 use Filament\Forms\Components\MarkdownEditor;
 use Illuminate\Database\Eloquent\SoftDeletingScope;
 use App\Filament\Clusters\ServerManagement\Resources\ServerTagResource\Pages;
 use App\Filament\Clusters\ServerManagement\Resources\ServerTagResource\RelationManagers;
+use App\Filament\Concerns\HasPerformanceOptimizations;
 
 class ServerTagResource extends Resource
 {
+    use HasPerformanceOptimizations;
     protected static ?string $model = ServerTag::class;
 
-    protected static ?string $navigationIcon = 'heroicon-o-tag';
+    protected static string | BackedEnum | null $navigationIcon = 'heroicon-o-tag';
 
     protected static ?string $cluster = ServerManagement::class;
+
+    public static function canAccess(): bool
+    {
+        $user = auth()->user();
+        return (bool) ($user?->isAdmin() || $user?->isManager() || $user?->isSupportManager());
+    }
 
     protected static ?int $navigationSort = 8;
 
     protected static ?string $recordTitleAttribute = 'name';
 
-    protected static ?string $navigationGroup = 'SERVER ORGANIZATION';
+    protected static string | UnitEnum | null $navigationGroup = 'SERVER ORGANIZATION';
 
     public static function getLabel(): string
     {
         return 'Tags';
     }
 
-    public static function form(Form $form): Form
+    public static function form(Schema $schema): Schema
     {
-        return $form
+        return $schema
             ->schema([
                 Group::make()->schema([
                     Section::make('🏷️ Tag Information')->schema([
@@ -76,7 +88,7 @@ class ServerTagResource extends Resource
 
     public static function table(Table $table): Table
     {
-        return $table
+        $table = $table
             ->columns([
                 TextColumn::make('name')
                     ->label('Tag Name')
@@ -150,9 +162,16 @@ class ServerTagResource extends Resource
                         ->tooltip('Delete selected tags'),
                 ]),
             ])
-            ->defaultSort('created_at', 'desc')
-            ->striped()
-            ->paginated([10, 25, 50, 100]);
+            ->defaultSort('created_at', 'desc');
+
+        return self::applyTablePreset($table, [
+            'defaultPage' => 25,
+            'empty' => [
+                'icon' => 'heroicon-o-tag',
+                'heading' => 'No tags found',
+                'description' => 'Try adjusting filters or create a new tag.',
+            ],
+        ]);
     }
 
     public static function getRelations(): array

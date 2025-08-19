@@ -11,12 +11,13 @@ use App\Models\User;
 use Illuminate\Support\Facades\Auth;
 use Filament\Notifications\Notification;
 use Illuminate\Database\Eloquent\Builder;
+use BackedEnum;
 
 class ServerBrowsing extends Page
 {
-    protected static ?string $navigationIcon = 'heroicon-o-server';
+    protected static string | BackedEnum | null $navigationIcon = 'heroicon-o-server';
     protected static ?string $navigationLabel = 'Browse Servers';
-    protected static string $view = 'filament.customer.pages.server-browsing';
+    protected string $view = 'filament.customer.pages.server-browsing';
     protected static ?int $navigationSort = 5;
 
     public $filters = [
@@ -182,9 +183,14 @@ class ServerBrowsing extends Page
         }
 
         if ($this->filters['favorites_only']) {
-            $query->whereHas('favorites', function (Builder $q) {
-                $q->where('user_id', Auth::id());
-            });
+            $customerId = Auth::guard('customer')->id();
+            $favorites = (array) (session()->get("favorites.customer_{$customerId}") ?? []);
+            if (!empty($favorites)) {
+                $query->whereIn('servers.id', $favorites);
+            } else {
+                // No favorites, return empty result
+                $query->whereRaw('1=0');
+            }
         }
 
         // Apply sorting
@@ -272,26 +278,27 @@ class ServerBrowsing extends Page
 
     public function toggleFavorite($serverId)
     {
-        $user = Auth::user();
-        $server = Server::find($serverId);
+    $customer = Auth::guard('customer')->user();
+    $server = Server::find($serverId);
 
         if (!$server) {
             return;
         }
 
-        $favorite = $user->favoriteServers()->where('server_id', $serverId)->first();
-
-        if ($favorite) {
-            $user->favoriteServers()->detach($serverId);
-
+        $key = "favorites.customer_{$customer->id}";
+        $favorites = (array) (session()->get($key) ?? []);
+        if (in_array($serverId, $favorites, true)) {
+            $favorites = array_values(array_filter($favorites, fn ($id) => (int) $id !== (int) $serverId));
+            session()->put($key, $favorites);
             Notification::make()
                 ->title('Removed from favorites')
                 ->body("Server '{$server->name}' has been removed from your favorites.")
                 ->warning()
                 ->send();
         } else {
-            $user->favoriteServers()->attach($serverId);
-
+            $favorites[] = (int) $serverId;
+            $favorites = array_values(array_unique($favorites));
+            session()->put($key, $favorites);
             Notification::make()
                 ->title('Added to favorites')
                 ->body("Server '{$server->name}' has been added to your favorites.")
@@ -305,7 +312,9 @@ class ServerBrowsing extends Page
 
     public function isFavorite($serverId)
     {
-        return Auth::user()->favoriteServers()->where('server_id', $serverId)->exists();
+    $customerId = Auth::guard('customer')->id();
+    $favorites = (array) (session()->get("favorites.customer_{$customerId}") ?? []);
+    return in_array((int) $serverId, $favorites, true);
     }
 
     public function selectServer($serverId)
@@ -321,7 +330,7 @@ class ServerBrowsing extends Page
             return;
         }
 
-        // Store selected server in session for checkout
+    // Store selected server in session for checkout
         session(['selected_server_id' => $serverId]);
 
         Notification::make()
@@ -330,8 +339,8 @@ class ServerBrowsing extends Page
             ->success()
             ->send();
 
-        // Redirect to checkout
-        return redirect()->route('filament.customer.pages.checkout');
+    // Redirect to checkout (web route)
+    return redirect()->route('checkout');
     }
 
     public function viewServerDetails($serverId)

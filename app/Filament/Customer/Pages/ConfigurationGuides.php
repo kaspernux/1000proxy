@@ -4,8 +4,8 @@ namespace App\Filament\Customer\Pages;
 
 use Filament\Pages\Page;
 use Filament\Forms\Form;
-use Filament\Forms\Components\Section;
-use Filament\Forms\Components\Grid;
+use Filament\Schemas\Components\Section;
+use Filament\Schemas\Components\Grid;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
@@ -18,6 +18,7 @@ use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Collection;
 use App\Models\ServerClient;
+use BackedEnum;
 use App\Models\Order;
 use App\Models\Server;
 use Filament\Notifications\Notification;
@@ -27,9 +28,9 @@ use App\Services\QrCodeService;
 
 class ConfigurationGuides extends Page
 {
-    protected static ?string $navigationIcon = 'heroicon-o-book-open';
+    protected static BackedEnum|string|null $navigationIcon = 'heroicon-o-book-open';
     protected static ?string $navigationLabel = 'Setup Guides & Tutorials';
-    protected static string $view = 'filament.customer.pages.configuration-guides';
+    protected string $view = 'filament.customer.pages.configuration-guides';
     protected static ?int $navigationSort = 9;
 
     public $selectedProtocol = 'vless';

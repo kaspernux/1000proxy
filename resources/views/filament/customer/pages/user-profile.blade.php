@@ -70,6 +70,13 @@
             </div>
         </div>
 
+        <!-- Infolist Summary Header -->
+        <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
+            <div class="p-4">
+                {{ $this->infolist }}
+            </div>
+        </div>
+
         <!-- Enhanced Account Statistics -->
         <div class="bg-white my-16 dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
             <div class="flex flex-col md:flex-row md:space-x-6 space-y-6 md:space-y-0 p-6 justify-center items-center">
@@ -235,6 +242,18 @@
             </div>
             <div class="p-6">
                 <div class="space-y-6">
+                    <div class="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-700 rounded-lg">
+                        <div>
+                            <h4 class="text-sm font-medium text-gray-900 dark:text-white">🔐 Two-Factor Authentication</h4>
+                            <p class="text-sm text-gray-600 dark:text-gray-300">Enable extra security for your account (coming soon).</p>
+                        </div>
+                        <button wire:click="toggleTwoFactor"
+                                class="inline-flex items-center px-4 py-2 bg-gray-600 text-white text-sm font-medium rounded-lg hover:bg-gray-700 transition-colors disabled:opacity-50"
+                                wire:loading.attr="disabled">
+                            <x-heroicon-o-shield-check class="w-4 h-4 mr-2" />
+                            <span>Manage 2FA</span>
+                        </button>
+                    </div>
                     <div class="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-700 rounded-lg">
                         <div>
                             <h4 class="text-sm font-medium text-gray-900 dark:text-white">📦 Download your data</h4>

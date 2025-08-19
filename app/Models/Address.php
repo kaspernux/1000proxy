@@ -40,6 +40,14 @@ class Address extends Model
     }
 
     /**
+     * Get the customer that owns the address.
+     */
+    public function customer(): BelongsTo
+    {
+        return $this->belongsTo(Customer::class);
+    }
+
+    /**
      * Get the full name for the address.
      */
     public function getFullNameAttribute(): string

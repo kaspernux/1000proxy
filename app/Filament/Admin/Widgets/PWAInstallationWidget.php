@@ -14,7 +14,7 @@ use Illuminate\Support\Facades\Auth;
  */
 class PWAInstallationWidget extends Widget
 {
-    protected static string $view = 'filament.admin.widgets.pwa-installation-widget';
+    protected string $view = 'filament.admin.widgets.pwa-installation-widget';
 
     protected int | string | array $columnSpan = 'full';
 

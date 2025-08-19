@@ -64,14 +64,18 @@
 
             <!-- Right Side Actions -->
             <div class="flex items-center space-x-2 sm:space-x-3 flex-shrink-0">
-                @auth('customer')
+                @php
+                    $customerUser = auth('customer')->user();
+                    $adminUser = auth('web')->user();
+                @endphp
+                @if($customerUser)
                     <!-- Wallet Balance -->
                     <a href="/account/wallet-management" class="hidden sm:flex items-center space-x-2 bg-gradient-to-r from-gray-800/80 to-gray-900/80 backdrop-blur-sm border border-blue-500/30 rounded-xl px-4 py-2.5 hover:border-blue-400/50 transition-all duration-300 group">
                         <div class="w-6 h-6 bg-gradient-to-br from-yellow-400 to-yellow-500 rounded-lg flex items-center justify-center group-hover:scale-110 transition-transform duration-300">
                             <x-heroicon-o-wallet class="w-4 h-4 text-gray-900" />
                         </div>
                         <span class="text-sm font-semibold text-white group-hover:text-yellow-400 transition-colors duration-300">
-                            ${{ number_format(auth('customer')->user()->wallet_balance ?? 0, 2) }}
+                            ${{ number_format($customerUser->wallet_balance ?? 0, 2) }}
                         </span>
                     </a>
 
@@ -96,14 +100,14 @@
                             <div class="relative">
                                 <div class="w-8 h-8 sm:w-9 sm:h-9 bg-gradient-to-br from-blue-500 to-yellow-500 rounded-xl flex items-center justify-center shadow-lg">
                                     <span class="text-white font-bold text-xs sm:text-sm">
-                                        {{ strtoupper(substr(auth('customer')->user()->name ?? 'U', 0, 2)) }}
+                    {{ strtoupper(substr($customerUser->name ?? 'U', 0, 2)) }}
                                     </span>
                                 </div>
                                 <div class="absolute -bottom-1 -right-1 w-3 h-3 sm:w-4 sm:h-4 bg-green-500 rounded-full ring-2 ring-gray-900"></div>
                             </div>
                             <div class="hidden sm:block">
-                                <span class="text-sm font-semibold text-white">{{ auth('customer')->user()->name ?? 'User' }}</span>
-                                <div class="text-xs text-gray-400">{{ auth('customer')->user()->email ?? 'user@example.com' }}</div>
+                <span class="text-sm font-semibold text-white">{{ $customerUser->name ?? 'User' }}</span>
+                <div class="text-xs text-gray-400">{{ $customerUser->email ?? 'user@example.com' }}</div>
                             </div>
                             <x-heroicon-o-chevron-down class="w-4 h-4 text-white transition-transform duration-300" x-bind:class="{ 'rotate-180': open }" />
                         </button>
@@ -133,11 +137,11 @@
                             <div class="px-4 py-3 border-b border-gray-200 md:border-gray-600/80 bg-gradient-to-r from-blue-50 to-yellow-50 md:from-blue-600/40 md:to-yellow-600/40">
                                 <div class="flex items-center space-x-3">
                                     <div class="w-10 h-10 bg-gradient-to-br from-blue-500 to-yellow-500 rounded-xl flex items-center justify-center">
-                                        <span class="text-white font-bold">{{ substr(auth('customer')->user()->name, 0, 1) }}</span>
+                                        <span class="text-white font-bold">{{ substr($customerUser->name, 0, 1) }}</span>
                                     </div>
                                     <div>
-                                        <div class="text-sm font-semibold mobile-force-dark-text md:text-white">{{ auth('customer')->user()->name }}</div>
-                                        <div class="text-xs mobile-force-icon-dark md:text-gray-300">{{ auth('customer')->user()->email }}</div>
+                                        <div class="text-sm font-semibold mobile-force-dark-text md:text-white">{{ $customerUser->name }}</div>
+                                        <div class="text-xs mobile-force-icon-dark md:text-gray-300">{{ $customerUser->email }}</div>
                                     </div>
                                 </div>
                             </div>
@@ -225,6 +229,84 @@
                             </div>
                         </div>
                     </div>
+                @elseif($adminUser)
+                    <!-- Admin User Menu (styled like customer) -->
+                    <div class="relative" x-data="{ open: false }" @click.away="open = false">
+                        <button @click="open = !open"
+                                class="flex items-center space-x-2 sm:space-x-3 bg-gradient-to-r from-gray-800/80 to-gray-900/80 backdrop-blur-sm border border-blue-500/30 hover:border-blue-400/50 rounded-xl px-2 sm:px-4 py-2 sm:py-2.5 transition-all duration-300 hover:scale-105 transform">
+                            <div class="relative">
+                                <div class="w-8 h-8 sm:w-9 sm:h-9 bg-gradient-to-br from-blue-500 to-yellow-500 rounded-xl flex items-center justify-center shadow-lg">
+                                    <span class="text-white font-bold text-xs sm:text-sm">
+                                        {{ strtoupper(substr($adminUser->name ?? 'AD', 0, 2)) }}
+                                    </span>
+                                </div>
+                                <div class="absolute -bottom-1 -right-1 w-3 h-3 sm:w-4 sm:h-4 bg-green-500 rounded-full ring-2 ring-gray-900"></div>
+                            </div>
+                            <div class="hidden sm:block">
+                                <span class="text-sm font-semibold text-white">{{ $adminUser->name ?? 'Admin' }}</span>
+                                <div class="text-xs text-gray-400">{{ $adminUser->email ?? '' }}</div>
+                            </div>
+                            <x-heroicon-o-chevron-down class="w-4 h-4 text-white transition-transform duration-300" x-bind:class="{ 'rotate-180': open }" />
+                        </button>
+
+                        <!-- Dropdown Backdrop -->
+                        <div x-show="open"
+                             x-transition:enter="transition ease-out duration-200"
+                             x-transition:enter-start="opacity-0"
+                             x-transition:enter-end="opacity-100"
+                             x-transition:leave="transition ease-in duration-150"
+                             x-transition:leave-start="opacity-100"
+                             x-transition:leave-end="opacity-0"
+                             @click="open = false"
+                             class="fixed inset-0 bg-black/5 backdrop-blur-md z-40"></div>
+
+                        <!-- Admin Dropdown Menu -->
+                        <div x-show="open"
+                             x-transition:enter="transition ease-out duration-200"
+                             x-transition:enter-start="transform opacity-0 scale-95 translate-y-2"
+                             x-transition:enter-end="transform opacity-100 scale-100 translate-y-0"
+                             x-transition:leave="transition ease-in duration-150"
+                             x-transition:leave-start="transform opacity-100 scale-100 translate-y-0"
+                             x-transition:leave-end="transform opacity-0 scale-95 translate-y-2"
+                             class="absolute right-0 mt-3 w-64 backdrop-blur-xl border shadow-2xl z-50 overflow-hidden ring-1 rounded-2xl bg-white md:bg-gray-800 border-gray-300 md:border-blue-400/60 ring-gray-200 md:ring-white/20">
+
+                            <!-- Header -->
+                            <div class="px-4 py-3 border-b border-gray-200 md:border-gray-600/80 bg-gradient-to-r from-blue-50 to-yellow-50 md:from-blue-600/40 md:to-yellow-600/40">
+                                <div class="flex items-center space-x-3">
+                                    <div class="w-10 h-10 bg-gradient-to-br from-blue-500 to-yellow-500 rounded-xl flex items-center justify-center">
+                                        <span class="text-white font-bold">{{ substr($adminUser->name ?? 'A', 0, 1) }}</span>
+                                    </div>
+                                    <div>
+                                        <div class="text-sm font-semibold mobile-force-dark-text md:text-white">{{ $adminUser->name ?? 'Admin' }}</div>
+                                        <div class="text-xs mobile-force-icon-dark md:text-gray-300">{{ $adminUser->email ?? '' }}</div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Menu Items -->
+                            <div class="py-2 bg-white md:bg-gray-800 mobile-force-dark-text md:text-white">
+                                <a href="/admin" class="group flex items-center px-4 py-3 text-sm mobile-force-dark-text hover:bg-gradient-to-r hover:from-blue-50 hover:to-blue-100 md:hover:from-blue-600/40 md:hover:to-blue-700/40 hover:text-blue-900 md:hover:text-white transition-all duration-200">
+                                    <div class="w-8 h-8 bg-gradient-to-br from-blue-100 to-blue-200 md:from-blue-500/40 md:to-blue-600/40 rounded-lg flex items-center justify-center mr-3 group-hover:scale-110 transition-transform duration-200">
+                                        <x-heroicon-o-window class="w-4 h-4 text-blue-600 md:text-blue-300" />
+                                    </div>
+                                    <span class="group-hover:text-blue-900 md:group-hover:text-blue-200 transition-colors">Admin Dashboard</span>
+                                </a>
+
+                                <div class="border-t border-gray-300 md:border-gray-600/80 my-2"></div>
+
+                                <!-- Admin Logout (Filament uses POST) -->
+                                <form method="POST" action="/admin/logout">
+                                    @csrf
+                                    <button type="submit" class="w-full text-left group flex items-center px-4 py-3 text-sm mobile-force-dark-text hover:bg-gradient-to-r hover:from-red-50 hover:to-red-100 md:hover:from-red-600/40 md:hover:to-red-700/40 hover:text-red-900 md:hover:text-white transition-all duration-200">
+                                        <div class="w-8 h-8 bg-gradient-to-br from-red-100 to-red-200 md:from-red-500/40 md:to-red-600/40 rounded-lg flex items-center justify-center mr-3 group-hover:scale-110 transition-transform duration-200">
+                                            <x-heroicon-o-arrow-right-on-rectangle class="w-4 h-4 text-red-600 md:text-red-300" />
+                                        </div>
+                                        <span class="group-hover:text-red-900 md:group-hover:text-red-200 transition-colors">Logout</span>
+                                    </button>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
                 @else
                     <!-- Enhanced Guest Buttons -->
                     <div class="flex items-center space-x-2 sm:space-x-3">
@@ -238,7 +320,7 @@
                             <div class="absolute inset-0 bg-gradient-to-r from-blue-600 to-yellow-600 rounded-xl blur opacity-30 group-hover:opacity-50 transition-opacity duration-300"></div>
                         </a>
                     </div>
-                @endauth
+                @endif
             </div>
         </div>
     </div>

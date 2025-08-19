@@ -2,16 +2,18 @@
 
 namespace App\Filament\Clusters\ServerManagement\Resources;
 
+use BackedEnum;
+use UnitEnum;
+use Filament\Schemas\Schema;
 use Filament\Forms;
 use Filament\Tables;
-use Filament\Forms\Form;
 use App\Models\ServerInfo;
 use Filament\Tables\Table;
 use Filament\Resources\Resource;
-use Filament\Forms\Components\Group;
+use Filament\Schemas\Components\Group;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Toggle;
-use Filament\Forms\Components\Section;
+use Filament\Schemas\Components\Section;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\MarkdownEditor;
 use Illuminate\Support\Facades\Redirect;
@@ -27,15 +29,21 @@ class ServerInfoResource extends Resource
 
     protected static ?string $cluster = ServerManagement::class;
 
+    public static function canAccess(): bool
+    {
+        $user = auth()->user();
+        return (bool) ($user?->isAdmin() || $user?->isManager() || $user?->isSupportManager());
+    }
+
     protected static ?string $model = ServerInfo::class;
 
-    protected static ?string $navigationIcon = 'heroicon-o-information-circle';
+    protected static string | BackedEnum | null $navigationIcon = 'heroicon-o-information-circle';
 
     protected static ?string $navigationLabel = 'Server Info';
 
     protected static ?string $pluralModelLabel = 'Server Info';
 
-    protected static ?string $navigationGroup = 'SERVER SETTINGS';
+    protected static string | UnitEnum | null $navigationGroup = 'SERVER SETTINGS';
 
     protected static ?int $navigationSort = 5;
 
@@ -46,9 +54,9 @@ class ServerInfoResource extends Resource
         return 'About';
     }
 
-    public static function form(Form $form): Form
+    public static function form(Schema $schema): Schema
     {
-        return $form
+        return $schema
             ->schema([
                 Group::make()->schema([
                     Section::make('🏷️ Server Information Details')->schema([
@@ -131,7 +139,7 @@ class ServerInfoResource extends Resource
 
     public static function table(Table $table): Table
     {
-        return $table
+        $table = $table
             ->columns([
                 Tables\Columns\TextColumn::make('server.name')
                     ->label('Server')
@@ -228,14 +236,14 @@ class ServerInfoResource extends Resource
                     ->preload(),
             ])
             ->actions([
-                Tables\Actions\ActionGroup::make([
-                    Tables\Actions\ViewAction::make()
+                \Filament\Actions\ActionGroup::make([
+                    \Filament\Actions\ViewAction::make()
                         ->color('info'),
 
-                    Tables\Actions\EditAction::make()
+                    \Filament\Actions\EditAction::make()
                         ->color('warning'),
 
-                    Tables\Actions\Action::make('toggle_state')
+                    \Filament\Actions\Action::make('toggle_state')
                         ->label('Toggle State')
                         ->icon('heroicon-o-arrow-path')
                         ->color('info')
@@ -257,14 +265,14 @@ class ServerInfoResource extends Resource
                                 ->send();
                         }),
 
-                    Tables\Actions\Action::make('view_server')
+                    \Filament\Actions\Action::make('view_server')
                         ->label('View Server')
                         ->icon('heroicon-o-server')
                         ->color('success')
                         ->url(fn ($record) => route('filament.admin.clusters.server-management.resources.servers.view', $record->server_id))
                         ->openUrlInNewTab(),
 
-                    Tables\Actions\DeleteAction::make()
+                    \Filament\Actions\DeleteAction::make()
                         ->color('danger'),
                 ])
                 ->label('Actions')
@@ -273,10 +281,10 @@ class ServerInfoResource extends Resource
                 ->size('sm'),
             ])
             ->bulkActions([
-                Tables\Actions\BulkActionGroup::make([
-                    Tables\Actions\DeleteBulkAction::make(),
+                \Filament\Actions\BulkActionGroup::make([
+                    \Filament\Actions\DeleteBulkAction::make(),
 
-                    Tables\Actions\BulkAction::make('activate')
+                    \Filament\Actions\BulkAction::make('activate')
                         ->label('Activate Selected')
                         ->icon('heroicon-o-check')
                         ->color('success')
@@ -289,7 +297,7 @@ class ServerInfoResource extends Resource
                                 ->send();
                         }),
 
-                    Tables\Actions\BulkAction::make('deactivate')
+                    \Filament\Actions\BulkAction::make('deactivate')
                         ->label('Deactivate Selected')
                         ->icon('heroicon-o-x-mark')
                         ->color('danger')
@@ -302,7 +310,7 @@ class ServerInfoResource extends Resource
                                 ->send();
                         }),
 
-                    Tables\Actions\BulkAction::make('set_state_up')
+                    \Filament\Actions\BulkAction::make('set_state_up')
                         ->label('Set State to Up')
                         ->icon('heroicon-o-arrow-up')
                         ->color('success')
@@ -316,9 +324,16 @@ class ServerInfoResource extends Resource
                         }),
                 ]),
             ])
-            ->defaultSort('created_at', 'desc')
-            ->striped()
-            ->paginated([10, 25, 50, 100]);
+            ->defaultSort('created_at', 'desc');
+
+        return \App\Filament\Concerns\HasPerformanceOptimizations::applyTablePreset($table, [
+            'defaultPage' => 25,
+            'empty' => [
+                'icon' => 'heroicon-o-information-circle',
+                'heading' => 'No server info yet',
+                'description' => 'Create a record or tweak filters.',
+            ],
+        ]);
     }
 
     public static function getRelations(): array

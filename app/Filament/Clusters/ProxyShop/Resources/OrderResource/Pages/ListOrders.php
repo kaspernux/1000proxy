@@ -5,7 +5,7 @@ namespace App\Filament\Clusters\ProxyShop\Resources\OrderResource\Pages;
 use App\Filament\Clusters\ProxyShop\Resources\OrderResource;
 use Filament\Actions;
 use Filament\Resources\Pages\ListRecords;
-use Filament\Resources\Components\Tab;
+use Filament\Schemas\Components\Tabs\Tab;
 use Illuminate\Database\Eloquent\Builder;
 
 class ListOrders extends ListRecords
@@ -15,7 +15,44 @@ class ListOrders extends ListRecords
     protected function getHeaderActions(): array
     {
     // Creation is disabled; orders originate from customer checkout only.
-    return [];
+    return [
+        Actions\Action::make('refresh')
+            ->label('Refresh')
+            ->icon('heroicon-o-arrow-path')
+            ->color('gray')
+            ->action(fn () => null),
+        Actions\Action::make('export_recent')
+            ->label('Export Recent CSV')
+            ->icon('heroicon-o-arrow-down-tray')
+            ->visible(fn () => auth()->user()?->can('export', \App\Models\Order::class))
+            ->action(function () {
+                $records = \App\Models\Order::query()->latest('id')->limit(1000)->get();
+                $filename = 'orders-recent-' . now()->format('Ymd-His') . '.csv';
+                return response()->streamDownload(function () use ($records) {
+                    $out = fopen('php://output', 'w');
+                    fputcsv($out, ['ID', 'Customer', 'Amount', 'Currency', 'Payment', 'Order', 'Created At']);
+                    foreach ($records as $order) {
+                        fputcsv($out, [
+                            $order->id,
+                            optional($order->customer)->name,
+                            $order->grand_amount,
+                            $order->currency,
+                            $order->payment_status,
+                            $order->order_status,
+                            optional($order->created_at)?->toDateTimeString(),
+                        ]);
+                    }
+                    fclose($out);
+                }, $filename, ['Content-Type' => 'text/csv']);
+            }),
+        Actions\Action::make('help')
+            ->label('Help')
+            ->icon('heroicon-o-question-mark-circle')
+            ->color('gray')
+            ->modalHeading('About Orders')
+            ->modalContent(new \Illuminate\Support\HtmlString('Orders are created by customers at checkout. Use tabs and filters to navigate statuses, and bulk actions to export or update. Staff can assign themselves to manage an order.'))
+            ->modalSubmitAction(false),
+    ];
     }
 
     public function getTabs(): array

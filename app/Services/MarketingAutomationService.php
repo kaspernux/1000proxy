@@ -2,7 +2,6 @@
 
 namespace App\Services;
 
-use App\Models\User;
 use App\Models\Customer;
 use App\Models\Order;
 use App\Services\BusinessIntelligenceService;
@@ -664,7 +663,7 @@ class MarketingAutomationService
      */
     private function segmentHighValueCustomers(): array
     {
-        $customers = User::whereHas('orders', function($query) {
+        $customers = Customer::whereHas('orders', function($query) {
             $query->where('payment_status', 'paid');
         })
         ->withSum(['orders as total_spent' => function($query) {
@@ -688,7 +687,7 @@ class MarketingAutomationService
      */
     private function segmentFrequentBuyers(): array
     {
-        $customers = User::whereHas('orders', function($query) {
+        $customers = Customer::whereHas('orders', function($query) {
             $query->where('created_at', '>=', Carbon::now()->subMonths(6));
         }, '>=', 3)
         ->withCount(['orders as order_count' => function($query) {
@@ -713,7 +712,7 @@ class MarketingAutomationService
     {
         $cutoffDate = Carbon::now()->subDays(30);
 
-        $customers = User::whereHas('orders', function($query) use ($cutoffDate) {
+        $customers = Customer::whereHas('orders', function($query) use ($cutoffDate) {
             $query->where('created_at', '<', $cutoffDate);
         })
         ->whereDoesntHave('orders', function($query) use ($cutoffDate) {
@@ -738,7 +737,7 @@ class MarketingAutomationService
      */
     private function segmentNewCustomers(): array
     {
-        $customers = User::where('created_at', '>=', Carbon::now()->subDays(7))
+        $customers = Customer::where('created_at', '>=', Carbon::now()->subDays(7))
         ->with(['orders'])
         ->get();
 
@@ -758,7 +757,7 @@ class MarketingAutomationService
     {
         $cutoffDate = Carbon::now()->subDays(90);
 
-        $customers = User::whereHas('orders', function($query) use ($cutoffDate) {
+        $customers = Customer::whereHas('orders', function($query) use ($cutoffDate) {
             $query->where('created_at', '<', $cutoffDate);
         })
         ->whereDoesntHave('orders', function($query) use ($cutoffDate) {
@@ -780,10 +779,10 @@ class MarketingAutomationService
      */
     private function segmentByLocation(): array
     {
-        $segments = User::selectRaw('country, COUNT(*) as customer_count, SUM(COALESCE((
+        $segments = Customer::selectRaw('country, COUNT(*) as customer_count, SUM(COALESCE((
             SELECT SUM(grand_amount)
             FROM orders
-            WHERE orders.user_id = users.id
+            -- TODO: Orders are customer-owned; update report to join customers
             AND orders.payment_status = "paid"
         ), 0)) as total_revenue')
         ->groupBy('country')
@@ -806,9 +805,9 @@ class MarketingAutomationService
         $segments = DB::table('orders')
             ->join('order_items', 'orders.id', '=', 'order_items.order_id')
             ->join('server_plans', 'order_items.server_plan_id', '=', 'server_plans.id')
-            ->join('users', 'orders.user_id', '=', 'users.id')
+            // TODO: Replace with customers join if needed
             ->where('orders.payment_status', 'paid')
-            ->selectRaw('server_plans.protocol, COUNT(DISTINCT users.id) as customer_count, COUNT(*) as order_count')
+            ->selectRaw('server_plans.protocol, COUNT(DISTINCT customers.id) as customer_count, COUNT(*) as order_count')
             ->groupBy('server_plans.protocol')
             ->orderBy('customer_count', 'desc')
             ->get();
@@ -828,7 +827,7 @@ class MarketingAutomationService
     {
         $avgPrice = Order::where('payment_status', 'paid')->avg('grand_amount');
 
-        $customers = User::whereHas('orders', function($query) use ($avgPrice) {
+        $customers = Customer::whereHas('orders', function($query) use ($avgPrice) {
             $query->where('payment_status', 'paid')
                   ->havingRaw('AVG(grand_amount) < ?', [$avgPrice * 0.7]);
         })
@@ -854,7 +853,7 @@ class MarketingAutomationService
         $customerIds = collect($data['customers'])->pluck('id')->filter();
 
         if ($customerIds->isNotEmpty()) {
-            User::whereIn('id', $customerIds)->update([
+            Customer::whereIn('id', $customerIds)->update([
                 'segment_tags' => DB::raw("CONCAT(COALESCE(segment_tags, ''), ',{$segment}')")
             ]);
         }
@@ -877,7 +876,7 @@ class MarketingAutomationService
      */
     private function executeWelcomeSeries(): array
     {
-        $newCustomers = User::where('created_at', '>=', Carbon::now()->subDays(1))
+        $newCustomers = Customer::where('created_at', '>=', Carbon::now()->subDays(1))
             ->whereDoesntHave('emailCampaigns', function($query) {
                 $query->where('campaign_type', 'welcome_series');
             })
@@ -904,8 +903,8 @@ class MarketingAutomationService
      */
     private function executeAbandonedCartCampaign(): array
     {
-        // Find users with items in cart but no recent orders
-        $abandonedCarts = User::whereHas('cartItems')
+        // Find customers with items in cart but no recent orders
+        $abandonedCarts = Customer::whereHas('cartItems')
             ->whereDoesntHave('orders', function($query) {
                 $query->where('created_at', '>=', Carbon::now()->subHours(24));
             })
@@ -936,7 +935,7 @@ class MarketingAutomationService
 
         $emailsSent = 0;
         foreach ($targetCustomers as $customerData) {
-            $customer = User::find($customerData['id']);
+            $customer = Customer::find($customerData['id']);
             if ($customer) {
                 $this->sendWinbackEmail($customer);
                 $emailsSent++;
@@ -957,7 +956,7 @@ class MarketingAutomationService
      */
     private function executeUpsellCampaign(): array
     {
-        $eligibleCustomers = User::whereHas('orders', function($query) {
+        $eligibleCustomers = Customer::whereHas('orders', function($query) {
             $query->where('payment_status', 'paid')
                   ->where('created_at', '>=', Carbon::now()->subDays(30));
         })
@@ -991,7 +990,7 @@ class MarketingAutomationService
         // Find orders that expire soon
         $expiringOrders = Order::where('payment_status', 'paid')
             ->whereBetween('expires_at', [Carbon::now(), Carbon::now()->addDays(7)])
-            ->with('user')
+            ->with('customer')
             ->get();
 
         $emailsSent = 0;
@@ -1014,7 +1013,7 @@ class MarketingAutomationService
      */
     private function executeReferralCampaigns(): array
     {
-        $satisfiedCustomers = User::whereHas('orders', function($query) {
+        $satisfiedCustomers = Customer::whereHas('orders', function($query) {
             $query->where('payment_status', 'paid')
                   ->where('created_at', '>=', Carbon::now()->subDays(30));
         }, '>=', 2)
@@ -1040,7 +1039,7 @@ class MarketingAutomationService
      */
     private function executeSeasonalPromotions(): array
     {
-        $allCustomers = User::whereHas('orders')->get();
+        $allCustomers = Customer::whereHas('orders')->get();
         $promotion = $this->getCurrentSeasonalPromotion();
 
         $emailsSent = 0;
@@ -1146,7 +1145,7 @@ class MarketingAutomationService
     private function getConversionTracking(): array { return []; }
     private function getROIAnalysis(): array { return []; }
     private function getABTestResults(): array { return []; }
-    private function createReferralCode($data): array { return ['code' => 'REF' . uniqid(), 'user_id' => $data['user_id'] ?? null]; }
+    private function createReferralCode($data): array { return ['code' => 'REF' . uniqid(), 'customer_id' => $data['customer_id'] ?? null]; }
     private function trackReferralConversion($data): array { return ['conversion' => true, 'reward' => 10]; }
     private function calculateReferralRewards($data): array { return ['total_rewards' => rand(100, 500)]; }
     private function getReferralLeaderboard(): array { return ['leaderboard' => []]; }
@@ -1190,7 +1189,7 @@ class MarketingAutomationService
         }
 
         $rules = $this->segmentationRules[$segmentName];
-        $query = User::query();
+        $query = Customer::query();
 
         foreach ($rules['conditions'] as $field => $condition) {
             [$operator, $value] = $condition;
@@ -1250,19 +1249,19 @@ class MarketingAutomationService
         $sent = 0;
         $failed = 0;
 
-        foreach ($audience as $user) {
+        foreach ($audience as $customer) {
             try {
                 // In a real implementation, this would send actual emails
                 Log::info('Sending campaign email', [
                     'campaign_id' => $campaign['id'],
-                    'user_id' => $user->id,
-                    'email' => $user->email
+                    'customer_id' => $customer->id,
+                    'email' => $customer->email
                 ]);
                 $sent++;
             } catch (\Exception $e) {
                 Log::error('Failed to send campaign email', [
                     'campaign_id' => $campaign['id'],
-                    'user_id' => $user->id,
+                    'customer_id' => $customer->id,
                     'error' => $e->getMessage()
                 ]);
                 $failed++;
@@ -1346,22 +1345,22 @@ class MarketingAutomationService
     public function processLeadNurturing($userId, $triggerEvent): array
     {
         try {
-            $user = User::find($userId);
-            if (!$user) {
-                throw new \Exception("User not found: {$userId}");
+            $customer = Customer::find($userId);
+            if (!$customer) {
+                throw new \Exception("Customer not found: {$userId}");
             }
 
             // Calculate lead score
-            $leadScore = $this->calculateLeadScore($user);
+            $leadScore = $this->calculateLeadScore($customer);
 
             // Determine nurturing sequence
-            $sequence = $this->determineNurturingSequence($user, $triggerEvent, $leadScore);
+            $sequence = $this->determineNurturingSequence($customer, $triggerEvent, $leadScore);
 
             // Execute nurturing workflow
-            $this->executeNurturingWorkflow($user, $sequence);
+            $this->executeNurturingWorkflow($customer, $sequence);
 
             Log::info('Lead nurturing processed', [
-                'user_id' => $userId,
+                'customer_id' => $userId,
                 'trigger_event' => $triggerEvent,
                 'lead_score' => $leadScore,
                 'sequence' => $sequence
@@ -1375,7 +1374,7 @@ class MarketingAutomationService
 
         } catch (\Exception $e) {
             Log::error('Lead nurturing failed', [
-                'user_id' => $userId,
+                'customer_id' => $userId,
                 'trigger_event' => $triggerEvent,
                 'error' => $e->getMessage()
             ]);
@@ -1561,19 +1560,19 @@ class MarketingAutomationService
     }
 
     /**
-     * Calculate lead score for user (enhanced version)
+     * Calculate lead score for customer (enhanced version)
      */
-    protected function calculateLeadScore($user): int
+    protected function calculateLeadScore($customer): int
     {
         $score = 0;
 
-        // Base score from user profile
-        $score += $user->email_verified_at ? 10 : 0;
-        $score += isset($user->phone) ? 5 : 0;
+        // Base score from customer profile
+        $score += $customer->email_verified_at ? 10 : 0;
+        $score += isset($customer->phone) ? 5 : 0;
 
         // Order history scoring
-        $orderCount = $user->orders()->count();
-        $totalSpent = $user->orders()->sum('total') ?? 0;
+        $orderCount = $customer->orders()->count();
+        $totalSpent = $customer->orders()->sum('total') ?? 0;
 
         $score += $orderCount * 20;
         $score += ($totalSpent / 100) * 5; // 5 points per $100 spent
@@ -1584,7 +1583,7 @@ class MarketingAutomationService
     /**
      * Determine nurturing sequence
      */
-    protected function determineNurturingSequence($user, $triggerEvent, $leadScore): array
+    protected function determineNurturingSequence($customer, $triggerEvent, $leadScore): array
     {
         $sequence = [];
 
@@ -1602,10 +1601,10 @@ class MarketingAutomationService
     /**
      * Execute nurturing workflow
      */
-    protected function executeNurturingWorkflow($user, $sequence): void
+    protected function executeNurturingWorkflow($customer, $sequence): void
     {
         foreach ($sequence as $step) {
-            Log::info("Executing nurturing step: {$step} for user: {$user->id}");
+            Log::info("Executing nurturing step: {$step} for customer: {$customer->id}");
         }
     }
 
@@ -1616,8 +1615,8 @@ class MarketingAutomationService
     {
         // Simulated abandoned carts data
         return [
-            (object) ['id' => 1, 'user_id' => 1, 'email' => 'user1@example.com', 'value' => 99.99],
-            (object) ['id' => 2, 'user_id' => 2, 'email' => 'user2@example.com', 'value' => 149.99]
+            (object) ['id' => 1, 'customer_id' => 1, 'email' => 'user1@example.com', 'value' => 99.99],
+            (object) ['id' => 2, 'customer_id' => 2, 'email' => 'user2@example.com', 'value' => 149.99]
         ];
     }
 
@@ -1751,13 +1750,13 @@ class MarketingAutomationService
      */
     protected function executeBirthdayCampaign(): array
     {
-        // Find users with birthdays today
-        $birthdayUsers = User::whereRaw('DATE_FORMAT(birthday, "%m-%d") = DATE_FORMAT(NOW(), "%m-%d")')
+        // Find customers with birthdays today
+        $birthdayUsers = Customer::whereRaw('DATE_FORMAT(birthday, "%m-%d") = DATE_FORMAT(NOW(), "%m-%d")')
             ->get();
 
         $emailsSent = 0;
-        foreach ($birthdayUsers as $user) {
-            Log::info("Sending birthday email to: {$user->email}");
+        foreach ($birthdayUsers as $customer) {
+            Log::info("Sending birthday email to: {$customer->email}");
             $emailsSent++;
         }
 
@@ -1779,8 +1778,8 @@ class MarketingAutomationService
         })->get();
 
         $emailsSent = 0;
-        foreach ($activeUsers->take(100) as $user) {
-            Log::info("Sending referral email to: {$user->email}");
+        foreach ($activeUsers->take(100) as $customer) {
+            Log::info("Sending referral email to: {$customer->email}");
             $emailsSent++;
         }
 

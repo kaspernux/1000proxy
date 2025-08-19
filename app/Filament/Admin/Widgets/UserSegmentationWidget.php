@@ -8,7 +8,7 @@ use Illuminate\Support\Facades\Cache;
 
 class UserSegmentationWidget extends ChartWidget
 {
-    protected static ?string $heading = 'User Segmentation';
+    protected ?string $heading = 'User Segmentation';
     protected static ?int $sort = 8;
 
     protected function getData(): array

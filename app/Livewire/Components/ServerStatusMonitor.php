@@ -58,12 +58,17 @@ class ServerStatusMonitor extends Component
         $this->isLoading = true;
         
         try {
-            $query = Server::with(['serverPlans', 'serverInbounds'])
-                ->withCount(['serverPlans', 'activeClients'])
+            $query = Server::with(['plans', 'inbounds'])
+                // alias counts to match expected keys in view
+                ->withCount([
+                    'plans as server_plans_count',
+                    // count all related clients as a proxy for active clients
+                    'clients as active_clients_count',
+                ])
                 ->select([
-                    'id', 'name', 'hostname', 'port', 'username', 'password',
-                    'country', 'flag_emoji', 'status', 'last_checked_at',
-                    'response_time', 'uptime_percentage', 'created_at'
+                    'id', 'name', 'host', 'port', 'username', 'password',
+                    'country', 'flag as flag_emoji', 'status', 'last_health_check_at',
+                    'response_time_ms', 'uptime_percentage', 'created_at'
                 ]);
 
             // Apply status filter
@@ -83,7 +88,7 @@ class ServerStatusMonitor extends Component
                     $query->orderBy('uptime_percentage', $this->sortDirection);
                     break;
                 case 'response_time':
-                    $query->orderBy('response_time', $this->sortDirection);
+                    $query->orderBy('response_time_ms', $this->sortDirection);
                     break;
                 default:
                     $query->orderByRaw("FIELD(status,'online','warning','offline')");
@@ -92,25 +97,25 @@ class ServerStatusMonitor extends Component
                     }
             }
 
-            $this->servers = $query->get()->map(function ($server) {
+        $this->servers = $query->get()->map(function ($server) {
                 return [
                     'id' => $server->id,
                     'name' => $server->name,
-                    'hostname' => $server->hostname,
+            'hostname' => $server->host,
                     'port' => $server->port,
                     'country' => $server->country,
-                    'flag_emoji' => $server->flag_emoji,
+            'flag_emoji' => $server->flag_emoji,
                     'status' => $server->status,
-                    'last_checked_at' => $server->last_checked_at?->format('Y-m-d H:i:s'),
-                    'last_checked_human' => $server->last_checked_at?->diffForHumans(),
-                    'response_time' => $server->response_time,
+            'last_checked_at' => $server->last_health_check_at?->format('Y-m-d H:i:s'),
+            'last_checked_human' => $server->last_health_check_at?->diffForHumans(),
+            'response_time' => $server->response_time_ms,
                     'uptime_percentage' => $server->uptime_percentage,
-                    'server_plans_count' => $server->server_plans_count,
-                    'active_clients_count' => $server->active_clients_count,
-                    'connection_url' => "https://{$server->hostname}:{$server->port}",
+            'server_plans_count' => $server->server_plans_count,
+            'active_clients_count' => $server->active_clients_count,
+            'connection_url' => ($server->host && $server->port) ? "https://{$server->host}:{$server->port}" : null,
                     'status_color' => $this->getStatusColor($server->status),
                     'status_icon' => $this->getStatusIcon($server->status),
-                    'is_recently_checked' => $server->last_checked_at && $server->last_checked_at->isAfter(now()->subMinutes(5))
+            'is_recently_checked' => $server->last_health_check_at && $server->last_health_check_at->isAfter(now()->subMinutes(5))
                 ];
             })->toArray();
 

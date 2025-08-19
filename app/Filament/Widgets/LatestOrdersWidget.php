@@ -120,13 +120,13 @@ class LatestOrdersWidget extends BaseWidget
                     ->toggleable(isToggledHiddenByDefault: true),
             ])
             ->actions([
-                Tables\Actions\Action::make('view')
+                \Filament\Actions\Action::make('view')
                     ->label('View')
                     ->icon('heroicon-o-eye')
                     // Removed OrderResource reference
             ])
             ->headerActions([
-                Tables\Actions\Action::make('all')
+                \Filament\Actions\Action::make('all')
                     ->label('View All Orders')
                     ->icon('heroicon-o-queue-list')
                     // Removed OrderResource reference
@@ -136,7 +136,7 @@ class LatestOrdersWidget extends BaseWidget
             ->emptyStateHeading('No orders yet')
             ->emptyStateDescription('As soon as customers place orders, they’ll appear here.')
             ->emptyStateActions([
-                Tables\Actions\Action::make('browse')
+                \Filament\Actions\Action::make('browse')
                     ->label('View All Orders')
                     ->icon('heroicon-o-queue-list')
                     // Removed OrderResource reference

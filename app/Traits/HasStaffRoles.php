@@ -31,6 +31,14 @@ trait HasStaffRoles
     }
 
     /**
+     * Check if user is a manager
+     */
+    public function isManager(): bool
+    {
+        return $this->role === 'manager';
+    }
+
+    /**
      * Check if user is a support manager
      */
     public function isSupportManager(): bool
@@ -47,11 +55,19 @@ trait HasStaffRoles
     }
 
     /**
+     * Check if user is an analyst
+     */
+    public function isAnalyst(): bool
+    {
+        return $this->role === 'analyst';
+    }
+
+    /**
      * Check if user has administrative privileges
      */
     public function hasAdministrativePrivileges(): bool
     {
-        return in_array($this->role, ['admin', 'support_manager']);
+    return in_array($this->role, ['admin', 'manager', 'support_manager']);
     }
 
     /**
@@ -59,7 +75,7 @@ trait HasStaffRoles
      */
     public function canManageCustomers(): bool
     {
-        return in_array($this->role, ['admin', 'support_manager']);
+    return in_array($this->role, ['admin', 'manager', 'support_manager']);
     }
 
     /**
@@ -67,7 +83,8 @@ trait HasStaffRoles
      */
     public function canManageServers(): bool
     {
-        return $this->role === 'admin';
+    // Managers can manage existing servers (view/update/delete) but cannot create new ones
+    return in_array($this->role, ['admin', 'manager']);
     }
 
     /**
@@ -75,7 +92,7 @@ trait HasStaffRoles
      */
     public function canViewReports(): bool
     {
-        return in_array($this->role, ['admin', 'support_manager']);
+    return in_array($this->role, ['admin', 'manager', 'support_manager', 'analyst']);
     }
 
     /**
@@ -93,8 +110,10 @@ trait HasStaffRoles
     {
         return match($this->role) {
             'admin' => 'Administrator',
+            'manager' => 'Manager',
             'support_manager' => 'Support Manager',
             'sales_support' => 'Sales Support',
+            'analyst' => 'Analyst',
             default => ucfirst(str_replace('_', ' ', $this->role))
         };
     }
@@ -106,8 +125,10 @@ trait HasStaffRoles
     {
         return match($this->role) {
             'admin' => 'danger',
+            'manager' => 'primary',
             'support_manager' => 'warning',
             'sales_support' => 'info',
+            'analyst' => 'success',
             default => 'gray'
         };
     }
@@ -119,8 +140,10 @@ trait HasStaffRoles
     {
         return match($this->role) {
             'admin' => 'heroicon-o-shield-check',
+            'manager' => 'heroicon-o-briefcase',
             'support_manager' => 'heroicon-o-user-group',
             'sales_support' => 'heroicon-o-phone',
+            'analyst' => 'heroicon-o-chart-bar',
             default => 'heroicon-o-user'
         };
     }
@@ -168,8 +191,10 @@ trait HasStaffRoles
     {
         return [
             'admin' => 'Administrator',
+            'manager' => 'Manager',
             'support_manager' => 'Support Manager',
             'sales_support' => 'Sales Support',
+            'analyst' => 'Analyst',
         ];
     }
 
@@ -184,15 +209,25 @@ trait HasStaffRoles
                 'manage_customers',
                 'manage_servers',
                 'manage_orders',
+                'manage_server_plans',
                 'view_reports',
                 'manage_settings',
                 'access_telegram_bot',
                 'manage_payments',
                 'export_data',
             ],
+            'manager' => [
+                'manage_customers',
+                'manage_orders',
+                'manage_server_plans',
+                // Can manage existing servers (view/update/delete), creation stays admin-only via policy
+                'view_reports',
+                'access_telegram_bot',
+                'export_data',
+            ],
             'support_manager' => [
                 'manage_customers',
-                'view_orders',
+                'view_orders', // read-only order access
                 'view_reports',
                 'access_telegram_bot',
                 'customer_support',
@@ -203,6 +238,10 @@ trait HasStaffRoles
                 'view_orders',
                 'customer_support',
                 'access_telegram_bot',
+            ],
+            'analyst' => [
+                'view_reports',
+                'export_data',
             ],
             default => []
         };

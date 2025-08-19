@@ -4,8 +4,8 @@ namespace App\Filament\Customer\Pages;
 
 use Filament\Pages\Page;
 use Filament\Forms\Form;
-use Filament\Forms\Components\Section;
-use Filament\Forms\Components\Grid;
+use Filament\Schemas\Components\Section;
+use Filament\Schemas\Components\Grid;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
@@ -13,7 +13,7 @@ use Filament\Tables\Table;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Filters\SelectFilter;
-use Filament\Tables\Actions\Action;
+use Filament\Actions\Action;
 use Filament\Actions\Action as PageAction;
 use Filament\Support\Enums\FontWeight;
 use Filament\Tables\Contracts\HasTable;
@@ -27,15 +27,16 @@ use App\Models\Order;
 use Filament\Notifications\Notification;
 use Filament\Tables\Concerns\InteractsWithTable;
 use Filament\Forms\Concerns\InteractsWithForms;
+use BackedEnum;
 
 class ReferralSystem extends Page implements HasTable, HasForms
 {
     use InteractsWithTable;
     use InteractsWithForms;
 
-    protected static ?string $navigationIcon = 'heroicon-o-gift';
+    protected static BackedEnum|string|null $navigationIcon = 'heroicon-o-gift';
     protected static ?string $navigationLabel = 'Referral Program';
-    protected static string $view = 'filament.customer.pages.referral-system';
+    protected string $view = 'filament.customer.pages.referral-system';
     protected static ?int $navigationSort = 8;
 
     public $referralCode;

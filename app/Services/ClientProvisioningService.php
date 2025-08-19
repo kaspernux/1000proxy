@@ -599,7 +599,7 @@ class ClientProvisioningService
             // Legacy fields expected by tests
             // Use inbound's server_id to reflect the actual target server
             'server_id' => $inbound->server_id,
-            'user_id' => $order->user_id, // legacy alias maps to customer_id if null
+            'customer_id' => $order->customer_id,
             'is_active' => true,
             'status' => 'up',
             'provisioned_at' => now(),

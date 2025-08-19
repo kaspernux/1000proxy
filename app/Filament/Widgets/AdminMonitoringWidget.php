@@ -116,7 +116,7 @@ class AdminRecentActivitiesWidget extends BaseWidget
             ->paginated([15])
             ->poll('120s')
             ->actions([
-                Tables\Actions\Action::make('view_orders')
+                \Filament\Actions\Action::make('view_orders')
                     ->label('Orders')
                     ->icon('heroicon-o-shopping-bag')
                     ->url(fn (Customer $record) => route('filament.admin.clusters.proxy-shop.resources.orders.index', ['tableFilters[customer_id][value]' => $record->id])),

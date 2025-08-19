@@ -6,7 +6,7 @@ use Filament\Widgets\ChartWidget;
 
 class ChurnPredictionWidget extends ChartWidget
 {
-    protected static ?string $heading = 'Churn Risk Distribution';
+    protected ?string $heading = 'Churn Risk Distribution';
 
     protected static ?int $sort = 6;
 

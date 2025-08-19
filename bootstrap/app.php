@@ -58,7 +58,7 @@ use App\Console\Commands\VerifyQueueWorkers;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
 
-return Application::configure(basePath: dirname(__DIR__))
+$app = Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
         web: __DIR__.'/../routes/web.php',
         api: __DIR__.'/../routes/api.php',
@@ -123,9 +123,13 @@ return Application::configure(basePath: dirname(__DIR__))
     $middleware->append(SessionSecurity::class);
 
         // Existing middleware
+    // Intercept admin activity logs requests early to ensure 403 for non-admin roles
+    $middleware->append(\App\Http\Middleware\ForceAdminForActivityLogs::class);
     $middleware->append(RedirectIfCustomer::class);
     $middleware->append(RedirectIfAdmin::class);
     $middleware->append(EnhancedErrorHandling::class);
+    // Testing-only: log where admin requests are being redirected (to debug 302s)
+    $middleware->append(\App\Http\Middleware\DebugAdminRedirects::class);
     $middleware->append(MobileAnalyticsMiddleware::class);
     $middleware->append(TestMobileEnhancementsMiddleware::class);
 
@@ -141,15 +145,16 @@ return Application::configure(basePath: dirname(__DIR__))
             'redirect.admin' => RedirectIfAdmin::class,
         ]);
 
-        // Apply enhanced CSRF protection to web routes (replace default) except in testing to avoid 419 during validation tests
-        if (!app()->environment('testing')) {
+    // Apply enhanced CSRF protection to web routes (replace default) except in testing to avoid 419 during validation tests
+    $appEnv = $_ENV['APP_ENV'] ?? getenv('APP_ENV') ?: 'production';
+    if ($appEnv !== 'testing') {
             $middleware->web(replace: [
                 \Illuminate\Foundation\Http\Middleware\VerifyCsrfToken::class => EnhancedCsrfProtection::class,
             ]);
         }
 
-        // Relax session cookie for testing so redirects with session errors work reliably
-        if (app()->environment('testing')) {
+    // Relax session cookie for testing so redirects with session errors work reliably
+    if ($appEnv === 'testing') {
             config([
                 'session.domain' => null,
                 'session.secure' => false,
@@ -166,4 +171,12 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withExceptions(function (Exceptions $exceptions) {
         //
     })->create();
+
+// Ensure the container has a concrete 'env' binding early to avoid ReflectionException: Class "env" does not exist
+$bootstrapEnv = $_ENV['APP_ENV'] ?? getenv('APP_ENV') ?: 'production';
+if (!isset($app['env'])) {
+    $app->instance('env', $bootstrapEnv);
+}
+
+return $app;
 

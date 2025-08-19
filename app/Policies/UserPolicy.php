@@ -12,8 +12,8 @@ class UserPolicy
      */
     public function viewAny(User $user): bool
     {
-        // All staff roles can view the UserResource
-        return in_array($user->role, ['admin', 'support_manager', 'sales_support']);
+    // All staff roles can view the UserResource
+    return in_array($user->role, ['admin', 'manager', 'support_manager', 'sales_support']);
     }
 
     /**
@@ -21,8 +21,8 @@ class UserPolicy
      */
     public function view(User $user, User $model): bool
     {
-        // All staff roles can view all staff users
-        return in_array($user->role, ['admin', 'support_manager', 'sales_support']);
+    // All staff roles can view all staff users
+    return in_array($user->role, ['admin', 'manager', 'support_manager', 'sales_support']);
     }
 
     /**
@@ -30,8 +30,8 @@ class UserPolicy
      */
     public function create(User $user): bool
     {
-        // Only admin can create staff users
-        return $user->isAdmin();
+    // Only admin can create staff users
+    return $user->isAdmin();
     }
 
     /**
@@ -39,8 +39,10 @@ class UserPolicy
      */
     public function update(User $user, User $model): bool
     {
-        // Only admin can update staff users
-        return $user->isAdmin();
+    // Admin and Manager can update staff users but Manager cannot update Admins
+    if ($user->isAdmin()) return true;
+    if ($user->isManager()) return !$model->isAdmin();
+    return false;
     }
 
     /**
@@ -48,8 +50,8 @@ class UserPolicy
      */
     public function delete(User $user, User $model): bool
     {
-        // Only admin can delete staff members, and they can't delete themselves
-        return $user->isAdmin() && $user->id !== $model->id;
+    // Only admin can delete staff members, and they can't delete themselves
+    return $user->isAdmin() && $user->id !== $model->id;
     }
 
     /**
@@ -91,7 +93,7 @@ class UserPolicy
      */
     public function resetPassword(User $user, User $model): bool
     {
-        return $user->isAdmin() || ($user->isSupportManager() && !$model->isAdmin());
+    return $user->isAdmin() || ($user->isSupportManager() && !$model->isAdmin()) || ($user->isManager() && !$model->isAdmin());
     }
 
     /**
@@ -99,8 +101,10 @@ class UserPolicy
      */
     public function toggleStatus(User $user, User $model): bool
     {
-        // Only admin can toggle status, and they can't deactivate themselves
-        return $user->isAdmin() && $user->id !== $model->id;
+    // Admin can toggle anyone (not themselves). Manager can toggle non-admins
+    if ($user->isAdmin()) return $user->id !== $model->id;
+    if ($user->isManager()) return !$model->isAdmin();
+    return false;
     }
 
     /**
@@ -116,7 +120,7 @@ class UserPolicy
      */
     public function exportData(User $user): bool
     {
-        return $user->hasStaffPermission('export_data');
+    return $user->hasStaffPermission('export_data');
     }
 
     /**

@@ -9,12 +9,12 @@ use Filament\Forms\Form;
 use Filament\Tables\Table;
 use Filament\Support\RawJs;
 use Illuminate\Support\Str;
-use Filament\Tables\Actions;
-use Filament\Forms\Components\Group;
+// use Filament\Tables\Actions; // Deprecated in Filament v4
+use Filament\Schemas\Components\Group;
 use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Toggle;
-use Filament\Forms\Components\Section;
+use Filament\Schemas\Components\Section;
 use Filament\Pages\Actions\EditAction;
 use Filament\Pages\Actions\ViewAction;
 use Filament\Forms\Components\Repeater;
@@ -25,18 +25,19 @@ use Filament\Forms\Components\MarkdownEditor;
 use Illuminate\Database\Eloquent\Builder;
 use Filament\Forms\Components\Placeholder;
 use Filament\Forms\Components\ToggleButtons;
-use Filament\Tables\Actions\BulkActionGroup;
-use Filament\Tables\Actions\DeleteBulkAction;
+use Filament\Actions\BulkActionGroup;
+use Filament\Actions\DeleteBulkAction;
 use Illuminate\Database\Eloquent\SoftDeletingScope;
 use Filament\Resources\RelationManagers\RelationManager;
+use Filament\Schemas\Schema;
 
 class InvoiceRelationManager extends RelationManager
 {
     protected static string $relationship = 'invoice';
 
-    public function form(Form $form): Form
+    public function form(Schema $schema): Schema
     {
-        return $form
+        return $schema
             ->schema([
                 Group::make([
                     Section::make('Order Details')
@@ -212,12 +213,12 @@ class InvoiceRelationManager extends RelationManager
                 //
             ])
             ->actions([
-                Tables\Actions\ViewAction::make(),
-                Tables\Actions\EditAction::make(),
+                \Filament\Actions\ViewAction::make(),
+                \Filament\Actions\EditAction::make(),
             ])
             ->bulkActions([
-                Tables\Actions\BulkActionGroup::make([
-                    Tables\Actions\DeleteBulkAction::make(),
+                \Filament\Actions\BulkActionGroup::make([
+                    \Filament\Actions\DeleteBulkAction::make(),
                 ]),
             ]);
     }

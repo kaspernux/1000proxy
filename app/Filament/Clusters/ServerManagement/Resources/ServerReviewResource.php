@@ -2,6 +2,10 @@
 
 namespace App\Filament\Clusters\ServerManagement\Resources;
 
+use UnitEnum;
+use BackedEnum;
+use Filament\Schemas\Schema;
+
 use App\Filament\Clusters\ServerManagement;
 use App\Filament\Clusters\ServerManagement\Resources\ServerReviewResource\Pages;
 use App\Filament\Clusters\ServerManagement\Resources\ServerReviewResource\RelationManagers;
@@ -11,8 +15,8 @@ use Filament\Forms\Form;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
-use Filament\Forms\Components\Section;
-use Filament\Forms\Components\Group;
+use Filament\Schemas\Components\Section;
+use Filament\Schemas\Components\Group;
 use Filament\Forms\Components\MarkdownEditor;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Toggle;
@@ -21,13 +25,13 @@ use Filament\Tables\Columns\BadgeColumn;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Filters\TernaryFilter;
-use Filament\Tables\Actions\Action;
-use Filament\Tables\Actions\ActionGroup;
-use Filament\Tables\Actions\EditAction;
-use Filament\Tables\Actions\ViewAction;
-use Filament\Tables\Actions\DeleteAction;
-use Filament\Tables\Actions\BulkActionGroup;
-use Filament\Tables\Actions\DeleteBulkAction;
+use Filament\Actions\Action;
+use Filament\Actions\ActionGroup;
+use Filament\Actions\EditAction;
+use Filament\Actions\ViewAction;
+use Filament\Actions\DeleteAction;
+use Filament\Actions\BulkActionGroup;
+use Filament\Actions\DeleteBulkAction;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\SoftDeletingScope;
 use Filament\Forms\Components\ToggleButtons;
@@ -37,24 +41,30 @@ class ServerReviewResource extends Resource
 {
     protected static ?string $model = ServerReview::class;
 
-    protected static ?string $navigationIcon = 'heroicon-o-megaphone';
+    protected static string | BackedEnum | null $navigationIcon = 'heroicon-o-megaphone';
 
     protected static ?int $navigationSort = 11;
 
     protected static ?string $cluster = ServerManagement::class;
 
+    public static function canAccess(): bool
+    {
+        $user = auth()->user();
+        return (bool) ($user?->isAdmin() || $user?->isManager() || $user?->isSupportManager());
+    }
+
     protected static ?string $recordTitleAttribute = 'comments';
 
-    protected static ?string $navigationGroup = 'CUSTOMER FEEDBACK';
+    protected static string | UnitEnum | null $navigationGroup = 'CUSTOMER FEEDBACK';
 
     public static function getLabel(): string
     {
         return 'Server Reviews';
     }
 
-    public static function form(Form $form): Form
+    public static function form(Schema $schema): Schema
     {
-        return $form
+        return $schema
             ->schema([
                 Group::make()->schema([
                     Section::make('💬 Review Content')->schema([
@@ -98,7 +108,7 @@ class ServerReviewResource extends Resource
 
     public static function table(Table $table): Table
     {
-        return $table
+        $table = $table
             ->columns([
                 BadgeColumn::make('server.name')
                     ->label('Server')
@@ -214,7 +224,7 @@ class ServerReviewResource extends Resource
                     DeleteBulkAction::make()
                         ->tooltip('Delete selected reviews'),
 
-                    Tables\Actions\BulkAction::make('approve_selected')
+                    \Filament\Actions\BulkAction::make('approve_selected')
                         ->label('Approve Selected')
                         ->icon('heroicon-o-check-circle')
                         ->color('success')
@@ -235,7 +245,7 @@ class ServerReviewResource extends Resource
                         })
                         ->tooltip('Approve selected reviews'),
 
-                    Tables\Actions\BulkAction::make('disapprove_selected')
+                    \Filament\Actions\BulkAction::make('disapprove_selected')
                         ->label('Disapprove Selected')
                         ->icon('heroicon-o-x-circle')
                         ->color('danger')
@@ -257,9 +267,16 @@ class ServerReviewResource extends Resource
                         ->tooltip('Hide selected reviews from public'),
                 ]),
             ])
-            ->defaultSort('created_at', 'desc')
-            ->striped()
-            ->paginated([10, 25, 50, 100]);
+            ->defaultSort('created_at', 'desc');
+
+        return \App\Filament\Concerns\HasPerformanceOptimizations::applyTablePreset($table, [
+            'defaultPage' => 25,
+            'empty' => [
+                'icon' => 'heroicon-o-megaphone',
+                'heading' => 'No reviews found',
+                'description' => 'Try a different search or filters.',
+            ],
+        ]);
     }
 
     public static function getRelations(): array

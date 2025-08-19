@@ -13,6 +13,7 @@ return new class extends Migration
     {
         Schema::create('server_clients', function (Blueprint $table) {
             $table->uuid('id')->primary()->comment('3X-UI client UUID');
+            $table->string('uuid')->nullable();
             $table->foreignId('server_inbound_id')->constrained()->onDelete('cascade');
             $table->string('email')->nullable()->unique();
             $table->string('password')->nullable();

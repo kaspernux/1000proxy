@@ -40,10 +40,46 @@ class LoginPage extends Component
             'email' => 'required|email|max:255',
             'password' => 'required|min:6|max:255',
         ];
-    }    protected $listeners = [
+    }
+
+    protected $listeners = [
         'socialLoginSuccess' => 'handleSocialLogin',
         'captchaVerified' => 'proceedWithLogin'
     ];
+
+    /**
+     * Sanitize an intended redirect target so customers never land on admin URLs.
+     */
+    private function sanitizeRedirectTarget(?string $target): string
+    {
+        $fallback = '/servers';
+        if (!$target) {
+            return $fallback;
+        }
+
+        // Normalize to path component only
+        $path = $target;
+        if (str_starts_with($target, 'http://') || str_starts_with($target, 'https://')) {
+            $parsed = parse_url($target);
+            $path = $parsed['path'] ?? '/';
+        }
+
+        // Guard against admin and self-referential login paths
+        $pathLower = strtolower($path);
+        if ($pathLower === '/login' || $pathLower === '/auth/login') {
+            return $fallback;
+        }
+        if ($pathLower === '/admin' || str_starts_with($pathLower, '/admin/')) {
+            return $fallback;
+        }
+
+        // Only allow same-origin relative paths
+        if (!str_starts_with($path, '/')) {
+            return $fallback;
+        }
+
+        return $path ?: $fallback;
+    }
 
     public function mount()
     {
@@ -53,12 +89,11 @@ class LoginPage extends Component
             'session_id' => session()->getId()
         ]);
         
-        // Redirect if already authenticated (admin or customer)
+        // If admin already authenticated, send to admin area; this page is for customers
         if (Auth::guard('web')->check()) {
-            Log::info('Admin already authenticated, redirecting', [
+            Log::info('Admin already authenticated, redirecting from /login to /admin', [
                 'admin_id' => Auth::guard('web')->id()
             ]);
-            // Use return redirect for consistency with tests expecting immediate redirect
             return redirect('/admin');
         }
 
@@ -70,8 +105,14 @@ class LoginPage extends Component
             $this->redirect('/servers', navigate: true);
             return;
         }
-        
-    $this->redirect_after_login = session()->get('url.intended', '/servers');
+        // Determine safe redirect target (avoid admin)
+        $intended = session()->get('url.intended');
+        $sanitized = $this->sanitizeRedirectTarget($intended);
+        if ($sanitized === '/servers' && $intended) {
+            // Clear dangerous intended so later helpers don't reuse it
+            session()->forget('url.intended');
+        }
+        $this->redirect_after_login = $sanitized;
         $this->checkRateLimit();
         
         Log::info('Login page mounted successfully', [
@@ -84,7 +125,7 @@ class LoginPage extends Component
     private function checkRateLimit()
     {
         $key = 'login.' . request()->ip();
-    $this->login_attempts = min(RateLimiter::attempts($key), 5); // Clamp for test stability
+        $this->login_attempts = min(RateLimiter::attempts($key), 5); // Clamp for test stability
 
         if (RateLimiter::tooManyAttempts($key, 5)) {
             // availableAt is protected; use availableIn to compute an absolute timestamp
@@ -101,11 +142,20 @@ class LoginPage extends Component
     public function save()
     {
         \Log::emergency('🚨 LIVEWIRE SAVE METHOD CALLED 🚨');
-        
+
+        // Snapshot current rate limiter & session/cookie config for diagnostics
+        $rateKey = 'login.' . request()->ip();
         Log::info('🔥 LIVEWIRE LOGIN ATTEMPT (UPDATED LOGIC) 🔥', [
             'email' => $this->email,
             'ip' => request()->ip(),
-            'user_agent' => request()->userAgent()
+            'user_agent' => request()->userAgent(),
+            'rate_attempts' => RateLimiter::attempts($rateKey),
+            'rate_available_in' => RateLimiter::availableIn($rateKey),
+            'session_id' => session()->getId(),
+            'session_cookie' => config('session.cookie'),
+            'session_domain' => config('session.domain'),
+            'session_secure' => config('session.secure'),
+            'session_same_site' => config('session.same_site'),
         ]);
         
         // Prevent double submission
@@ -139,19 +189,17 @@ class LoginPage extends Component
                 return;
             }
             
-            // First, attempt admin user login if email matches a User with role admin
+            // Restrict admin authentication here: admins must use Filament at /admin/login
             $adminUser = \App\Models\User::where('email', $this->email)->where('role', 'admin')->first();
-            if ($adminUser && Hash::check($this->password, $adminUser->password)) {
-                Auth::guard('web')->login($adminUser, $this->remember);
-                RateLimiter::clear($key);
-                session()->regenerate();
-                Log::info('✅ ADMIN LOGIN SUCCESS', [
+            if ($adminUser) {
+                // Do not authenticate admin on this page; guide to the correct login URL
+                Log::notice('Admin login attempted on customer login page', [
                     'email' => $this->email,
-                    'admin_id' => $adminUser->id,
-                    'session_id' => session()->getId()
                 ]);
-                $this->dispatch('login-success', ['admin_id' => $adminUser->id]);
-                return redirect()->intended('/admin');
+                $this->processing = false;
+                $this->is_loading = false;
+                $this->addError('email', 'Please use the admin login page at /admin/login.');
+                return;
             }
 
             // Find customer - same as CustomerLoginController
@@ -175,7 +223,15 @@ class LoginPage extends Component
             }
             
             // Login the customer - same as CustomerLoginController
+            Log::info('Attempting Auth::guard(customer)->login()', [
+                'customer_id' => $customer->id,
+                'remember' => (bool) $this->remember,
+            ]);
             Auth::guard('customer')->login($customer, $this->remember);
+            Log::info('Guard check immediately after login', [
+                'guard_authenticated' => Auth::guard('customer')->check(),
+                'auth_id' => Auth::guard('customer')->id(),
+            ]);
 
             // Remember me token handling when using direct login
             if ($this->remember) {
@@ -186,10 +242,19 @@ class LoginPage extends Component
             
             // Clear rate limiter - same as CustomerLoginController
             RateLimiter::clear($key);
+            Log::info('Rate limiter cleared post-login', [
+                'rate_attempts_after_clear' => RateLimiter::attempts($key),
+            ]);
             
             // Record last login in session for tests / UX
             session(['customer_last_login' => now()->timestamp]);
+            Log::info('About to regenerate session for fixation protection', [
+                'old_session_id' => session()->getId(),
+            ]);
             session()->regenerate();
+            Log::info('Session regenerated', [
+                'new_session_id' => session()->getId(),
+            ]);
             
             Log::info('✅ LIVEWIRE LOGIN SUCCESS (UPDATED LOGIC) ✅', [
                 'email' => $this->email,
@@ -203,10 +268,19 @@ class LoginPage extends Component
             // Dispatch success event
             $this->dispatch('login-success', ['customer_id' => $customer->id]);
             
-            // Use Laravel redirect like CustomerLoginController
+            // Use Livewire v3 navigation-aware redirect for SPA reliability
             $this->processing = false;
             $this->is_loading = false;
-            return redirect('/servers');
+            // Re-evaluate intended on submit in case it changed during the session
+            $intendedNow = session()->pull('url.intended');
+            $target = $this->sanitizeRedirectTarget($intendedNow ?: $this->redirect_after_login);
+            Log::info('Redirecting after login', [
+                'intended_raw' => $intendedNow,
+                'redirect_after_login_state' => $this->redirect_after_login,
+                'target_sanitized' => $target,
+            ]);
+            $this->redirect($target, navigate: true);
+            return;
             
         } catch (\Illuminate\Validation\ValidationException $e) {
             $this->processing = false;
@@ -277,9 +351,9 @@ class LoginPage extends Component
 
     public function render()
     {
-        return view('livewire.auth.login-page', [
+    return view('livewire.auth.login-page', [
             'rate_limited' => $this->blocked_until && $this->blocked_until > time(),
             'attempts_remaining' => max(0, 5 - $this->login_attempts),
-        ]);
+    ])->layout('layouts.app');
     }
 }

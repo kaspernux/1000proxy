@@ -51,9 +51,9 @@ class EnhancedUserManagementService
         // Telegram integration status
         if (isset($filters['has_telegram'])) {
             if ($filters['has_telegram']) {
-                $query->whereNotNull('telegram_user_id');
+                $query->whereNotNull('telegram_chat_id');
             } else {
-                $query->whereNull('telegram_user_id');
+                $query->whereNull('telegram_chat_id');
             }
         }
 
@@ -92,8 +92,9 @@ class EnhancedUserManagementService
             'total_users' => User::count(),
             'active_users' => User::where('is_active', true)->count(),
             'inactive_users' => User::where('is_active', false)->count(),
-            'telegram_linked' => User::whereNotNull('telegram_user_id')->count(),
+            'telegram_linked' => User::whereNotNull('telegram_chat_id')->count(),
             'admin_users' => User::where('role', 'admin')->count(),
+            'manager_users' => User::where('role', 'manager')->count(),
             'support_users' => User::where('role', 'support_manager')->count(),
             'sales_users' => User::where('role', 'sales_support')->count(),
         ];
@@ -111,7 +112,7 @@ class EnhancedUserManagementService
         $stats['daily_logins'] = User::selectRaw('DATE(last_login_at) as date, COUNT(*) as count')
             ->whereNotNull('last_login_at')
             ->where('last_login_at', '>=', now()->subDays(30))
-            ->groupBy(DB::raw('DATE(created_at)'))
+            ->groupBy(DB::raw('DATE(last_login_at)'))
             ->orderBy('date')
             ->get()
             ->pluck('count', 'date')
@@ -200,7 +201,7 @@ class EnhancedUserManagementService
     {
         try {
             // Validate role
-            $validRoles = ['admin', 'support_manager', 'sales_support'];
+            $validRoles = ['admin', 'manager', 'support_manager', 'sales_support'];
             if (!in_array($newRole, $validRoles)) {
                 throw new \InvalidArgumentException("Invalid role: {$newRole}");
             }
@@ -298,10 +299,10 @@ class EnhancedUserManagementService
                 });
 
                 // Send Telegram notification if available
-                if ($user->telegram_user_id && app()->bound('telegram')) {
+                if ($user->telegram_chat_id && app()->bound('telegram')) {
                     try {
                         app('telegram')->sendMessage([
-                            'chat_id' => $user->telegram_user_id,
+                            'chat_id' => $user->telegram_chat_id,
                             'text' => "📢 {$subject}\n\n{$message}",
                             'parse_mode' => 'HTML'
                         ]);

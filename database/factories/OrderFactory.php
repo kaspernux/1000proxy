@@ -16,8 +16,6 @@ class OrderFactory extends Factory
         $customerFactory = Customer::factory();
         return [
             'customer_id' => $customerFactory,
-            // Backward-compatibility: allow legacy tests to pass user_id; we'll mirror it to customer_id via model accessor later
-            'user_id' => null,
             'order_number' => strtoupper(Str::random(10)),
             'grand_amount' => $this->faker->randomFloat(2, 10, 500),
             'currency' => 'USD',

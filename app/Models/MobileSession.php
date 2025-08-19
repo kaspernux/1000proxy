@@ -12,7 +12,7 @@ class MobileSession extends Model
     use HasFactory;
 
     protected $fillable = [
-        'user_id',
+        'customer_id',
         'device_id',
         'session_token',
         'ip_address',
@@ -28,9 +28,9 @@ class MobileSession extends Model
         'is_active' => 'boolean'
     ];
 
-    public function user(): BelongsTo
+    public function customer(): BelongsTo
     {
-        return $this->belongsTo(User::class);
+        return $this->belongsTo(Customer::class);
     }
 
     public function device(): BelongsTo

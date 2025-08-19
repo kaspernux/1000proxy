@@ -21,19 +21,14 @@ class ServerClient extends Model
     use HasFactory, SoftDeletes;
 
     protected $table = 'server_clients';
-
-    // Primary key is a UUID string (no auto-increment)
     protected $keyType = 'string';
     public $incrementing = false;
 
     protected $fillable = [
-        // Core identification fields
         'id',                       // UUID for 3X-UI compatibility
         'server_inbound_id',
         'email',                    // 3X-UI client email identifier
         'password',                 // Legacy field
-
-        // 3X-UI API specific fields (exact match with API)
         'flow',                     // 3X-UI flow control
         'limit_ip',                 // 3X-UI IP connection limit
         'total_gb_bytes',           // 3X-UI traffic limit (totalGB in bytes)
@@ -42,29 +37,22 @@ class ServerClient extends Model
         'tg_id',                    // 3X-UI Telegram ID
         'sub_id',                   // 3X-UI subscription ID (subId)
         'reset',                    // 3X-UI reset counter/timestamp
-
-        // 3X-UI remote sync fields
         'remote_client_id',         // 3X-UI client stats ID
         'remote_inbound_id',        // 3X-UI inbound ID
         'remote_up',                // 3X-UI upload bytes
         'remote_down',              // 3X-UI download bytes
         'remote_total',             // 3X-UI total bytes
         'remote_client_config',     // Full 3X-UI client configuration
-
-        // Connection and IP management (3X-UI specific)
         'connection_ips',           // Client IP addresses
         'last_ip_clear_at',         // Last IP clear timestamp
         'is_online',                // Current online status
         'last_online_check_at',     // Last online check timestamp
-
-        // API sync tracking
         'last_api_sync_at',
         'api_sync_log',
         'api_sync_status',
         'api_sync_error',
         'last_traffic_sync_at',
 
-        // Local management fields
         'plan_id',
         'order_id',
         'customer_id',
@@ -95,9 +83,8 @@ class ServerClient extends Model
         'client_link',
         'remote_sub_link',
         'remote_json_link',
-    // Legacy compatibility fields expected by older tests
-    'uuid',
-    'user_id',
+        'uuid',
+        'user_id',
 
         // Legacy connection fields
         'security',
@@ -118,7 +105,6 @@ class ServerClient extends Model
     ];
 
     protected $casts = [
-        // 3X-UI specific fields (matching API format)
         'id' => 'string',               // UUID string
         'total_gb_bytes' => 'integer',  // 3X-UI totalGB in bytes
         'expiry_time' => 'integer',     // 3X-UI expiry timestamp (milliseconds)
@@ -132,7 +118,6 @@ class ServerClient extends Model
         'remote_total' => 'integer',    // 3X-UI total bytes
         'is_online' => 'boolean',       // 3X-UI online status
 
-        // Local management fields
         'total_gb' => 'integer',        // Local traffic limit (GB)
         'provisioned_at' => 'datetime',
         'activated_at' => 'datetime',
@@ -146,7 +131,6 @@ class ServerClient extends Model
         'next_billing_at' => 'datetime',
         'auto_renew' => 'boolean',
 
-        // JSON fields
         'connection_stats' => 'array',
         'performance_metrics' => 'array',
         'client_config' => 'array',
@@ -155,13 +139,12 @@ class ServerClient extends Model
         'api_sync_log' => 'array',
         'connection_ips' => 'array',          // 3X-UI client IP addresses
 
-        // Decimal fields
         'renewal_price' => 'decimal:2',
         'traffic_percentage_used' => 'decimal:2',
     ];
 
     protected $appends = [
-    'bandwidth_used_mb'
+        'bandwidth_used_mb'
     ];
 
     /**

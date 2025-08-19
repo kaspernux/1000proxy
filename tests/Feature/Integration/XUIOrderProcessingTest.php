@@ -2,7 +2,7 @@
 
 namespace Tests\Feature\Integration;
 
-use App\Models\User;
+use App\Models\Customer;
 use App\Models\Order;
 use App\Models\ServerPlan;
 use App\Models\Server;
@@ -16,7 +16,7 @@ class XUIOrderProcessingTest extends TestCase
 {
     use RefreshDatabase;
 
-    protected User $user;
+    protected Customer $customer;
     protected Server $server;
     protected ServerPlan $serverPlan;
     protected Order $order;
@@ -25,7 +25,7 @@ class XUIOrderProcessingTest extends TestCase
     {
         parent::setUp();
         
-        $this->user = User::factory()->create();
+    $this->customer = Customer::factory()->create();
         $this->server = Server::factory()->create([
             'host' => 'test-server.com',
             'port' => 443,
@@ -43,7 +43,7 @@ class XUIOrderProcessingTest extends TestCase
         ]);
 
         $this->order = Order::factory()->create([
-            'user_id' => $this->user->id,
+            'customer_id' => $this->customer->id,
             'total_amount' => 99.99,
             'grand_amount' => 99.99,
             'payment_status' => 'paid',
@@ -71,7 +71,7 @@ class XUIOrderProcessingTest extends TestCase
                     'settings' => json_encode([
                         'clients' => [[
                             'id' => 'uuid-123',
-                            'email' => $this->user->email,
+                            'email' => $this->customer->email,
                             'limit_ip' => 5,
                             'totalGB' => 107374182400, // 100GB
                             'expiry_time' => now()->addDays(30)->timestamp * 1000,
@@ -114,7 +114,7 @@ class XUIOrderProcessingTest extends TestCase
                     'settings' => json_encode([
                         'clients' => [[
                             'id' => 'uuid-123',
-                            'email' => $this->user->email,
+                            'email' => $this->customer->email,
                         ]]
                     ])
                 ]
@@ -135,11 +135,11 @@ class XUIOrderProcessingTest extends TestCase
 
         // Check if ServerClient was created
         $this->assertDatabaseHas('server_clients', [
-            'user_id' => $this->user->id,
+            'customer_id' => $this->customer->id,
             'server_id' => $this->server->id,
             'order_id' => $this->order->id,
             'uuid' => 'uuid-123',
-            'email' => $this->user->email,
+            'email' => $this->customer->email,
             'is_active' => true,
         ]);
 
@@ -206,7 +206,7 @@ class XUIOrderProcessingTest extends TestCase
 
         // No ServerClient should be created
         $this->assertDatabaseMissing('server_clients', [
-            'user_id' => $this->user->id,
+            'customer_id' => $this->customer->id,
             'server_id' => $this->server->id,
             'order_id' => $this->order->id,
         ]);
@@ -227,7 +227,7 @@ class XUIOrderProcessingTest extends TestCase
                     'settings' => json_encode([
                         'clients' => [[
                             'id' => 'uuid-123',
-                            'email' => $this->user->email,
+                            'email' => $this->customer->email,
                         ]]
                     ])
                 ]
@@ -269,7 +269,7 @@ class XUIOrderProcessingTest extends TestCase
                     'settings' => json_encode([
                         'clients' => [[
                             'id' => 'uuid-123',
-                            'email' => $this->user->email,
+                            'email' => $this->customer->email,
                         ]]
                     ])
                 ]
@@ -319,7 +319,7 @@ class XUIOrderProcessingTest extends TestCase
                     'settings' => json_encode([
                         'clients' => [[
                             'id' => 'uuid-456',
-                            'email' => $this->user->email,
+                            'email' => $this->customer->email,
                         ]]
                     ])
                 ]
@@ -350,13 +350,13 @@ class XUIOrderProcessingTest extends TestCase
         $this->assertCount(2, $this->order->serverClients);
         
         $this->assertDatabaseHas('server_clients', [
-            'user_id' => $this->user->id,
+            'customer_id' => $this->customer->id,
             'server_id' => $this->server->id,
             'order_id' => $this->order->id,
         ]);
 
         $this->assertDatabaseHas('server_clients', [
-            'user_id' => $this->user->id,
+            'customer_id' => $this->customer->id,
             'server_id' => $secondServer->id,
             'order_id' => $this->order->id,
         ]);
@@ -379,7 +379,7 @@ class XUIOrderProcessingTest extends TestCase
                     'settings' => json_encode([
                         'clients' => [[
                             'id' => 'uuid-123',
-                            'email' => $this->user->email,
+                            'email' => $this->customer->email,
                         ]]
                     ])
                 ]
@@ -398,8 +398,6 @@ class XUIOrderProcessingTest extends TestCase
         $job->handle();
 
         // Check that order completion email was sent
-        \Illuminate\Support\Facades\Mail::assertSent(\App\Mail\OrderPlaced::class, function ($mail) {
-            return $mail->hasTo($this->user->email);
-        });
+    \Illuminate\Support\Facades\Mail::assertSent(\App\Mail\OrderPlaced::class, fn ($mail) => $mail->hasTo($this->customer->email));
     }
 }

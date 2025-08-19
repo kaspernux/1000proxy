@@ -29,6 +29,7 @@ use App\Http\Middleware\ShareErrorsFromSession as ShareErrorsFromSessionMiddlewa
 use App\Http\Middleware\DispatchServingFilamentEvent as DispatchServingFilamentEventMiddleware;
 use Filament\Enums\ThemeMode;
 use Filament\Facades\Filament;
+use Filament\Support\Enums\Width;
 
 class CustomerPanelProvider extends PanelProvider
 {
@@ -44,6 +45,9 @@ class CustomerPanelProvider extends PanelProvider
             ->colors([
                 'primary' => \Filament\Support\Colors\Color::Green,
             ])
+            ->maxContentWidth(Width::Full)
+            // Use the global app.css as the Filament theme stylesheet
+                // Use native Filament v4 theme (no custom viteTheme override)
             ->widgets([
                 CustomerStatsOverview::class,
                 SupportOverviewWidget::class,
@@ -56,6 +60,10 @@ class CustomerPanelProvider extends PanelProvider
                 'light' => ThemeMode::Light,
                 default => ThemeMode::System,
             })
+            // Enable Filament's database notifications bell in the topbar (lazy-loaded by default)
+            ->databaseNotifications(true, livewireComponent: null, isLazy: true)
+            // Poll every 30s by default; adjust if you want more/less frequent updates
+            ->databaseNotificationsPolling('30s')
             ->discoverPages(   in: app_path('Filament/Customer/Pages'),       for: 'App\\Filament\\Customer\\Pages')
             ->authGuard('customer')
             ->middleware([
@@ -127,7 +135,49 @@ class CustomerPanelProvider extends PanelProvider
             ])
             ->bootUsing(function(){
                 // Ensure SweetAlert2 + Livewire Alert scripts are available inside the Filament customer panel
-                Filament::registerRenderHook('panels::body.end', fn () => view('partials.livewire-alert-filament'));
+                \Filament\Support\Facades\FilamentView::registerRenderHook(
+                    \Filament\View\PanelsRenderHook::BODY_END,
+                    fn () => view('partials.livewire-alert-filament'),
+                );
+
+                // Add quick actions to the topbar
+                \Filament\Support\Facades\FilamentView::registerRenderHook(
+                    \Filament\View\PanelsRenderHook::TOPBAR_AFTER,
+                    function () {
+                        return <<<'HTML'
+                            <div class="hidden md:flex items-center gap-2 pr-2">
+                                <a href="/account/my-active-servers" class="inline-flex items-center gap-1 px-2 py-1 text-sm rounded bg-emerald-600 text-white hover:bg-emerald-700 hs-transition-opacity"> 
+                                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-4"><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 3v11.25A2.25 2.25 0 006 16.5h3.75M3.75 3h16.5M3.75 3H6m14.25 0v11.25A2.25 2.25 0 0118 16.5h-2.25m4.5-13.5H18m0 0H6M9.75 16.5H6m3.75 0h3.75m0 0V21m0-4.5H18" /></svg>
+                                    <span>Active</span>
+                                </a>
+                                <a href="/account/server-browsing" class="inline-flex items-center gap-1 px-2 py-1 text-sm rounded bg-sky-600 text-white hover:bg-sky-700 hs-transition-opacity">
+                                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-4"><path stroke-linecap="round" stroke-linejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h15.75c.621 0 1.125.504 1.125 1.125v6.75A2.625 2.625 0 0118.375 22.5H5.625A2.625 2.625 0 013 19.875v-6.75z" /><path stroke-linecap="round" stroke-linejoin="round" d="M6.75 12V8.625a5.25 5.25 0 1110.5 0V12" /></svg>
+                                    <span>Browse</span>
+                                </a>
+                                <a href="/account/wallet-management" class="inline-flex items-center gap-1 px-2 py-1 text-sm rounded bg-amber-600 text-white hover:bg-amber-700 hs-transition-opacity">
+                                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-4"><path stroke-linecap="round" stroke-linejoin="round" d="M21 12.75V8.25A2.25 2.25 0 0018.75 6h-15A2.25 2.25 0 001.5 8.25v7.5A2.25 2.25 0 003.75 18h12.75A2.25 2.25 0 0018.75 15.75V12.75M21 12.75h-3.75a2.25 2.25 0 100 4.5H21v-4.5z" /></svg>
+                                    <span>Wallet</span>
+                                </a>
+                                <button id="theme-toggle" type="button" class="inline-flex items-center gap-1 px-2 py-1 text-sm rounded bg-gray-700 text-white hover:bg-gray-800 hs-transition-opacity">
+                                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="size-4"><path d="M21.752 15.002A9.718 9.718 0 0019.5 15.75c-5.385 0-9.75-4.365-9.75-9.75 0-.79.091-1.56.263-2.296A9.753 9.753 0 003 11.25C3 16.635 7.365 21 12.75 21a9.753 9.753 0 009.002-5.998z" /></svg>
+                                    <span>Theme</span>
+                                </button>
+                            </div>
+                            <script>
+                                (function(){
+                                    const btn = document.getElementById('theme-toggle');
+                                    if (!btn) return;
+                                    btn.addEventListener('click', function(){
+                                        const root = document.documentElement;
+                                        const isDark = root.classList.toggle('dark');
+                                        // Persist to session via fetch to a tiny endpoint (optional/no-op if missing)
+                                        fetch('/api/theme', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content }, body: JSON.stringify({ mode: isDark ? 'dark' : 'light' }) }).catch(()=>{});
+                                    });
+                                })();
+                            </script>
+                        HTML;
+                    }
+                );
             });
     }
 }

@@ -13,20 +13,20 @@ use Illuminate\Support\Facades\Cache;
 
 class AdminChartsWidget extends ChartWidget
 {
-    protected static ?string $heading = 'Revenue & Growth Analytics';
-    protected static ?string $description = 'Unified revenue, orders, customer and client growth trends with multi-range filters.';
+    protected ?string $heading = 'Revenue & Growth Analytics';
+    protected ?string $description = 'Unified revenue, orders, customer and client growth trends with multi-range filters.';
 
     public function getHeading(): string
     {
         // Ensure deterministic heading (used by dataset persistence & added as data attribute downstream)
-        return static::$heading ?? 'Revenue & Growth Analytics';
+        return $this->heading ?? 'Revenue & Growth Analytics';
     }
 
     protected static ?int $sort = 3; // after stats(1) + infra(2)
 
     protected int | string | array $columnSpan = 'full';
 
-    protected static ?string $maxHeight = '400px';
+    protected ?string $maxHeight = '400px';
     protected static bool $isLazy = false; // ensure immediate render so skeleton replaced quickly
 
     public ?string $filter = 'week';
@@ -285,13 +285,13 @@ class AdminChartsWidget extends ChartWidget
 
 class AdminServerStatusWidget extends ChartWidget
 {
-    protected static ?string $heading = 'Server Status & Performance';
+    protected ?string $heading = 'Server Status & Performance';
 
     protected static ?int $sort = 3;
 
     protected int | string | array $columnSpan = 'full';
 
-    protected static ?string $maxHeight = '300px';
+    protected ?string $maxHeight = '300px';
 
     protected function getData(): array
     {

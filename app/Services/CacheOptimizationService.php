@@ -11,7 +11,7 @@ class CacheOptimizationService
 {
     // Cache prefixes for different data types
     const SERVER_CACHE_PREFIX = 'server:';
-    const USER_CACHE_PREFIX = 'user:';
+    const USER_CACHE_PREFIX = 'customer:';
     const ORDER_CACHE_PREFIX = 'order:';
     const ANALYTICS_CACHE_PREFIX = 'analytics:';
     const REAL_TIME_CACHE_PREFIX = 'realtime:';
@@ -56,15 +56,15 @@ class CacheOptimizationService
     }
     
     /**
-     * Cache user-specific data
+     * Cache customer-specific data
      */
-    public function cacheUserData(int $userId, string $key, $data, int $ttl = self::MEDIUM_TTL): bool
+    public function cacheUserData(int $customerId, string $key, $data, int $ttl = self::MEDIUM_TTL): bool
     {
         try {
-            return Cache::put(self::USER_CACHE_PREFIX . $userId . ':' . $key, $data, $ttl);
+            return Cache::put(self::USER_CACHE_PREFIX . $customerId . ':' . $key, $data, $ttl);
         } catch (\Exception $e) {
-            Log::error('Failed to cache user data', [
-                'user_id' => $userId,
+            Log::error('Failed to cache customer data', [
+                'customer_id' => $customerId,
                 'key' => $key,
                 'error' => $e->getMessage()
             ]);
@@ -73,15 +73,15 @@ class CacheOptimizationService
     }
     
     /**
-     * Get cached user data
+     * Get cached customer data
      */
-    public function getCachedUserData(int $userId, string $key)
+    public function getCachedUserData(int $customerId, string $key)
     {
         try {
-            return Cache::get(self::USER_CACHE_PREFIX . $userId . ':' . $key);
+            return Cache::get(self::USER_CACHE_PREFIX . $customerId . ':' . $key);
         } catch (\Exception $e) {
-            Log::error('Failed to get cached user data', [
-                'user_id' => $userId,
+            Log::error('Failed to get cached customer data', [
+                'customer_id' => $customerId,
                 'key' => $key,
                 'error' => $e->getMessage()
             ]);
@@ -154,16 +154,16 @@ class CacheOptimizationService
     }
     
     /**
-     * Invalidate user cache
+     * Invalidate customer cache
      */
-    public function invalidateUserCache(int $userId): bool
+    public function invalidateUserCache(int $customerId): bool
     {
         try {
-            $pattern = self::USER_CACHE_PREFIX . $userId . ':*';
+            $pattern = self::USER_CACHE_PREFIX . $customerId . ':*';
             return $this->invalidateCachePattern($pattern);
         } catch (\Exception $e) {
-            Log::error('Failed to invalidate user cache', [
-                'user_id' => $userId,
+            Log::error('Failed to invalidate customer cache', [
+                'customer_id' => $customerId,
                 'error' => $e->getMessage()
             ]);
             return false;

@@ -8,7 +8,7 @@ use Illuminate\Support\Facades\Cache;
 
 class ServerUsageWidget extends ChartWidget
 {
-    protected static ?string $heading = 'Server Usage Distribution';
+    protected ?string $heading = 'Server Usage Distribution';
 
     protected static ?int $sort = 3;
 

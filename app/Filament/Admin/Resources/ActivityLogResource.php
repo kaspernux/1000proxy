@@ -5,84 +5,141 @@ namespace App\Filament\Admin\Resources;
 use App\Filament\Admin\Resources\ActivityLogResource\Pages;
 use App\Models\ActivityLog;
 use Filament\Forms;
-use Filament\Resources\Form;
+use Filament\Forms\Form;
 use Filament\Resources\Resource;
-use Filament\Resources\Table;
+use UnitEnum;
+use BackedEnum;
 use Filament\Tables;
-use Filament\Tables\Columns\TextColumn;
-use Filament\Tables\Filters\Filter;
+use Filament\Tables\Table;
+use Filament\Schemas\Schema;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Collection;
+use App\Filament\Concerns\HasPerformanceOptimizations;
 
 class ActivityLogResource extends Resource
 {
+    use HasPerformanceOptimizations;
+
     protected static ?string $model = ActivityLog::class;
-    protected static ?string $navigationIcon = 'heroicon-o-clipboard-document-check';
-    protected static ?string $navigationGroup = 'System';
-    protected static ?int $navigationSort = 99;
+    protected static string|BackedEnum|null $navigationIcon = 'heroicon-o-clipboard-document-check';
+    protected static string|UnitEnum|null $navigationGroup = 'System';
+    protected static ?int $navigationSort = 2;
     protected static ?string $slug = 'activity-logs';
     protected static ?string $modelLabel = 'Activity Log';
     protected static ?string $pluralModelLabel = 'Activity Logs';
 
-    public static function form(Form $form): Form
+    public static function canAccess(): bool
     {
-        return $form->schema([
+        // Allow route access for authenticated users; page-level checks will enforce 403 for non-admin.
+        return auth()->check();
+    }
+
+    public static function shouldRegisterNavigation(): bool
+    {
+        // Only show in navigation for administrators
+        return (bool) auth()->user()?->hasRole('admin');
+    }
+
+    public static function form(Schema $schema): Schema
+    {
+        return $schema->schema([
             Forms\Components\Textarea::make('properties')->disabled(),
         ]);
     }
 
     public static function table(Table $table): Table
     {
-        return $table
+        $table = $table
             ->columns([
-                TextColumn::make('created_at')->since()->sortable()->label('When'),
-                TextColumn::make('user.name')->label('User')->toggleable()->searchable(),
-                TextColumn::make('action')->badge()->colors([
+                Tables\Columns\TextColumn::make('created_at')->since()->sortable()->label('When'),
+                Tables\Columns\TextColumn::make('user.name')->label('User')->toggleable()->searchable(),
+                Tables\Columns\TextColumn::make('action')->badge()->colors([
                     'success' => 'created',
                     'warning' => 'updated',
                     'danger' => 'deleted',
                 ])->sortable(),
-                TextColumn::make('subject_type')->label('Subject')->formatStateUsing(fn($state) => class_basename($state))->searchable(),
-                TextColumn::make('subject_id')->label('ID')->sortable(),
-                TextColumn::make('ip_address')->toggleable(isToggledHiddenByDefault: true),
+                Tables\Columns\TextColumn::make('subject_type')->label('Subject')->formatStateUsing(fn ($state) => class_basename($state))->searchable(),
+                Tables\Columns\TextColumn::make('subject_id')->label('ID')->sortable(),
+                Tables\Columns\TextColumn::make('ip_address')->toggleable(isToggledHiddenByDefault: true),
             ])
             ->filters([
-                Filter::make('created_today')->label('Today')
-                    ->query(fn(Builder $q) => $q->whereDate('created_at', now()->toDateString())),
-                Filter::make('date_range')
+                Tables\Filters\Filter::make('created_today')->label('Today')
+                    ->query(fn (Builder $q) => $q->whereDate('created_at', now()->toDateString())),
+                Tables\Filters\Filter::make('date_range')
                     ->form([
                         Forms\Components\DatePicker::make('from'),
                         Forms\Components\DatePicker::make('to'),
-                    ])->query(function(Builder $q, array $data) {
-                        if ($data['from']) { $q->whereDate('created_at', '>=', $data['from']); }
-                        if ($data['to']) { $q->whereDate('created_at', '<=', $data['to']); }
+                    ])->query(function (Builder $q, array $data) {
+                        if ($data['from'] ?? null) {
+                            $q->whereDate('created_at', '>=', $data['from']);
+                        }
+                        if ($data['to'] ?? null) {
+                            $q->whereDate('created_at', '<=', $data['to']);
+                        }
                         return $q;
                     }),
-                Filter::make('action')
+                Tables\Filters\Filter::make('action')
                     ->form([
                         Forms\Components\Select::make('action')->options([
                             'created' => 'Created',
                             'updated' => 'Updated',
                             'deleted' => 'Deleted',
-                        ])
-                    ])->query(fn(Builder $q, array $data) => $data['action'] ? $q->where('action', $data['action']) : $q),
-                Filter::make('subject_type')
+                        ]),
+                    ])->query(fn (Builder $q, array $data) => ($data['action'] ?? null) ? $q->where('action', $data['action']) : $q),
+                Tables\Filters\Filter::make('subject_type')
                     ->form([
                         Forms\Components\Select::make('subject_type')
                             ->label('Subject')
                             ->options(collect([
-                                'Order', 'Server', 'PaymentMethod', 'Customer', 'ServerPlan', 'ServerClient', 'Invoice'
-                            ])->mapWithKeys(fn($c) => ["App\\Models\\$c" => $c]))
+                                'Order', 'Server', 'PaymentMethod', 'Customer', 'ServerPlan', 'ServerClient', 'Invoice',
+                            ])->mapWithKeys(fn ($c) => ["App\\Models\\$c" => $c])),
                     ])
-                    ->query(fn(Builder $q, array $data) => $data['subject_type'] ? $q->where('subject_type', $data['subject_type']) : $q),
+                    ->query(fn (Builder $q, array $data) => ($data['subject_type'] ?? null) ? $q->where('subject_type', $data['subject_type']) : $q),
             ])
             ->defaultSort('id', 'desc')
             ->actions([
-                Tables\Actions\ViewAction::make(),
-                Tables\Actions\DeleteAction::make()->visible(fn() => auth()->user()?->hasRole('super-admin')),
+                \Filament\Actions\ViewAction::make(),
+                \Filament\Actions\DeleteAction::make()->visible(fn () => auth()->user()?->hasRole('super-admin')),
             ])
             ->bulkActions([
-                Tables\Actions\DeleteBulkAction::make()->visible(fn() => auth()->user()?->hasRole('super-admin')),
+                \Filament\Actions\BulkAction::make('export_csv')
+                    ->label('Export CSV')
+                    ->icon('heroicon-o-arrow-down-tray')
+                    ->action(function (Collection $records) {
+                        $filename = 'activity-logs-' . now()->format('Ymd-His') . '.csv';
+
+                        return response()->streamDownload(function () use ($records) {
+                            $out = fopen('php://output', 'w');
+                            fputcsv($out, ['When', 'User', 'Action', 'Subject', 'Subject ID', 'IP Address']);
+
+                            foreach ($records as $log) {
+                                fputcsv($out, [
+                                    optional($log->created_at)?->toDateTimeString(),
+                                    optional($log->user)?->name,
+                                    $log->action,
+                                    class_basename($log->subject_type),
+                                    $log->subject_id,
+                                    $log->ip_address,
+                                ]);
+                            }
+
+                            fclose($out);
+                        }, $filename, [
+                            'Content-Type' => 'text/csv',
+                        ]);
+                    })
+                    ->deselectRecordsAfterCompletion(),
+                \Filament\Actions\DeleteBulkAction::make()->visible(fn () => auth()->user()?->hasRole('super-admin')),
             ]);
+
+        return self::applyTablePreset($table, [
+            'defaultPage' => 50,
+            'empty' => [
+                'icon' => 'heroicon-o-clipboard',
+                'heading' => 'No activity yet',
+                'description' => 'System activity will appear here as users and services perform actions.',
+            ],
+        ]);
     }
 
     public static function getPages(): array
@@ -92,24 +149,4 @@ class ActivityLogResource extends Resource
             'view' => Pages\ViewActivityLog::route('/{record}'),
         ];
     }
-}
-
-namespace App\Filament\Admin\Resources\ActivityLogResource\Pages;
-
-use App\Filament\Admin\Resources\ActivityLogResource;
-use Filament\Resources\Pages\ListRecords;
-use Filament\Resources\Pages\ViewRecord;
-
-class ListActivityLogs extends ListRecords
-{
-    protected static string $resource = ActivityLogResource::class;
-    protected function getHeaderActions(): array
-    {
-        return [];
-    }
-}
-
-class ViewActivityLog extends ViewRecord
-{
-    protected static string $resource = ActivityLogResource::class;
 }

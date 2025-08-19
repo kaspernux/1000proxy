@@ -43,12 +43,12 @@ class Server extends Model
 
     protected $fillable = [
         'name',
-    'username', // legacy alias: panel_username
-    'password', // legacy alias: panel_password
+        'username', // legacy alias: panel_username
+        'password', // legacy alias: panel_password
         'server_category_id',
         'server_brand_id',
-    'country', // legacy alias: location
-    'location', // physical alias column for tests
+        'country', // legacy alias: location
+        'location', // physical alias column for tests
         'flag',
         'description',
         'status',
@@ -56,7 +56,7 @@ class Server extends Model
         'panel_port',
         'web_base_path',
         'panel_url',
-    'ip', // legacy alias: ip_address
+        'ip', // legacy alias: ip_address
         'port',
         'sni',
         'header_type',
@@ -81,9 +81,8 @@ class Server extends Model
         'last_health_check_at',
         'health_message',
         'alert_settings',
-        // 3X-UI session and API management fields
         'session_cookie',
-    'session_cookie_name',
+        'session_cookie_name',
         'session_expires_at',
         'last_login_at',
         'login_attempts',

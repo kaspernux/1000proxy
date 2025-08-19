@@ -10,7 +10,7 @@ use App\Mail\PaymentReceived;
 use App\Mail\ServiceActivated;
 use App\Mail\WelcomeEmail;
 use App\Models\Order;
-use App\Models\User;
+use App\Models\Customer;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Queue;
@@ -18,23 +18,23 @@ use Illuminate\Support\Facades\Queue;
 class EnhancedMailService
 {
     /**
-     * Send welcome email to new user
+     * Send welcome email to new customer
      */
-    public function sendWelcomeEmail(User $user): bool
+    public function sendWelcomeEmail(Customer $customer): bool
     {
         try {
-            Mail::to($user->email)->send(new WelcomeEmail($user));
+            Mail::to($customer->email)->send(new WelcomeEmail($customer));
 
             Log::info('Welcome email sent successfully', [
-                'user_id' => $user->id,
-                'email' => $user->email
+                'customer_id' => $customer->id,
+                'email' => $customer->email
             ]);
 
             return true;
         } catch (\Exception $e) {
             Log::error('Welcome email failed', [
-                'user_id' => $user->id,
-                'email' => $user->email,
+                'customer_id' => $customer->id,
+                'email' => $customer->email,
                 'error' => $e->getMessage()
             ]);
 
@@ -136,13 +136,13 @@ class EnhancedMailService
     /**
      * Send payment failed notification
      */
-    public function sendPaymentFailedEmail(User $user, int $orderId, float $amount, string $reason = 'Payment processing failed'): bool
+    public function sendPaymentFailedEmail(Customer $customer, int $orderId, float $amount, string $reason = 'Payment processing failed'): bool
     {
         try {
-            Mail::to($user->email)->send(new PaymentFailed($user, $orderId, $amount, $reason));
+            Mail::to($customer->email)->send(new PaymentFailed($customer, $orderId, $amount, $reason));
 
             Log::info('Payment failed email sent successfully', [
-                'user_id' => $user->id,
+                'customer_id' => $customer->id,
                 'order_id' => $orderId,
                 'amount' => $amount,
                 'reason' => $reason
@@ -151,7 +151,7 @@ class EnhancedMailService
             return true;
         } catch (\Exception $e) {
             Log::error('Payment failed email failed', [
-                'user_id' => $user->id,
+                'customer_id' => $customer->id,
                 'order_id' => $orderId,
                 'error' => $e->getMessage()
             ]);
@@ -193,13 +193,13 @@ class EnhancedMailService
     /**
      * Send admin notification
      */
-    public function sendAdminNotification(User $user, string $subject, string $messageContent, string $type = 'info'): bool
+    public function sendAdminNotification(Customer $customer, string $subject, string $messageContent, string $type = 'info'): bool
     {
         try {
-            Mail::to($user->email)->send(new AdminNotification($user, $subject, $messageContent, $type));
+            Mail::to($customer->email)->send(new AdminNotification($customer, $subject, $messageContent, $type));
 
             Log::info('Admin notification sent successfully', [
-                'user_id' => $user->id,
+                'customer_id' => $customer->id,
                 'subject' => $subject,
                 'type' => $type
             ]);
@@ -207,7 +207,7 @@ class EnhancedMailService
             return true;
         } catch (\Exception $e) {
             Log::error('Admin notification failed', [
-                'user_id' => $user->id,
+                'customer_id' => $customer->id,
                 'subject' => $subject,
                 'error' => $e->getMessage()
             ]);
@@ -217,33 +217,33 @@ class EnhancedMailService
     }
 
     /**
-     * Send bulk notifications to multiple users
+     * Send bulk notifications to multiple customers
      */
-    public function sendBulkNotifications(array $userIds, string $subject, string $messageContent, string $type = 'info'): array
+    public function sendBulkNotifications(array $customersIds, string $subject, string $messageContent, string $type = 'info'): array
     {
         $results = ['sent' => 0, 'failed' => 0, 'errors' => []];
 
         try {
-            $users = User::whereIn('id', $userIds)->get();
+            $customers = Customer::whereIn('id', $customersIds)->get();
 
-            foreach ($users as $user) {
-                if ($this->sendAdminNotification($user, $subject, $messageContent, $type)) {
+            foreach ($customers as $customer) {
+                if ($this->sendAdminNotification($customer, $subject, $messageContent, $type)) {
                     $results['sent']++;
                 } else {
                     $results['failed']++;
-                    $results['errors'][] = "Failed to send to user {$user->id}";
+                    $results['errors'][] = "Failed to send to customer {$customer->id}";
                 }
             }
 
             Log::info('Bulk notifications completed', [
-                'total_users' => count($userIds),
+                'total_customers' => count($customersIds),
                 'sent' => $results['sent'],
                 'failed' => $results['failed']
             ]);
 
         } catch (\Exception $e) {
             Log::error('Bulk notifications failed', [
-                'user_ids' => $userIds,
+                'customer_ids' => $customersIds,
                 'error' => $e->getMessage()
             ]);
 
@@ -283,8 +283,8 @@ class EnhancedMailService
     public function sendTestEmail(string $email, string $type = 'welcome'): bool
     {
         try {
-            $testUser = new User([
-                'name' => 'Test User',
+            $testUser = new Customer([
+                'name' => 'Test Customer',
                 'email' => $email,
                 'id' => 999999,
                 'created_at' => now()

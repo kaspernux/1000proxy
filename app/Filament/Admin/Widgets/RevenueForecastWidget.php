@@ -8,7 +8,7 @@ use Illuminate\Support\Facades\Cache;
 
 class RevenueForecastWidget extends ChartWidget
 {
-    protected static ?string $heading = 'Revenue Forecast';
+    protected ?string $heading = 'Revenue Forecast';
     protected static ?int $sort = 7;
 
     protected function getData(): array

@@ -40,6 +40,10 @@ class User extends Authenticatable implements FilamentUser
         'theme_mode',
         'email_notifications',
         'timezone',
+    'two_factor_enabled',
+    'two_factor_secret',
+    'two_factor_recovery_codes',
+    'notification_preferences',
     ];
 
     /**
@@ -72,6 +76,8 @@ class User extends Authenticatable implements FilamentUser
             'password' => 'hashed',
             'last_login_at' => 'datetime',
             'is_active' => 'boolean',
+            'two_factor_enabled' => 'boolean',
+            'notification_preferences' => 'array',
         ];
         }
 
@@ -83,7 +89,7 @@ class User extends Authenticatable implements FilamentUser
         }
 
         // Allow explicit roles
-        if (in_array($this->role, ['admin', 'support_manager', 'sales_support'])) {
+    if (in_array($this->role, ['admin', 'manager', 'support_manager', 'sales_support', 'analyst'])) {
             return true;
         }
 
@@ -231,6 +237,7 @@ class User extends Authenticatable implements FilamentUser
     {
         $roleMap = [
             'admin' => ' (Admin)',
+            'manager' => ' (Manager)',
             'support_manager' => ' (Support Manager)',
             'sales_support' => ' (Sales Support)',
         ];
@@ -256,6 +263,14 @@ class User extends Authenticatable implements FilamentUser
     }
 
     /**
+     * Check if user is a manager
+     */
+    public function isManager(): bool
+    {
+        return $this->role === 'manager';
+    }
+
+    /**
      * Check if user is a support manager
      */
     public function isSupportManager(): bool
@@ -272,14 +287,24 @@ class User extends Authenticatable implements FilamentUser
     }
 
     /**
+     * Check if user is an analyst
+     */
+    public function isAnalyst(): bool
+    {
+        return $this->role === 'analyst';
+    }
+
+    /**
      * Get available user roles
      */
     public static function getAvailableRoles(): array
     {
         return [
             'admin' => 'Administrator',
+            'manager' => 'Manager',
             'support_manager' => 'Support Manager',
             'sales_support' => 'Sales Support',
+            'analyst' => 'Analyst',
         ];
     }
 
@@ -299,14 +324,5 @@ class User extends Authenticatable implements FilamentUser
         return $this->locale ?: config('locales.default', 'en');
     }
 
-    /**
-     * Orders relationship (staff may view/manage but must not create).
-     * Uses customer-centric orders table where staff are not the owner; exposed
-     * for management dashboards only (no reverse foreign key on orders).
-     */
-    public function orders()
-    {
-    // Legacy relationship: a nullable user_id column (added for legacy tests / management)
-    return $this->hasMany(\App\Models\Order::class, 'user_id');
-    }
+    // Staff do not own orders; access via filtered queries or services.
 }

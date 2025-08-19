@@ -111,7 +111,7 @@
                                         {{ $location['country'] }}
                                     </span>
                                     <span class="ml-2 text-sm text-gray-500 dark:text-gray-400">
-                                        ({{ implode(', ', $location['cities']) }})
+                                        ({{ collect($location['cities'] ?? [])->filter()->unique()->values()->join(', ') }})
                                     </span>
                                 </div>
                                 <div class="flex items-center space-x-2">
@@ -370,7 +370,8 @@
         @endif
     </div>
 
-    @script
+    @push('scripts')
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script>
         // Server Status Chart
         const ctx = document.getElementById('serverStatusChart').getContext('2d');
@@ -413,5 +414,5 @@
             }
         });
     </script>
-    @endscript
+    @endpush
 </x-filament-panels::page>

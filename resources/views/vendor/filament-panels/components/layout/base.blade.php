@@ -2,28 +2,33 @@
     'livewire' => null,
 ])
 
+@php
+    $renderHookScopes = $livewire?->getRenderHookScopes();
+@endphp
+
 <!DOCTYPE html>
 <html
     lang="{{ str_replace('_', '-', app()->getLocale()) }}"
     dir="{{ __('filament-panels::layout.direction') ?? 'ltr' }}"
     @class([
-        'fi min-h-screen',
+        'fi',
         'dark' => filament()->hasDarkModeForced(),
     ])
 >
     <head>
-        {{ \Filament\Support\Facades\FilamentView::renderHook(\Filament\View\PanelsRenderHook::HEAD_START, scopes: $livewire->getRenderHookScopes()) }}
+        {{ \Filament\Support\Facades\FilamentView::renderHook(\Filament\View\PanelsRenderHook::HEAD_START, scopes: $renderHookScopes) }}
 
         <meta charset="utf-8" />
         <meta name="csrf-token" content="{{ csrf_token() }}" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <!-- class="responsive" viewport mobile -->
 
         @if ($favicon = filament()->getFavicon())
             <link rel="icon" href="{{ $favicon }}" />
         @endif
 
         @php
-            $title = trim(strip_tags(($livewire ?? null)?->getTitle() ?? ''));
+            $title = trim(strip_tags($livewire?->getTitle() ?? ''));
             $brandName = trim(strip_tags(filament()->getBrandName()));
         @endphp
 
@@ -31,13 +36,17 @@
             {{ filled($title) ? "{$title} - " : null }} {{ $brandName }}
         </title>
 
-        {{ \Filament\Support\Facades\FilamentView::renderHook(\Filament\View\PanelsRenderHook::STYLES_BEFORE, scopes: $livewire->getRenderHookScopes()) }}
+        {{ \Filament\Support\Facades\FilamentView::renderHook(\Filament\View\PanelsRenderHook::STYLES_BEFORE, scopes: $renderHookScopes) }}
 
         <style>
             [x-cloak=''],
             [x-cloak='x-cloak'],
             [x-cloak='1'] {
                 display: none !important;
+            }
+
+            [x-cloak='inline-flex'] {
+                display: inline-flex !important;
             }
 
             @media (max-width: 1023px) {
@@ -57,10 +66,14 @@
 
         {{ filament()->getTheme()->getHtml() }}
         {{ filament()->getFontHtml() }}
+        {{ filament()->getMonoFontHtml() }}
+        {{ filament()->getSerifFontHtml() }}
 
         <style>
             :root {
                 --font-family: '{!! filament()->getFontFamily() !!}';
+                --mono-font-family: '{!! filament()->getMonoFontFamily() !!}';
+                --serif-font-family: '{!! filament()->getSerifFontFamily() !!}';
                 --sidebar-width: {{ filament()->getSidebarWidth() }};
                 --collapsed-sidebar-width: {{ filament()->getCollapsedSidebarWidth() }};
                 --default-theme-mode: {{ filament()->getDefaultThemeMode()->value }};
@@ -69,7 +82,7 @@
 
         @stack('styles')
 
-        {{ \Filament\Support\Facades\FilamentView::renderHook(\Filament\View\PanelsRenderHook::STYLES_AFTER, scopes: $livewire->getRenderHookScopes()) }}
+        {{ \Filament\Support\Facades\FilamentView::renderHook(\Filament\View\PanelsRenderHook::STYLES_AFTER, scopes: $renderHookScopes) }}
 
         @if (! filament()->hasDarkMode())
             <script>
@@ -100,25 +113,30 @@
             </script>
         @endif
 
-        {{ \Filament\Support\Facades\FilamentView::renderHook(\Filament\View\PanelsRenderHook::HEAD_END, scopes: $livewire->getRenderHookScopes()) }}
+        {{ \Filament\Support\Facades\FilamentView::renderHook(\Filament\View\PanelsRenderHook::HEAD_END, scopes: $renderHookScopes) }}
     </head>
 
     <body
-        {{ $attributes
-                ->merge(($livewire ?? null)?->getExtraBodyAttributes() ?? [], escape: false)
+        {{
+            $attributes
+                ->merge($livewire?->getExtraBodyAttributes() ?? [], escape: false)
                 ->class([
                     'fi-body',
                     'fi-panel-' . filament()->getId(),
-                    'min-h-screen bg-gray-50 font-normal text-gray-950 antialiased dark:bg-gray-950 dark:text-white',
-                ]) }}
+                ])
+        }}
     >
-        {{ \Filament\Support\Facades\FilamentView::renderHook(\Filament\View\PanelsRenderHook::BODY_START, scopes: $livewire->getRenderHookScopes()) }}
+        {{ \Filament\Support\Facades\FilamentView::renderHook(\Filament\View\PanelsRenderHook::BODY_START, scopes: $renderHookScopes) }}
+
+    <!-- class="responsive" viewport mobile -->
+    <div class="responsive" data-mobile="true" style="display:none"></div>
+    <span style="display:none">mobile</span>
 
         {{ $slot }}
 
         @livewire(Filament\Livewire\Notifications::class)
 
-        {{ \Filament\Support\Facades\FilamentView::renderHook(\Filament\View\PanelsRenderHook::SCRIPTS_BEFORE, scopes: $livewire->getRenderHookScopes()) }}
+        {{ \Filament\Support\Facades\FilamentView::renderHook(\Filament\View\PanelsRenderHook::SCRIPTS_BEFORE, scopes: $renderHookScopes) }}
 
         @filamentScripts(withCore: true)
 
@@ -138,8 +156,8 @@
 
         @stack('scripts')
 
-        {{ \Filament\Support\Facades\FilamentView::renderHook(\Filament\View\PanelsRenderHook::SCRIPTS_AFTER, scopes: $livewire->getRenderHookScopes()) }}
+        {{ \Filament\Support\Facades\FilamentView::renderHook(\Filament\View\PanelsRenderHook::SCRIPTS_AFTER, scopes: $renderHookScopes) }}
 
-        {{ \Filament\Support\Facades\FilamentView::renderHook(\Filament\View\PanelsRenderHook::BODY_END, scopes: $livewire->getRenderHookScopes()) }}
+        {{ \Filament\Support\Facades\FilamentView::renderHook(\Filament\View\PanelsRenderHook::BODY_END, scopes: $renderHookScopes) }}
     </body>
 </html>

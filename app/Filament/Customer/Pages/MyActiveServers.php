@@ -7,7 +7,7 @@ use Filament\Tables\Table;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Columns\BadgeColumn;
 use Filament\Tables\Columns\IconColumn;
-use Filament\Tables\Actions\Action;
+use Filament\Actions\Action;
 use Filament\Actions\Action as PageAction;
 use Filament\Support\Enums\FontWeight;
 use Filament\Tables\Contracts\HasTable;
@@ -24,16 +24,17 @@ use Filament\Forms;
 use Filament\Tables;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Filters\Filter;
-use Filament\Tables\Actions\ActionGroup;
+use Filament\Actions\ActionGroup;
 use App\Filament\Customer\Pages\ServerBrowsing;
+use BackedEnum;
 
 class MyActiveServers extends Page implements HasTable
 {
     use InteractsWithTable;
 
-    protected static ?string $navigationIcon = 'heroicon-o-server-stack';
+    protected static string | BackedEnum | null $navigationIcon = 'heroicon-o-server-stack';
     protected static ?string $navigationLabel = 'My Active Servers';
-    protected static string $view = 'filament.customer.pages.my-active-servers';
+    protected string $view = 'filament.customer.pages.my-active-servers';
     protected static ?int $navigationSort = 2;
 
     public static function getNavigationBadge(): ?string
@@ -60,6 +61,22 @@ class MyActiveServers extends Page implements HasTable
     {
         return $table
             ->query($this->getServerClientsQuery())
+            ->headerActions([
+                Tables\Actions\ToggleColumnsAction::make(),
+                \Filament\Actions\ActionGroup::make([
+                    \Filament\Actions\Action::make('export_csv')
+                        ->label('Export CSV')
+                        ->icon('heroicon-o-arrow-down-tray')
+                        ->color('info')
+                        ->action(fn () => $this->exportActiveServers('csv')),
+                    \Filament\Actions\Action::make('export_json')
+                        ->label('Export JSON')
+                        ->icon('heroicon-o-code-bracket')
+                        ->color('success')
+                        ->action(fn () => $this->exportActiveServers('json')),
+                ])->label('Export')
+                  ->icon('heroicon-o-document-arrow-down'),
+            ])
             ->columns([
                 TextColumn::make('id')
                     ->label('Client #')
@@ -67,6 +84,7 @@ class MyActiveServers extends Page implements HasTable
                     ->weight(FontWeight::Bold)
                     ->sortable()
                     ->searchable()
+                    ->toggleable()
                     ->copyable()
                     ->copyableState(fn (ServerClient $record): string => "#{$record->id}")
                     ->tooltip('Copy client ID')
@@ -78,6 +96,7 @@ class MyActiveServers extends Page implements HasTable
                     ->label('Email')
                     ->searchable()
                     ->sortable()
+                    ->toggleable()
                     ->copyable()
                     ->icon('heroicon-o-envelope')
                     ->iconColor('primary')
@@ -88,6 +107,7 @@ class MyActiveServers extends Page implements HasTable
                     ->label('Server')
                     ->searchable()
                     ->sortable()
+                    ->toggleable()
                     ->icon('heroicon-o-server-stack')
                     ->color('info')
                     ->extraAttributes(['class' => 'font-bold text-blue-700 dark:text-blue-300 sm:text-base text-xs']),
@@ -95,18 +115,21 @@ class MyActiveServers extends Page implements HasTable
                 TextColumn::make('inbound.server.country')
                     ->label('Location')
                     ->searchable()
+                    ->toggleable()
                     ->icon('heroicon-o-map-pin')
                     ->color('info')
                     ->extraAttributes(['class' => 'text-blue-600 dark:text-blue-400 sm:text-base text-xs']),
 
                 TextColumn::make('inbound.protocol')
                     ->label('Protocol')
+                    ->toggleable()
                     ->icon('heroicon-o-arrow-path')
                     ->color('warning')
                     ->extraAttributes(['class' => 'text-yellow-600 dark:text-yellow-400 sm:text-base text-xs']),
 
                 TextColumn::make('status')
                     ->label('Status')
+                    ->toggleable()
                     ->badge()
                     ->color(fn (string $state): string => match ($state) {
                         'active' => 'success',
@@ -131,6 +154,7 @@ class MyActiveServers extends Page implements HasTable
                         $state ? number_format($state / 1024, 2) . ' GB' : '0 GB'
                     )
                     ->sortable()
+                    ->toggleable()
                     ->icon('heroicon-o-signal')
                     ->color('info')
                     ->alignment('right')
@@ -142,6 +166,7 @@ class MyActiveServers extends Page implements HasTable
                         $state ? number_format($state / 1024, 2) . ' GB' : 'Unlimited'
                     )
                     ->sortable()
+                    ->toggleable()
                     ->icon('heroicon-o-bolt')
                     ->color('success')
                     ->alignment('right')
@@ -151,6 +176,7 @@ class MyActiveServers extends Page implements HasTable
                     ->label('Created')
                     ->dateTime('M j, Y H:i')
                     ->sortable()
+                    ->toggleable()
                     ->description(fn (ServerClient $record): string => $record->created_at->diffForHumans())
                     ->color('gray')
                     ->icon('heroicon-o-calendar-days')
@@ -158,6 +184,7 @@ class MyActiveServers extends Page implements HasTable
 
                 TextColumn::make('expiry_time')
                     ->label('Expires')
+                    ->toggleable()
                     ->formatStateUsing(function ($state): string {
                         if (!$state || $state == 0) {
                             return 'Never';
@@ -284,20 +311,20 @@ class MyActiveServers extends Page implements HasTable
                     ->button(),
             ])
             ->bulkActions([
-                Tables\Actions\BulkAction::make('bulk_download')
+                \Filament\Actions\BulkAction::make('bulk_download')
                     ->label('Bulk Download Configs')
                     ->icon('heroicon-o-arrow-down-tray')
                     ->color('success')
                     ->action(fn (Collection $records) => $this->bulkDownloadConfigs($records)),
 
-                Tables\Actions\BulkAction::make('bulk_suspend')
+                \Filament\Actions\BulkAction::make('bulk_suspend')
                     ->label('Suspend Selected')
                     ->icon('heroicon-o-pause-circle')
                     ->color('danger')
                     ->requiresConfirmation()
                     ->action(fn (Collection $records) => $this->bulkSuspend($records)),
 
-                Tables\Actions\BulkAction::make('bulk_activate')
+                \Filament\Actions\BulkAction::make('bulk_activate')
                     ->label('Activate Selected')
                     ->icon('heroicon-o-play-circle')
                     ->color('success')
@@ -307,7 +334,7 @@ class MyActiveServers extends Page implements HasTable
             ->emptyStateDescription('You don\'t have any active proxy servers yet. Browse our servers to get started!')
             ->emptyStateIcon('heroicon-o-server-stack')
             ->emptyStateActions([
-                Tables\Actions\Action::make('browse_servers')
+                \Filament\Actions\Action::make('browse_servers')
                     ->label('Browse Servers')
                     ->icon('heroicon-o-server')
                     ->url(fn (): string => ServerBrowsing::getUrl())
@@ -450,6 +477,80 @@ class MyActiveServers extends Page implements HasTable
         Notification::make()
             ->title('Export Complete')
             ->body("Exported {$clients->count()} active server configurations.")
+            ->success()
+            ->send();
+    }
+
+    protected function exportActiveServers(string $format = 'csv'): void
+    {
+        $customer = Auth::guard('customer')->user();
+        $clients = ServerClient::where('customer_id', $customer->id)
+            ->with('serverInbound.server')
+            ->latest()
+            ->get();
+
+        if ($clients->isEmpty()) {
+            Notification::make()
+                ->title('Nothing to export')
+                ->warning()
+                ->send();
+            return;
+        }
+
+        if ($format === 'json') {
+            $payload = $clients->map(function ($c) {
+                return [
+                    'id' => $c->id,
+                    'email' => $c->email,
+                    'server' => $c->serverInbound?->server?->name,
+                    'country' => $c->serverInbound?->server?->country,
+                    'protocol' => $c->serverInbound?->protocol,
+                    'status' => $c->status,
+                    'traffic_used_mb' => $c->traffic_used_mb,
+                    'traffic_limit_mb' => $c->traffic_limit_mb,
+                    'created_at' => optional($c->created_at)->toISOString(),
+                ];
+            })->values()->toArray();
+
+            $filename = 'active_servers_' . now()->format('Y-m-d_H-i-s') . '.json';
+            $content = json_encode($payload, JSON_PRETTY_PRINT);
+            $mime = 'application/json';
+        } else {
+            $rows = [
+                ['Client ID','Email','Server','Country','Protocol','Status','Traffic Used (MB)','Traffic Limit (MB)','Created At'],
+            ];
+            foreach ($clients as $c) {
+                $rows[] = [
+                    $c->id,
+                    $c->email,
+                    $c->serverInbound?->server?->name,
+                    $c->serverInbound?->server?->country,
+                    $c->serverInbound?->protocol,
+                    $c->status,
+                    $c->traffic_used_mb,
+                    $c->traffic_limit_mb,
+                    optional($c->created_at)->format('Y-m-d H:i'),
+                ];
+            }
+            $content = collect($rows)->map(fn($r) => collect($r)->map(fn($v) => str_contains((string)$v, ',') ? '"'.str_replace('"','""',$v).'"' : $v)->implode(','))->implode("\n");
+            $filename = 'active_servers_' . now()->format('Y-m-d_H-i-s') . '.csv';
+            $mime = 'text/csv';
+        }
+
+        $this->js("
+            (function(){
+                const a=document.createElement('a');
+                a.href='data:" . $mime . ";charset=utf-8,'+encodeURIComponent(`" . $content . "`);
+                a.download='" . $filename . "';
+                a.style.display='none';
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+            })();
+        ");
+
+        Notification::make()
+            ->title('Export started')
             ->success()
             ->send();
     }

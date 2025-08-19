@@ -13,7 +13,7 @@ return new class extends Migration
     {
         Schema::create('push_notifications', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('user_id')->constrained()->onDelete('cascade');
+            $table->foreignId('customer_id')->constrained()->onDelete('cascade');
             $table->foreignId('device_id')->constrained('mobile_devices')->onDelete('cascade');
             $table->string('title');
             $table->text('body');
@@ -28,7 +28,7 @@ return new class extends Migration
             $table->string('notification_id')->nullable(); // External notification service ID
             $table->timestamps();
 
-            $table->index(['user_id', 'device_id']);
+            $table->index(['customer_id', 'device_id']);
             $table->index(['notification_type', 'status']);
             $table->index(['sent_at']);
             $table->index(['status', 'retry_count']);

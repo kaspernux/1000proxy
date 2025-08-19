@@ -14,7 +14,7 @@ use Illuminate\Support\Facades\Cache;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Columns\BadgeColumn;
 use Filament\Tables\Columns\ImageColumn;
-use Filament\Tables\Actions\Action;
+use Filament\Actions\Action;
 
 class UserActivityMonitoringWidget extends BaseWidget
 {
@@ -29,7 +29,7 @@ class UserActivityMonitoringWidget extends BaseWidget
 
     protected int | string | array $columnSpan = 'full';
 
-    protected static ?string $pollingInterval = '30s';
+    protected ?string $pollingInterval = '30s';
     protected static bool $isLazy = true; // make lazy to reduce initial payload
 
     public function table(Table $table): Table

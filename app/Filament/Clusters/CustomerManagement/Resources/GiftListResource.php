@@ -7,23 +7,31 @@ use App\Filament\Clusters\CustomerManagement\Resources\GiftListResource\Pages;
 use App\Models\GiftList;
 use Filament\Forms;
 use Filament\Forms\Form;
+use Filament\Schemas\Schema;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
-use Filament\Forms\Components\Section;
-use Filament\Forms\Components\Group;
+use Filament\Schemas\Components\Section;
+use Filament\Schemas\Components\Group;
+use BackedEnum;
 
 class GiftListResource extends Resource
 {
     protected static ?string $model = GiftList::class;
 
-    protected static ?string $navigationIcon = 'heroicon-o-gift';
+    protected static BackedEnum|string|null $navigationIcon = 'heroicon-o-gift';
 
     protected static ?string $cluster = CustomerManagement::class;
 
-    public static function form(Form $form): Form
+    public static function canAccess(): bool
     {
-        return $form
+        $user = auth()->user();
+        return (bool) ($user?->isAdmin() || $user?->isManager() || $user?->isSupportManager());
+    }
+
+    public static function form(Schema $schema): Schema
+    {
+        return $schema
             ->schema([
                 Group::make([
                     Section::make('Server Information')
@@ -84,15 +92,15 @@ class GiftListResource extends Resource
                 //
             ])
             ->actions([
-                Tables\Actions\ActionGroup::make([
-                    Tables\Actions\EditAction::make(),
-                    Tables\Actions\ViewAction::make(),
-                    Tables\Actions\DeleteAction::make(),
+                \Filament\Actions\ActionGroup::make([
+                    \Filament\Actions\EditAction::make(),
+                    \Filament\Actions\ViewAction::make(),
+                    \Filament\Actions\DeleteAction::make(),
                 ]),
             ])
             ->bulkActions([
-                Tables\Actions\BulkActionGroup::make([
-                    Tables\Actions\DeleteBulkAction::make(),
+                \Filament\Actions\BulkActionGroup::make([
+                    \Filament\Actions\DeleteBulkAction::make(),
                 ]),
             ]);
     }

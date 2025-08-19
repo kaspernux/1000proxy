@@ -88,7 +88,7 @@
             "name": "My Proxies",
             "short_name": "Proxies",
             "description": "View and manage your proxy services",
-            "url": "/dashboard/proxies",
+            "url": "/account",
             "icons": [
                 {
                     "src": "/images/icons/shortcut-proxies.png",
@@ -112,7 +112,7 @@
             "name": "Account",
             "short_name": "Account",
             "description": "Manage your account settings",
-            "url": "/dashboard/profile",
+            "url": "/account/profile",
             "icons": [
                 {
                     "src": "/images/icons/shortcut-account.png",

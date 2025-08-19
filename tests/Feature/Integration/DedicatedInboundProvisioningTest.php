@@ -5,7 +5,7 @@ namespace Tests\Feature\Integration;
 use Tests\TestCase;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
-use App\Models\User;
+use App\Models\Customer;
 use App\Models\Order;
 use App\Models\Server;
 use App\Models\ServerPlan;
@@ -17,7 +17,7 @@ class DedicatedInboundProvisioningTest extends TestCase
 
     public function test_creates_dedicated_inbound_and_client()
     {
-        $user = User::factory()->create();
+    $customer = Customer::factory()->create();
         $server = Server::factory()->create(['host' => 'dedic.example.com', 'is_active' => true]);
         $plan = ServerPlan::factory()->create([
             'name' => 'Single User Plan',
@@ -27,7 +27,7 @@ class DedicatedInboundProvisioningTest extends TestCase
             'server_id' => $server->id,
         ]);
         $order = Order::factory()->create([
-            'user_id' => $user->id,
+            'customer_id' => $customer->id,
             'payment_status' => 'paid',
             'status' => 'processing',
         ]);
@@ -53,7 +53,7 @@ class DedicatedInboundProvisioningTest extends TestCase
                 'success' => true,
                 'obj' => [
                     'id' => 'uuid-dedic-1',
-                    'settings' => json_encode(['clients' => [[ 'id' => 'uuid-dedic-1', 'email' => $user->email ]]]),
+                    'settings' => json_encode(['clients' => [[ 'id' => 'uuid-dedic-1', 'email' => $customer->email ]]]),
                 ],
             ], 200),
         ]);

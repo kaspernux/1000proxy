@@ -4,7 +4,7 @@ namespace App\Services;
 
 use App\Models\Server;
 use App\Models\ServerPlan;
-use App\Models\User;
+use App\Models\Customer;
 use App\Models\Order;
 use App\Models\ServerClient;
 use Illuminate\Support\Facades\Cache;
@@ -16,7 +16,7 @@ class PricingEngineService
     /**
      * Calculate dynamic pricing for a server plan
      */
-    public function calculateDynamicPrice(ServerPlan $plan, ?User $user = null): array
+    public function calculateDynamicPrice(ServerPlan $plan, ?Customer $customer = null): array
     {
         $basePrice = $plan->price;
         $adjustments = [];
@@ -33,12 +33,12 @@ class PricingEngineService
         $timeMultiplier = $this->calculateTimeMultiplier();
         $adjustments['time'] = ($timeMultiplier - 1) * $basePrice;
 
-        // User-based pricing
-        $userMultiplier = $this->calculateUserMultiplier($user);
-        $adjustments['user'] = ($userMultiplier - 1) * $basePrice;
+        // Customer-based pricing
+        $userMultiplier = $this->calculateUserMultiplier($customer);
+        $adjustments['customer'] = ($userMultiplier - 1) * $basePrice;
 
         // Geographic pricing
-        $geoMultiplier = $this->calculateGeographicMultiplier($plan->server, $user);
+        $geoMultiplier = $this->calculateGeographicMultiplier($plan->server, $customer);
         $adjustments['geographic'] = ($geoMultiplier - 1) * $basePrice;
 
         // Seasonal pricing
@@ -63,23 +63,23 @@ class PricingEngineService
     }
 
     /**
-     * Generate personalized pricing for a user
+     * Generate personalized pricing for a customer
      */
-    public function generatePersonalizedPricing(User $user): array
+    public function generatePersonalizedPricing(Customer $customer): array
     {
-        $userProfile = $this->buildUserProfile($user);
+        $userProfile = $this->buildUserProfile($customer);
         $personalizedPrices = [];
 
         $plans = ServerPlan::where('is_active', true)->get();
 
         foreach ($plans as $plan) {
-            $pricing = $this->calculateDynamicPrice($plan, $user);
+            $pricing = $this->calculateDynamicPrice($plan, $customer);
             $personalizedPrices[] = [
                 'plan_id' => $plan->id,
                 'plan_name' => $plan->name,
                 'server_name' => $plan->server->name,
                 'pricing' => $pricing,
-                'recommendations' => $this->generateRecommendations($plan, $user, $pricing),
+                'recommendations' => $this->generateRecommendations($plan, $customer, $pricing),
             ];
         }
 
@@ -87,14 +87,14 @@ class PricingEngineService
             'user_profile' => $userProfile,
             'personalized_prices' => $personalizedPrices,
             'best_deals' => $this->findBestDeals($personalizedPrices),
-            'loyalty_benefits' => $this->calculateLoyaltyBenefits($user),
+            'loyalty_benefits' => $this->calculateLoyaltyBenefits($customer),
         ];
     }
 
     /**
      * Calculate bulk pricing discounts
      */
-    public function calculateBulkDiscount(array $items, ?User $user = null): array
+    public function calculateBulkDiscount(array $items, ?Customer $customer = null): array
     {
         $totalValue = 0;
         $totalQuantity = 0;
@@ -105,7 +105,7 @@ class PricingEngineService
             $quantity = $item['quantity'];
             $duration = $item['duration'] ?? 1;
 
-            $pricing = $this->calculateDynamicPrice($plan, $user);
+            $pricing = $this->calculateDynamicPrice($plan, $customer);
             $itemTotal = $pricing['final_price'] * $quantity * $duration;
 
             $totalValue += $itemTotal;
@@ -129,7 +129,7 @@ class PricingEngineService
         $volumeBonus = $this->calculateVolumeBonus($totalQuantity, $totalValue);
 
         // Loyalty discount
-        $loyaltyDiscount = $this->calculateLoyaltyDiscount($user, $totalValue);
+        $loyaltyDiscount = $this->calculateLoyaltyDiscount($customer, $totalValue);
 
         $totalDiscount = $bulkDiscount + $volumeBonus + $loyaltyDiscount;
         $finalTotal = $totalValue - $totalDiscount;
@@ -151,9 +151,9 @@ class PricingEngineService
     /**
      * Calculate subscription pricing
      */
-    public function calculateSubscriptionPricing(ServerPlan $plan, int $months, ?User $user = null): array
+    public function calculateSubscriptionPricing(ServerPlan $plan, int $months, ?Customer $customer = null): array
     {
-        $monthlyPricing = $this->calculateDynamicPrice($plan, $user);
+        $monthlyPricing = $this->calculateDynamicPrice($plan, $customer);
         $monthlyPrice = $monthlyPricing['final_price'];
 
         // Subscription discounts based on duration
@@ -179,9 +179,9 @@ class PricingEngineService
     /**
      * Generate promotional pricing
      */
-    public function generatePromotionalPricing(string $promoCode, array $items, ?User $user = null): array
+    public function generatePromotionalPricing(string $promoCode, array $items, ?Customer $customer = null): array
     {
-        $promotion = $this->validatePromoCode($promoCode, $user);
+        $promotion = $this->validatePromoCode($promoCode, $customer);
         
         if (!$promotion['valid']) {
             return [
@@ -190,7 +190,7 @@ class PricingEngineService
             ];
         }
 
-        $regularPricing = $this->calculateBulkDiscount($items, $user);
+        $regularPricing = $this->calculateBulkDiscount($items, $customer);
         $promoDiscount = $this->calculatePromoDiscount($promotion, $regularPricing['subtotal']);
         
         $finalTotal = $regularPricing['final_total'] - $promoDiscount;
@@ -280,15 +280,15 @@ class PricingEngineService
     }
 
     /**
-     * Calculate user-based multiplier
+     * Calculate customer-based multiplier
      */
-    private function calculateUserMultiplier(?User $user): float
+    private function calculateUserMultiplier(?Customer $customer): float
     {
-        if (!$user) {
+        if (!$customer) {
             return 1.0;
         }
 
-        $userProfile = $this->buildUserProfile($user);
+        $userProfile = $this->buildUserProfile($customer);
 
         // Loyalty discount
         if ($userProfile['loyalty_tier'] === 'gold') {
@@ -308,15 +308,15 @@ class PricingEngineService
     /**
      * Calculate geographic multiplier
      */
-    private function calculateGeographicMultiplier(Server $server, ?User $user): float
+    private function calculateGeographicMultiplier(Server $server, ?Customer $customer): float
     {
-        if (!$user) {
+        if (!$customer) {
             return 1.0;
         }
 
-        // This would typically use IP geolocation or user's saved location
+        // This would typically use IP geolocation or customer's saved location
         // For now, we'll use a simple country-based multiplier
-        $userCountry = $user->country ?? 'US';
+        $userCountry = $customer->country ?? 'US';
         $serverCountry = $server->country ?? 'US';
 
         // Same country = small discount
@@ -385,12 +385,15 @@ class PricingEngineService
     }
 
     /**
-     * Build user profile
+     * Build customer profile
      */
-    private function buildUserProfile(User $user): array
+    private function buildUserProfile(Customer $customer): array
     {
-        $totalOrders = Order::where('user_id', $user->id)->count();
-        $totalSpent = Order::where('user_id', $user->id)
+        // Note: Orders are customer-owned. When mapping staff users to customer activity,
+        // this method should receive a Customer in future. For now, treat customer.id as a customer_id placeholder
+        // where applicable (e.g., in single-tenant contexts).
+        $totalOrders = Order::where('customer_id', $customer->id)->count();
+        $totalSpent = Order::where('customer_id', $customer->id)
             ->where('payment_status', 'paid')
             ->sum('grand_amount');
 
@@ -398,14 +401,14 @@ class PricingEngineService
         $isNewCustomer = $totalOrders === 0;
 
         return [
-            'user_id' => $user->id,
+            'customer_id' => $customer->id,
             'total_orders' => $totalOrders,
             'total_spent' => $totalSpent,
             'loyalty_tier' => $loyaltyTier,
             'is_new_customer' => $isNewCustomer,
-            'account_age_days' => $user->created_at->diffInDays(now()),
+            'account_age_days' => $customer->created_at->diffInDays(now()),
             'average_order_value' => $totalOrders > 0 ? $totalSpent / $totalOrders : 0,
-            'last_order_date' => $user->orders()->latest()->first()?->created_at,
+            'last_order_date' => Order::where('customer_id', $customer->id)->latest()->first()?->created_at,
         ];
     }
 
@@ -424,6 +427,7 @@ class PricingEngineService
 
         return 'basic';
     }
+    
 
     /**
      * Calculate bulk discount rate
@@ -458,13 +462,13 @@ class PricingEngineService
     /**
      * Calculate loyalty discount
      */
-    private function calculateLoyaltyDiscount(?User $user, float $value): float
+    private function calculateLoyaltyDiscount(?Customer $customer, float $value): float
     {
-        if (!$user) {
+        if (!$customer) {
             return 0.0;
         }
 
-        $userProfile = $this->buildUserProfile($user);
+        $userProfile = $this->buildUserProfile($customer);
         
         switch ($userProfile['loyalty_tier']) {
             case 'gold':
@@ -497,7 +501,7 @@ class PricingEngineService
     /**
      * Validate promo code
      */
-    private function validatePromoCode(string $code, ?User $user): array
+    private function validatePromoCode(string $code, ?Customer $customer): array
     {
         // This would typically check against a promotions database
         // For now, we'll use some hardcoded examples
@@ -541,7 +545,7 @@ class PricingEngineService
     /**
      * Generate recommendations
      */
-    private function generateRecommendations(ServerPlan $plan, User $user, array $pricing): array
+    private function generateRecommendations(ServerPlan $plan, Customer $customer, array $pricing): array
     {
         $recommendations = [];
 
@@ -553,7 +557,7 @@ class PricingEngineService
             $recommendations[] = "High demand plan. Consider booking early to avoid further price increases.";
         }
 
-        $userProfile = $this->buildUserProfile($user);
+        $userProfile = $this->buildUserProfile($customer);
         if ($userProfile['loyalty_tier'] === 'gold') {
             $recommendations[] = "As a Gold member, you get additional priority support with this plan.";
         }
@@ -585,9 +589,9 @@ class PricingEngineService
     /**
      * Calculate loyalty benefits
      */
-    private function calculateLoyaltyBenefits(User $user): array
+    private function calculateLoyaltyBenefits(Customer $customer): array
     {
-        $userProfile = $this->buildUserProfile($user);
+        $userProfile = $this->buildUserProfile($customer);
         
         return [
             'current_tier' => $userProfile['loyalty_tier'],

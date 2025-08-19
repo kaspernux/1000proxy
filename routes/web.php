@@ -2,6 +2,7 @@
 
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Http\Request;
 
 // Download route for generated exports (ensures notifications marked read)
 Route::middleware(['web','auth'])->get('/admin/exports/download', function() {
@@ -17,6 +18,28 @@ Route::middleware(['web','auth'])->get('/admin/exports/download', function() {
     }
     return Storage::disk('local')->download($path);
 })->name('admin.download-export');
+
+// Lightweight endpoint to persist theme mode in session (used by customer panel topbar button)
+// If a customer is authenticated, also persist to their profile for future sessions.
+Route::middleware(['web'])->post('/api/theme', function (Request $request) {
+    $mode = $request->input('mode');
+    if (!in_array($mode, ['light','dark','system'], true)) {
+        return response()->json(['ok' => false, 'error' => 'invalid_mode'], 422);
+    }
+
+    session(['theme_mode' => $mode]);
+
+    // Optionally persist to the authenticated customer model
+    if (auth('customer')->check()) {
+        $customer = auth('customer')->user();
+        // Avoid unnecessary writes
+        if ($customer->theme_mode !== $mode) {
+            $customer->forceFill(['theme_mode' => $mode])->save();
+        }
+    }
+
+    return response()->json(['ok' => true, 'mode' => $mode]);
+})->name('api.theme');
 
 use App\Livewire\{
     CartPage,
@@ -47,6 +70,7 @@ use App\Http\Controllers\{
     Admin\BusinessGrowthController,
     Admin\ThirdPartyIntegrationController,
     Admin\MarketingAutomationController,
+    Admin\StaffUserController,
     CheckoutController,
     MagicLoginController
 };
@@ -77,15 +101,14 @@ Route::get('/products', ProductsPage::class)->name('products');
 Route::get('/cart', CartPage::class);
 Route::get('/servers/{slug}', ProductDetailPage::class);
 
-// Public GET login routes so authenticated users can be redirected appropriately by the component
-Route::get('/login', LoginPage::class)->name('login');
-// Expose alias route outside of guest middleware so admin redirect goes to /admin (not /dashboard)
-Route::get('/auth/login', LoginPage::class)->name('auth.login');
-
-// Minimal authenticated dashboard route expected by baseline tests
-Route::middleware(['web','auth'])->get('/dashboard', function () {
-    return response('Dashboard', 200);
-})->name('dashboard');
+// Public GET login route (canonical) for CUSTOMER login (admins use Filament /admin/login)
+// Treat both customer and web guards as authenticated for guest checks to avoid showing login to logged-in users
+Route::middleware('guest:customer,web')->group(function () {
+    Route::get('/login', LoginPage::class)->name('login');
+    Route::post('/login', [\App\Http\Controllers\Auth\CustomerLoginController::class, 'store'])->name('login.store');
+    // Keep old alias but redirect to canonical to avoid duplicate forms
+    Route::redirect('/auth/login', '/login', 301)->name('auth.login');
+});
 
 Route::middleware('guest')->group(function () {
     Route::get('/register', RegisterPage::class)->name('register');
@@ -96,31 +119,34 @@ Route::middleware('guest')->group(function () {
     Route::get('/auth/github', function(){ return redirect('/'); })->name('auth.github.redirect');
 });
 
-// Duplicate validation-only endpoints outside of guest to guarantee validation session errors even if an auth state leaks between tests
-// Validation-only POST endpoints (explicitly exclude RedirectIfAuthenticated to preserve validation redirects)
-Route::post('/register', [ValidationController::class, 'register'])
-    ->name('testing.register')
-    ->middleware('web')
-    ->withoutMiddleware([
-        \Illuminate\Foundation\Http\Middleware\VerifyCsrfToken::class,
-        \App\Http\Middleware\EnhancedCsrfProtection::class,
-        \Illuminate\Auth\Middleware\RedirectIfAuthenticated::class,
-    ]);
-Route::post('/login', [ValidationController::class, 'login'])
-    ->name('testing.login')
-    ->middleware('web')
-    ->withoutMiddleware([
-        \Illuminate\Foundation\Http\Middleware\VerifyCsrfToken::class,
-        \App\Http\Middleware\EnhancedCsrfProtection::class,
-        \Illuminate\Auth\Middleware\RedirectIfAuthenticated::class,
-    ]);
+// Duplicate validation-only endpoints used by automated tests – DISABLED in production
+if (app()->environment(['local', 'testing'])) {
+    // Validation-only POST endpoints (explicitly exclude RedirectIfAuthenticated to preserve validation redirects)
+    Route::post('/register', [ValidationController::class, 'register'])
+        ->name('testing.register')
+        ->middleware('web')
+        ->withoutMiddleware([
+            \Illuminate\Foundation\Http\Middleware\VerifyCsrfToken::class,
+            \App\Http\Middleware\EnhancedCsrfProtection::class,
+            \Illuminate\Auth\Middleware\RedirectIfAuthenticated::class,
+        ]);
+    Route::post('/login', [ValidationController::class, 'login'])
+        ->name('testing.login')
+        ->middleware('web')
+        ->withoutMiddleware([
+            \Illuminate\Foundation\Http\Middleware\VerifyCsrfToken::class,
+            \App\Http\Middleware\EnhancedCsrfProtection::class,
+            \Illuminate\Auth\Middleware\RedirectIfAuthenticated::class,
+        ]);
+}
 
+// Customer-authenticated routes (admin panel is managed by Filament separately)
 Route::middleware(['auth:customer'])->group(function () {
 
     Route::get('/logout', function () {
         Auth::guard('customer')->logout();
         return redirect('/');
-    })->name('logout');
+    })->name('customer.logout');
 
     Route::get('/checkout', \App\Livewire\CheckoutPage::class)->name('checkout');
     Route::post('/checkout', [CheckoutController::class, 'store'])->name('checkout.store');
@@ -491,6 +517,16 @@ Route::middleware(['redirect.customer', RedirectIfCustomer::class])->group(funct
 
             Route::get('/export', [MarketingAutomationController::class, 'exportCampaignData'])
                 ->name('admin.marketing.export');
+        });
+
+    // Staff Users management (JSON endpoints for admin tooling)
+    Route::prefix('staff-users')->middleware(['web','auth'])->group(function () {
+            Route::get('/', [StaffUserController::class, 'index'])->name('admin.staff-users.index');
+            Route::post('/', [StaffUserController::class, 'store'])->name('admin.staff-users.store');
+            Route::patch('/{user}', [StaffUserController::class, 'update'])->name('admin.staff-users.update');
+            Route::delete('/{user}', [StaffUserController::class, 'destroy'])->name('admin.staff-users.destroy');
+            Route::post('/{user}/toggle-status', [StaffUserController::class, 'toggleStatus'])->name('admin.staff-users.toggle');
+            Route::post('/{user}/role', [StaffUserController::class, 'setRole'])->name('admin.staff-users.set-role');
         });
     });
 });

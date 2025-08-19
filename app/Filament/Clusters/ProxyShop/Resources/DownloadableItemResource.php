@@ -8,12 +8,13 @@ use App\Filament\Clusters\ProxyShop\Resources\DownloadableItemResource\RelationM
 use App\Models\DownloadableItem;
 use Filament\Forms;
 use Filament\Forms\Form;
+use Filament\Schemas\Schema;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
 use Filament\Infolists\Components\Section;
 
-use Filament\Forms\Components\Group;
+use Filament\Schemas\Components\Group;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\SoftDeletingScope;
 use Filament\Tables\Columns\TextColumn;
@@ -28,8 +29,7 @@ use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\ToggleButtons;
 use Filament\Support\RawJs;
 use Illuminate\Support\Str;
-use Filament\Tables\Actions;
-use Filament\Tables\Actions\DeleteBulkAction;
+use Filament\Actions\DeleteBulkAction;
 use Filament\Forms\Components\SelectColumn;
 use GuzzleHttp\Client;
 use Filament\Forms\Components\Toggle;
@@ -37,17 +37,18 @@ use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Grid;
 use Filament\Forms\Components\Fieldset;
 use Filament\Forms\Components\Split;
-use Filament\Tables\Actions\Action;
+use Filament\Actions\Action;
 use Filament\Forms\Components\DateTimePicker;
 use Filament\Infolists\Infolist;
 use Filament\Infolists\Components\Tabs;
 use Filament\Infolists\Components\TextEntry;
 use Filament\Infolists\Components\LinkEntry;
-use Filament\Tables\Actions\CreateAction;
-use Filament\Tables\Actions\ViewAction;
-use Filament\Tables\Actions\EditAction;
-use Filament\Tables\Actions\DeleteAction;
-use Filament\Tables\Actions\ActionGroup;
+use Filament\Actions\CreateAction;
+use Filament\Actions\ViewAction;
+use Filament\Actions\EditAction;
+use Filament\Actions\DeleteAction;
+use Filament\Actions\ActionGroup;
+use BackedEnum;
 
 
 
@@ -55,12 +56,18 @@ class DownloadableItemResource extends Resource
 {
     protected static ?string $model           = DownloadableItem::class;
     protected static ?string $cluster         = ProxyShop::class;
-    protected static ?string $navigationLabel = 'Downloadable Files';
-    protected static ?string $navigationIcon  = 'heroicon-o-folder-arrow-down';
-
-    public static function form(Form $form): Form
+    
+    public static function canAccess(): bool
     {
-        return $form
+        $user = auth()->user();
+        return (bool) ($user?->isAdmin() || $user?->isManager());
+    }
+    protected static ?string $navigationLabel = 'Downloadable Files';
+    protected static BackedEnum|string|null $navigationIcon  = 'heroicon-o-folder-arrow-down';
+
+    public static function form(Schema $schema): Schema
+    {
+        return $schema
             // Make 1 column on small screens, 2 on large
             ->columns([
                 'sm' => 1,
@@ -177,9 +184,9 @@ class DownloadableItemResource extends Resource
             ->defaultSort('created_at', 'desc');
     }
 
-    public static function infolist(Infolist $infolist): Infolist
+    public static function infolist(Schema $schema): Schema
     {
-        return $infolist
+        return $schema
             ->schema([
                 Tabs::make('File Details')->tabs([
                     Tabs\Tab::make('Overview')

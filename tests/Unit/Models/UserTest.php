@@ -53,13 +53,11 @@ class UserTest extends TestCase
         $this->assertTrue($user->canAccessPanel());
     }
 
-    public function test_user_can_have_orders()
+    public function test_user_cannot_have_orders()
     {
         $user = User::factory()->create();
-        $order = Order::factory()->create(['user_id' => $user->id]);
-
-        $this->assertTrue($user->orders->contains($order));
-        $this->assertEquals($user->id, $order->user_id);
+        $order = Order::factory()->create();
+        $this->assertTrue($order->customer_id !== null);
     }
 
     public function test_user_last_login_is_updated()

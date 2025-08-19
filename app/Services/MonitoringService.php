@@ -10,7 +10,7 @@ use Carbon\Carbon;
 use App\Events\SystemAlert;
 use App\Models\Server;
 use App\Models\Order;
-use App\Models\User;
+use App\Models\Customer;
 
 class MonitoringService
 {
@@ -281,11 +281,11 @@ class MonitoringService
                 $issues[] = "$failedOrders orders failed in the last hour";
             }
 
-            // Check active users if column exists
-            $activeUsers = 0;
+            // Check active customers if column exists
+            $activeCustomers = 0;
             try {
-                if (\Schema::hasColumn('users', 'last_active_at')) {
-                    $activeUsers = User::where('last_active_at', '>=', Carbon::now()->subMinutes(30))->count();
+                if (\Schema::hasColumn('customers', 'last_active_at')) {
+                    $activeCustomers = Customer::where('last_active_at', '>=', Carbon::now()->subMinutes(30))->count();
                 }
             } catch (\Throwable $e) {
                 // ignore if schema missing
@@ -305,7 +305,7 @@ class MonitoringService
                 'status' => $status,
                 'recent_orders' => $recentOrders,
                 'failed_orders' => $failedOrders,
-                'active_users' => $activeUsers,
+                'active_customers' => $activeCustomers,
                 'disk_usage' => round((1 - $diskUsage) * 100, 2) . '%',
                 'issues' => $issues
             ];
@@ -489,8 +489,17 @@ class MonitoringService
         try {
             $adminEmails = ['admin@1000proxy.io']; // Configure admin emails
 
+            $mailer = config('mail.health_mailer', 'failover');
+
             foreach ($adminEmails as $email) {
-                Mail::send('emails.health-alert', ['healthStatus' => $healthStatus], function ($message) use ($email, $subject) {
+                // Normalize payload for the template: ensure 'overall', 'timestamp', 'checks' keys.
+                $payload = [
+                    'overall' => $healthStatus['overall'] ?? ($healthStatus['status'] ?? 'unknown'),
+                    'timestamp' => $healthStatus['timestamp'] ?? Carbon::now()->toISOString(),
+                    'checks' => $healthStatus['checks'] ?? ($healthStatus['issues'] ?? []),
+                ];
+
+                Mail::mailer($mailer)->send('emails.health-alert', ['healthStatus' => $payload], function ($message) use ($email, $subject) {
                     $message->to($email)->subject($subject);
                 });
             }

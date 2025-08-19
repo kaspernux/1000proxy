@@ -65,7 +65,7 @@
                     @if (session()->has('error'))
                     <div class="mb-6 bg-red-500/20 border border-red-500/50 text-red-100 rounded-xl p-4 backdrop-blur-sm" role="alert">
                         <div class="flex items-center">
-                            <svg class="w-5 h-5 mr-3 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <svg class="w-5 h-5 mr-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
                             </svg>
                             <span>{{ session('error') }}</span>
@@ -88,7 +88,7 @@
                     @if (session()->has('success'))
                     <div class="mb-6 bg-green-500/20 border border-green-500/50 text-green-100 rounded-xl p-4 backdrop-blur-sm" role="alert">
                         <div class="flex items-center">
-                            <svg class="w-5 h-5 mr-3 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <svg class="w-5 h-5 mr-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
                             </svg>
                             <span>{{ session('success') }}</span>
@@ -96,8 +96,9 @@
                     </div>
                     @endif
 
-                    {{-- Enhanced Login Form --}}
-                    <form wire:submit.prevent="save" class="space-y-6" id="loginForm">
+                    {{-- Enhanced Login Form (supports Livewire and non-JS fallback POST /login) --}}
+                    <form wire:submit.prevent="save" method="POST" action="/login" class="space-y-6" id="loginForm" novalidate>
+                        @csrf
 
                         {{-- Email Field --}}
                         <div>
@@ -110,7 +111,7 @@
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 12a4 4 0 10-8 0 4 4 0 008 0zm0 0v1.5a2.5 2.5 0 005 0V12a9 9 0 10-9 9m4.5-1.206a8.959 8.959 0 01-4.5 1.207"></path>
                                     </svg>
                                 </div>
-                                    <input type="email"
+                                    <input type="email" name="email"
                                        id="email"
                                        autocomplete="email"
                                        wire:model.defer="email"
@@ -118,7 +119,7 @@
                                        class="mobile-input w-full pl-12 pr-4 py-4 bg-gray-800/50 border border-gray-600 rounded-xl text-white placeholder-gray-400 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all duration-200 backdrop-blur-sm min-h-[44px]">
                                 @error('email')
                                 <div class="absolute inset-y-0 right-0 pr-4 flex items-center pointer-events-none">
-                                    <svg class="w-5 h-5 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <svg class="w-5 h-5  mr-5 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
                                     </svg>
                                 </div>
@@ -126,7 +127,7 @@
                             </div>
                             @error('email')
                             <p class="text-red-400 text-sm mt-2 flex items-center">
-                                <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <svg class="w-4 h-4 mr-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
                                 </svg>
                                 {{ $message }}
@@ -152,7 +153,7 @@
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path>
                                     </svg>
                                 </div>
-                                    <input type="password"
+                                    <input type="password" name="password"
                                        id="password"
                                        autocomplete="current-password"
                                        wire:model.defer="password"
@@ -168,7 +169,7 @@
                             </div>
                             @error('password')
                             <p class="text-red-400 text-sm mt-2 flex items-center">
-                                <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <svg class="w-4 h-4 mr-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
                                 </svg>
                                 {{ $message }}
@@ -179,7 +180,7 @@
                         {{-- Remember Me --}}
                         <div class="flex items-center justify-between">
                             <div class="flex items-center">
-                                <input type="checkbox"
+                                <input type="checkbox" name="remember"
                                        id="remember"
                                        autocomplete="on"
                                        wire:model.defer="remember"
@@ -197,7 +198,7 @@
                 class="mobile-btn w-full py-4 px-6 bg-gradient-to-r from-blue-600 to-yellow-600 hover:from-blue-700 hover:to-yellow-700 disabled:from-gray-600 disabled:to-gray-700 disabled:cursor-not-allowed text-white font-semibold rounded-xl transition-all duration-300 flex items-center justify-center space-x-3 shadow-xl hover:shadow-2xl hover:scale-105 transform focus:outline-none focus:ring-4 focus:ring-blue-500/50">
                             <span wire:loading.remove wire:target="save" class="text-lg">Sign In</span>
                             <span wire:loading wire:target="save" class="flex items-center space-x-3">
-                                <svg class="animate-spin w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <svg class="animate-spin w-5 h-5  mr-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
                                 </svg>
                                 <span class="text-lg">Signing In...</span>
@@ -216,7 +217,7 @@
 
                         <div class="mt-6 grid grid-cols-2 gap-4">
                             <button class="w-full inline-flex justify-center items-center py-3 px-4 bg-gray-800/50 border border-gray-600 rounded-xl text-white hover:bg-gray-700/50 hover:border-gray-500 transition-all duration-200 group">
-                                <svg class="w-5 h-5 group-hover:scale-110 transition-transform" viewBox="0 0 24 24" fill="currentColor">
+                                <svg class="w-5 h-5  mr-5 group-hover:scale-110 transition-transform" viewBox="0 0 24 24" fill="currentColor">
                                     <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
                                     <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
                                     <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
@@ -226,7 +227,7 @@
                             </button>
 
                             <button class="w-full inline-flex justify-center items-center py-3 px-4 bg-gray-800/50 border border-gray-600 rounded-xl text-white hover:bg-gray-700/50 hover:border-gray-500 transition-all duration-200 group">
-                                <svg class="w-5 h-5 group-hover:scale-110 transition-transform" fill="currentColor" viewBox="0 0 24 24">
+                                <svg class="w-5 h-5  mr-5 group-hover:scale-110 transition-transform" fill="currentColor" viewBox="0 0 24 24">
                                     <path d="M13.397 20.997v-8.196h2.765l.411-3.209h-3.176V7.548c0-.926.258-1.56 1.587-1.56h1.684V3.127A22.336 22.336 0 0 0 14.201 3c-2.444 0-4.122 1.492-4.122 4.231v2.355H7.332v3.209h2.753v8.202h3.312z"/>
                                 </svg>
                                 <span class="ml-3 font-medium">Facebook</span>
@@ -250,7 +251,7 @@
             <div class="mt-8 py-16 grid grid-cols-1 md:grid-cols-3 gap-4 text-center">
                 <div class="bg-gray-800/50 backdrop-blur-sm border border-gray-700 rounded-xl p-6 hover:bg-gray-700/50 transition-all duration-200">
                     <div class="w-12 h-12 mx-auto mb-4 bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl flex items-center justify-center">
-                        <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <svg class="w-6 h-6 text-white  mr-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"></path>
                         </svg>
                     </div>
@@ -260,7 +261,7 @@
 
                 <div class="bg-gray-800/50 backdrop-blur-sm border border-gray-700 rounded-xl p-6 hover:bg-gray-700/50 transition-all duration-200">
                     <div class="w-12 h-12 mx-auto mb-4 bg-gradient-to-br from-yellow-500 to-yellow-600 rounded-xl flex items-center justify-center">
-                        <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <svg class="w-6 h-6 text-white  mr-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
                         </svg>
                     </div>
@@ -270,7 +271,7 @@
 
                 <div class="bg-gray-800/50 backdrop-blur-sm border border-gray-700 rounded-xl p-6 hover:bg-gray-700/50 transition-all duration-200">
                     <div class="w-12 h-12 mx-auto mb-4 bg-gradient-to-br from-green-500 to-green-600 rounded-xl flex items-center justify-center">
-                        <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <svg class="w-6 h-6 text-white  mr-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 5.636l-3.536 3.536m0 5.656l3.536 3.536M9.172 9.172L5.636 5.636m3.536 9.192L5.636 18.364M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-5 0a4 4 0 11-8 0 4 4 0 018 0z"></path>
                         </svg>
                     </div>
@@ -296,6 +297,9 @@ document.addEventListener('DOMContentLoaded', function() {
         
         Livewire.on('login-success', (data) => {
             console.log('Login successful', data);
+            // Optional: accessibility-friendly status update
+            const el = document.querySelector('.alert-error');
+            if (el) { el.textContent = 'Login successful. Redirecting…'; el.style.display = 'block'; }
         });
         
         Livewire.on('login-error', (data) => {

@@ -12,7 +12,7 @@ class PushNotification extends Model
     use HasFactory;
 
     protected $fillable = [
-        'user_id',
+        'customer_id',
         'device_id',
         'title',
         'body',

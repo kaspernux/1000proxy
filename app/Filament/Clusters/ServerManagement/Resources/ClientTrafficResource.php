@@ -1,5 +1,4 @@
 <?php
-
 namespace App\Filament\Clusters\ServerManagement\Resources;
 
 use App\Filament\Clusters\ServerManagement;
@@ -14,35 +13,45 @@ use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\SoftDeletingScope;
 use Illuminate\Support\Str;
-use Filament\Forms\Components\Section;
+use Filament\Schemas\Components\Section;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Toggle;
 use Filament\Forms\Components\DateTimePicker;
-use Filament\Forms\Components\Group;
+use Filament\Schemas\Components\Group;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Columns\BadgeColumn;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Filters\TernaryFilter;
-use Filament\Tables\Actions\Action;
-use Filament\Tables\Actions\ActionGroup;
-use Filament\Tables\Actions\EditAction;
-use Filament\Tables\Actions\ViewAction;
-use Filament\Tables\Actions\DeleteAction;
-use Filament\Tables\Actions\BulkActionGroup;
-use Filament\Tables\Actions\DeleteBulkAction;
+use Filament\Actions\Action;
+use Filament\Actions\ActionGroup;
+use Filament\Actions\EditAction;
+use Filament\Actions\ViewAction;
+use Filament\Actions\DeleteAction;
+use Filament\Actions\BulkActionGroup;
+use Filament\Actions\DeleteBulkAction;
+use Filament\Actions\BulkAction;
 use Carbon\Carbon;
+use BackedEnum;
+use UnitEnum;
+use Filament\Schemas\Schema;
 
 class ClientTrafficResource extends Resource
 {
     protected static ?string $model = ClientTraffic::class;
 
-    protected static ?string $navigationIcon = 'heroicon-o-chart-pie';
+    protected static BackedEnum|string|null $navigationIcon = 'heroicon-o-chart-pie';
 
     protected static ?string $cluster = ServerManagement::class;
 
-    protected static ?string $navigationGroup = 'TRAFFIC MONITORING';
+    public static function canAccess(): bool
+    {
+        $user = auth()->user();
+        return (bool) ($user?->isAdmin() || $user?->isManager() || $user?->isSupportManager());
+    }
+
+    protected static UnitEnum|string|null $navigationGroup = 'TRAFFIC MONITORING';
 
     protected static ?int $navigationSort = 9;
 
@@ -53,9 +62,9 @@ class ClientTrafficResource extends Resource
         return 'Client Traffic';
     }
 
-    public static function form(Form $form): Form
+    public static function form(Schema $schema): Schema
     {
-        return $form
+        return $schema
             ->schema([
                 Group::make()->schema([
                     Section::make('🔗 Client & Server Association')->schema([
@@ -137,7 +146,7 @@ class ClientTrafficResource extends Resource
 
     public static function table(Table $table): Table
     {
-        return $table
+        $table = $table
             ->columns([
                 TextColumn::make('email')
                     ->label('Client Email')
@@ -166,8 +175,7 @@ class ClientTrafficResource extends Resource
                     ->trueIcon('heroicon-o-check-circle')
                     ->falseIcon('heroicon-o-x-circle')
                     ->trueColor('success')
-                    ->falseColor('danger')
-                    ->tooltip('Traffic tracking status'),
+                    ->falseColor('danger'),
 
                 TextColumn::make('traffic_usage')
                     ->label('Traffic Used')
@@ -208,7 +216,6 @@ class ClientTrafficResource extends Resource
                     ->toggleable(isToggledHiddenByDefault: true),
 
                 TextColumn::make('reset')
-                    ->label('Resets')
                     ->numeric()
                     ->sortable()
                     ->badge()
@@ -320,7 +327,7 @@ class ClientTrafficResource extends Resource
                     DeleteBulkAction::make()
                         ->tooltip('Delete selected records'),
 
-                    Tables\Actions\BulkAction::make('reset_selected_traffic')
+                    BulkAction::make('reset_selected_traffic')
                         ->label('Reset Traffic for Selected')
                         ->icon('heroicon-o-arrow-path')
                         ->color('warning')
@@ -347,9 +354,16 @@ class ClientTrafficResource extends Resource
                 ]),
             ])
             ->defaultSort('created_at', 'desc')
-            ->striped()
-            ->paginated([10, 25, 50, 100])
             ->poll('60s'); // Auto-refresh every minute for real-time traffic monitoring
+
+        return \App\Filament\Concerns\HasPerformanceOptimizations::applyTablePreset($table, [
+            'defaultPage' => 50,
+            'empty' => [
+                'icon' => 'heroicon-o-chart-pie',
+                'heading' => 'No traffic records',
+                'description' => 'Adjust filters or time window.',
+            ],
+        ]);
     }
 
     public static function getRelations(): array

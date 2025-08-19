@@ -1,9 +1,27 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+/* Tailwind CSS v4: CSS-first configuration */
+@import "tailwindcss";
+
+/* Tell Tailwind where to scan for class usage (relative to this file) */
+@source "../views/**/*.blade.php";
+@source "../**/*.blade.php";
+@source "../**/*.vue";
+@source "../**/*.tsx";
+@source "../**/*.ts";
+@source "../**/*.js";
+@source "../../app/Filament/**/*.php";
+@source "../../app/**/**/*.php";
+@source "../../resources/views/**/*.blade.php";
+@source "../../vendor/filament/**/*.blade.php";
+@source "../../vendor/filament/**/*.php";
+
+/* Common Tailwind plugins (v4 style) */
+@plugin "@tailwindcss/forms";
+@plugin "@tailwindcss/typography";
 
 /* Custom Components for 1000 Proxies */
 @layer components {
+
+    /* Removed Filament-specific overrides from global CSS to prevent UI regressions in the admin panel. */
 
     /* Custom Components for 1000 Proxies */
     h1 {
@@ -250,4 +268,44 @@
         }
     }
 
+}
+
+/* Minimal Preline helpers (without Tailwind plugin) */
+@layer components {
+
+    /* Collapse */
+    .hs-collapse:not(.open) {
+        display: none;
+    }
+
+    .hs-collapse.open {
+        display: block;
+    }
+
+    /* Dropdown */
+    .hs-dropdown .hs-dropdown-menu {
+        display: none;
+    }
+
+    .hs-dropdown.open .hs-dropdown-menu {
+        display: block;
+    }
+
+    /* Overlay/backdrop visibility */
+    [data-hs-overlay-backdrop].hidden {
+        display: none;
+    }
+
+    [data-hs-overlay-backdrop]:not(.hidden) {
+        display: block;
+    }
+
+    /* Transition helpers */
+    .hs-transition-opacity {
+        transition: opacity .2s ease-in-out;
+    }
+
+    .hs-transition-transform {
+        transition: transform .2s ease-in-out;
+    }
 }

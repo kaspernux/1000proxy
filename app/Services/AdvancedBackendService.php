@@ -9,7 +9,7 @@ use Illuminate\Support\Facades\DB;
 use App\Models\Server;
 use App\Models\Order;
 use App\Models\User; // Staff accounts
-use App\Models\Customer; // Primary end-user model
+use App\Models\Customer;
 use Carbon\Carbon;
 use Exception;
 
@@ -346,8 +346,8 @@ class AdvancedBackendService
         $factors = [];
 
         // Multiple orders in short time
-        if (isset($data['user_id'])) {
-            $recentOrders = Order::where('user_id', $data['user_id'])
+        if (isset($data['customer_id'])) {
+            $recentOrders = Order::where('customer_id', $data['customer_id'])
                 ->where('created_at', '>', now()->subHours(1))
                 ->count();
 
@@ -363,12 +363,12 @@ class AdvancedBackendService
             $factors[] = 'Unusually high order amount';
         }
 
-            // Velocity checks (customer-centric with legacy user_id fallback)
-            if (isset($data['user_id'])) {
-                $userVelocity = $this->calculateUserVelocity($data['user_id']);
+            // Velocity checks (customer-centric with legacy customer_id fallback)
+            if (isset($data['customer_id'])) {
+                $userVelocity = $this->calculateUserVelocity($data['customer_id']);
                 if ($userVelocity > 10) {
                     $score += 25;
-                    $factors[] = 'High user transaction velocity';
+                    $factors[] = 'High customer transaction velocity';
                 }
             }
 
@@ -380,27 +380,27 @@ class AdvancedBackendService
         $score = 0;
         $factors = [];
 
-        if (isset($data['user_id'])) {
-            // Primary customer account (do not confuse with staff User model)
-            $user = Customer::find($data['user_id']);
-            if ($user) {
-                // New user risk
-                if ($user->created_at > now()->subDays(1)) {
+        if (isset($data['customer_id'])) {
+            // Primary customer account (do not confuse with staff Customer model)
+            $customer = Customer::find($data['customer_id']);
+            if ($customer) {
+                // New account risk
+                if ($customer->created_at > now()->subDays(1)) {
                     $score += 15;
                     $factors[] = 'Very new user account';
                 }
 
                 // Email verification status
-                if (!$user->email_verified_at) {
+                if (!$customer->email_verified_at) {
                     $score += 20;
                     $factors[] = 'Unverified email address';
                 }
 
                 // Profile completeness
-                $completeness = $this->calculateProfileCompleteness($user);
+                $completeness = $this->calculateProfileCompleteness($customer);
                 if ($completeness < 50) {
                     $score += 15;
-                    $factors[] = 'Incomplete user profile';
+                    $factors[] = 'Incomplete customer profile';
                 }
             }
         }
@@ -428,8 +428,8 @@ class AdvancedBackendService
             }
 
             // Location consistency
-            if (isset($data['user_id'])) {
-                $locationConsistent = $this->checkLocationConsistency($data['user_id'], $data['ip_address']);
+            if (isset($data['customer_id'])) {
+                $locationConsistent = $this->checkLocationConsistency($data['customer_id'], $data['ip_address']);
                 if (!$locationConsistent) {
                     $score += 15;
                     $factors[] = 'Inconsistent geographic location';
@@ -522,9 +522,9 @@ class AdvancedBackendService
         $privateIp = str_starts_with($ip, '192.168.') || str_starts_with($ip, '10.') || str_starts_with($ip, '172.16.');
         // Exclude unverified users from low-risk classification so their legitimate risk factors
         // (e.g. very new account + unverified email) are not suppressed by the low-risk cap.
-        if (isset($data['user_id'])) {
-            $user = Customer::find($data['user_id']);
-            if ($user && !$user->email_verified_at) {
+        if (isset($data['customer_id'])) {
+            $customer = Customer::find($data['customer_id']);
+            if ($customer && !$customer->email_verified_at) {
                 return false; // Force full scoring path (no low-risk cap & include ML prediction)
             }
         }
@@ -542,7 +542,7 @@ class AdvancedBackendService
         // Server status monitoring
         $channels['server_status'] = $this->setupServerStatusChannel();
 
-        // User activity monitoring
+        // Customer activity monitoring
         $channels['user_activity'] = $this->setupUserActivityChannel();
 
         // Order processing monitoring
@@ -672,7 +672,7 @@ class AdvancedBackendService
             return [
                 'total_servers' => Server::count(),
                 'active_orders' => Order::where('status', 'active')->count(),
-                'total_users' => User::count()
+                'total_customers' => Customer::count()
             ];
         });
     }
@@ -724,29 +724,26 @@ class AdvancedBackendService
         ];
     }
 
-    private function calculateUserVelocity(int $userId): int
+    private function calculateUserVelocity(int $customerId): int
     {
     // Domain alignment: orders belong to customers. Legacy code/tests may still
-    // reference user_id. Count orders where either matches the provided id.
-    return Order::where(function ($q) use ($userId) {
-        $q->where('customer_id', $userId)
-          ->orWhere('user_id', $userId); // backward compatibility
-        })
+    // reference customer_id. Count orders where either matches the provided id.
+    return Order::where('customer_id', $customerId)
         ->where('created_at', '>', now()->subHour())
         ->count();
     }
 
     /**
      * Calculate a simple profile completeness percentage based on presence of key fields.
-     * Accepts either a User or Customer model instance (duck-typed for required attributes).
+     * Accepts either a Customer or Customer model instance (duck-typed for required attributes).
      */
-    private function calculateProfileCompleteness($user): int
+    private function calculateProfileCompleteness($customer): int
     {
         $fields = ['name', 'email', 'phone', 'address', 'country'];
         $completed = 0;
 
         foreach ($fields as $field) {
-            if (!empty($user->$field)) {
+            if (!empty($customer->$field)) {
                 $completed++;
             }
         }
@@ -771,9 +768,9 @@ class AdvancedBackendService
         return ['CN', 'RU', 'KP', 'IR']; // Example high-risk countries
     }
 
-    private function checkLocationConsistency(int $userId, string $ip): bool
+    private function checkLocationConsistency(int $customerId, string $ip): bool
     {
-        // Would check if IP location is consistent with user's previous locations
+        // Would check if IP location is consistent with customer's previous locations
         return true;
     }
 

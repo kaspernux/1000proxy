@@ -7,10 +7,11 @@ use Filament\Forms\Form;
 use Filament\Resources\RelationManagers\RelationManager;
 use Filament\Tables;
 use Filament\Tables\Table;
+use Filament\Schemas\Schema;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\SoftDeletingScope;
 use App\Models\ServerClient;
-use Filament\Forms\Components\Section;
+use Filament\Schemas\Components\Section;
 use Filament\Tables\Columns\BadgeColumn;
 
 class ServerClientsRelationManager extends RelationManager
@@ -20,9 +21,9 @@ class ServerClientsRelationManager extends RelationManager
     protected static ?string $modelLabel = 'Proxy Service';
     protected static ?string $pluralModelLabel = 'Proxy Services';
 
-    public function form(Form $form): Form
+    public function form(Schema $schema): Schema
     {
-        return $form
+        return $schema
             ->schema([
                 Section::make('Service Information')
                     ->schema([
@@ -134,10 +135,10 @@ class ServerClientsRelationManager extends RelationManager
                     ->toggle(),
             ])
             ->headerActions([
-                Tables\Actions\CreateAction::make(),
+                \Filament\Actions\CreateAction::make(),
             ])
             ->actions([
-                Tables\Actions\Action::make('view_config')
+                \Filament\Actions\Action::make('view_config')
                     ->label('View Config')
                     ->icon('heroicon-o-qr-code')
                     ->color('info')
@@ -146,7 +147,7 @@ class ServerClientsRelationManager extends RelationManager
                     })
                     ->modalWidth('lg'),
                 
-                Tables\Actions\Action::make('extend_service')
+                \Filament\Actions\Action::make('extend_service')
                     ->label('Extend')
                     ->icon('heroicon-o-calendar-days')
                     ->color('success')
@@ -180,26 +181,26 @@ class ServerClientsRelationManager extends RelationManager
                     })
                     ->requiresConfirmation(),
                 
-                Tables\Actions\EditAction::make(),
-                Tables\Actions\DeleteAction::make(),
+                    \Filament\Actions\EditAction::make(),
+                    \Filament\Actions\DeleteAction::make(),
             ])
             ->bulkActions([
-                Tables\Actions\BulkActionGroup::make([
-                    Tables\Actions\BulkAction::make('suspend')
+                \Filament\Actions\BulkActionGroup::make([
+                        \Filament\Actions\BulkAction::make('suspend')
                         ->label('Suspend Selected')
                         ->icon('heroicon-o-pause')
                         ->color('warning')
                         ->action(fn ($records) => $records->each(fn ($record) => $record->update(['status' => 'suspended'])))
                         ->requiresConfirmation(),
                     
-                    Tables\Actions\BulkAction::make('activate')
+                        \Filament\Actions\BulkAction::make('activate')
                         ->label('Activate Selected')
                         ->icon('heroicon-o-play')
                         ->color('success')
                         ->action(fn ($records) => $records->each(fn ($record) => $record->update(['status' => 'active'])))
                         ->requiresConfirmation(),
                     
-                    Tables\Actions\DeleteBulkAction::make(),
+                        \Filament\Actions\DeleteBulkAction::make(),
                 ]),
             ])
             ->defaultSort('created_at', 'desc');

@@ -2,6 +2,8 @@
 
 namespace App\Filament\Admin\Pages;
 
+use UnitEnum;
+use BackedEnum;
 use App\Services\ServerManagementService;
 use App\Models\Server;
 use Filament\Pages\Page;
@@ -15,12 +17,12 @@ use Illuminate\Support\Facades\Cache;
 
 class ServerManagementDashboard extends Page
 {
-    protected static ?string $navigationIcon = 'heroicon-o-server-stack';
-    protected static string $view = 'filament.admin.pages.server-management-dashboard';
+    protected static string | BackedEnum | null $navigationIcon = 'heroicon-o-server-stack';
+    protected string $view = 'filament.admin.pages.server-management-dashboard';
     protected static ?string $navigationLabel = 'Server Management';
     protected static ?string $title = 'Server Management Dashboard';
-    protected static ?int $navigationSort = 6;
-    protected static ?string $navigationGroup = 'Infrastructure';
+    protected static ?int $navigationSort = 2;
+    protected static string | UnitEnum | null $navigationGroup = 'Infrastructure';
 
     public array $dashboardData = [];
     public array $bulkHealthResults = [];
@@ -31,6 +33,12 @@ class ServerManagementDashboard extends Page
     public function boot(ServerManagementService $serverManagementService): void
     {
         $this->serverManagementService = $serverManagementService;
+    }
+
+    public static function canAccess(): bool
+    {
+        $user = auth()->user();
+        return $user && ($user->hasStaffPermission('manage_servers') || $user->isManager() || $user->isAdmin());
     }
 
     public function mount(): void

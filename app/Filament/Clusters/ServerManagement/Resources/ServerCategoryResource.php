@@ -1,5 +1,4 @@
 <?php
-
 namespace App\Filament\Clusters\ServerManagement\Resources;
 
 use Filament\Forms;
@@ -11,11 +10,9 @@ use Filament\Tables\Table;
 use Illuminate\Support\Str;
 use App\Models\ServerCategory;
 use Filament\Resources\Resource;
-use Filament\Forms\Components\Grid;
-use Filament\Forms\Components\Group;
-use Filament\Forms\Components\Split;
-use Filament\Forms\Components\Toggle;
-use Filament\Forms\Components\Section;
+use Filament\Schemas\Components\Grid;
+use Filament\Schemas\Components\Group;
+use Filament\Schemas\Components\Section;
 use Filament\Forms\Components\Textarea;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Forms\Components\TextInput;
@@ -24,13 +21,13 @@ use Filament\Tables\Columns\TextColumn;
 use Filament\Forms\Components\FileUpload;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Filters\TernaryFilter;
-use Filament\Tables\Actions\Action;
-use Filament\Tables\Actions\ActionGroup;
-use Filament\Tables\Actions\EditAction;
-use Filament\Tables\Actions\ViewAction;
-use Filament\Tables\Actions\DeleteAction;
-use Filament\Tables\Actions\BulkActionGroup;
-use Filament\Tables\Actions\DeleteBulkAction;
+use Filament\Actions\Action;
+use Filament\Actions\ActionGroup;
+use Filament\Actions\EditAction;
+use Filament\Actions\ViewAction;
+use Filament\Actions\DeleteAction;
+use Filament\Actions\BulkActionGroup;
+use Filament\Actions\DeleteBulkAction;
 use Illuminate\Database\Eloquent\Builder;
 use App\Filament\Clusters\ServerManagement;
 use Filament\Forms\Components\MarkdownEditor;
@@ -38,30 +35,39 @@ use Illuminate\Database\Eloquent\SoftDeletingScope;
 use Livewire\Features\SupportFileUploads\TemporaryUploadedFile;
 use App\Filament\Clusters\ServerManagement\Resources\ServerCategoryResource\Pages;
 use App\Filament\Clusters\ServerManagement\Resources\ServerCategoryResource\RelationManagers;
+use BackedEnum;
+use UnitEnum;
+use Filament\Schemas\Schema;
 
 
 class ServerCategoryResource extends Resource
 {
     protected static ?string $model = ServerCategory::class;
 
-    protected static ?string $navigationIcon = 'heroicon-o-squares-plus';
+    protected static BackedEnum|string|null $navigationIcon = 'heroicon-o-squares-plus';
 
     protected static ?string $cluster = ServerManagement::class;
+
+    public static function canAccess(): bool
+    {
+        $user = auth()->user();
+        return (bool) ($user?->isAdmin() || $user?->isManager() || $user?->isSupportManager());
+    }
 
     protected static ?int $navigationSort = 6;
 
     protected static ?string $recordTitleAttribute = 'name';
 
-    protected static ?string $navigationGroup = 'SERVER ORGANIZATION';
+    protected static UnitEnum|string|null $navigationGroup = 'SERVER ORGANIZATION';
 
     public static function getLabel(): string
     {
         return 'Categories';
     }
 
-    public static function form(Form $form): Form
+    public static function form(Schema $schema): Schema
     {
-        return $form
+        return $schema
             ->schema([
                 Group::make()->schema([
                     Section::make('📂 Category Information')->schema([
@@ -127,7 +133,7 @@ class ServerCategoryResource extends Resource
 
     public static function table(Table $table): Table
     {
-        return $table
+        $table = $table
             ->columns([
                 ImageColumn::make('image')
                     ->label('Image')
@@ -243,7 +249,7 @@ class ServerCategoryResource extends Resource
                     DeleteBulkAction::make()
                         ->tooltip('Delete selected categories'),
 
-                    Tables\Actions\BulkAction::make('activate')
+                    \Filament\Actions\BulkAction::make('activate')
                         ->label('Activate Selected')
                         ->icon('heroicon-o-check-circle')
                         ->color('success')
@@ -258,7 +264,7 @@ class ServerCategoryResource extends Resource
                         })
                         ->tooltip('Activate selected categories'),
 
-                    Tables\Actions\BulkAction::make('deactivate')
+                    \Filament\Actions\BulkAction::make('deactivate')
                         ->label('Deactivate Selected')
                         ->icon('heroicon-o-x-circle')
                         ->color('danger')
@@ -274,9 +280,16 @@ class ServerCategoryResource extends Resource
                         ->tooltip('Deactivate selected categories'),
                 ]),
             ])
-            ->defaultSort('name')
-            ->striped()
-            ->paginated([10, 25, 50, 100]);
+            ->defaultSort('name');
+
+        return \App\Filament\Concerns\HasPerformanceOptimizations::applyTablePreset($table, [
+            'defaultPage' => 25,
+            'empty' => [
+                'icon' => 'heroicon-o-squares-plus',
+                'heading' => 'No categories found',
+                'description' => 'Create a category or adjust filters.',
+            ],
+        ]);
     }
 
     public static function getRelations(): array

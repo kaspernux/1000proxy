@@ -7,11 +7,12 @@ use Filament\Forms\Get;
 use Filament\Forms\Set;
 use App\Models\Customer;
 use Filament\Forms\Form;
+use Filament\Schemas\Schema;
 use Filament\Tables\Table;
 use Illuminate\Support\Str;
 use Filament\Resources\Resource;
-use Filament\Forms\Components\Group;
-use Filament\Forms\Components\Section;
+use Filament\Schemas\Components\Group;
+use Filament\Schemas\Components\Section;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\FileUpload;
 use Illuminate\Database\Eloquent\Builder;
@@ -25,20 +26,27 @@ use App\Filament\Clusters\CustomerManagement\Resources\PaymentMethodResource;
 use App\Filament\Clusters\CustomerManagement\Resources\PaymentMethodResource\Pages;
 use App\Filament\Clusters\CustomerManagement\Resources\PaymentMethodResource\RelationManagers;
 use App\Filament\Clusters\CustomerManagement\Resources\PaymentMethodResource\RelationManagers\OrdersRelationManager;
+use BackedEnum;
 
 class PaymentMethodResource extends Resource
 {
     protected static ?string $model = PaymentMethod::class;
 
-    protected static ?string $navigationIcon = 'heroicon-o-credit-card';
+    protected static BackedEnum|string|null $navigationIcon = 'heroicon-o-credit-card';
 
     protected static ?string $recordTitleAttribute = 'name';
 
     protected static ?string $cluster = CustomerManagement::class;
 
-    public static function form(Form $form): Form
+    public static function canAccess(): bool
     {
-        return $form
+        $user = auth()->user();
+        return (bool) ($user?->isAdmin() || $user?->isManager());
+    }
+
+    public static function form(Schema $schema): Schema
+    {
+        return $schema
             ->schema([
                 Group::make([
                     Section::make('General Information')
@@ -126,15 +134,15 @@ class PaymentMethodResource extends Resource
                 // Add filters as needed
             ])
             ->actions([
-                Tables\Actions\ActionGroup::make([
-                    Tables\Actions\EditAction::make(),
-                    Tables\Actions\ViewAction::make(),
-                    Tables\Actions\DeleteAction::make(),
+                \Filament\Actions\ActionGroup::make([
+                    \Filament\Actions\EditAction::make(),
+                    \Filament\Actions\ViewAction::make(),
+                    \Filament\Actions\DeleteAction::make(),
                 ]),
             ])
             ->bulkActions([
-                Tables\Actions\BulkActionGroup::make([
-                    Tables\Actions\DeleteBulkAction::make(),
+                \Filament\Actions\BulkActionGroup::make([
+                    \Filament\Actions\DeleteBulkAction::make(),
                 ]),
             ]);
     }

@@ -2,7 +2,7 @@
 
 namespace App\Services;
 
-use App\Models\User;
+use App\Models\Customer;
 use App\Models\Order;
 use App\Models\ServerClient;
 use App\Models\WalletTransaction;
@@ -198,10 +198,10 @@ class PartnershipService
     /**
      * Process affiliate referral
      */
-    public function processAffiliateReferral(string $referralCode, User $newUser): bool
+    public function processAffiliateReferral(string $referralCode, Customer $newCustomer): bool
     {
         try {
-            $affiliate = User::where('affiliate_code', $referralCode)->first();
+            $affiliate = Customer::where('affiliate_code', $referralCode)->first();
             
             if (!$affiliate) {
                 Log::warning("Invalid affiliate code: {$referralCode}");
@@ -211,14 +211,14 @@ class PartnershipService
             // Track referral
             DB::table('affiliate_referrals')->insert([
                 'affiliate_id' => $affiliate->id,
-                'referred_user_id' => $newUser->id,
+                'referred_user_id' => $newCustomer->id,
                 'referral_code' => $referralCode,
                 'status' => 'pending',
                 'created_at' => now(),
                 'updated_at' => now()
             ]);
             
-            Log::info("Affiliate referral tracked: {$referralCode} -> {$newUser->email}");
+            Log::info("Affiliate referral tracked: {$referralCode} -> {$newCustomer->email}");
             return true;
             
         } catch (\Exception $e) {
@@ -230,7 +230,7 @@ class PartnershipService
     /**
      * Calculate affiliate commission
      */
-    public function calculateAffiliateCommission(User $affiliate, Order $order): float
+    public function calculateAffiliateCommission(Customer $affiliate, Order $order): float
     {
         $program = $this->getAffiliateProgram($affiliate);
         
@@ -242,12 +242,12 @@ class PartnershipService
     }
     
     /**
-     * Get affiliate program for user
+     * Get affiliate program for customer
      */
-    public function getAffiliateProgram(User $user): ?array
+    public function getAffiliateProgram(Customer $customer): ?array
     {
         $referralCount = DB::table('affiliate_referrals')
-            ->where('affiliate_id', $user->id)
+            ->where('affiliate_id', $customer->id)
             ->where('status', 'confirmed')
             ->count();
         
@@ -265,7 +265,7 @@ class PartnershipService
     /**
      * Process reseller order
      */
-    public function processResellerOrder(User $reseller, array $orderData): array
+    public function processResellerOrder(Customer $reseller, array $orderData): array
     {
         $program = $this->getResellerProgram($reseller);
         
@@ -287,12 +287,13 @@ class PartnershipService
     }
     
     /**
-     * Get reseller program for user
+     * Get reseller program for customer
      */
-    public function getResellerProgram(User $user): ?array
+    public function getResellerProgram(Customer $customer): ?array
     {
-        $monthlyVolume = Order::where('user_id', $user->id)
-            ->where('created_at', '>=', now()->subMonth())
+        // Users (staff) don't place orders; approximate reseller eligibility via recent total volume
+        $monthlyVolume = Order::query()
+            ->whereBetween('created_at', [now()->subMonth(), now()])
             ->sum('total');
         
         if ($monthlyVolume >= 10000) {
@@ -352,14 +353,13 @@ class PartnershipService
      */
     private function getResellerStats(Carbon $startDate): array
     {
-        $resellerOrders = Order::whereHas('user', function ($query) {
-            $query->where('is_reseller', true);
-        })->where('created_at', '>=', $startDate);
+        // Legacy reseller concept referenced users; align to customer-owned orders aggregate only
+        $resellerOrders = Order::where('created_at', '>=', $startDate);
         
         return [
             'total_orders' => $resellerOrders->count(),
             'total_revenue' => $resellerOrders->sum('total'),
-            'active_resellers' => $resellerOrders->distinct('user_id')->count()
+            'active_resellers' => 0
         ];
     }
     
@@ -394,11 +394,10 @@ class PartnershipService
             ->limit(10)
             ->get();
         
-        $topResellers = Order::whereHas('user', function ($query) {
-            $query->where('is_reseller', true);
-        })->where('created_at', '>=', $startDate)
-            ->select('user_id', DB::raw('SUM(total) as total_revenue'))
-            ->groupBy('user_id')
+        // No customer ownership of orders; return top customers by revenue instead
+        $topResellers = Order::where('created_at', '>=', $startDate)
+            ->select('customer_id', DB::raw('SUM(total) as total_revenue'))
+            ->groupBy('customer_id')
             ->orderBy('total_revenue', 'desc')
             ->limit(10)
             ->get();

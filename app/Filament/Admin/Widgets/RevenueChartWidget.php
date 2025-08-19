@@ -8,7 +8,7 @@ use Illuminate\Support\Facades\Cache;
 
 class RevenueChartWidget extends ChartWidget
 {
-    protected static ?string $heading = 'Revenue Trend (30 Days)';
+    protected ?string $heading = 'Revenue Trend (30 Days)';
 
     protected static ?int $sort = 1;
 

@@ -4,15 +4,16 @@ namespace App\Filament\Clusters\ServerManagement\Resources;
 
 use Filament\Forms;
 use Filament\Tables;
-use Filament\Forms\Form;
+use Filament\Schemas\Schema;
+use BackedEnum;
 use App\Models\ServerPlan;
 use Filament\Tables\Table;
 use Illuminate\Support\Str;
 use Filament\Resources\Resource;
-use Filament\Forms\Components\Group;
+use Filament\Schemas\Components\Group;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Toggle;
-use Filament\Forms\Components\Section;
+use Filament\Schemas\Components\Section;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Forms\Components\TextInput;
@@ -24,16 +25,31 @@ use Filament\Forms\Components\MarkdownEditor;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
 use App\Filament\Clusters\ServerManagement\Resources\ServerPlanResource\Pages;
+use Filament\Actions\Action;
+use Filament\Actions\ActionGroup;
+use Filament\Actions\EditAction;
+use Filament\Actions\ViewAction;
+use Filament\Actions\DeleteAction;
+use Filament\Actions\BulkAction;
+use Filament\Actions\BulkActionGroup;
+use Filament\Actions\DeleteBulkAction;
 
 class ServerPlanResource extends Resource
 {
     protected static ?string $model = ServerPlan::class;
 
-    protected static ?string $navigationIcon = 'heroicon-o-fire';
+    protected static string | BackedEnum | null $navigationIcon = 'heroicon-o-fire';
 
     protected static ?int $navigationSort = 5;
 
     protected static ?string $cluster = ServerManagement::class;
+
+    public static function canAccess(): bool
+    {
+        $user = auth()->user();
+        // Admin/manager can access; support_manager read-only enforced by policy; sales_support no.
+        return (bool) ($user?->isAdmin() || $user?->isManager() || $user?->isSupportManager());
+    }
 
     protected static ?string $recordTitleAttribute = 'name';
 
@@ -47,9 +63,9 @@ class ServerPlanResource extends Resource
         return 'Server Plans';
     }
 
-    public static function form(Form $form): Form
+    public static function form(Schema $schema): Schema
     {
-        return $form
+        return $schema
         ->schema([
             Group::make()->schema([
                 Section::make('🏷️ Plan Identity & Basic Info')->schema([
@@ -437,8 +453,8 @@ class ServerPlanResource extends Resource
                     ->query(fn (Builder $query): Builder => $query->where('unlimited_traffic', true)),
             ])
             ->actions([
-                Tables\Actions\ActionGroup::make([
-                    Tables\Actions\Action::make('clone')
+                ActionGroup::make([
+                    Action::make('clone')
                         ->label('Clone Plan')
                         ->icon('heroicon-o-document-duplicate')
                         ->action(function (ServerPlan $record) {
@@ -450,25 +466,25 @@ class ServerPlanResource extends Resource
 
                             redirect()->route('filament.admin.clusters.server-management.resources.server-plans.edit', $newPlan);
                         }),
-                    Tables\Actions\EditAction::make(),
-                    Tables\Actions\ViewAction::make(),
-                    Tables\Actions\DeleteAction::make(),
+                    EditAction::make(),
+                    ViewAction::make(),
+                    DeleteAction::make(),
                 ]),
             ])
             ->bulkActions([
-                Tables\Actions\BulkActionGroup::make([
-                    Tables\Actions\DeleteBulkAction::make(),
-                    Tables\Actions\BulkAction::make('activate')
+                BulkActionGroup::make([
+                    DeleteBulkAction::make(),
+                    BulkAction::make('activate')
                         ->label('Activate')
                         ->icon('heroicon-o-check-circle')
                         ->color('success')
                         ->action(fn (Collection $records) => $records->each->update(['is_active' => true])),
-                    Tables\Actions\BulkAction::make('deactivate')
+                    BulkAction::make('deactivate')
                         ->label('Deactivate')
                         ->icon('heroicon-o-x-circle')
                         ->color('danger')
                         ->action(fn (Collection $records) => $records->each->update(['is_active' => false])),
-                    Tables\Actions\BulkAction::make('toggle_featured')
+                    BulkAction::make('toggle_featured')
                         ->label('Toggle Featured')
                         ->icon('heroicon-o-star')
                         ->action(fn (Collection $records) => $records->each(fn ($record) => $record->update(['is_featured' => !$record->is_featured]))),

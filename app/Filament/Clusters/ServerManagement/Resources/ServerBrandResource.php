@@ -1,5 +1,4 @@
 <?php
-
 namespace App\Filament\Clusters\ServerManagement\Resources;
 
 use App\Filament\Clusters\ServerManagement;
@@ -17,10 +16,10 @@ use Illuminate\Database\Eloquent\Collection;
 
 use Illuminate\Support\Str;
 use Filament\Forms\Components\MarkdownEditor;
-use Filament\Forms\Components\Section;
+use Filament\Schemas\Components\Section;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
-use Filament\Forms\Components\Group;
+use Filament\Schemas\Components\Group;
 use Livewire\Features\SupportFileUploads\TemporaryUploadedFile;
 use Filament\Forms\Components\FileUpload;
 use Filament\Tables\Columns\ImageColumn;
@@ -32,29 +31,38 @@ use Filament\Forms\Set;
 use Filament\Forms\Get;
 use App\Services\XUIService;
 use Filament\Notifications\Notification;
+use BackedEnum;
+use UnitEnum;
+use Filament\Schemas\Schema;
 
 class ServerBrandResource extends Resource
 {
     protected static ?string $model = ServerBrand::class;
 
-    protected static ?string $navigationIcon = 'heroicon-o-bookmark';
+    protected static BackedEnum|string|null $navigationIcon = 'heroicon-o-bookmark';
 
     protected static ?int $navigationSort = 7;
 
     protected static ?string $cluster = ServerManagement::class;
 
+    public static function canAccess(): bool
+    {
+        $user = auth()->user();
+        return (bool) ($user?->isAdmin() || $user?->isManager() || $user?->isSupportManager());
+    }
+
     protected static ?string $recordTitleAttribute = 'name';
 
-    protected static ?string $navigationGroup = 'SERVER ORGANIZATION';
+    protected static UnitEnum|string|null $navigationGroup = 'SERVER ORGANIZATION';
 
     public static function getLabel(): string
     {
         return 'Brands';
     }
 
-    public static function form(Form $form): Form
+    public static function form(Schema $schema): Schema
         {
-        return $form
+        return $schema
             ->schema([
                 Section::make('Brand Information')->schema([
                     Grid::make()
@@ -216,13 +224,16 @@ class ServerBrandResource extends Resource
                     ->query(fn(Builder $query): Builder => $query->where('is_active', true)),
             ])
             ->actions([
-                Tables\Actions\ActionGroup::make([
-                    Tables\Actions\Action::make('test_xui_connections')
+                \Filament\Actions\ActionGroup::make([
+                    \Filament\Actions\Action::make('test_xui_connections')
                         ->label('Test X-UI Connections')
                         ->icon('heroicon-o-signal')
                         ->color('info')
                         ->action(function ($record) {
-                            $servers = $record->servers()->whereNotNull('api_url')->get();
+                            // Fetch all servers under this brand. We previously filtered by a non-existent
+                            // column `api_url` which caused SQL errors. XUIService derives API endpoints
+                            // from host/panel_port/web_base_path, so we can simply iterate all servers here.
+                            $servers = $record->servers()->get();
                             $results = [];
 
                             foreach ($servers as $server) {
@@ -270,29 +281,29 @@ class ServerBrandResource extends Resource
                         ->modalHeading('Test X-UI Connections')
                         ->modalDescription('This will test X-UI API connectivity for all servers under this brand.')
                         ->modalSubmitActionLabel('Test Connections'),
-                    Tables\Actions\Action::make('view_servers')
+                    \Filament\Actions\Action::make('view_servers')
                         ->label('View Servers')
                         ->icon('heroicon-o-server')
                         ->url(fn($record) => route('filament.admin.server-management.resources.servers.index', ['tableFilters[server_brand_id][values][]' => $record->id]))
                         ->openUrlInNewTab(),
-                    Tables\Actions\EditAction::make(),
-                    Tables\Actions\ViewAction::make(),
-                    Tables\Actions\DeleteAction::make(),
+                    \Filament\Actions\EditAction::make(),
+                    \Filament\Actions\ViewAction::make(),
+                    \Filament\Actions\DeleteAction::make(),
                 ]),
             ])
             ->bulkActions([
-                Tables\Actions\BulkActionGroup::make([
-                    Tables\Actions\DeleteBulkAction::make(),
-                    Tables\Actions\BulkAction::make('toggle_featured')
+                \Filament\Actions\BulkActionGroup::make([
+                    \Filament\Actions\DeleteBulkAction::make(),
+                    \Filament\Actions\BulkAction::make('toggle_featured')
                         ->label('Toggle Featured')
                         ->icon('heroicon-o-star')
                         ->action(fn(Collection $records) => $records->each(fn($record) => $record->update(['featured' => ! $record->featured]))),
-                    Tables\Actions\BulkAction::make('activate')
+                    \Filament\Actions\BulkAction::make('activate')
                         ->label('Activate')
                         ->icon('heroicon-o-check-circle')
                         ->color('success')
                         ->action(fn(Collection $records) => $records->each(fn($record) => $record->update(['is_active' => true]))),
-                    Tables\Actions\BulkAction::make('deactivate')
+                    \Filament\Actions\BulkAction::make('deactivate')
                         ->label('Deactivate')
                         ->icon('heroicon-o-x-circle')
                         ->color('danger')

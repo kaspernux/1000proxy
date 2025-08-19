@@ -20,11 +20,14 @@ use App\Filament\Admin\Widgets\{
 // Unified cross-namespace widgets (new consolidated dashboard + infra + combined growth/revenue chart)
 use App\Filament\Widgets\{AdminDashboardStatsWidget, InfrastructureHealthWidget, AdminChartsWidget};
 use Illuminate\Support\Facades\Storage;
+use BackedEnum;
 
 class AdminMainDashboard extends BaseDashboard
 {
+    // Do not register this legacy dashboard in navigation; the primary admin home is App\Filament\Pages\AdminDashboard.
+    protected static bool $shouldRegisterNavigation = false;
 
-    protected static ?string $navigationIcon = 'heroicon-o-home-modern';
+    protected static string | BackedEnum | null $navigationIcon = 'heroicon-o-home-modern';
     protected static ?string $navigationLabel = 'Admin Dashboard';
     protected static ?int $navigationSort = 1;
     protected static ?string $slug = 'admin';

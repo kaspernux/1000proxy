@@ -22,6 +22,7 @@ use App\Models\{Order, Server, PaymentMethod, Customer, ServerPlan, ServerClient
 use App\Policies\{OrderPolicy, ServerPolicy, PaymentMethodPolicy, CustomerPolicy, ServerPlanPolicy, ServerClientPolicy, InvoicePolicy};
 use App\Models\ActivityLog;
 use App\Policies\ActivityLogPolicy;
+use Livewire\Livewire;
 
 
 class AppServiceProvider extends ServiceProvider
@@ -31,6 +32,8 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
+    // Avoid heavy config mutations during register; normalization will happen in boot
+
         // Register custom services
         $this->app->singleton(\App\Services\CacheOptimizationService::class, function ($app) {
             return new \App\Services\CacheOptimizationService();
@@ -64,6 +67,38 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        // Ensure Livewire component aliases used by Filament widgets are globally registered
+        // so that POST /livewire/update requests can resolve components even outside panel routes.
+        try {
+            Livewire::component('app.filament.widgets.admin-stats-overview', \App\Filament\Widgets\AdminDashboardStatsWidget::class);
+            Livewire::component('app.filament.admin.widgets.order-metrics-widget', \App\Filament\Admin\Widgets\OrderMetricsWidget::class);
+            Livewire::component('app.filament.admin.widgets.user-growth-widget', \App\Filament\Admin\Widgets\UserGrowthWidget::class);
+            Livewire::component('app.filament.widgets.user-growth-widget', \App\Filament\Admin\Widgets\UserGrowthWidget::class); // fallback prefix
+            // Proactive: chart variant sometimes appears in snapshots
+            if (class_exists(\App\Filament\Admin\Widgets\UserGrowthChartWidget::class)) {
+                Livewire::component('app.filament.admin.widgets.user-growth-chart-widget', \App\Filament\Admin\Widgets\UserGrowthChartWidget::class);
+            }
+        } catch (\Throwable $e) {
+            // Do not block app boot if Livewire isn't ready in some contexts
+        }
+        // Defensive: if any legacy code calls app('env'), bind it to the environment name (post-boot)
+        if (!$this->app->bound('env')) {
+            $this->app->bind('env', function () {
+                return config('app.env');
+            });
+        }
+
+        // Normalize mailer configuration after boot so container services are available
+        try {
+            $defaultMailer = config('mail.default');
+            $supported = array_keys(config('mail.mailers', []));
+            if ($defaultMailer && !in_array($defaultMailer, $supported, true)) {
+                config(['mail.default' => app()->environment('production') ? 'smtp' : 'log']);
+            }
+        } catch (\Throwable $e) {
+            // swallow; config not ready
+        }
+
         // Register all Blade components in livewire/components
         $components = [
             'custom-icon', 'xui-server-selector', 'xui-server-browser', 'xui-inbound-manager',

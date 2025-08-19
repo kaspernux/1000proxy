@@ -18,7 +18,7 @@ class SettingSeeder extends Seeder
             ['key' => 'site_description', 'value' => 'Professional XUI-Based Proxy Client Sales Platform', 'description' => 'Site description'],
             ['key' => 'site_url', 'value' => 'https://1000proxy.io', 'description' => 'Site URL'],
             ['key' => 'site_email', 'value' => 'support@1000proxy.io', 'description' => 'Support email'],
-            ['key' => 'site_phone', 'value' => '+1-800-1000-PROXY', 'description' => 'Support phone'],
+            ['key' => 'site_phone', 'value' => '+1-800-1000-0101', 'description' => 'Support phone'],
 
             // Currency and pricing
             ['key' => 'default_currency', 'value' => 'USD', 'description' => 'Default currency'],

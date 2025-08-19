@@ -2,17 +2,14 @@
 
 namespace App\Filament\Customer\Widgets;
 
-use Filament\Widgets\StatsOverviewWidget;
-use Filament\Widgets\StatsOverviewWidget\Card;
+use Filament\Widgets\StatsOverviewWidget as BaseWidget;
+use Filament\Widgets\StatsOverviewWidget\Stat;
 use App\Models\DownloadableItem;
 use Illuminate\Support\Facades\Auth;
 
-class DownloadOverviewWidget extends StatsOverviewWidget
+class DownloadOverviewWidget extends BaseWidget
 {
-    // must be non-static in v3:
-    protected ?string $heading = 'My Downloads';
-
-    protected function getCards(): array
+    protected function getStats(): array
     {
         $customerId = Auth::guard('customer')->id();
 
@@ -24,9 +21,11 @@ class DownloadOverviewWidget extends StatsOverviewWidget
             ->count();
 
         return [
-            Card::make('Available Files', $count)
+            Stat::make('Available Files', $count)
                 ->description('Files included with your services')
-                ->icon('heroicon-o-document-text'),
+                ->descriptionIcon('heroicon-m-document-text')
+                ->icon('heroicon-o-document-text')
+                ->color('info'),
         ];
     }
 }

@@ -83,15 +83,15 @@ class APIDocumentationService
                 'description' => 'Production API v1'
             ],
             [
-                'url' => config('app.url') . '/api/v2',
+                'url' => config('app.url') . '/api/v1',
                 'description' => 'Production API v2 (Latest)'
             ],
             [
-                'url' => 'https://staging.1000proxy.io/api/v2',
+                'url' => 'https://staging.1000proxy.io/api/v1',
                 'description' => 'Staging Environment'
             ],
             [
-                'url' => 'http://localhost/api/v2',
+                'url' => 'http://localhost/api/v1',
                 'description' => 'Local Development'
             ]
         ];
@@ -314,7 +314,7 @@ class APIDocumentationService
                     'id' => ['type' => 'integer', 'example' => 1],
                     'name' => ['type' => 'string', 'example' => 'John Doe'],
                     'email' => ['type' => 'string', 'example' => 'john@example.com'],
-                    'role' => ['type' => 'string', 'enum' => ['admin', 'support_manager', 'sales_support'], 'example' => 'admin'],
+                    'role' => ['type' => 'string', 'enum' => ['admin', 'manager', 'support_manager', 'sales_support'], 'example' => 'admin'],
                     'is_active' => ['type' => 'boolean', 'example' => true],
                     'last_login_at' => ['type' => 'string', 'format' => 'date-time', 'nullable' => true],
                     'created_at' => ['type' => 'string', 'format' => 'date-time'],
@@ -1128,32 +1128,32 @@ class APIDocumentationService
         return [
             'mobile_endpoints' => [
                 'authentication' => [
-                    'login' => 'POST /api/v2/mobile/auth/login',
-                    'register' => 'POST /api/v2/mobile/auth/register',
-                    'refresh' => 'POST /api/v2/mobile/auth/refresh',
-                    'logout' => 'POST /api/v2/mobile/auth/logout'
+                    'login' => 'POST /api/v1/mobile/auth/login',
+                    'register' => 'POST /api/v1/mobile/auth/register',
+                    'refresh' => 'POST /api/v1/mobile/auth/refresh',
+                    'logout' => 'POST /api/v1/mobile/auth/logout'
                 ],
                 'user_profile' => [
-                    'profile' => 'GET /api/v2/mobile/profile',
-                    'update_profile' => 'PUT /api/v2/mobile/profile',
-                    'change_password' => 'POST /api/v2/mobile/profile/password'
+                    'profile' => 'GET /api/v1/mobile/profile',
+                    'update_profile' => 'PUT /api/v1/mobile/profile',
+                    'change_password' => 'POST /api/v1/mobile/profile/password'
                 ],
                 'servers' => [
-                    'list' => 'GET /api/v2/mobile/servers',
-                    'details' => 'GET /api/v2/mobile/servers/{id}',
-                    'status' => 'GET /api/v2/mobile/servers/{id}/status',
-                    'test_connection' => 'POST /api/v2/mobile/servers/{id}/test'
+                    'list' => 'GET /api/v1/mobile/servers',
+                    'details' => 'GET /api/v1/mobile/servers/{id}',
+                    'status' => 'GET /api/v1/mobile/servers/{id}/status',
+                    'test_connection' => 'POST /api/v1/mobile/servers/{id}/test'
                 ],
                 'orders' => [
-                    'list' => 'GET /api/v2/mobile/orders',
-                    'create' => 'POST /api/v2/mobile/orders',
-                    'details' => 'GET /api/v2/mobile/orders/{id}',
-                    'download_config' => 'GET /api/v2/mobile/orders/{id}/config'
+                    'list' => 'GET /api/v1/mobile/orders',
+                    'create' => 'POST /api/v1/mobile/orders',
+                    'details' => 'GET /api/v1/mobile/orders/{id}',
+                    'download_config' => 'GET /api/v1/mobile/orders/{id}/config'
                 ],
                 'notifications' => [
-                    'register_device' => 'POST /api/v2/mobile/notifications/register',
-                    'preferences' => 'GET /api/v2/mobile/notifications/preferences',
-                    'update_preferences' => 'PUT /api/v2/mobile/notifications/preferences'
+                    'register_device' => 'POST /api/v1/mobile/notifications/register',
+                    'preferences' => 'GET /api/v1/mobile/notifications/preferences',
+                    'update_preferences' => 'PUT /api/v1/mobile/notifications/preferences'
                 ]
             ],
             'mobile_features' => [

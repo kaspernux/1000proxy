@@ -11,7 +11,6 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
-use App\Models\User;
 
 class Order extends Model
 {
@@ -33,8 +32,6 @@ class Order extends Model
 
     protected $fillable = [
         'customer_id',
-    // Legacy staff management field (not used for customer placement)
-    'user_id',
         'order_number',
         'grand_amount',
         'currency',
@@ -60,14 +57,14 @@ class Order extends Model
         'coupon_code',
         'payment_transaction_id',
         'payment_invoice_url',
-    'payment_details',
+        'payment_details',
         'notes',
     ];
 
     protected $casts = [
-    'payment_details' => 'array',
-    'total_amount' => 'decimal:2',
-    'grand_amount' => 'decimal:2',
+        'payment_details' => 'array',
+        'total_amount' => 'decimal:2',
+        'grand_amount' => 'decimal:2',
     ];
 
     // Ensure legacy attributes appear in serialized output for tests
@@ -132,14 +129,6 @@ class Order extends Model
         return $this->belongsTo(Customer::class);
     }
 
-    /**
-     * Legacy compatibility: some tests reference $order->user (staff placing or managing).
-     */
-    public function user(): BelongsTo
-    {
-        return $this->belongsTo(User::class, 'user_id');
-    }
-
     public function items(): HasMany
     {
         return $this->hasMany(OrderItem::class);
@@ -195,25 +184,6 @@ class Order extends Model
         return $this->belongsTo(PaymentMethod::class, 'payment_method');
     }
 
-    /**
-     * Backward compatibility accessor: some legacy services still reference $order->user_id.
-     * Business rule moved to customers; expose customer_id via user_id attribute when accessed.
-     */
-    public function getUserIdAttribute(): ?int
-    {
-        if (array_key_exists('user_id', $this->attributes) && !is_null($this->attributes['user_id'])) {
-            return (int) $this->attributes['user_id'];
-        }
-        return $this->customer_id; // fallback
-    }
-
-    /**
-     * Assign (or update) the staff user managing this order (e.g. refund, support action).
-     */
-    public function assignManager(\App\Models\User $user): void
-    {
-    $this->forceFill(['user_id' => $user->id])->saveQuietly();
-    }
 
     // Enhanced relationships for XUI integration
 

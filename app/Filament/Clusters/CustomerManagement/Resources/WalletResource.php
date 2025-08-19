@@ -10,7 +10,9 @@ use Filament\Forms\Form;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
-use Filament\Infolists\Infolist;
+use Filament\Actions\ActionGroup;
+use Filament\Actions\ViewAction;
+use Filament\Actions\DeleteBulkAction;
 use Filament\Infolists\Components\TextEntry;
 use Filament\Infolists\Components\ImageEntry;
 use Filament\Infolists\Components\Card;
@@ -19,57 +21,82 @@ use Filament\Infolists\Components\Section;
 use Filament\Infolists\Components\Split;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
+use Filament\Schemas\Schema;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
+use App\Filament\Concerns\HasPerformanceOptimizations;
+use BackedEnum;
 
 
 class WalletResource extends Resource
 {
+    use HasPerformanceOptimizations;
     protected static ?string $model = Wallet::class;
-    protected static ?string $navigationIcon = 'heroicon-o-wallet';
+    protected static BackedEnum|string|null $navigationIcon = 'heroicon-o-wallet';
     protected static ?string $cluster = CustomerManagement::class;
+
+    public static function canAccess(): bool
+    {
+        $user = auth()->user();
+        return (bool) ($user?->isAdmin() || $user?->isManager());
+    }
 
     public static function table(Table $table): Table
     {
-        return $table->columns([
+    $table = $table->columns([
             TextColumn::make('customer.name')->label('Customer')->searchable()->sortable(),
             TextColumn::make('balance')->label('USD Balance')->money('usd')->badge()->color('success')->sortable(),
             IconColumn::make('is_default')->boolean()->label('Default?'),
             TextColumn::make('last_synced_at')->label('Last Synced')->dateTime()->sortable(),
             TextColumn::make('created_at')->label('Created')->dateTime()->sortable(),
         ])
-        ->filters([])
-        ->actions([
-            Tables\Actions\ActionGroup::make([
-                    Tables\Actions\ViewAction::make()
+    ->filters([])
+    ->actions([
+        ActionGroup::make([
+            ViewAction::make()
                         ->label('View Wallet')
                         ->color('primary')
                         ->button(),
-                    Tables\Actions\ViewAction::make()->label('Details'),
+            ViewAction::make()->label('Details'),
                 ]),
         ])
         ->bulkActions([
-            Tables\Actions\DeleteBulkAction::make(),
+        DeleteBulkAction::make(),
+        ]);
+    return self::applyTablePreset($table, [
+        'defaultPage' => 25,
+        'empty' => [
+            'icon' => 'heroicon-o-wallet',
+            'heading' => 'No wallets found',
+            'description' => 'Wallets will appear after customers make purchases or you import data.',
+        ],
+    ]);
+    }
+
+    public static function form(Schema $schema): Schema
+    {
+        return $schema->schema([
+            Forms\Components\Section::make('Wallet Summary')
+                ->description('Overview of the wallet state and identifiers')
+                ->schema([
+                    Forms\Components\TextInput::make('balance')->label('USD Balance')->numeric()->disabled(),
+                    Forms\Components\Toggle::make('is_default')->label('Default Wallet')->disabled(),
+                    Forms\Components\DateTimePicker::make('last_synced_at')->label('Last Synced')->disabled(),
+                ]),
+
+            Forms\Components\Section::make('Deposit Addresses')
+                ->description('Read-only crypto addresses generated for deposits')
+                ->schema([
+                    Forms\Components\TextInput::make('btc_address')->label('BTC Address')->disabled()->columnSpanFull(),
+                    Forms\Components\TextInput::make('xmr_address')->label('XMR Address')->disabled()->columnSpanFull(),
+                    Forms\Components\TextInput::make('sol_address')->label('SOL Address')->disabled()->columnSpanFull(),
+                ]),
         ]);
     }
 
-    public static function form(Form $form): Form
+    public static function infolist(Schema $schema): Schema
     {
-        return $form->schema([
-            Forms\Components\TextInput::make('balance')->label('USD Balance')->numeric()->disabled(),
-
-            Forms\Components\Toggle::make('is_default')->label('Default Wallet')->disabled(),
-            Forms\Components\DateTimePicker::make('last_synced_at')->label('Last Synced')->disabled(),
-
-            Forms\Components\TextInput::make('btc_address')->label('BTC Address')->disabled()->columnSpanFull(),
-            Forms\Components\TextInput::make('xmr_address')->label('XMR Address')->disabled()->columnSpanFull(),
-            Forms\Components\TextInput::make('sol_address')->label('SOL Address')->disabled()->columnSpanFull(),
-        ]);
-    }
-
-    public static function infolist(Infolist $infolist): Infolist
-    {
-        return $infolist->schema([
+        return $schema->schema([
             Tabs::make('Wallet Details')->tabs([
                 Tabs\Tab::make('Overview')->schema([
                     Section::make('Wallet Info')->columns(2)->schema([

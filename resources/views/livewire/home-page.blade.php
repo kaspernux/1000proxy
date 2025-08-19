@@ -92,9 +92,9 @@
 
     {{-- Enhanced Search & Filtering Section Start --}}
     <div class="w-full bg-gradient-to-br from-green-900 via-gray-800 to-gray-900 py-20 lg:py-24 relative overflow-hidden">
-        <!-- Background pattern -->
-        <div class="absolute inset-0 opacity-10">
-            <div class="absolute inset-0" style="background-image: radial-gradient(circle at 2px 2px, rgba(255,255,255,0.1) 1px, transparent 0); background-size: 30px 30px;"></div>
+        <!-- Background pattern (Enhanced Grid Pattern) -->
+        <div class="absolute inset-0 opacity-40">
+            <div class="absolute inset-0 bg-[url('data:image/svg+xml,%3Csvg width="60" height="60" viewBox="0 0 60 60" xmlns="http://www.w3.org/2000/svg"%3E%3Cg fill="none" fill-rule="evenodd"%3E%3Cg fill="%239C92AC" fill-opacity="0.08"%3E%3Ccircle cx="30" cy="30" r="2"/%3E%3C/g%3E%3C/g%3E%3C/svg%3E')]"></div>
         </div>
         
         <!-- Enhanced background effects -->
@@ -122,10 +122,10 @@
                         </p>
                     </div>
                     <div class="relative group">
-                        <input type="text"
+               <input type="text"
                                wire:model.live.debounce.300ms="searchTerm"
                                placeholder="Try: 'residential proxy', 'US servers', 'Instagram', 'web scraping', 'high speed datacenter'..."
-                               class="w-full px-6 py-4 pl-14 rounded-2xl border-0 bg-white backdrop-blur-sm focus:ring-4 focus:ring-blue-500/50 focus:bg-white transition-all duration-300 text-lg text-black placeholder-gray-400 placeholder:text-sm shadow-lg">
+                   class="w-full px-6 py-4 pl-14 rounded-2xl border-0 bg-gray-900/60 text-white placeholder-gray-400 backdrop-blur-sm focus:ring-4 focus:ring-blue-500/40 focus:bg-gray-900/70 transition-all duration-300 text-lg placeholder:text-sm shadow-lg ring-1 ring-white/10">
                         <svg class="absolute left-5 top-1/2 transform -translate-y-1/2 h-6 w-6 text-gray-500 group-focus-within:text-blue-500 transition-colors duration-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
                         </svg>
@@ -153,7 +153,7 @@
                                 Select the type of proxy service that best fits your use case
                             </p>
                         </div>
-                        <select wire:model.live="selectedCategory" class="w-full px-4 py-3 rounded-xl border-0 bg-white backdrop-blur-sm focus:ring-4 focus:ring-yellow-500/50 transition-all duration-300 text-gray-900 font-medium shadow-lg hover:shadow-yellow-500/20">
+                        <select wire:model.live="selectedCategory" class="w-full px-4 py-3 rounded-xl border-0 bg-gray-900/60 text-white backdrop-blur-sm focus:ring-4 focus:ring-yellow-500/40 transition-all duration-300 font-medium shadow-lg hover:shadow-yellow-500/20 ring-1 ring-white/10">
                             <option value="" class="bg-white text-black py-2">All Categories</option>
                             @foreach($this->categories as $category)
                                 <option value="{{ $category->id }}" class="bg-white text-black py-2">{{ $category->name }}</option>
@@ -172,7 +172,7 @@
                                 Filter by trusted proxy providers and premium brands
                             </p>
                         </div>
-                        <select wire:model.live="selectedBrand" class="w-full px-4 py-3 rounded-xl border-0 bg-white backdrop-blur-sm focus:ring-4 focus:ring-green-500/50 transition-all duration-300 text-gray-900 font-medium shadow-lg hover:shadow-green-500/20">
+                        <select wire:model.live="selectedBrand" class="w-full px-4 py-3 rounded-xl border-0 bg-gray-900/60 text-white backdrop-blur-sm focus:ring-4 focus:ring-green-500/40 transition-all duration-300 font-medium shadow-lg hover:shadow-green-500/20 ring-1 ring-white/10">
                             <option value="" class="bg-white text-black py-2">All Brands</option>
                             @foreach($this->brands as $brand)
                                 <option value="{{ $brand->id }}" class="bg-white text-black py-2">{{ $brand->name }}</option>
@@ -471,7 +471,7 @@
     {{-- Enhanced Categories Section End --}}
 
     {{-- Enhanced Brands Section Start --}}
-    <section id="brands" class="relative bg-gradient-to-br from-gray-50 via-white to-blue-50/30 dark:from-gray-900 dark:via-blue-900/10 dark:to-gray-900 py-28 sm:py-36 lg:py-40 overflow-hidden">
+    <section id="brands" class="relative bg-gradient-to-br from-gray-900 via-blue-900/10 to-gray-900 py-28 sm:py-36 lg:py-40 overflow-hidden">
         <!-- Background Pattern -->
         <div class="absolute inset-0 opacity-10 dark:opacity-5">
             <div class="absolute inset-0" style="background-image: radial-gradient(circle at 2px 2px, currentColor 1px, transparent 0); background-size: 40px 40px;"></div>
@@ -494,12 +494,12 @@
                     Trusted Partners
                 </div>
                 
-                <h2 class="text-4xl font-bold tracking-tight text-gray-900 dark:text-white sm:text-5xl lg:text-6xl">
+                <h2 class="text-4xl font-bold tracking-tight text-white sm:text-5xl lg:text-6xl">
                     Premium
                     <span class="bg-gradient-to-r from-blue-400 to-yellow-400 bg-clip-text text-transparent">Proxy Brands</span>
                 </h2>
                 
-                <p class="mt-8 text-xl leading-8 text-gray-600 dark:text-gray-300 max-w-3xl mx-auto">
+                <p class="mt-8 text-xl leading-8 text-gray-300 max-w-3xl mx-auto">
                     Partner with industry-leading proxy providers. Each brand is carefully vetted for reliability, 
                     performance, and enterprise-grade security standards.
                 </p>
@@ -510,8 +510,8 @@
                 <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8 lg:gap-10 xl:gap-12">
                     @foreach($this->brands->take(8) as $index => $brand)
                         <div class="group relative" wire:key="{{ $brand->id }}">
-                            <a href="/servers?brands[]={{ $brand->id }}" wire:navigate 
-                               class="block relative bg-gradient-to-br from-white/10 to-gray-100/30 dark:from-white/5 dark:to-gray-800/30 backdrop-blur-sm rounded-3xl p-6 ring-1 ring-white/20 dark:ring-white/10 hover:ring-blue-400/50 transition-all duration-500 hover:shadow-2xl hover:shadow-blue-500/20 transform hover:scale-105 h-full">
+                                     <a href="/servers?brands[]={{ $brand->id }}" wire:navigate 
+                                         class="block relative bg-gradient-to-br from-gray-800/40 to-gray-900/60 backdrop-blur-sm rounded-3xl p-6 ring-1 ring-white/10 hover:ring-blue-400/50 transition-all duration-500 hover:shadow-2xl hover:shadow-blue-500/20 transform hover:scale-105 h-full">
                                 
                                 <!-- Gradient Overlay -->
                                 <div class="absolute inset-0 bg-gradient-to-br from-blue-500/5 to-yellow-500/5 rounded-3xl opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
@@ -531,7 +531,7 @@
                                                 </div>
                                             </div>
                                             <!-- Status indicator -->
-                                            <div class="absolute -top-1 -right-1 w-5 h-5 bg-green-500 rounded-full flex items-center justify-center ring-2 ring-white dark:ring-gray-800 group-hover:scale-110 transition-transform duration-300">
+                                            <div class="absolute -top-1 -right-1 w-5 h-5 bg-green-500 rounded-full flex items-center justify-center ring-2 ring-gray-800 group-hover:scale-110 transition-transform duration-300">
                                                 <div class="w-2 h-2 bg-white rounded-full"></div>
                                             </div>
                                         </div>
@@ -547,10 +547,10 @@
 
                                     <!-- Brand Info -->
                                     <div class="mb-6">
-                                        <h3 class="text-xl font-bold text-gray-900 dark:text-white group-hover:text-blue-400 transition-colors duration-300 mb-2 line-clamp-2">
+                                        <h3 class="text-xl font-bold text-white group-hover:text-blue-400 transition-colors duration-300 mb-2 line-clamp-2">
                                             {{ $brand->name}}
                                         </h3>
-                                        <p class="text-sm text-gray-600 dark:text-gray-300 group-hover:text-gray-900 dark:group-hover:text-white transition-colors duration-300 leading-relaxed line-clamp-3">
+                                        <p class="text-sm text-gray-300 group-hover:text-white transition-colors duration-300 leading-relaxed line-clamp-3">
                                             Premium proxy solutions with enterprise-grade reliability and high-performance infrastructure for {{ strtolower($brand->name) }}.
                                         </p>
                                     </div>
@@ -558,13 +558,13 @@
                                     <!-- Stats and CTA -->
                                     <div class="space-y-4">
                                         <div class="flex items-center justify-between">
-                                            <div class="flex items-center text-sm text-gray-500 dark:text-gray-400">
+                                            <div class="flex items-center text-sm text-gray-400">
                                                 <svg class="mr-2 h-4 w-4 text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 12h14M5 12a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v4a2 2 0 01-2 2M5 12a2 2 0 00-2 2v4a2 2 0 002 2h14a2 2 0 002-2v-4a2 2 0 00-2-2" />
                                                 </svg>
                                                 {{ $brand->servers_count ?? rand(10, 100) }} servers
                                             </div>
-                                            <div class="inline-flex items-center rounded-full bg-yellow-100/20 dark:bg-yellow-100/10 px-3 py-1 text-xs font-medium text-yellow-700 dark:text-yellow-700 ring-1 ring-yellow-400/20">
+                                            <div class="inline-flex items-center rounded-full bg-yellow-400/10 px-3 py-1 text-xs font-medium text-yellow-300 ring-1 ring-yellow-400/20">
                                                 @switch($index % 4)
                                                     @case(0) Premium Partner @break
                                                     @case(1) Enterprise Ready @break
@@ -574,7 +574,7 @@
                                             </div>
                                         </div>
                                         
-                                        <div class="flex items-center text-gray-700 dark:text-gray-200 group-hover:text-yellow-600 dark:group-hover:text-yellow-400 font-medium transition-colors duration-300">
+                                        <div class="flex items-center text-gray-200 group-hover:text-yellow-400 font-medium transition-colors duration-300">
                                             <span class="text-sm">Explore Plans</span>
                                             <svg class="ml-2 h-4 w-4 transition-transform group-hover:translate-x-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6" />
@@ -603,10 +603,10 @@
                 <!-- Bottom CTA Section -->
                 <div class="mt-20 text-center">
                     <div class="bg-gradient-to-r from-blue-900/30 to-yellow-900/30 backdrop-blur-sm rounded-3xl p-8 ring-1 ring-white/10">
-                        <h3 class="text-2xl font-bold text-gray-900 dark:text-white mb-4">
+                        <h3 class="text-2xl font-bold text-white dark:text-white mb-4">
                             Ready to Partner with Premium Brands?
                         </h3>
-                        <p class="text-gray-600 dark:text-gray-300 mb-6 max-w-2xl mx-auto">
+                        <p class="text-gray-200 mb-6 max-w-2xl mx-auto">
                             Join thousands of businesses that trust our verified proxy partners for their mission-critical operations. 
                             Get started with enterprise-grade solutions today.
                         </p>
@@ -641,8 +641,8 @@
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                             </svg>
                         </div>
-                        <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-2 group-hover:text-blue-400 transition-colors">Verified Quality</h3>
-                        <p class="text-gray-600 dark:text-gray-300">All brands undergo rigorous testing</p>
+                        <h3 class="text-lg font-semibold text-white mb-2 group-hover:text-blue-400 transition-colors">Verified Quality</h3>
+                        <p class="text-gray-300">All brands undergo rigorous testing</p>
                     </div>
                     
                     <div class="group">
@@ -651,8 +651,8 @@
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
                             </svg>
                         </div>
-                        <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-2 group-hover:text-yellow-400 transition-colors">Enterprise Security</h3>
-                        <p class="text-gray-600 dark:text-gray-300">Bank-level encryption & protection</p>
+                        <h3 class="text-lg font-semibold text-white mb-2 group-hover:text-yellow-400 transition-colors">Enterprise Security</h3>
+                        <p class="text-gray-300">Bank-level encryption & protection</p>
                     </div>
                     
                     <div class="group">
@@ -661,8 +661,8 @@
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
                             </svg>
                         </div>
-                        <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-2 group-hover:text-blue-400 transition-colors">Lightning Fast</h3>
-                        <p class="text-gray-600 dark:text-gray-300">Optimized for maximum performance</p>
+                        <h3 class="text-lg font-semibold text-white mb-2 group-hover:text-blue-400 transition-colors">Lightning Fast</h3>
+                        <p class="text-gray-300">Optimized for maximum performance</p>
                     </div>
                 </div>
             </div>

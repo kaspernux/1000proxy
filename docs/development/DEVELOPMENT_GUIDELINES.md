@@ -906,7 +906,7 @@ class ServiceManagementTest extends DuskTestCase
 
         $this->browse(function (Browser $browser) use ($user) {
             $browser->loginAs($user)
-                   ->visit('/dashboard')
+                   ->visit('/admin')
                    ->clickLink('Create Service')
                    ->select('type', 'vless')
                    ->select('duration', '30')

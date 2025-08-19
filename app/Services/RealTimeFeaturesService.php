@@ -38,7 +38,7 @@ class RealTimeFeaturesService
                 ->toOthers();
 
             // Store in activity stream
-            $this->addToActivityStream($order->user_id, 'order_status_changed', [
+            $this->addToActivityStream($order->customer_id, 'order_status_changed', [
                 'order_id' => $order->id,
                 'old_status' => $oldStatus,
                 'new_status' => $newStatus,
@@ -46,7 +46,7 @@ class RealTimeFeaturesService
             ]);
 
             // Send real-time notification
-            $this->sendRealTimeNotification($order->user_id, [
+            $this->sendRealTimeNotification($order->customer_id, [
                 'type' => 'order_status_changed',
                 'title' => 'Order Status Updated',
                 'message' => "Your order #{$order->id} status changed to {$newStatus}",
@@ -58,7 +58,7 @@ class RealTimeFeaturesService
 
             Log::info('Order status change broadcasted', [
                 'order_id' => $order->id,
-                'user_id' => $order->user_id,
+                'customer_id' => $order->customer_id,
                 'old_status' => $oldStatus,
                 'new_status' => $newStatus,
             ]);
@@ -325,11 +325,11 @@ class RealTimeFeaturesService
     /**
      * Update wallet cache
      */
-    private function updateWalletCache(Customer $user, float $balance): void
+    private function updateWalletCache(Customer $customer, float $balance): void
     {
-        $key = "wallet:{$user->id}";
+        $key = "wallet:{$customer->id}";
         $this->redis->setex($key, 3600, json_encode([
-            'user_id' => $user->id,
+            'user_id' => $customer->id,
             'balance' => $balance,
             'updated_at' => now()->toISOString(),
         ]));

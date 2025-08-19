@@ -6,7 +6,7 @@ use Filament\Pages\Page;
 use Filament\Tables\Table;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Columns\IconColumn;
-use Filament\Tables\Actions\Action;
+use Filament\Actions\Action;
 use Filament\Actions\Action as PageAction;
 use Filament\Support\Enums\FontWeight;
 use Filament\Tables\Contracts\HasTable;
@@ -21,20 +21,37 @@ use Filament\Notifications\Notification;
 use Filament\Tables\Concerns\InteractsWithTable;
 use Filament\Forms;
 use Filament\Tables;
+use BackedEnum;
 
 class OrderManagement extends Page implements HasTable
 {
     use InteractsWithTable;
 
-    protected static ?string $navigationIcon = 'heroicon-o-shopping-bag';
+    protected static string | BackedEnum | null $navigationIcon = 'heroicon-o-shopping-bag';
     protected static ?string $navigationLabel = 'My Orders';
-    protected static string $view = 'filament.customer.pages.order-management';
+    protected string $view = 'filament.customer.pages.order-management';
     protected static ?int $navigationSort = 3;
 
     public function table(Table $table): Table
     {
         return $table
             ->query($this->getOrdersQuery())
+            ->headerActions([
+                Tables\Actions\ToggleColumnsAction::make(),
+                \Filament\Actions\ActionGroup::make([
+                    \Filament\Actions\Action::make('export_csv')
+                        ->label('Export CSV')
+                        ->icon('heroicon-o-arrow-down-tray')
+                        ->color('info')
+                        ->action(fn () => $this->exportOrdersQuick('csv')),
+                    \Filament\Actions\Action::make('export_json')
+                        ->label('Export JSON')
+                        ->icon('heroicon-o-code-bracket')
+                        ->color('success')
+                        ->action(fn () => $this->exportOrdersQuick('json')),
+                ])->label('Export')
+                  ->icon('heroicon-o-document-arrow-down'),
+            ])
             ->columns([
                 TextColumn::make('id')
                     ->label('Order #')
@@ -42,6 +59,7 @@ class OrderManagement extends Page implements HasTable
                     ->weight(FontWeight::Bold)
                     ->sortable()
                     ->searchable()
+                    ->toggleable()
                     ->copyable()
                     ->copyableState(fn (Order $record): string => "#{$record->id}")
                     ->tooltip('Click to copy order ID'),
@@ -50,12 +68,14 @@ class OrderManagement extends Page implements HasTable
                     ->label('Order Date')
                     ->dateTime('M j, Y H:i')
                     ->sortable()
+                    ->toggleable()
                     ->description(fn (Order $record): string => $record->created_at->diffForHumans())
                     ->color('gray')
                     ->icon('heroicon-o-calendar-days'),
 
                 TextColumn::make('items_summary')
                     ->label('Services')
+                    ->toggleable()
                     ->formatStateUsing(function (Order $record): string {
                         $itemsCount = $record->items->count();
                         $firstItem = $record->items->first();
@@ -74,11 +94,13 @@ class OrderManagement extends Page implements HasTable
                     ->weight(FontWeight::Bold)
                     ->color('success')
                     ->sortable()
+                    ->toggleable()
                     ->icon('heroicon-o-currency-dollar')
                     ->alignment('right'),
 
                 TextColumn::make('status')
                     ->label('Order Status')
+                    ->toggleable()
                     ->badge()
                     ->color(fn (string $state): string => match ($state) {
                         'pending' => 'warning',
@@ -102,6 +124,7 @@ class OrderManagement extends Page implements HasTable
 
                 TextColumn::make('payment_method')
                     ->label('Payment Method')
+                    ->toggleable()
                     ->badge()
                     ->color(fn (string $state): string => match ($state) {
                         'wallet' => 'success',
@@ -115,35 +138,52 @@ class OrderManagement extends Page implements HasTable
 
                 TextColumn::make('expiry_date')
                     ->label('Expires')
+                    ->toggleable()
                     ->formatStateUsing(function (Order $record): ?string {
-                        // Get the earliest expiry from server clients
-                        $earliestExpiry = $record->items
-                            ->map(fn ($item) => $item->server_client?->expiry_time)
-                            ->filter()
-                            ->sort()
-                            ->first();
+                        // Get the earliest expiry in milliseconds or Carbon
+                        $timestamps = $record->items->map(function ($item) {
+                            $ts = $item->server_client?->expiry_time;
+                            if ($ts instanceof \Carbon\Carbon) {
+                                return $ts->getTimestampMs();
+                            }
+                            if (is_numeric($ts)) {
+                                // server_clients.expiry_time stored in ms
+                                return (int) $ts;
+                            }
+                            return null;
+                        })->filter()->sort();
 
-                        return $earliestExpiry ? $earliestExpiry->format('M j, Y') : null;
+                        $earliest = $timestamps->first();
+                        return $earliest ? \Carbon\Carbon::createFromTimestampMs($earliest)->format('M j, Y') : null;
                     })
                     ->description(function (Order $record): ?string {
-                        $earliestExpiry = $record->items
-                            ->map(fn ($item) => $item->server_client?->expiry_time)
-                            ->filter()
-                            ->sort()
-                            ->first();
-
-                        return $earliestExpiry ? $earliestExpiry->diffForHumans() : null;
+                        $timestamps = $record->items->map(function ($item) {
+                            $ts = $item->server_client?->expiry_time;
+                            if ($ts instanceof \Carbon\Carbon) {
+                                return $ts->getTimestampMs();
+                            }
+                            if (is_numeric($ts)) {
+                                return (int) $ts;
+                            }
+                            return null;
+                        })->filter()->sort();
+                        $earliest = $timestamps->first();
+                        return $earliest ? \Carbon\Carbon::createFromTimestampMs($earliest)->diffForHumans() : null;
                     })
                     ->color(function (Order $record): string {
-                        $earliestExpiry = $record->items
-                            ->map(fn ($item) => $item->server_client?->expiry_time)
-                            ->filter()
-                            ->sort()
-                            ->first();
-
-                        if (!$earliestExpiry) return 'gray';
-
-                        $daysUntilExpiry = now()->diffInDays($earliestExpiry, false);
+                        $timestamps = $record->items->map(function ($item) {
+                            $ts = $item->server_client?->expiry_time;
+                            if ($ts instanceof \Carbon\Carbon) {
+                                return $ts->getTimestampMs();
+                            }
+                            if (is_numeric($ts)) {
+                                return (int) $ts;
+                            }
+                            return null;
+                        })->filter()->sort();
+                        $earliest = $timestamps->first();
+                        if (!$earliest) return 'gray';
+                        $daysUntilExpiry = now()->diffInDays(\Carbon\Carbon::createFromTimestampMs($earliest), false);
 
                         if ($daysUntilExpiry < 0) return 'danger'; // Expired
                         if ($daysUntilExpiry <= 7) return 'warning'; // Expiring soon
@@ -243,7 +283,7 @@ class OrderManagement extends Page implements HasTable
                     ->indicator('Date Range'),
             ])
             ->actions([
-                Tables\Actions\ActionGroup::make([
+                \Filament\Actions\ActionGroup::make([
                     Action::make('view_details')
                         ->label('View Details')
                         ->icon('heroicon-o-eye')
@@ -298,8 +338,8 @@ class OrderManagement extends Page implements HasTable
                     ->color('gray'),
             ])
             ->bulkActions([
-                Tables\Actions\BulkActionGroup::make([
-                    Tables\Actions\BulkAction::make('export_selected')
+                \Filament\Actions\BulkActionGroup::make([
+                    \Filament\Actions\BulkAction::make('export_selected')
                         ->label('Export Selected')
                         ->icon('heroicon-o-document-arrow-down')
                         ->color('info')
@@ -307,7 +347,7 @@ class OrderManagement extends Page implements HasTable
                             $this->exportOrders($records);
                         }),
 
-                    Tables\Actions\BulkAction::make('download_configs')
+                    \Filament\Actions\BulkAction::make('download_configs')
                         ->label('Download Configs')
                         ->icon('heroicon-o-arrow-down-tray')
                         ->color('success')
@@ -320,7 +360,7 @@ class OrderManagement extends Page implements HasTable
             ->emptyStateDescription('You haven\'t placed any orders yet. Browse our servers to get started!')
             ->emptyStateIcon('heroicon-o-shopping-bag')
             ->emptyStateActions([
-                Tables\Actions\Action::make('browse_servers')
+                \Filament\Actions\Action::make('browse_servers')
                     ->label('Browse Servers')
                     ->icon('heroicon-o-server')
                     ->url(fn (): string => route('filament.customer.pages.server-browsing'))
@@ -619,6 +659,67 @@ class OrderManagement extends Page implements HasTable
                 ->danger()
                 ->send();
         }
+    }
+
+    protected function exportOrdersQuick(string $format = 'csv'): void
+    {
+        $customer = Auth::guard('customer')->user();
+        $orders = Order::with('items.server')
+            ->where('customer_id', $customer->id)
+            ->latest()
+            ->limit(500)
+            ->get();
+
+        if ($orders->isEmpty()) {
+            Notification::make()->title('Nothing to export')->warning()->send();
+            return;
+        }
+
+        if ($format === 'json') {
+            $payload = $orders->map(function ($o) {
+                return [
+                    'id' => $o->id,
+                    'date' => $o->created_at->toISOString(),
+                    'status' => $o->status,
+                    'total_amount' => $o->total_amount,
+                    'payment_method' => $o->payment_method,
+                    'items' => $o->items->map(fn($i) => $i->server?->name)->filter()->values()->all(),
+                ];
+            })->values()->toArray();
+
+            $filename = 'orders_' . now()->format('Y-m-d_H-i-s') . '.json';
+            $content = json_encode($payload, JSON_PRETTY_PRINT);
+            $mime = 'application/json';
+        } else {
+            $rows = [[ 'Order ID','Date','Status','Amount','Payment Method','Items' ]];
+            foreach ($orders as $o) {
+                $rows[] = [
+                    $o->id,
+                    $o->created_at->format('Y-m-d H:i'),
+                    ucfirst($o->status),
+                    number_format($o->total_amount, 2),
+                    ucfirst($o->payment_method),
+                    $o->items->pluck('server.name')->filter()->implode('; '),
+                ];
+            }
+            $content = collect($rows)->map(fn($r) => collect($r)->map(fn($v) => str_contains((string)$v, ',') ? '"'.str_replace('"','""',$v).'"' : $v)->implode(','))->implode("\n");
+            $filename = 'orders_' . now()->format('Y-m-d_H-i-s') . '.csv';
+            $mime = 'text/csv';
+        }
+
+        $this->js("
+            (function(){
+                const a=document.createElement('a');
+                a.href='data:" . $mime . ";charset=utf-8,'+encodeURIComponent(`" . $content . "`);
+                a.download='" . $filename . "';
+                a.style.display='none';
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+            })();
+        ");
+
+        Notification::make()->title('Export started')->success()->send();
     }
 
     public function bulkDownloadConfigurations(Collection $orders): void

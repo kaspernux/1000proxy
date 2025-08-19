@@ -21,7 +21,7 @@ use Throwable;
  * Advanced Monitoring & Logging Service
  *
  * Comprehensive monitoring system with centralized logging, performance tracking,
- * custom metrics, alerting, error tracking, and user behavior analytics.
+ * custom metrics, alerting, error tracking, and customer behavior analytics.
  */
 class MonitoringLoggingService
 {
@@ -198,7 +198,7 @@ class MonitoringLoggingService
     }
 
     /**
-     * Track user behavior analytics
+     * Track customer behavior analytics
      */
     public function trackUserBehavior(string $event, array $properties = []): void
     {
@@ -224,7 +224,7 @@ class MonitoringLoggingService
             // Store behavior metric
             $this->recordMetric('user_behavior', $behaviorData);
 
-            // Update user session analytics
+            // Update customer session analytics
             $this->updateUserSessionAnalytics($userId, $sessionId, $event, $properties);
 
             // Check for anomalous behavior
@@ -233,7 +233,7 @@ class MonitoringLoggingService
             $this->logEvent('debug', "User behavior tracked: {$event}", $behaviorData, 'business');
 
         } catch (Exception $e) {
-            $this->logEvent('error', 'Failed to track user behavior', [
+            $this->logEvent('error', 'Failed to track customer behavior', [
                 'event' => $event,
                 'error' => $e->getMessage()
             ]);
@@ -760,7 +760,7 @@ class MonitoringLoggingService
 
     protected function updateUserSessionAnalytics(int $userId, string $sessionId, string $event, array $properties): void
     {
-        // Implementation for user session analytics
+        // Implementation for customer session analytics
     }
 
     protected function detectAnomalousBehavior(int $userId, string $event, array $properties): void

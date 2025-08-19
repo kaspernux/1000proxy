@@ -22,7 +22,7 @@ class OrderItem extends Model
         'total_amount',
         'agent_bought',
         'expires_at',
-    'provisioning_summary',
+        'provisioning_summary',
     ];
 
     protected $casts = [

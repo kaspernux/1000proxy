@@ -70,7 +70,7 @@ class InvoiceSeeder extends Seeder
                 'is_fee_paid_by_user' => $faker->boolean(80),
                 'valid_until' => $faker->dateTimeBetween('now', '+24 hours'),
                 'type' => $faker->randomElement(['invoice', 'subscription', 'donation']),
-                'redirect_url' => 'https://1000proxy.io/dashboard',
+                'redirect_url' => 'https://1000proxy.io/account',
                 'created_at' => $faker->dateTimeBetween('-30 days', 'now'),
                 'updated_at' => $faker->dateTimeBetween('-30 days', 'now'),
             ]);

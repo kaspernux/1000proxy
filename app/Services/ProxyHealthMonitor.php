@@ -2,7 +2,7 @@
 
 namespace App\Services;
 
-use App\Models\User;
+use App\Models\Customer;
 use App\Models\Server;
 use App\Models\Order;
 use App\Services\NotificationService;
@@ -108,7 +108,7 @@ class ProxyHealthMonitor
             $healthResult = [
                 'proxy_id' => $proxy['order']->id,
                 'server_id' => $proxy['server']->id,
-                'user_id' => $proxy['order']->user_id,
+                'customer_id' => $proxy['order']->customer_id,
                 'health_score' => $healthScore,
                 'status' => $healthStatus,
                 'metrics' => $healthMetrics,
@@ -130,12 +130,12 @@ class ProxyHealthMonitor
     }
 
     /**
-     * Get real-time health status for a user's proxies
+     * Get real-time health status for a customer's proxies
      */
-    public function getRealTimeHealthStatus($userId): array
+    public function getRealTimeHealthStatus($customerId): array
     {
         try {
-            $userProxies = $this->getUserProxies($userId);
+            $userProxies = $this->getUserProxies($customerId);
             $healthStatuses = [];
 
             foreach ($userProxies as $proxy) {
@@ -157,13 +157,13 @@ class ProxyHealthMonitor
 
             return [
                 'success' => true,
-                'user_id' => $userId,
+                'customer_id' => $customerId,
                 'summary' => $summary,
                 'proxy_statuses' => $healthStatuses,
                 'last_updated' => now()->toISOString()
             ];
         } catch (\Exception $e) {
-            Log::error("Real-time health status error for user {$userId}: " . $e->getMessage());
+            Log::error("Real-time health status error for customer {$customerId}: " . $e->getMessage());
             return [
                 'success' => false,
                 'error' => $e->getMessage()
@@ -172,13 +172,13 @@ class ProxyHealthMonitor
     }
 
     /**
-     * Setup automated health monitoring for a user
+     * Setup automated health monitoring for a customer
      */
-    public function setupAutomatedMonitoring($userId, $config): array
+    public function setupAutomatedMonitoring($customerId, $config): array
     {
         try {
             $monitoringConfig = [
-                'user_id' => $userId,
+                'customer_id' => $customerId,
                 'enabled' => true,
                 'check_interval' => $config['check_interval'] ?? 60, // seconds
                 'alert_thresholds' => [
@@ -209,21 +209,21 @@ class ProxyHealthMonitor
             ];
 
             // Store monitoring configuration
-            Cache::put("health_monitoring_{$userId}", $monitoringConfig, 86400);
+            Cache::put("health_monitoring_{$customerId}", $monitoringConfig, 86400);
 
             // Initialize health tracking
-            $this->initializeHealthTracking($userId);
+            $this->initializeHealthTracking($customerId);
 
-            Log::info("Automated health monitoring setup for user {$userId}");
+            Log::info("Automated health monitoring setup for customer {$customerId}");
 
             return [
                 'success' => true,
                 'message' => 'Automated health monitoring configured successfully',
                 'config' => $monitoringConfig,
-                'monitoring_id' => "health_monitor_{$userId}"
+                'monitoring_id' => "health_monitor_{$customerId}"
             ];
         } catch (\Exception $e) {
-            Log::error("Setup automated monitoring error for user {$userId}: " . $e->getMessage());
+            Log::error("Setup automated monitoring error for customer {$customerId}: " . $e->getMessage());
             return [
                 'success' => false,
                 'error' => $e->getMessage()
@@ -234,11 +234,11 @@ class ProxyHealthMonitor
     /**
      * Generate comprehensive health analytics
      */
-    public function generateHealthAnalytics($userId, $timeRange = '24h'): array
+    public function generateHealthAnalytics($customerId, $timeRange = '24h'): array
     {
         try {
             $period = $this->parseTimeRange($timeRange);
-            $healthData = $this->getHealthDataForPeriod($userId, $period);
+            $healthData = $this->getHealthDataForPeriod($customerId, $period);
 
             $analytics = [
                 'availability_metrics' => $this->calculateAvailabilityMetrics($healthData),
@@ -253,13 +253,13 @@ class ProxyHealthMonitor
 
             return [
                 'success' => true,
-                'user_id' => $userId,
+                'customer_id' => $customerId,
                 'time_range' => $timeRange,
                 'analytics' => $analytics,
                 'generated_at' => now()->toISOString()
             ];
         } catch (\Exception $e) {
-            Log::error("Health analytics generation error for user {$userId}: " . $e->getMessage());
+            Log::error("Health analytics generation error for customer {$customerId}: " . $e->getMessage());
             return [
                 'success' => false,
                 'error' => $e->getMessage()
@@ -271,31 +271,31 @@ class ProxyHealthMonitor
 
     private function getMonitoredProxies(): Collection
     {
-        return collect(User::whereHas('orders', function ($query) {
+        return collect(Customer::whereHas('orders', function ($query) {
             $query->where('payment_status', 'paid')
                   ->where('status', 'up');
         })->with(['orders.serverPlan.server'])
           ->get()
-          ->flatMap(function ($user) {
-              return $user->orders->where('payment_status', 'paid')
+          ->flatMap(function ($customer) {
+              return $customer->orders->where('payment_status', 'paid')
                                  ->where('status', 'up')
                                  ->map(function ($order) {
                                      return [
                                          'order' => $order,
                                          'server' => $order->serverPlan->server,
                                          'plan' => $order->serverPlan,
-                                         'user' => $order->user
+                                         'customer' => $order->customer
                                      ];
                                  });
           }));
     }
 
-    private function getUserProxies($userId): Collection
+    private function getUserProxies($customerId): Collection
     {
-        $user = User::find($userId);
-        if (!$user) return collect();
+        $customer = Customer::find($customerId);
+        if (!$customer) return collect();
 
-        return collect($user->orders()
+        return collect($customer->orders()
             ->where('payment_status', 'paid')
             ->where('status', 'up')
             ->with(['serverPlan.server'])
@@ -541,9 +541,9 @@ class ProxyHealthMonitor
     // Mock implementations for complex operations
     private function restartProxy($proxy): void { Log::info("Restarting proxy {$proxy['order']->id}"); }
     private function triggerIPRotation($proxy): void { Log::info("Triggering IP rotation for proxy {$proxy['order']->id}"); }
-    private function initializeHealthTracking($userId): void { Log::info("Initialized health tracking for user {$userId}"); }
+    private function initializeHealthTracking($customerId): void { Log::info("Initialized health tracking for customer {$customerId}"); }
     private function parseTimeRange($range): array { return ['start' => now()->subDay(), 'end' => now()]; }
-    private function getHealthDataForPeriod($userId, $period): array { return []; }
+    private function getHealthDataForPeriod($customerId, $period): array { return []; }
     private function calculateAvailabilityMetrics($data): array { return ['uptime' => rand(95, 99.9)]; }
     private function analyzePerformanceTrends($data): array { return ['trend' => 'stable']; }
     private function analyzeErrors($data): array { return ['error_count' => rand(0, 10)]; }

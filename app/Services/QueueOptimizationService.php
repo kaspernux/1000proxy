@@ -198,7 +198,7 @@ class QueueOptimizationService
         }
         
         if ($queueName === self::HIGH_PRIORITY_QUEUE && $size > 100) {
-            $recommendations[] = "High priority queue has significant backlog. This may affect user experience.";
+            $recommendations[] = "High priority queue has significant backlog. This may affect customer experience.";
         }
         
         return $recommendations;

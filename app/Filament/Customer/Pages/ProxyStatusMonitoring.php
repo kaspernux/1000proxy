@@ -14,15 +14,16 @@ use App\Models\Server;
 use App\Services\XUIService;
 use Filament\Notifications\Notification;
 use Carbon\Carbon;
+use BackedEnum;
 
 class ProxyStatusMonitoring extends Page
 {
-    protected static ?string $navigationIcon = 'heroicon-o-signal';
+    protected static string | BackedEnum | null $navigationIcon = 'heroicon-o-signal';
     protected static ?string $navigationLabel = 'Proxy Status Monitor';
-    protected static string $view = 'filament.customer.pages.proxy-status-monitoring';
+    protected string $view = 'filament.customer.pages.proxy-status-monitoring';
     protected static ?int $navigationSort = 6;
 
-    protected static ?string $pollingInterval = '30s';
+    protected ?string $pollingInterval = '30s';
 
     public $proxyStatuses = [];
     public $overallMetrics = [];

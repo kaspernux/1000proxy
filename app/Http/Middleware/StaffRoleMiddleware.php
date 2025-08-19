@@ -30,7 +30,7 @@ class StaffRoleMiddleware
 
         // If no specific roles are required, allow any staff role
         if (empty($roles)) {
-            $allowedRoles = ['admin', 'support_manager', 'sales_support'];
+            $allowedRoles = ['admin', 'manager', 'support_manager', 'sales_support'];
         } else {
             $allowedRoles = $roles;
         }

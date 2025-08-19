@@ -2,7 +2,7 @@
 
 namespace App\Services;
 
-use App\Models\User;
+use App\Models\Customer;
 use App\Models\Order;
 use App\Models\ServerClient;
 use App\Models\WalletTransaction;
@@ -79,12 +79,11 @@ class AdvancedAnalyticsService
      */
     private function getCustomerMetrics(Carbon $startDate): array
     {
-        $totalCustomers = User::where('role', 'customer')
+        $totalCustomers = Customer::whereBetween('created_at', [$period['start'], $period['end']])
             ->where('created_at', '>=', $startDate)
             ->count();
 
-        $activeCustomers = User::where('role', 'customer')
-            ->whereHas('orders', function ($query) use ($startDate) {
+        $activeCustomers = Customer::whereHas('orders', function ($query) use ($startDate) {
                 $query->where('created_at', '>=', $startDate);
             })
             ->count();
@@ -238,12 +237,10 @@ class AdvancedAnalyticsService
      */
     private function calculateRetentionRate(Carbon $startDate): float
     {
-        $customersAtStart = User::where('role', 'customer')
-            ->where('created_at', '<', $startDate)
+        $customersAtStart = Customer::where('created_at', '<', $startDate)
             ->count();
 
-        $customersStillActive = User::where('role', 'customer')
-            ->where('created_at', '<', $startDate)
+        $customersStillActive = Customer::where('created_at', '<', $startDate)
             ->whereHas('orders', function ($query) use ($startDate) {
                 $query->where('created_at', '>=', $startDate);
             })
@@ -269,12 +266,10 @@ class AdvancedAnalyticsService
      */
     private function calculateChurnRate(Carbon $startDate): float
     {
-        $customersAtStart = User::where('role', 'customer')
-            ->where('created_at', '<', $startDate)
+        $customersAtStart = Customer::where('created_at', '<', $startDate)
             ->count();
 
-        $churned = User::where('role', 'customer')
-            ->where('created_at', '<', $startDate)
+        $churned = Customer::where('created_at', '<', $startDate)
             ->whereDoesntHave('orders', function ($query) use ($startDate) {
                 $query->where('created_at', '>=', $startDate);
             })
@@ -291,7 +286,7 @@ class AdvancedAnalyticsService
         $segments = [];
 
         // High-value customers
-        $segments['high_value'] = User::where('role', 'customer')
+        $segments['high_value'] = Customer::where('created_at', '<', $startDate)
             ->whereHas('orders', function ($query) use ($startDate) {
                 $query->where('created_at', '>=', $startDate)
                       ->where('payment_status', 'paid');
@@ -304,7 +299,7 @@ class AdvancedAnalyticsService
             ->count();
 
         // Regular customers
-        $segments['regular'] = User::where('role', 'customer')
+        $segments['regular'] = Customer::where('created_at', '<', $startDate)
             ->whereHas('orders', function ($query) use ($startDate) {
                 $query->where('created_at', '>=', $startDate)
                       ->where('payment_status', 'paid');
@@ -318,8 +313,7 @@ class AdvancedAnalyticsService
             ->count();
 
         // New customers
-        $segments['new'] = User::where('role', 'customer')
-            ->where('created_at', '>=', $startDate)
+        $segments['new'] = Customer::where('created_at', '>=', $startDate)
             ->count();
 
         return $segments;
@@ -461,7 +455,7 @@ class AdvancedAnalyticsService
     private function calculateAverageOrderFrequency(): float
     {
         $totalOrders = Order::where('payment_status', 'paid')->count();
-        $totalCustomers = User::where('role', 'customer')->count();
+        $totalCustomers = Customer::where('created_at', '>=', $startDate)->count();
 
         return $totalCustomers > 0 ? $totalOrders / $totalCustomers : 0;
     }
@@ -471,7 +465,7 @@ class AdvancedAnalyticsService
      */
     private function calculateAverageCustomerLifespan(): float
     {
-        $averageLifespan = User::where('role', 'customer')
+        $averageLifespan = Customer::where('created_at', '<', $startDate)
             ->selectRaw('AVG(DATEDIFF(NOW(), created_at)) as avg_lifespan')
             ->value('avg_lifespan');
 
@@ -498,7 +492,7 @@ class AdvancedAnalyticsService
     public function getRealTimeMetrics(): array
     {
         return [
-            'active_users' => $this->getActiveUsers(),
+            'active_users' => $this->getActiveCustomers(),
             'current_revenue' => $this->getCurrentRevenue(),
             'pending_orders' => $this->getPendingOrders(),
             'system_status' => $this->getSystemStatus(),
@@ -507,11 +501,11 @@ class AdvancedAnalyticsService
     }
 
     /**
-     * Get active users count
+     * Get active customers count
      */
-    private function getActiveUsers(): int
+    private function getActiveCustomers(): int
     {
-        return User::where('last_login_at', '>=', now()->subHours(24))->count();
+        return Customer::where('last_login_at', '>=', now()->subHours(24))->count();
     }
 
     /**

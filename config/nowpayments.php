@@ -52,7 +52,7 @@ return [
      * Your URL Path
      *
      */
-    'path' => 'nowpayments',
+    'path' => 'laravel-nowpayments',
 
     /**
      * You can add your custom middleware to access the dashboard here
@@ -65,7 +65,7 @@ return [
      *
      */
     'email' => env('NOWPAYMENTS_EMAIL'),
-
+    
     /**
      * Your Nowpayment password here
      *

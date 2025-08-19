@@ -1,5 +1,4 @@
 <?php
-
 namespace App\Filament\Clusters\ServerManagement\Resources;
 
 use Filament\Forms;
@@ -10,11 +9,11 @@ use App\Models\ServerInbound;
 use Filament\Resources\Resource;
 use App\Services\XUIService;
 use Illuminate\Support\Facades\Log;
-use Filament\Forms\Components\Group;
+use Filament\Schemas\Components\Group;
 use Filament\Forms\Components\Split;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Toggle;
-use Filament\Forms\Components\Section;
+use Filament\Schemas\Components\Section;
 use Filament\Forms\Components\TextInput;
 use Illuminate\Support\Facades\Redirect;
 use Filament\Forms\Components\DatePicker;
@@ -22,9 +21,12 @@ use Filament\Tables\Filters\SelectFilter;
 use App\Filament\Clusters\ServerManagement;
 use App\Livewire\Traits\LivewireAlertV4;
 use App\Filament\Clusters\ServerManagement\Resources\ServerInboundResource\Pages;
-use Filament\Tables\Actions\Action;
+use Filament\Actions\Action;
 use App\Models\Server;
 use Filament\Tables\Filters\Filter;
+use BackedEnum;
+use UnitEnum;
+use Filament\Schemas\Schema;
 
 class ServerInboundResource extends Resource
 {
@@ -32,15 +34,21 @@ class ServerInboundResource extends Resource
 
     protected static ?string $cluster = ServerManagement::class;
 
+    public static function canAccess(): bool
+    {
+        $user = auth()->user();
+        return (bool) ($user?->isAdmin() || $user?->isManager() || $user?->isSupportManager());
+    }
+
     protected static ?string $model = ServerInbound::class;
 
-    protected static ?string $navigationIcon = 'heroicon-o-code-bracket';
+    protected static BackedEnum|string|null $navigationIcon = 'heroicon-o-code-bracket';
 
     protected static ?string $navigationLabel = 'Server Inbounds';
 
     protected static ?string $pluralModelLabel = 'Server Inbounds';
 
-    protected static ?string $navigationGroup = 'XUI MANAGEMENT';
+    protected static UnitEnum|string|null $navigationGroup = 'XUI MANAGEMENT';
 
     protected static ?int $navigationSort = 2;
 
@@ -51,9 +59,9 @@ class ServerInboundResource extends Resource
         return 'Inbounds';
     }
 
-    public static function form(Form $form): Form
+    public static function form(Schema $schema): Schema
     {
-        return $form
+        return $schema
             ->schema([
                 Group::make()->schema([
                     Section::make('🏷️ Core Inbound Configuration')->schema([
@@ -228,7 +236,7 @@ class ServerInboundResource extends Resource
 
     public static function table(Table $table): Table
     {
-        return $table
+        $table = $table
             ->columns([
                 Tables\Columns\IconColumn::make('enable')
                     ->label('Enabled')
@@ -388,11 +396,11 @@ class ServerInboundResource extends Resource
                     }),
             ])
             ->actions([
-                Tables\Actions\ActionGroup::make([
-                    Tables\Actions\ViewAction::make()
+                \Filament\Actions\ActionGroup::make([
+                    \Filament\Actions\ViewAction::make()
                         ->color('info'),
 
-                    Tables\Actions\EditAction::make()
+                    \Filament\Actions\EditAction::make()
                         ->color('warning'),
 
                     Action::make('sync_from_xui')
@@ -471,7 +479,7 @@ class ServerInboundResource extends Resource
                                 ->send();
                         }),
 
-                    Tables\Actions\DeleteAction::make()
+                    \Filament\Actions\DeleteAction::make()
                         ->color('danger'),
                 ])
                 ->label('Actions')
@@ -480,10 +488,10 @@ class ServerInboundResource extends Resource
                 ->size('sm'),
             ])
             ->bulkActions([
-                Tables\Actions\BulkActionGroup::make([
-                    Tables\Actions\DeleteBulkAction::make(),
+                \Filament\Actions\BulkActionGroup::make([
+                    \Filament\Actions\DeleteBulkAction::make(),
 
-                    Tables\Actions\BulkAction::make('sync_all')
+                    \Filament\Actions\BulkAction::make('sync_all')
                         ->label('🔄 Sync All from XUI')
                         ->icon('heroicon-o-arrow-path')
                         ->color('info')
@@ -522,7 +530,7 @@ class ServerInboundResource extends Resource
                                 ->send();
                         }),
 
-                    Tables\Actions\BulkAction::make('enable_provisioning')
+                    \Filament\Actions\BulkAction::make('enable_provisioning')
                         ->label('Enable Provisioning')
                         ->icon('heroicon-o-play')
                         ->color('success')
@@ -535,7 +543,7 @@ class ServerInboundResource extends Resource
                                 ->send();
                         }),
 
-                    Tables\Actions\BulkAction::make('disable_provisioning')
+                    \Filament\Actions\BulkAction::make('disable_provisioning')
                         ->label('Disable Provisioning')
                         ->icon('heroicon-o-pause')
                         ->color('warning')
@@ -550,9 +558,16 @@ class ServerInboundResource extends Resource
                 ]),
             ])
             ->defaultSort('created_at', 'desc')
-            ->striped()
-            ->paginated([10, 25, 50, 100])
             ->poll('30s');
+
+        return \App\Filament\Concerns\HasPerformanceOptimizations::applyTablePreset($table, [
+            'defaultPage' => 25,
+            'empty' => [
+                'icon' => 'heroicon-o-code-bracket',
+                'heading' => 'No inbounds found',
+                'description' => 'Try broadening your filters.',
+            ],
+        ]);
     }
 
     public static function getRelations(): array

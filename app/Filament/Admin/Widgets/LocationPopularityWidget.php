@@ -8,7 +8,7 @@ use Illuminate\Support\Facades\Cache;
 
 class LocationPopularityWidget extends ChartWidget
 {
-    protected static ?string $heading = 'Top Server Locations';
+    protected ?string $heading = 'Top Server Locations';
     protected static ?int $sort = 9;
 
     protected function getData(): array

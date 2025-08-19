@@ -8,19 +8,22 @@ use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Hidden;
 use Filament\Forms\Form;
 use Filament\Forms\Contracts\HasForms;
+use Filament\Tables\Table;
+use Filament\Tables\Columns\TextColumn;
 use Filament\Forms\Concerns\InteractsWithForms;
 use Filament\Actions\Action as PageAction;
 use Filament\Notifications\Notification;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use BackedEnum;
 
 class WalletManagement extends Page implements HasForms
 {
     use InteractsWithForms;
 
-    protected static ?string $navigationIcon = 'heroicon-o-wallet';
+    protected static string | BackedEnum | null $navigationIcon = 'heroicon-o-wallet';
     protected static ?string $navigationLabel = 'My Wallet';
-    protected static string $view = 'filament.customer.pages.wallet-management';
+    protected string $view = 'filament.customer.pages.wallet-management';
     protected static ?int $navigationSort = 4;
 
     public ?array $data = [];

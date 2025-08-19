@@ -38,6 +38,7 @@ return [
     |
     */
 
+    // Use the main site layout for Livewire page components
     'layout' => 'layouts.app',
 
     /*

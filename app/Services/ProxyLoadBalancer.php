@@ -27,21 +27,21 @@ class ProxyLoadBalancer
     /**
      * Create a new load balancer instance
      */
-    public function createLoadBalancer($userId, $config): array
+    public function createLoadBalancer($customerId, $config): array
     {
         try {
-            $loadBalancerId = uniqid('lb_' . $userId . '_');
+            $loadBalancerId = uniqid('lb_' . $customerId . '_');
 
             $loadBalancerConfig = [
                 'id' => $loadBalancerId,
-                'user_id' => $userId,
+                'customer_id' => $customerId,
                 'algorithm' => $config['algorithm'] ?? 'weighted_round_robin',
                 'health_check_enabled' => $config['health_check'] ?? true,
                 'failover_enabled' => $config['failover'] ?? true,
                 'sticky_sessions' => $config['sticky_sessions'] ?? false,
                 'session_persistence' => $config['session_persistence'] ?? 'memory',
-                'endpoints' => $this->prepareEndpoints($userId, $config),
-                'weights' => $this->calculateEndpointWeights($userId),
+                'endpoints' => $this->prepareEndpoints($customerId, $config),
+                'weights' => $this->calculateEndpointWeights($customerId),
                 'health_thresholds' => [
                     'response_time_max' => $config['response_threshold'] ?? 2000,
                     'error_rate_max' => $config['error_threshold'] ?? 5,
@@ -71,7 +71,7 @@ class ProxyLoadBalancer
 
             Log::info("Load balancer created", [
                 'load_balancer_id' => $loadBalancerId,
-                'user_id' => $userId,
+                'customer_id' => $customerId,
                 'algorithm' => $loadBalancerConfig['algorithm'],
                 'endpoints' => count($loadBalancerConfig['endpoints'])
             ]);
@@ -368,12 +368,12 @@ class ProxyLoadBalancer
 
     // Private helper methods
 
-    private function prepareEndpoints($userId, $config): array
+    private function prepareEndpoints($customerId, $config): array
     {
-        $user = \App\Models\User::find($userId);
-        if (!$user) return [];
+        $customer = \App\Models\Customer::find($customerId);
+        if (!$customer) return [];
 
-        return $user->orders()
+        return $customer->orders()
             ->where('payment_status', 'paid')
             ->where('status', 'active')
             ->with(['serverPlan.server'])
@@ -393,10 +393,10 @@ class ProxyLoadBalancer
             })->toArray();
     }
 
-    private function calculateEndpointWeights($userId): array
+    private function calculateEndpointWeights($customerId): array
     {
-        $servers = Server::whereHas('serverPlans.orders', function ($query) use ($userId) {
-            $query->where('user_id', $userId)
+        $servers = Server::whereHas('serverPlans.orders', function ($query) use ($customerId) {
+            $query->where('customer_id', $customerId)
                   ->where('payment_status', 'paid')
                   ->where('status', 'active');
         })->get();

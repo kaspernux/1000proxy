@@ -4,32 +4,36 @@ namespace App\Filament\Clusters\CustomerManagement\Resources;
 
 use App\Filament\Clusters\CustomerManagement\Resources\CustomerResource\Pages;
 use App\Filament\Clusters\CustomerManagement;
+use App\Filament\Concerns\HasPerformanceOptimizations;
 use App\Models\Customer;
 use Filament\Forms;
 use Filament\Forms\Form;
+use Filament\Schemas\Schema;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
-use Filament\Forms\Components\Group;
-use Filament\Forms\Components\Section;
+use Filament\Schemas\Components\Group;
+use Filament\Schemas\Components\Section;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\Toggle;
 use Filament\Forms\Components\Placeholder;
-use Filament\Forms\Components\Grid;
+use Filament\Schemas\Components\Grid;
 use Filament\Forms\Components\DateTimePicker;
+use Filament\Schemas\Components\Utilities\Get;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Columns\BadgeColumn;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\ImageColumn;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Filters\Filter;
-use Filament\Tables\Actions\Action;
-use Filament\Tables\Actions\EditAction;
-use Filament\Tables\Actions\ViewAction;
-use Filament\Tables\Actions\BulkActionGroup;
-use Filament\Tables\Actions\DeleteBulkAction;
+use Filament\Actions\Action;
+use Filament\Actions\DeleteAction;
+use Filament\Actions\EditAction;
+use Filament\Actions\ViewAction;
+use Filament\Actions\BulkActionGroup;
+use Filament\Actions\DeleteBulkAction;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
 use Filament\Notifications\Notification;
@@ -38,14 +42,16 @@ use Illuminate\Support\Facades\Password;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Auth;
+use BackedEnum;
 
 class CustomerResource extends Resource
 {
+    use HasPerformanceOptimizations;
     protected static ?string $model = Customer::class;
 
     protected static ?string $cluster = CustomerManagement::class;
 
-    protected static ?string $navigationIcon = 'heroicon-o-user-group';
+    protected static BackedEnum|string|null $navigationIcon = 'heroicon-o-user-group';
 
     protected static ?int $navigationSort = 1;
 
@@ -62,9 +68,23 @@ class CustomerResource extends Resource
         return 'Customers';
     }
 
-    public static function form(Form $form): Form
+    public static function canAccess(): bool
     {
-        return $form
+        $user = auth()->user();
+        if (app()->environment('testing')) {
+            \Log::info('CustomerResource::canAccess called', [
+                'user_id' => $user?->id,
+                'role' => $user?->role,
+                'auth_web' => auth('web')->check(),
+                'auth_default' => auth()->check(),
+            ]);
+        }
+        return (bool) ($user?->isAdmin() || $user?->isManager() || $user?->isSupportManager() || $user?->isSalesSupport());
+    }
+
+    public static function form(Schema $schema): Schema
+    {
+        return $schema
             ->schema([
                 Group::make()->schema([
                     Section::make('👤 Customer Information')
@@ -188,9 +208,9 @@ class CustomerResource extends Resource
                                     ->options([
                                         'light' => '☀️ Light Mode',
                                         'dark' => '🌙 Dark Mode',
-                                        'auto' => '🔄 Auto (System)',
+                                        'system' => '🔄 System Default',
                                     ])
-                                    ->default('auto')
+                                    ->default('system')
                                     ->prefixIcon('heroicon-o-computer-desktop')
                                     ->helperText('Customer theme preference'),
                             ]),
@@ -232,7 +252,7 @@ class CustomerResource extends Resource
                                     ->label('Agent Since')
                                     ->prefixIcon('heroicon-o-calendar')
                                     ->helperText('Date customer became an agent')
-                                    ->visible(fn (Forms\Get $get) => $get('is_agent')),
+                                    ->visible(fn (Get $get) => $get('is_agent')),
                             ]),
 
                             Textarea::make('spam_info')
@@ -303,7 +323,7 @@ class CustomerResource extends Resource
 
     public static function table(Table $table): Table
     {
-        return $table
+        $table = $table
             ->columns([
                 ImageColumn::make('image')
                     ->label('👤')
@@ -597,7 +617,7 @@ class CustomerResource extends Resource
                     ->label('Edit')
                     ->icon('heroicon-o-pencil'),
 
-                Tables\Actions\DeleteAction::make()
+                DeleteAction::make()
                     ->label('Delete')
                     ->icon('heroicon-o-trash'),
 
@@ -744,7 +764,7 @@ class CustomerResource extends Resource
                 BulkActionGroup::make([
                     DeleteBulkAction::make(),
 
-                    Tables\Actions\BulkAction::make('activate')
+                    \Filament\Actions\BulkAction::make('activate')
                         ->label('Activate Customers')
                         ->icon('heroicon-o-check-circle')
                         ->color('success')
@@ -759,7 +779,7 @@ class CustomerResource extends Resource
                                 ->send();
                         }),
 
-                    Tables\Actions\BulkAction::make('deactivate')
+                    \Filament\Actions\BulkAction::make('deactivate')
                         ->label('Deactivate Customers')
                         ->icon('heroicon-o-x-circle')
                         ->color('danger')
@@ -774,7 +794,7 @@ class CustomerResource extends Resource
                                 ->send();
                         }),
 
-                    Tables\Actions\BulkAction::make('reset_passwords')
+                    \Filament\Actions\BulkAction::make('reset_passwords')
                         ->label('Reset Passwords')
                         ->icon('heroicon-o-key')
                         ->color('warning')
@@ -807,7 +827,7 @@ class CustomerResource extends Resource
                                 ->send();
                         }),
 
-                    Tables\Actions\BulkAction::make('suspend_accounts')
+                    \Filament\Actions\BulkAction::make('suspend_accounts')
                         ->label('Suspend Accounts')
                         ->icon('heroicon-o-pause-circle')
                         ->color('danger')
@@ -832,57 +852,35 @@ class CustomerResource extends Resource
                                 ->send();
                         }),
 
-                    Tables\Actions\BulkAction::make('export_data')
+                    \Filament\Actions\BulkAction::make('export_data')
                         ->label('Export Customer Data')
                         ->icon('heroicon-o-document-arrow-down')
                         ->color('info')
+                        ->visible(fn () => auth()->user()?->can('export', \App\Models\Customer::class))
                         ->action(function (Collection $records) {
-                            // Create CSV export of customer data
-                            $csvData = [];
-                            $csvData[] = ['ID', 'Name', 'Email', 'Phone', 'Status', 'Created At', 'Wallet Balance', 'Total Orders', 'Last Login'];
+                            $filename = 'customers_export_' . now()->format('Ymd_His') . '.csv';
+                            return response()->streamDownload(function () use ($records) {
+                                $out = fopen('php://output', 'w');
+                                fputcsv($out, ['ID', 'Name', 'Email', 'Phone', 'Status', 'Created At', 'Wallet Balance', 'Total Orders', 'Last Login']);
+                                foreach ($records as $customer) {
+                                    fputcsv($out, [
+                                        $customer->id,
+                                        $customer->name,
+                                        $customer->email,
+                                        $customer->phone,
+                                        $customer->is_active ? 'Active' : 'Inactive',
+                                        optional($customer->created_at)?->toDateTimeString(),
+                                        $customer->wallet?->balance ?? 0,
+                                        $customer->orders()->count(),
+                                        optional($customer->last_login_at)?->toDateTimeString() ?? 'Never',
+                                    ]);
+                                }
+                                fclose($out);
+                            }, $filename, ['Content-Type' => 'text/csv']);
+                        })
+                        ->deselectRecordsAfterCompletion(),
 
-                            foreach ($records as $customer) {
-                                $csvData[] = [
-                                    $customer->id,
-                                    $customer->name,
-                                    $customer->email,
-                                    $customer->phone,
-                                    $customer->is_active ? 'Active' : 'Inactive',
-                                    $customer->created_at->format('Y-m-d H:i:s'),
-                                    $customer->wallet?->balance ?? 0,
-                                    $customer->orders()->count(),
-                                    $customer->last_login_at?->format('Y-m-d H:i:s') ?? 'Never'
-                                ];
-                            }
-
-                            $filename = 'customers_export_' . now()->format('Y-m-d_H-i-s') . '.csv';
-                            $filePath = storage_path('app/public/exports/' . $filename);
-
-                            // Ensure directory exists
-                            if (!file_exists(dirname($filePath))) {
-                                mkdir(dirname($filePath), 0755, true);
-                            }
-
-                            $file = fopen($filePath, 'w');
-                            foreach ($csvData as $row) {
-                                fputcsv($file, $row);
-                            }
-                            fclose($file);
-
-                            Notification::make()
-                                ->title('Export completed')
-                                ->body("Customer data exported successfully. Download: {$filename}")
-                                ->success()
-                                ->actions([
-                                    \Filament\Notifications\Actions\Action::make('download')
-                                        ->label('Download')
-                                        ->url(asset('storage/exports/' . $filename))
-                                        ->openUrlInNewTab()
-                                ])
-                                ->send();
-                        }),
-
-                    Tables\Actions\BulkAction::make('send_notification')
+                    \Filament\Actions\BulkAction::make('send_notification')
                         ->label('Send Notification')
                         ->icon('heroicon-o-envelope')
                         ->color('info')
@@ -937,9 +935,16 @@ class CustomerResource extends Resource
                         }),
                 ]),
             ])
-            ->defaultSort('created_at', 'desc')
-            ->striped()
-            ->paginated([10, 25, 50, 100]);
+            ->defaultSort('created_at', 'desc');
+
+        return self::applyTablePreset($table, [
+            'defaultPage' => 25,
+            'empty' => [
+                'icon' => 'heroicon-o-user-group',
+                'heading' => 'No customers found',
+                'description' => 'Try adjusting filters or search.',
+            ],
+        ]);
     }
 
     public static function getPages(): array

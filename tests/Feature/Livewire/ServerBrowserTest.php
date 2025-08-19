@@ -39,8 +39,8 @@ class ServerBrowserTest extends TestCase
     {
         parent::setUp();
 
-        $this->user = User::factory()->create();
-        $this->customer = Customer::factory()->create(['user_id' => $this->user->id]);
+    $this->user = User::factory()->create();
+    $this->customer = Customer::factory()->create();
 
         $this->seedTestData();
     }

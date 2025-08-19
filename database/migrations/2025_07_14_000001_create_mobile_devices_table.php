@@ -13,7 +13,7 @@ return new class extends Migration
     {
         Schema::create('mobile_devices', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('user_id')->constrained()->onDelete('cascade');
+            $table->foreignId('customer_id')->constrained()->onDelete('cascade');
             $table->string('device_identifier')->unique();
             $table->string('device_name')->nullable();
             $table->string('device_type')->default('mobile'); // mobile, tablet, web
@@ -32,7 +32,7 @@ return new class extends Migration
             $table->string('sync_status')->default('pending');
             $table->timestamps();
 
-            $table->index(['user_id', 'is_active']);
+            $table->index(['customer_id', 'is_active']);
             $table->index(['device_identifier']);
             $table->index(['last_seen_at']);
             $table->index(['push_notifications_enabled', 'is_active']);

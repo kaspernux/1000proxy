@@ -4,14 +4,16 @@ namespace App\Filament\Pages;
 
 use Filament\Pages\Dashboard as BaseDashboard;
 use Filament\Actions\Action;
+use Filament\Notifications\Notification;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Route;
 use Livewire\Attributes\On; // for potential future real-time hooks
+use BackedEnum;
 
 class AdminDashboard extends BaseDashboard
 {
-    protected static ?string $navigationIcon = 'heroicon-o-home';
-    protected static string $view = 'filament.pages.admin-dashboard';
+    protected static BackedEnum|string|null $navigationIcon = 'heroicon-o-home';
+    protected string $view = 'filament.pages.admin-dashboard';
 
     public function getTitle(): string
     {
@@ -54,12 +56,12 @@ class AdminDashboard extends BaseDashboard
      * Custom responsive column layout mapping.
      * Must be public to satisfy Filament\Pages\Dashboard contract.
      *
-     * @return int|string|array<string,int|string|null>
+     * @return array<string,int>|int
      */
-    public function getColumns(): int|string|array
+    public function getColumns(): array|int
     {
-    // Enforce single-column layout across all breakpoints so every widget spans full width.
-    return [ 'default' => 1, 'sm' => 1, 'md' => 1, 'xl' => 1 ];
+        // Enforce single-column layout across all breakpoints so every widget spans full width.
+        return [ 'default' => 1, 'sm' => 1, 'md' => 1, 'xl' => 1 ];
     }
 
     /**
@@ -121,7 +123,10 @@ class AdminDashboard extends BaseDashboard
         $this->dispatch('refreshInfrastructureHealth');
         $this->dispatch('orderPaid');
         $this->dispatch('$refresh');
-        $this->notify('success', __('Dashboard metrics refresh triggered.'));
+        Notification::make()
+            ->title(__('Dashboard metrics refresh triggered.'))
+            ->success()
+            ->send();
     }
 
     private function clearDashboardCaches(): void
@@ -137,7 +142,10 @@ class AdminDashboard extends BaseDashboard
             'admin.stats.system_performance','admin.stats.database_performance','admin.stats.cache_performance','admin.stats.api_performance',
         ];
         foreach ($keys as $k) { Cache::forget($k); }
-        $this->notify('success', __('Dashboard caches cleared.'));
+        Notification::make()
+            ->title(__('Dashboard caches cleared.'))
+            ->success()
+            ->send();
         $this->dispatch('$refresh');
     }
 }

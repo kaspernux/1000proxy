@@ -9,7 +9,7 @@ use App\Models\Order;
 
 class ProfileDropdown extends Widget
 {
-    protected static string $view = 'filament.components.profile-dropdown';
+    protected string $view = 'filament.components.profile-dropdown';
 
     public function getActiveClientsCount(): int
     {

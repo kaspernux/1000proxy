@@ -132,7 +132,7 @@ class SetupStaffRoles extends Command
         }
 
         // Update users with old role system
-        $usersWithOldRoles = User::whereNotIn('role', ['admin', 'support_manager', 'sales_support'])->get();
+    $usersWithOldRoles = User::whereNotIn('role', ['admin', 'manager', 'support_manager', 'sales_support'])->get();
 
         if ($usersWithOldRoles->count() > 0) {
             $this->info("Found {$usersWithOldRoles->count()} users with old roles. Updating...");
@@ -140,7 +140,8 @@ class SetupStaffRoles extends Command
             foreach ($usersWithOldRoles as $user) {
                 $newRole = match($user->role) {
                     'user', 'customer' => 'support_manager',
-                    'moderator', 'manager' => 'support_manager',
+                    'moderator' => 'support_manager',
+                    'manager' => 'manager',
                     'administrator', 'superadmin' => 'admin',
                     default => 'support_manager'
                 };
@@ -156,7 +157,7 @@ class SetupStaffRoles extends Command
         $this->newLine();
         $this->info('=== Staff Accounts Summary ===');
 
-        $staffUsers = User::whereIn('role', ['admin', 'support_manager', 'sales_support'])
+    $staffUsers = User::whereIn('role', ['admin', 'manager', 'support_manager', 'sales_support'])
                          ->orderBy('role')
                          ->get();
 
@@ -178,7 +179,7 @@ class SetupStaffRoles extends Command
         $this->newLine();
         $this->info('Default passwords:');
         $this->line('Admin: ' . $this->option('admin-password'));
-        $this->line('Support Manager: support123!@#');
+    $this->line('Support Manager: support123!@#');
         $this->line('Sales Support: sales123!@#');
         $this->newLine();
         $this->warn('Please change default passwords after first login!');

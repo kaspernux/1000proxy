@@ -15,7 +15,7 @@ use Carbon\Carbon;
 class EnhancedPerformanceStatsWidget extends BaseWidget
 {
     protected static ?int $sort = 1;
-    protected static ?string $pollingInterval = '120s';
+    protected ?string $pollingInterval = '120s';
     protected static bool $isLazy = true; // defer to improve first paint
 
     // Cache TTL in seconds (5 minutes)

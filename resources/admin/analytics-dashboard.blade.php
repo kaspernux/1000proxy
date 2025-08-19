@@ -119,7 +119,7 @@
                 <div class="flex items-center justify-between">
                     <div>
                         <p class="text-sm font-medium text-white/80">{{ $kpi['title'] }}</p>
-                        <p class="text-2xl font-bold text-white">{{ $kpi['value'] }}</p>
+                        <p class="text-2xl font-bold text-white">{{ data_get($kpi, 'value', 0) }}</p>
                     </div>
                     <div class="flex-shrink-0">
                         <div class="w-10 h-10 bg-{{ $kpi['color'] }}-500/80 rounded-full flex items-center justify-center">
@@ -341,7 +341,7 @@
             <div class="flex items-center justify-between">
                 <div>
                     <p class="text-sm font-medium text-gray-600 dark:text-gray-400">{{ $kpi['title'] }}</p>
-                    <p class="text-2xl font-bold text-gray-900 dark:text-white">{{ $kpi['value'] }}</p>
+                    <p class="text-2xl font-bold text-gray-900 dark:text-white">{{ data_get($kpi, 'value', 0) }}</p>
                 </div>
                 <div class="flex-shrink-0">
                     <div class="w-8 h-8 bg-{{ $kpi['color'] }}-100 dark:bg-{{ $kpi['color'] }}-900 rounded-full flex items-center justify-center">

@@ -7,10 +7,11 @@ use Filament\Forms\Form;
 use Filament\Resources\RelationManagers\RelationManager;
 use Filament\Tables;
 use Filament\Tables\Table;
+use Filament\Schemas\Schema;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\SoftDeletingScope;
 use App\Models\WalletTransaction;
-use Filament\Forms\Components\Section;
+use Filament\Schemas\Components\Section;
 use Filament\Tables\Columns\BadgeColumn;
 
 class WalletTransactionsRelationManager extends RelationManager
@@ -20,9 +21,9 @@ class WalletTransactionsRelationManager extends RelationManager
     protected static ?string $modelLabel = 'Transaction';
     protected static ?string $pluralModelLabel = 'Wallet Transactions';
 
-    public function form(Form $form): Form
+    public function form(Schema $schema): Schema
     {
-        return $form
+        return $schema
             ->schema([
                 Section::make('Transaction Information')
                     ->schema([
@@ -181,9 +182,9 @@ class WalletTransactionsRelationManager extends RelationManager
                     }),
             ])
             ->headerActions([
-                Tables\Actions\CreateAction::make(),
+                    \Filament\Actions\CreateAction::make(),
                 
-                Tables\Actions\Action::make('manual_deposit')
+                    \Filament\Actions\Action::make('manual_deposit')
                     ->label('Manual Deposit')
                     ->icon('heroicon-o-plus-circle')
                     ->color('success')
@@ -227,10 +228,10 @@ class WalletTransactionsRelationManager extends RelationManager
                     ->requiresConfirmation(),
             ])
             ->actions([
-                Tables\Actions\ViewAction::make(),
-                Tables\Actions\EditAction::make(),
+                \Filament\Actions\ViewAction::make(),
+                \Filament\Actions\EditAction::make(),
                 
-                Tables\Actions\Action::make('reverse')
+                    \Filament\Actions\Action::make('reverse')
                     ->label('Reverse')
                     ->icon('heroicon-o-arrow-path')
                     ->color('warning')
@@ -269,8 +270,8 @@ class WalletTransactionsRelationManager extends RelationManager
                     ->modalDescription('This will create a reverse transaction and update the wallet balance. This action cannot be undone.'),
             ])
             ->bulkActions([
-                Tables\Actions\BulkActionGroup::make([
-                    Tables\Actions\DeleteBulkAction::make(),
+                \Filament\Actions\BulkActionGroup::make([
+                    \Filament\Actions\DeleteBulkAction::make(),
                 ]),
             ])
             ->defaultSort('created_at', 'desc')

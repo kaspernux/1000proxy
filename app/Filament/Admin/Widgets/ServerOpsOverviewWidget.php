@@ -9,7 +9,7 @@ use Illuminate\Support\Facades\Cache;
 
 class ServerOpsOverviewWidget extends Widget
 {
-    protected static string $view = 'filament.admin.widgets.server-ops-overview';
+    protected string $view = 'filament.admin.widgets.server-ops-overview';
     protected static ?int $sort = 5;
     protected int|string|array $columnSpan = 'full';
 

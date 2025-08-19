@@ -423,9 +423,9 @@ class AdvancedProxyService
 
     // Private helper methods
 
-    private function getUserActiveProxies($user): Collection
+    private function getUserActiveProxies($customer): Collection
     {
-        return collect($user->orders()
+        return collect($customer->orders()
             ->where('payment_status', 'paid')
             ->where('status', 'active')
             ->with(['serverPlan.server'])
@@ -504,10 +504,10 @@ class AdvancedProxyService
         return max($baseWeight, 10);
     }
 
-    private function getUserServers($userId): Collection
+    private function getUserServers($customerId): Collection
     {
-        return Server::whereHas('serverPlans.orders', function ($query) use ($userId) {
-            $query->where('user_id', $userId)
+        return Server::whereHas('serverPlans.orders', function ($query) use ($customerId) {
+            $query->where('customer_id', $customerId)
                   ->where('payment_status', 'paid')
                   ->where('status', 'active');
         })->get();

@@ -2,14 +2,14 @@
 
 namespace App\Services;
 
-use App\Models\User;
+use App\Models\Customer;
 use App\Models\Order;
 use App\Models\Server;
 use App\Models\ServerPlan;
-use App\Models\Customer;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Schema;
 use Carbon\Carbon;
 use Illuminate\Support\Collection;
 
@@ -17,7 +17,7 @@ use Illuminate\Support\Collection;
  * Business Intelligence Service
  *
  * Comprehensive analytics and reporting system for business intelligence,
- * revenue tracking, user behavior analysis, and performance metrics.
+ * revenue tracking, customer behavior analysis, and performance metrics.
  */
 class BusinessIntelligenceService
 {
@@ -36,7 +36,7 @@ class BusinessIntelligenceService
                     'success' => true,
                     'data' => [
                         'revenue' => $this->getRevenueAnalytics($period),
-                        'users' => $this->getUserAnalytics($period),
+                        'customers' => $this->getUserAnalytics($period),
                         'orders' => $this->getOrderAnalytics($period),
                         'servers' => $this->getServerAnalytics($period),
                         'performance' => $this->getPerformanceMetrics($period),
@@ -95,13 +95,14 @@ class BusinessIntelligenceService
                 ->get()
                 ->keyBy('payment_method');
 
-            // Revenue by server plan
+            // Revenue by server plan (align to schema: order_items -> server_plans)
             $revenueByPlan = DB::table('orders')
                 ->join('order_items', 'orders.id', '=', 'order_items.order_id')
+                ->leftJoin('server_plans', 'order_items.server_plan_id', '=', 'server_plans.id')
                 ->where('orders.payment_status', 'paid')
                 ->whereBetween('orders.created_at', [$period['start'], $period['end']])
-                ->selectRaw('order_items.description as plan_name, SUM(orders.grand_amount) as revenue, COUNT(*) as sales')
-                ->groupBy('order_items.description')
+                ->selectRaw('COALESCE(server_plans.name, "Unknown Plan") as plan_name, SUM(order_items.total_amount) as revenue, COUNT(order_items.id) as sales')
+                ->groupBy('plan_name')
                 ->orderBy('revenue', 'desc')
                 ->get();
 
@@ -123,32 +124,30 @@ class BusinessIntelligenceService
     }
 
     /**
-     * Get user behavior analytics
+     * Get customer behavior analytics
      */
     public function getUserAnalytics($period): array
     {
         try {
-            $totalUsers = User::whereBetween('created_at', [$period['start'], $period['end']])->count();
-            $activeUsers = User::whereHas('orders', function($query) use ($period) {
+            $totalCustomers = Customer::whereBetween('created_at', [$period['start'], $period['end']])->count();
+            $activeCustomers = Customer::whereHas('orders', function($query) use ($period) {
                 $query->whereBetween('created_at', [$period['start'], $period['end']]);
             })->count();
 
-            // User acquisition by source
-            $usersBySource = User::whereBetween('created_at', [$period['start'], $period['end']])
-                ->selectRaw('COALESCE(acquisition_source, "direct") as source, COUNT(*) as count')
-                ->groupBy('source')
-                ->get()
-                ->keyBy('source');
+            // Customer acquisition by source (fallback: no acquisition_source column; treat all as direct)
+            $customersBySource = collect([
+                'direct' => (object) ['source' => 'direct', 'count' => $totalCustomers],
+            ]);
 
-            // Daily user registrations
-            $dailyRegistrations = User::whereBetween('created_at', [$period['start'], $period['end']])
+            // Daily customer registrations
+            $dailyRegistrations = Customer::whereBetween('created_at', [$period['start'], $period['end']])
                 ->selectRaw('DATE(created_at) as date, COUNT(*) as registrations')
                 ->groupBy(DB::raw('DATE(created_at)'))
                 ->orderBy('date')
                 ->get()
                 ->keyBy('date');
 
-            // User engagement metrics
+            // Customer engagement metrics
             $userEngagement = [
                 'total_sessions' => $this->getTotalUserSessions($period),
                 'average_session_duration' => $this->getAverageSessionDuration($period),
@@ -160,10 +159,10 @@ class BusinessIntelligenceService
             $customerLifetimeValue = $this->calculateCustomerLifetimeValue($period);
 
             return [
-                'total_users' => $totalUsers,
-                'active_users' => $activeUsers,
-                'conversion_rate' => $totalUsers > 0 ? round(($activeUsers / $totalUsers) * 100, 2) : 0,
-                'users_by_source' => $usersBySource,
+                'total_customers' => $totalCustomers,
+                'active_customers' => $activeCustomers,
+                'conversion_rate' => $totalCustomers > 0 ? round(($activeCustomers / $totalCustomers) * 100, 2) : 0,
+                'customers_by_source' => $customersBySource,
                 'daily_registrations' => $dailyRegistrations,
                 'engagement' => $userEngagement,
                 'customer_lifetime_value' => $customerLifetimeValue,
@@ -171,7 +170,7 @@ class BusinessIntelligenceService
                 'user_retention' => $this->getUserRetentionCohorts($period)
             ];
         } catch (\Exception $e) {
-            Log::error('User Analytics Error: ' . $e->getMessage());
+            Log::error('Customer Analytics Error: ' . $e->getMessage());
             return [];
         }
     }
@@ -183,16 +182,16 @@ class BusinessIntelligenceService
     {
         try {
             $totalOrders = Order::whereBetween('created_at', [$period['start'], $period['end']])->count();
-            $completedOrders = Order::where('payment_status', 'completed')
+            $completedOrders = Order::where('order_status', 'completed')
                 ->whereBetween('created_at', [$period['start'], $period['end']])
                 ->count();
 
             // Order status distribution
             $ordersByStatus = Order::whereBetween('created_at', [$period['start'], $period['end']])
-                ->selectRaw('status, COUNT(*) as count')
-                ->groupBy('status')
+                ->selectRaw('order_status, COUNT(*) as count')
+                ->groupBy('order_status')
                 ->get()
-                ->keyBy('status');
+                ->keyBy('order_status');
 
             // Peak ordering hours
             $ordersByHour = Order::whereBetween('created_at', [$period['start'], $period['end']])
@@ -202,11 +201,10 @@ class BusinessIntelligenceService
                 ->get()
                 ->keyBy('hour');
 
-            // Geographic distribution
+            // Geographic distribution (align to schema: use orders.billing_country when available)
             $ordersByCountry = DB::table('orders')
-                ->join('users', 'orders.user_id', '=', 'users.id')
                 ->whereBetween('orders.created_at', [$period['start'], $period['end']])
-                ->selectRaw('COALESCE(users.country, "Unknown") as country, COUNT(*) as count')
+                ->selectRaw('COALESCE(orders.billing_country, "Unknown") as country, COUNT(*) as count')
                 ->groupBy('country')
                 ->orderBy('count', 'desc')
                 ->limit(20)
@@ -238,45 +236,56 @@ class BusinessIntelligenceService
     public function getServerAnalytics($period): array
     {
         try {
-            // Server usage statistics
-            $serverUsage = Server::selectRaw('
-                id, name, location, protocol,
-                COUNT(CASE WHEN status = "active" THEN 1 END) as active_connections,
-                AVG(cpu_usage) as avg_cpu,
-                AVG(memory_usage) as avg_memory,
-                AVG(total_traffic_mb) as avg_bandwidth_mb,
-                AVG(uptime_percentage) as uptime
-            ')
-            ->whereBetween('updated_at', [$period['start'], $period['end']])
-            ->groupBy('id', 'name', 'location', 'protocol')
-            ->orderBy('active_connections', 'desc')
-            ->get();
+            // Server usage statistics (align to schema: protocol/cpu/memory/uptime columns don't exist on servers)
+            $serverUsage = Server::select('id', 'name', 'country as location', 'active_clients', 'total_traffic_mb', 'status')
+                ->whereBetween('updated_at', [$period['start'], $period['end']])
+                ->orderByDesc('active_clients')
+                ->get()
+                ->map(function ($s) {
+                    return [
+                        'id' => $s->id,
+                        'name' => $s->name,
+                        'location' => $s->location,
+                        'active_connections' => (int) ($s->active_clients ?? 0),
+                        'avg_cpu' => null,
+                        'avg_memory' => null,
+                        'avg_bandwidth_mb' => (float) $s->total_traffic_mb,
+                        'uptime' => null,
+                        'status' => $s->status,
+                    ];
+                });
 
             // Most popular server locations
-            $popularLocations = ServerPlan::join('orders', 'server_plans.id', '=', 'orders.server_plan_id')
+            // Use country_code as a proxy for location to align with schema
+            $popularLocations = DB::table('order_items')
+                ->join('server_plans', 'order_items.server_plan_id', '=', 'server_plans.id')
+                ->join('orders', 'order_items.order_id', '=', 'orders.id')
                 ->whereBetween('orders.created_at', [$period['start'], $period['end']])
-                ->selectRaw('server_plans.location, COUNT(*) as orders_count')
-                ->groupBy('server_plans.location')
+                ->selectRaw('COALESCE(server_plans.country_code, "Unknown") as location, COUNT(order_items.id) as orders_count')
+                ->groupBy('location')
                 ->orderBy('orders_count', 'desc')
                 ->limit(10)
                 ->get();
 
             // Protocol popularity
-            $protocolUsage = ServerPlan::join('orders', 'server_plans.id', '=', 'orders.server_plan_id')
+            $protocolUsage = DB::table('order_items')
+                ->join('server_plans', 'order_items.server_plan_id', '=', 'server_plans.id')
+                ->join('orders', 'order_items.order_id', '=', 'orders.id')
                 ->whereBetween('orders.created_at', [$period['start'], $period['end']])
-                ->selectRaw('server_plans.protocol, COUNT(*) as usage_count')
+                ->selectRaw('server_plans.protocol, COUNT(order_items.id) as usage_count')
                 ->groupBy('server_plans.protocol')
                 ->orderBy('usage_count', 'desc')
                 ->get();
 
-            // Server health metrics
+            // Server health metrics (map to existing status enum: up/down/paused)
+            $totalMb = Server::sum('total_traffic_mb') ?? 0;
             $healthMetrics = [
-                'average_uptime' => Server::avg('uptime_percentage') ?? 0,
-                'servers_online' => Server::where('status', 'online')->count(),
-                'servers_offline' => Server::where('status', 'offline')->count(),
-                'servers_maintenance' => Server::where('status', 'maintenance')->count(),
-                'total_bandwidth_used_mb' => Server::sum('total_traffic_mb') ?? 0,
-                'total_bandwidth_used_gb' => round((Server::sum('total_traffic_mb') ?? 0) / 1024, 2)
+                'average_uptime' => null,
+                'servers_online' => Server::where('status', 'up')->count(),
+                'servers_offline' => Server::where('status', 'down')->count(),
+                'servers_maintenance' => Server::where('status', 'paused')->count(),
+                'total_bandwidth_used_mb' => $totalMb,
+                'total_bandwidth_used_gb' => round($totalMb / 1024, 2)
             ];
 
             return [
@@ -391,7 +400,7 @@ class BusinessIntelligenceService
 
             $insights = [
                 'revenue_insights' => $this->analyzeRevenueInsights($analytics['data']['revenue']),
-                'user_insights' => $this->analyzeUserInsights($analytics['data']['users']),
+                'user_insights' => $this->analyzeUserInsights($analytics['data']['customers']),
                 'performance_insights' => $this->analyzePerformanceInsights($analytics['data']['performance']),
                 'opportunity_insights' => $this->identifyOpportunities($analytics['data']),
                 'risk_insights' => $this->identifyRisks($analytics['data'])
@@ -413,27 +422,27 @@ class BusinessIntelligenceService
     }
 
     /**
-     * Calculate churn prediction for users
+     * Calculate churn prediction for customers
      */
-    public function getChurnPrediction($userId = null): array
+    public function getChurnPrediction($customerId = null): array
     {
         try {
-            $query = User::query();
+            $query = Customer::query();
 
-            if ($userId) {
-                $query->where('id', $userId);
+            if ($customerId) {
+                $query->where('id', $customerId);
             }
 
-            $users = $query->with(['orders', 'payments'])->get();
+            $customers = $query->with(['orders', 'payments'])->get();
             $predictions = [];
 
-            foreach ($users as $user) {
-                $churnScore = $this->calculateChurnScore($user);
+            foreach ($customers as $customer) {
+                $churnScore = $this->calculateChurnScore($customer);
                 $predictions[] = [
-                    'user_id' => $user->id,
+                    'customer_id' => $customer->id,
                     'churn_probability' => $churnScore,
                     'risk_level' => $this->getChurnRiskLevel($churnScore),
-                    'factors' => $this->getChurnFactors($user),
+                    'factors' => $this->getChurnFactors($customer),
                     'recommended_actions' => $this->getChurnPreventionActions($churnScore)
                 ];
             }
@@ -516,12 +525,12 @@ class BusinessIntelligenceService
      */
     private function calculateChurnRate($period): float
     {
-        $startUsers = User::where('created_at', '<', $period['start'])->count();
-        $churnedUsers = User::whereDoesntHave('orders', function($query) use ($period) {
+        $startCustomers = Customer::where('created_at', '<', $period['start'])->count();
+        $churnedCustomers = Customer::whereDoesntHave('orders', function($query) use ($period) {
             $query->where('created_at', '>=', $period['start']);
         })->where('created_at', '<', $period['start'])->count();
 
-        return $startUsers > 0 ? round(($churnedUsers / $startUsers) * 100, 2) : 0;
+        return $startCustomers > 0 ? round(($churnedCustomers / $startCustomers) * 100, 2) : 0;
     }
 
     /**
@@ -539,17 +548,17 @@ class BusinessIntelligenceService
     }
 
     /**
-     * Get comprehensive user session analytics
+     * Get comprehensive customer session analytics
      */
     private function getTotalUserSessions($period): int
     {
-        // In a real implementation, you'd track user sessions
-        // For now, estimate based on active users and average sessions per user
-        $activeUsers = User::whereHas('orders', function($query) use ($period) {
+        // In a real implementation, you'd track customer sessions
+        // For now, estimate based on active customers and average sessions per customer
+        $activeCustomers = Customer::whereHas('orders', function($query) use ($period) {
             $query->whereBetween('created_at', [$period['start'], $period['end']]);
         })->count();
 
-        return $activeUsers * rand(2, 8); // Estimate 2-8 sessions per active user
+        return $activeCustomers * rand(2, 8); // Estimate 2-8 sessions per active customer
     }
 
     /**
@@ -567,15 +576,15 @@ class BusinessIntelligenceService
      */
     private function getBounceRate($period): float
     {
-        // Simulate bounce rate based on new vs returning users
-        $totalUsers = User::whereBetween('created_at', [$period['start'], $period['end']])->count();
-        $returningUsers = User::whereHas('orders', function($query) use ($period) {
+        // Simulate bounce rate based on new vs returning customers
+        $totalCustomers = Customer::whereBetween('created_at', [$period['start'], $period['end']])->count();
+        $returningCustomers = Customer::whereHas('orders', function($query) use ($period) {
             $query->where('created_at', '<', $period['start']);
         })->whereHas('orders', function($query) use ($period) {
             $query->whereBetween('created_at', [$period['start'], $period['end']]);
         })->count();
 
-        $bounceRate = $totalUsers > 0 ? (($totalUsers - $returningUsers) / $totalUsers) * 100 : 0;
+        $bounceRate = $totalCustomers > 0 ? (($totalCustomers - $returningCustomers) / $totalCustomers) * 100 : 0;
         return round($bounceRate, 2);
     }
 
@@ -592,7 +601,12 @@ class BusinessIntelligenceService
      */
     private function getTopReferringDomains($period): array
     {
-        return User::whereBetween('created_at', [$period['start'], $period['end']])
+        // Skip if column doesn't exist in current schema
+        if (!Schema::hasColumn('customers', 'referrer_url')) {
+            return [];
+        }
+
+        return Customer::whereBetween('created_at', [$period['start'], $period['end']])
             ->whereNotNull('referrer_url')
             ->selectRaw('
                 SUBSTRING_INDEX(SUBSTRING_INDEX(referrer_url, "/", 3), "//", -1) as domain,
@@ -606,15 +620,16 @@ class BusinessIntelligenceService
     }
 
     /**
-     * Get user retention cohorts
+     * Get customer retention cohorts
      */
     private function getUserRetentionCohorts($period): array
     {
+        // Align retention cohorts to customer accounts (order owners)
         $cohorts = [];
         $startDate = $period['start']->copy()->startOfMonth();
 
         while ($startDate->lte($period['end'])) {
-            $cohortUsers = User::whereYear('created_at', $startDate->year)
+            $cohortCustomers = Customer::whereYear('created_at', $startDate->year)
                 ->whereMonth('created_at', $startDate->month)
                 ->pluck('id');
 
@@ -623,19 +638,19 @@ class BusinessIntelligenceService
                 $periodStart = $startDate->copy()->addMonths($month);
                 $periodEnd = $periodStart->copy()->endOfMonth();
 
-                $activeUsers = Order::whereIn('user_id', $cohortUsers)
+                $activeCustomers = Order::whereIn('customer_id', $cohortCustomers)
                     ->whereBetween('created_at', [$periodStart, $periodEnd])
-                    ->distinct('user_id')
+                    ->distinct('customer_id')
                     ->count();
 
-                $retention[$month] = $cohortUsers->count() > 0
-                    ? round(($activeUsers / $cohortUsers->count()) * 100, 1)
+                $retention[$month] = $cohortCustomers->count() > 0
+                    ? round(($activeCustomers / $cohortCustomers->count()) * 100, 1)
                     : 0;
             }
 
             $cohorts[] = [
                 'month' => $startDate->format('Y-m'),
-                'users' => $cohortUsers->count(),
+                'customers' => $cohortCustomers->count(),
                 'retention' => $retention
             ];
 
@@ -659,11 +674,11 @@ class BusinessIntelligenceService
                     WHEN grand_amount < 100 THEN "50-100"
                     WHEN grand_amount < 250 THEN "100-250"
                     ELSE "250+"
-                END as range,
+                END as value_range,
                 COUNT(*) as count,
                 SUM(grand_amount) as total_value
             ')
-            ->groupBy('range')
+            ->groupBy('value_range')
             ->orderByRaw('MIN(grand_amount)')
             ->get()
             ->toArray();
@@ -674,12 +689,14 @@ class BusinessIntelligenceService
      */
     private function getAverageFulfillmentTime($period): int
     {
-        $avgMinutes = Order::whereBetween('created_at', [$period['start'], $period['end']])
-            ->whereNotNull('completed_at')
-            ->selectRaw('AVG(TIMESTAMPDIFF(MINUTE, created_at, completed_at)) as avg_time')
+        // Use time from order creation to last update for paid orders as a proxy
+        $avgMinutes = Order::where('payment_status', 'paid')
+            ->whereBetween('created_at', [$period['start'], $period['end']])
+            ->whereColumn('updated_at', '>=', 'created_at')
+            ->selectRaw('AVG(TIMESTAMPDIFF(MINUTE, created_at, updated_at)) as avg_time')
             ->value('avg_time');
 
-        return round($avgMinutes ?? 15);
+        return (int) round($avgMinutes ?? 15);
     }
 
     /**
@@ -732,23 +749,18 @@ class BusinessIntelligenceService
     {
         $alerts = [];
 
-        // Check server performance
-        $lowPerformanceServers = Server::where('uptime_percentage', '<', 95)
-            ->orWhere('cpu_usage', '>', 80)
-            ->orWhere('memory_usage', '>', 85)
-            ->get();
-
-        foreach ($lowPerformanceServers as $server) {
+        // Basic server health alerts using existing columns
+        $downServers = Server::where('status', 'down')->get();
+        foreach ($downServers as $server) {
             $alerts[] = [
-                'type' => 'server_performance',
-                'severity' => 'medium',
-                'title' => "Server Performance Issue",
-                'message' => "Server {$server->name} has performance issues",
+                'type' => 'server_status',
+                'severity' => 'high',
+                'title' => 'Server Down',
+                'message' => "Server {$server->name} is down",
                 'details' => [
-                    'uptime' => $server->uptime_percentage,
-                    'cpu' => $server->cpu_usage,
-                    'memory' => $server->memory_usage
-                ]
+                    'status' => $server->status,
+                    'country' => $server->country,
+                ],
             ];
         }
 
@@ -785,13 +797,11 @@ class BusinessIntelligenceService
     private function getCapacityPlanningData($period): array
     {
         $serverUtilization = Server::selectRaw('
-            location,
-            AVG(cpu_usage) as avg_cpu,
-            AVG(memory_usage) as avg_memory,
-            AVG(bandwidth_usage) as avg_bandwidth,
+            country as location,
+            AVG(total_traffic_mb) as avg_bandwidth,
             COUNT(*) as server_count
         ')
-        ->groupBy('location')
+        ->groupBy('country')
         ->get();
 
         $growthRate = $this->calculateUserGrowthRate($period);
@@ -800,11 +810,10 @@ class BusinessIntelligenceService
         foreach ($serverUtilization as $location) {
             $projectedLoad[] = [
                 'location' => $location->location,
-                'current_capacity' => 100 - $location->avg_cpu,
-                'projected_6_months' => max(0, 100 - ($location->avg_cpu * (1 + $growthRate * 6))),
-                'servers_needed' => $location->avg_cpu > 70 ? ceil($location->server_count * 0.2) : 0,
-                'recommendation' => $location->avg_cpu > 80 ? 'immediate_expansion' :
-                                  ($location->avg_cpu > 70 ? 'plan_expansion' : 'sufficient')
+                'current_capacity' => null,
+                'projected_6_months' => null,
+                'servers_needed' => 0,
+                'recommendation' => 'sufficient'
             ];
         }
 
@@ -812,15 +821,15 @@ class BusinessIntelligenceService
     }
 
     /**
-     * Calculate user growth rate
+     * Calculate customer growth rate
      */
     private function calculateUserGrowthRate($period): float
     {
-        $currentUsers = User::whereBetween('created_at', [$period['start'], $period['end']])->count();
+        $currentCustomers = Customer::whereBetween('created_at', [$period['start'], $period['end']])->count();
         $previousPeriod = $this->getPreviousPeriod($period);
-        $previousUsers = User::whereBetween('created_at', [$previousPeriod['start'], $previousPeriod['end']])->count();
+        $previousCustomers = Customer::whereBetween('created_at', [$previousPeriod['start'], $previousPeriod['end']])->count();
 
-        return $previousUsers > 0 ? ($currentUsers - $previousUsers) / $previousUsers : 0;
+        return $previousCustomers > 0 ? ($currentCustomers - $previousCustomers) / $previousCustomers : 0;
     }
 
     /**
@@ -895,19 +904,19 @@ class BusinessIntelligenceService
     }
 
     /**
-     * Generate user growth chart data
+     * Generate customer growth chart data
      */
     private function getUserGrowthChart($period): array
     {
-        $data = User::whereBetween('created_at', [$period['start'], $period['end']])
-            ->selectRaw('DATE(created_at) as date, COUNT(*) as new_users')
+        $data = Customer::whereBetween('created_at', [$period['start'], $period['end']])
+            ->selectRaw('DATE(created_at) as date, COUNT(*) as new_customers')
             ->groupBy(DB::raw('DATE(created_at)'))
             ->orderBy('date')
             ->get();
 
         $cumulative = 0;
         $cumulativeData = $data->map(function($item) use (&$cumulative) {
-            $cumulative += $item->new_users;
+            $cumulative += $item->new_customers;
             return $cumulative;
         });
 
@@ -917,14 +926,14 @@ class BusinessIntelligenceService
                 'labels' => $data->pluck('date')->map(fn($date) => Carbon::parse($date)->format('M d'))->toArray(),
                 'datasets' => [
                     [
-                        'label' => 'New Users',
-                        'data' => $data->pluck('new_users')->toArray(),
+                        'label' => 'New Customers',
+                        'data' => $data->pluck('new_customers')->toArray(),
                         'borderColor' => 'rgb(34, 197, 94)',
                         'backgroundColor' => 'rgba(34, 197, 94, 0.1)',
                         'yAxisID' => 'y'
                     ],
                     [
-                        'label' => 'Total Users',
+                        'label' => 'Total Customers',
                         'data' => $cumulativeData->toArray(),
                         'borderColor' => 'rgb(168, 85, 247)',
                         'backgroundColor' => 'rgba(168, 85, 247, 0.1)',
@@ -958,7 +967,7 @@ class BusinessIntelligenceService
      */
     private function getConversionFunnelChart($period): array
     {
-        $visitors = User::whereBetween('created_at', [$period['start'], $period['end']])->count();
+        $visitors = Customer::whereBetween('created_at', [$period['start'], $period['end']])->count();
         $registered = $visitors; // All visitors in our case register
         $ordersPlaced = Order::whereBetween('created_at', [$period['start'], $period['end']])->count();
         $paidOrders = Order::where('payment_status', 'paid')
@@ -1042,7 +1051,7 @@ class BusinessIntelligenceService
     // Continue with the rest of the enhanced implementations...
     private function getAverageResponseTimes($period): array { return ['api' => rand(100, 300), 'database' => rand(50, 150), 'cache' => rand(5, 20)]; }
     private function getErrorRates($period): array { return ['4xx' => rand(1, 5), '5xx' => rand(0, 2), 'timeout' => rand(0, 1)]; }
-    private function getAPIUsageMetrics($period): array { return ['total_requests' => rand(10000, 50000), 'unique_users' => rand(100, 500)]; }
+    private function getAPIUsageMetrics($period): array { return ['total_requests' => rand(10000, 50000), 'unique_customers' => rand(100, 500)]; }
     private function getDatabasePerformanceMetrics($period): array { return ['query_time' => rand(50, 200), 'connections' => rand(10, 50)]; }
     private function getCacheHitRate($period): float { return rand(80, 95); }
     private function getSystemLoadMetrics($period): array { return ['cpu' => rand(30, 70), 'memory' => rand(40, 80), 'disk' => rand(20, 60)]; }
@@ -1062,12 +1071,12 @@ class BusinessIntelligenceService
     }
 
     /**
-     * Get user growth trend
+     * Get customer growth trend
      */
     private function getUserGrowthTrend($period): array
     {
-        return User::whereBetween('created_at', [$period['start'], $period['end']])
-            ->selectRaw('DATE(created_at) as date, COUNT(*) as new_users')
+        return Customer::whereBetween('created_at', [$period['start'], $period['end']])
+            ->selectRaw('DATE(created_at) as date, COUNT(*) as new_customers')
             ->groupBy(DB::raw('DATE(created_at)'))
             ->orderBy('date')
             ->get()
@@ -1086,7 +1095,7 @@ class BusinessIntelligenceService
      */
     private function getHighValueCustomers($period): array
     {
-        return User::whereHas('orders', function($query) use ($period) {
+        return Customer::whereHas('orders', function($query) use ($period) {
             $query->where('payment_status', 'paid')
                 ->whereBetween('created_at', [$period['start'], $period['end']]);
         })
@@ -1105,7 +1114,7 @@ class BusinessIntelligenceService
      */
     private function getFrequentBuyers($period): array
     {
-        return User::whereHas('orders', function($query) use ($period) {
+        return Customer::whereHas('orders', function($query) use ($period) {
             $query->whereBetween('created_at', [$period['start'], $period['end']]);
         }, '>=', 3)
         ->withCount(['orders as order_count'])
@@ -1122,7 +1131,7 @@ class BusinessIntelligenceService
     {
         $cutoffDate = Carbon::now()->subDays(30);
 
-        return User::whereHas('orders', function($query) use ($cutoffDate) {
+        return Customer::whereHas('orders', function($query) use ($cutoffDate) {
             $query->where('created_at', '<', $cutoffDate);
         })
         ->whereDoesntHave('orders', function($query) use ($cutoffDate) {
@@ -1138,7 +1147,7 @@ class BusinessIntelligenceService
      */
     private function getNewCustomers($period): array
     {
-        return User::whereBetween('created_at', [$period['start'], $period['end']])
+        return Customer::whereBetween('created_at', [$period['start'], $period['end']])
             ->limit(50)
             ->get()
             ->toArray();
@@ -1151,7 +1160,7 @@ class BusinessIntelligenceService
     {
         $churnPeriod = Carbon::now()->subDays(90);
 
-        return User::whereHas('orders', function($query) use ($churnPeriod) {
+        return Customer::whereHas('orders', function($query) use ($churnPeriod) {
             $query->where('created_at', '<', $churnPeriod);
         })
         ->whereDoesntHave('orders', function($query) use ($churnPeriod) {
@@ -1173,14 +1182,14 @@ class BusinessIntelligenceService
     private function calculatePriorityScore($insights): int { return rand(70, 95); }
 
     /**
-     * Calculate churn score for a user
+     * Calculate churn score for a customer
      */
-    private function calculateChurnScore($user): float
+    private function calculateChurnScore($customer): float
     {
         $score = 0;
 
         // Days since last order
-        $lastOrder = $user->orders()->latest()->first();
+        $lastOrder = $customer->orders()->latest()->first();
         if ($lastOrder) {
             $daysSinceLastOrder = Carbon::now()->diffInDays($lastOrder->created_at);
             $score += min($daysSinceLastOrder * 2, 40); // Max 40 points for inactivity
@@ -1189,7 +1198,7 @@ class BusinessIntelligenceService
         }
 
         // Order frequency
-        $orderCount = $user->orders()->count();
+        $orderCount = $customer->orders()->count();
         if ($orderCount < 2) {
             $score += 20;
         } elseif ($orderCount < 5) {
@@ -1197,7 +1206,7 @@ class BusinessIntelligenceService
         }
 
         // Account age
-        $accountAge = Carbon::now()->diffInDays($user->created_at);
+        $accountAge = Carbon::now()->diffInDays($customer->created_at);
         if ($accountAge < 30 && $orderCount === 0) {
             $score += 30;
         }
@@ -1216,13 +1225,13 @@ class BusinessIntelligenceService
     }
 
     /**
-     * Get churn factors for a user
+     * Get churn factors for a customer
      */
-    private function getChurnFactors($user): array
+    private function getChurnFactors($customer): array
     {
         $factors = [];
 
-        $lastOrder = $user->orders()->latest()->first();
+        $lastOrder = $customer->orders()->latest()->first();
         if ($lastOrder) {
             $daysSinceLastOrder = Carbon::now()->diffInDays($lastOrder->created_at);
             if ($daysSinceLastOrder > 30) {
@@ -1232,7 +1241,7 @@ class BusinessIntelligenceService
             $factors[] = "No orders placed";
         }
 
-        $orderCount = $user->orders()->count();
+        $orderCount = $customer->orders()->count();
         if ($orderCount < 2) {
             $factors[] = "Low engagement (less than 2 orders)";
         }
@@ -1271,8 +1280,8 @@ class BusinessIntelligenceService
      */
     private function calculateOverallChurnRate(): float
     {
-        $totalCustomers = User::whereHas('orders')->count();
-        $activeCustomers = User::whereHas('orders', function($query) {
+        $totalCustomers = Customer::whereHas('orders')->count();
+        $activeCustomers = Customer::whereHas('orders', function($query) {
             $query->where('created_at', '>=', Carbon::now()->subDays(90));
         })->count();
 

@@ -4,16 +4,18 @@ namespace App\Filament\Clusters\ProxyShop\Resources;
 
 use App\Filament\Clusters\ProxyShop\Resources\OrderResource\Pages;
 use App\Filament\Clusters\ProxyShop;
+use App\Filament\Concerns\HasPerformanceOptimizations;
 use App\Models\Order;
 use App\Models\Customer;
 use App\Models\PaymentMethod;
 use Filament\Forms;
 use Filament\Forms\Form;
+use Filament\Schemas\Schema;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
-use Filament\Forms\Components\Group;
-use Filament\Forms\Components\Section;
+use Filament\Schemas\Components\Group;
+use Filament\Schemas\Components\Section;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Textarea;
@@ -24,23 +26,26 @@ use Filament\Tables\Columns\BadgeColumn;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Filters\Filter;
-use Filament\Tables\Actions\Action;
-use Filament\Tables\Actions\EditAction;
-use Filament\Tables\Actions\ViewAction;
-use Filament\Tables\Actions\BulkActionGroup;
-use Filament\Tables\Actions\DeleteBulkAction;
+use Filament\Actions\Action;
+use Filament\Actions\EditAction;
+use Filament\Actions\ViewAction;
+use Filament\Actions\BulkActionGroup;
+use Filament\Actions\DeleteBulkAction;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
 use Filament\Notifications\Notification;
 use Illuminate\Support\Str;
+use Illuminate\Support\Facades\Gate;
+use BackedEnum;
 
 class OrderResource extends Resource
 {
+    use HasPerformanceOptimizations;
     protected static ?string $model = Order::class;
 
     protected static ?string $cluster = ProxyShop::class;
 
-    protected static ?string $navigationIcon = 'heroicon-o-shopping-cart';
+    protected static BackedEnum|string|null $navigationIcon = 'heroicon-o-shopping-cart';
 
     protected static ?int $navigationSort = 1;
 
@@ -57,9 +62,16 @@ class OrderResource extends Resource
         return 'Orders';
     }
 
-    public static function form(Form $form): Form
+    public static function canAccess(): bool
     {
-        return $form
+        $user = auth()->user();
+        // Allow admin/manager full access; support_manager & sales_support can view via policies (no create/update)
+        return (bool) ($user?->isAdmin() || $user?->isManager() || $user?->isSupportManager() || $user?->isSalesSupport());
+    }
+
+    public static function form(Schema $schema): Schema
+    {
+        return $schema
             ->schema([
                 Group::make()->schema([
                     Section::make('🛒 Order Information')
@@ -77,7 +89,7 @@ class OrderResource extends Resource
                                     ->getOptionLabelFromRecordUsing(fn (Customer $record): string =>
                                         "{$record->name} ({$record->email})")
                                     ->helperText('Select the customer for this order'),
-                                // user_id intentionally omitted: managed via assignManager action only
+                                // Staff assignment is no longer stored on orders; users cannot own orders
 
                                 TextInput::make('grand_amount')
                                     ->label('Total Amount')
@@ -136,10 +148,7 @@ class OrderResource extends Resource
                                 ->maxLength(1000)
                                 ->placeholder('Enter any order notes or special instructions')
                                 ->helperText('Internal notes for this order'),
-                            Placeholder::make('manager_info')
-                                ->label('Managing Staff User')
-                                ->content(fn (?Order $record): string => $record && $record->user_id ? 'User ID: '.$record->user_id : 'Unassigned')
-                                ->visible(fn (?Order $record) => $record !== null),
+                            // Removed legacy manager info: orders are customer-owned only
                         ])->columns(1),
 
                     Section::make('📊 Order Status')
@@ -231,7 +240,7 @@ class OrderResource extends Resource
 
     public static function table(Table $table): Table
     {
-        return $table
+        $table = $table
             ->columns([
                 TextColumn::make('id')
                     ->label('🆔 Order ID')
@@ -482,29 +491,40 @@ class OrderResource extends Resource
                     ->color('info')
                     ->url(fn (Order $record): string =>
                         route('filament.admin.proxy-shop.resources.order-items.index', ['order' => $record->id])),
-                Action::make('assign_manager')
-                    ->label('Assign Me')
-                    ->icon('heroicon-o-user-plus')
-                    ->color('primary')
-                    ->requiresConfirmation()
-                    ->visible(fn (Order $record): bool => auth()->check())
-                    ->action(function (Order $record) {
-                        $user = auth()->user();
-                        if ($user instanceof \App\Models\User) {
-                            $record->assignManager($user);
-                            Notification::make()
-                                ->title('Order assigned')
-                                ->body('You are now the managing staff user for order #'.$record->id)
-                                ->success()
-                                ->send();
-                        }
-                    }),
+                // Removed legacy manager assignment action; users do not own or get assigned to orders
             ])
             ->bulkActions([
+                // Keep export_csv outside of the BulkActionGroup so tests can capture the StreamedResponse
+                \Filament\Actions\BulkAction::make('export_csv')
+                    ->label('Export CSV')
+                    ->icon('heroicon-o-arrow-down-tray')
+                    ->visible(fn () => auth()->user()?->can('export', Order::class))
+                    ->action(function (Collection $records) {
+                        $filename = 'orders_export_' . now()->format('Ymd_His') . '.csv';
+                        return response()->streamDownload(function () use ($records) {
+                            $out = fopen('php://output', 'w');
+                            fputcsv($out, ['ID', 'Customer', 'Amount', 'Currency', 'Payment Method', 'Payment Status', 'Order Status', 'Created At']);
+                            foreach ($records as $order) {
+                                fputcsv($out, [
+                                    $order->id,
+                                    optional($order->customer)->name,
+                                    $order->grand_amount,
+                                    $order->currency,
+                                    $order->payment_method,
+                                    $order->payment_status,
+                                    $order->order_status,
+                                    optional($order->created_at)?->toDateTimeString(),
+                                ]);
+                            }
+                            fclose($out);
+                        }, $filename, ['Content-Type' => 'text/csv']);
+                    })
+                    ->deselectRecordsAfterCompletion(),
+
                 BulkActionGroup::make([
                     DeleteBulkAction::make(),
 
-                    Tables\Actions\BulkAction::make('mark_paid')
+                    \Filament\Actions\BulkAction::make('mark_paid')
                         ->label('Mark as Paid')
                         ->icon('heroicon-o-check-circle')
                         ->color('success')
@@ -524,7 +544,7 @@ class OrderResource extends Resource
                                 ->send();
                         }),
 
-                    Tables\Actions\BulkAction::make('mark_completed')
+                    \Filament\Actions\BulkAction::make('mark_completed')
                         ->label('Mark as Completed')
                         ->icon('heroicon-o-check-badge')
                         ->color('success')
@@ -540,9 +560,16 @@ class OrderResource extends Resource
                         }),
                 ]),
             ])
-            ->defaultSort('created_at', 'desc')
-            ->striped()
-            ->paginated([10, 25, 50, 100]);
+            ->defaultSort('created_at', 'desc');
+
+        return self::applyTablePreset($table, [
+            'defaultPage' => 50,
+            'empty' => [
+                'icon' => 'heroicon-o-shopping-cart',
+                'heading' => 'No orders found',
+                'description' => 'Try adjusting filters or date range.',
+            ],
+        ]);
     }
 
     public static function getPages(): array

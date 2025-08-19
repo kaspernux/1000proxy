@@ -92,7 +92,7 @@ class AdvancedBackendServiceTest extends TestCase
     public function it_detects_fraud_with_low_risk_for_normal_transaction()
     {
         $transactionData = [
-            'user_id' => $this->customer->id,
+            'customer_id' => $this->customer->id,
             'amount' => 50,
             'ip_address' => '192.168.1.1',
             'user_agent' => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
@@ -112,12 +112,12 @@ class AdvancedBackendServiceTest extends TestCase
     {
         // Create multiple recent orders to trigger velocity check
         Order::factory()->count(6)->create([
-            'user_id' => $this->customer->id,
+            'customer_id' => $this->customer->id,
             'created_at' => now()->subMinutes(30)
         ]);
 
         $transactionData = [
-            'user_id' => $this->customer->id,
+            'customer_id' => $this->customer->id,
             'amount' => 1500, // High amount
             'ip_address' => '192.168.1.1',
             'user_agent' => 'curl/7.68.0', // Automated tool
@@ -134,13 +134,13 @@ class AdvancedBackendServiceTest extends TestCase
     #[Test]
     public function it_detects_new_user_fraud_risk()
     {
-    $newUser = Customer::factory()->create([
+    $newCustomer = Customer::factory()->create([
             'created_at' => now()->subHours(2),
             'email_verified_at' => null
         ]);
 
         $transactionData = [
-            'user_id' => $newUser->id,
+            'customer_id' => $newCustomer->id,
             'amount' => 100,
             'ip_address' => '192.168.1.1',
             'user_agent' => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
@@ -158,7 +158,7 @@ class AdvancedBackendServiceTest extends TestCase
     public function it_detects_automated_tools()
     {
         $transactionData = [
-            'user_id' => $this->customer->id,
+            'customer_id' => $this->customer->id,
             'amount' => 100,
             'ip_address' => '192.168.1.1',
             'user_agent' => 'python-requests/2.25.1',
@@ -176,17 +176,17 @@ class AdvancedBackendServiceTest extends TestCase
     {
         // Create a very high-risk transaction
         Order::factory()->count(10)->create([
-            'user_id' => $this->customer->id,
+            'customer_id' => $this->customer->id,
             'created_at' => now()->subMinutes(15)
         ]);
 
-    $newUser = Customer::factory()->create([
+    $newCustomer = Customer::factory()->create([
             'created_at' => now()->subHours(1),
             'email_verified_at' => null
         ]);
 
         $transactionData = [
-            'user_id' => $newUser->id,
+            'customer_id' => $newCustomer->id,
             'amount' => 2000,
             'ip_address' => '192.168.1.1',
             'user_agent' => 'curl/7.68.0',
@@ -292,7 +292,7 @@ class AdvancedBackendServiceTest extends TestCase
         Log::spy();
 
         $transactionData = [
-            'user_id' => $this->customer->id,
+            'customer_id' => $this->customer->id,
             'amount' => 100,
             'ip_address' => '192.168.1.1',
             'user_agent' => 'Mozilla/5.0',
@@ -335,7 +335,7 @@ class AdvancedBackendServiceTest extends TestCase
         ]);
 
         $transactionData = [
-            'user_id' => $this->customer->id,
+            'customer_id' => $this->customer->id,
             'amount' => 100,
             'ip_address' => '192.168.1.1',
             'user_agent' => 'Mozilla/5.0',
@@ -391,7 +391,7 @@ class AdvancedBackendServiceTest extends TestCase
     public function fraud_detection_returns_consistent_structure()
     {
         $transactionData = [
-            'user_id' => $this->customer->id,
+            'customer_id' => $this->customer->id,
             'amount' => 100,
             'ip_address' => '192.168.1.1',
             'user_agent' => 'Mozilla/5.0',

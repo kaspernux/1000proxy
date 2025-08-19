@@ -3,10 +3,11 @@
 namespace App\Filament\Clusters;
 
 use Filament\Clusters\Cluster;
+use BackedEnum;
 
 class CustomerManagement extends Cluster
 {
-    protected static ?string $navigationIcon = 'heroicon-o-user';
+    protected static BackedEnum|string|null $navigationIcon = 'heroicon-o-user';
     protected static ?int $navigationSort = 1;
 
     public static function getLabel(): string

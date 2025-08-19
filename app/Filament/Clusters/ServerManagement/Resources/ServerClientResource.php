@@ -1,5 +1,4 @@
 <?php
-
 namespace App\Filament\Clusters\ServerManagement\Resources;
 
 use Filament\Forms;
@@ -17,17 +16,17 @@ use App\Filament\Clusters\ServerManagement\Resources\ServerClientResource\Pages;
 use App\Filament\Clusters\ServerManagement\Resources\ServerClientResource\RelationManagers;
 use App\Services\XUIService;
 use Illuminate\Support\Facades\Log;
-use Filament\Tables\Actions\Action;
+use Filament\Actions\Action;
 use Filament\Tables\Columns\ImageColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Columns\ToggleColumn;
 use Filament\Tables\Columns\BadgeColumn;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Filters\TernaryFilter;
-use Filament\Tables\Actions\BulkActionGroup;
-use Filament\Tables\Actions\DeleteBulkAction;
-use Filament\Tables\Actions\EditAction;
-use Filament\Tables\Actions\ViewAction;
+use Filament\Actions\BulkActionGroup;
+use Filament\Actions\DeleteBulkAction;
+use Filament\Actions\EditAction;
+use Filament\Actions\ViewAction;
 use Illuminate\Support\Facades\Storage;
 use Filament\Forms\Components\View as ViewComponent;
 use Filament\Forms\Components\Placeholder;
@@ -35,8 +34,8 @@ use Filament\Forms\Components\Image;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Toggle;
 use Filament\Forms\Components\TextInput;
-use Filament\Forms\Components\Group;
-use Filament\Forms\Components\Section;
+use Filament\Schemas\Components\Group;
+use Filament\Schemas\Components\Section;
 use Filament\Forms\Components\DateTimePicker;
 use Filament\Infolists\Infolist;
 use Carbon\Carbon;
@@ -48,17 +47,27 @@ use Filament\Infolists\Components\TextEntry;
 use Filament\Infolists\Components\IconEntry;
 use Filament\Infolists\Components\ImageEntry;
 use Filament\Notifications\Notification;
+use BackedEnum;
+use UnitEnum;
+use Filament\Schemas\Schema;
 
 class ServerClientResource extends Resource
 {
 
     protected static ?string $cluster = ServerManagement::class;
 
+    public static function canAccess(): bool
+    {
+        $user = auth()->user();
+        // Admin/manager manage; support_manager view via policy; sales_support no.
+        return (bool) ($user?->isAdmin() || $user?->isManager() || $user?->isSupportManager());
+    }
+
     protected static ?string $model = ServerClient::class;
-    protected static ?string $navigationIcon = 'heroicon-o-user-group';
+    protected static BackedEnum|string|null $navigationIcon = 'heroicon-o-user-group';
     protected static ?string $navigationLabel = 'Server Clients';
     protected static ?string $pluralModelLabel = 'Server Clients';
-    protected static ?string $navigationGroup = 'XUI MANAGEMENT';
+    protected static UnitEnum|string|null $navigationGroup = 'XUI MANAGEMENT';
     protected static ?int $navigationSort = 3;
     protected static ?string $recordTitleAttribute = 'server_id';
 
@@ -67,9 +76,9 @@ class ServerClientResource extends Resource
         return 'Clients';
     }
 
-    public static function form(Form $form): Form
+    public static function form(Schema $schema): Schema
     {
-        return $form
+        return $schema
             ->schema([
                 Group::make()->schema([
                     Section::make('🏷️ Client Identity & Configuration')->schema([
@@ -239,7 +248,7 @@ class ServerClientResource extends Resource
 
     public static function table(Table $table): Table
     {
-        return $table
+        $table = $table
         ->columns([
             // ✅ Essential identification columns
             TextColumn::make('email')
@@ -550,10 +559,8 @@ class ServerClientResource extends Resource
                     }),
             ]),
         ])
-        ->defaultSort('created_at', 'desc')
-        ->poll('30s') // Auto-refresh every 30 seconds for real-time updates
-        ->striped()
-        ->paginated([10, 25, 50, 100])
+    ->defaultSort('created_at', 'desc')
+    ->poll('30s') // Auto-refresh every 30 seconds for real-time updates
         ->headerActions([
             Action::make('Sync Clients from XUI')
                 ->icon('heroicon-o-arrow-path')
@@ -608,6 +615,15 @@ class ServerClientResource extends Resource
                         ->send();
                 })
             ]);
+
+        return \App\Filament\Concerns\HasPerformanceOptimizations::applyTablePreset($table, [
+            'defaultPage' => 50,
+            'empty' => [
+                'icon' => 'heroicon-o-user-group',
+                'heading' => 'No clients found',
+                'description' => 'Try adjusting your filters.',
+            ],
+        ]);
     }
 
     public static function getRelations(): array
@@ -626,9 +642,9 @@ class ServerClientResource extends Resource
     }
 
     // ✅ Infolist for view page
-    public static function infolist(Infolist $infolist): Infolist
+    public static function infolist(Schema $schema): Schema
 {
-    return $infolist->schema([
+    return $schema->schema([
         Tabs::make('Client Details')
             ->persistTab()
             ->tabs([

@@ -13,7 +13,7 @@ return new class extends Migration
     {
         Schema::create('mobile_sessions', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('user_id')->constrained()->onDelete('cascade');
+            $table->foreignId('customer_id')->constrained()->onDelete('cascade');
             $table->foreignId('device_id')->constrained('mobile_devices')->onDelete('cascade');
             $table->string('session_token', 255); // Changed from text to string with length
             $table->string('ip_address')->nullable();
@@ -23,7 +23,7 @@ return new class extends Migration
             $table->timestamp('last_activity_at')->nullable();
             $table->timestamps();
 
-            $table->index(['user_id', 'device_id']);
+            $table->index(['customer_id', 'device_id']);
             $table->index(['session_token']); // Now this will work
             $table->index(['is_active', 'expires_at']);
             $table->index(['last_activity_at']);

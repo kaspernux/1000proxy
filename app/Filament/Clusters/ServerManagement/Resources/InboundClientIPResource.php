@@ -1,5 +1,4 @@
 <?php
-
 namespace App\Filament\Clusters\ServerManagement\Resources;
 
 use App\Filament\Clusters\ServerManagement;
@@ -13,31 +12,35 @@ use Filament\Tables;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\SoftDeletingScope;
-use Filament\Forms\Components\Section;
+use Filament\Schemas\Components\Section;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Textarea;
-use Filament\Forms\Components\Group;
+use Filament\Schemas\Components\Group;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Columns\BadgeColumn;
 use Filament\Tables\Filters\Filter;
-use Filament\Tables\Actions\Action;
-use Filament\Tables\Actions\ActionGroup;
-use Filament\Tables\Actions\EditAction;
-use Filament\Tables\Actions\ViewAction;
-use Filament\Tables\Actions\DeleteAction;
-use Filament\Tables\Actions\BulkActionGroup;
-use Filament\Tables\Actions\DeleteBulkAction;
+use Filament\Actions\Action;
+use Filament\Actions\ActionGroup;
+use Filament\Actions\EditAction;
+use Filament\Actions\ViewAction;
+use Filament\Actions\DeleteAction;
+use Filament\Actions\BulkActionGroup;
+use Filament\Actions\DeleteBulkAction;
+use Filament\Actions\BulkAction;
 use Illuminate\Support\Facades\Http;
+use BackedEnum;
+use UnitEnum;
+use Filament\Schemas\Schema;
 
 class InboundClientIPResource extends Resource
 {
     protected static ?string $model = InboundClientIP::class;
 
-    protected static ?string $navigationIcon = 'heroicon-o-globe-alt';
+    protected static BackedEnum|string|null $navigationIcon = 'heroicon-o-globe-alt';
 
     protected static ?string $cluster = ServerManagement::class;
 
-    protected static ?string $navigationGroup = 'TRAFFIC MONITORING';
+    protected static UnitEnum|string|null $navigationGroup = 'TRAFFIC MONITORING';
 
     protected static ?int $navigationSort = 10;
 
@@ -48,9 +51,9 @@ class InboundClientIPResource extends Resource
         return 'Client IPs';
     }
 
-    public static function form(Form $form): Form
+    public static function form(Schema $schema): Schema
     {
-        return $form
+        return $schema
             ->schema([
                 Group::make()->schema([
                     Section::make('📧 Client Information')->schema([
@@ -78,7 +81,7 @@ class InboundClientIPResource extends Resource
 
     public static function table(Table $table): Table
     {
-        return $table
+        $table = $table
             ->columns([
                 TextColumn::make('client_email')
                     ->label('Client Email')
@@ -122,7 +125,6 @@ class InboundClientIPResource extends Resource
                         $types = [];
                         if ($ipv4Count > 0) $types[] = "IPv4: {$ipv4Count}";
                         if ($ipv6Count > 0) $types[] = "IPv6: {$ipv6Count}";
-
                         return implode(', ', $types) ?: 'Invalid IPs';
                     })
                     ->badge()
@@ -234,7 +236,7 @@ class InboundClientIPResource extends Resource
                     DeleteBulkAction::make()
                         ->tooltip('Delete selected IP records'),
 
-                    Tables\Actions\BulkAction::make('validate_all_ips')
+                    BulkAction::make('validate_all_ips')
                         ->label('Validate All IPs')
                         ->icon('heroicon-o-shield-check')
                         ->color('info')
@@ -263,9 +265,16 @@ class InboundClientIPResource extends Resource
                         ->tooltip('Validate all IP addresses in selected records'),
                 ]),
             ])
-            ->defaultSort('created_at', 'desc')
-            ->striped()
-            ->paginated([10, 25, 50, 100]);
+            ->defaultSort('created_at', 'desc');
+
+        return \App\Filament\Concerns\HasPerformanceOptimizations::applyTablePreset($table, [
+            'defaultPage' => 25,
+            'empty' => [
+                'icon' => 'heroicon-o-globe-alt',
+                'heading' => 'No client IPs yet',
+                'description' => 'Add a record or adjust filters.',
+            ],
+        ]);
     }
 
     public static function getRelations(): array

@@ -4,8 +4,8 @@ namespace App\Filament\Customer\Pages;
 
 use Filament\Pages\Page;
 use Filament\Forms\Form;
-use Filament\Forms\Components\Section;
-use Filament\Forms\Components\Grid;
+use Filament\Schemas\Components\Section;
+use Filament\Schemas\Components\Grid;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\DatePicker;
 use Filament\Tables\Table;
@@ -13,7 +13,7 @@ use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Filters\Filter;
-use Filament\Tables\Actions\Action;
+use Filament\Actions\Action;
 use Filament\Actions\Action as PageAction;
 use Filament\Support\Enums\FontWeight;
 use Filament\Tables\Contracts\HasTable;
@@ -24,6 +24,7 @@ use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use App\Models\Server;
 use App\Models\ServerClient;
+use BackedEnum;
 use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\Customer;
@@ -37,9 +38,9 @@ class ServerMetrics extends Page implements HasTable, HasForms
     use InteractsWithTable;
     use InteractsWithForms;
 
-    protected static ?string $navigationIcon = 'heroicon-o-chart-bar';
+    protected static BackedEnum|string|null $navigationIcon = 'heroicon-o-chart-bar';
     protected static ?string $navigationLabel = 'Server Metrics';
-    protected static string $view = 'filament.customer.pages.server-metrics';
+    protected string $view = 'filament.customer.pages.server-metrics';
     protected static ?int $navigationSort = 6;
 
     public $selectedTimeRange = '7d';
@@ -594,7 +595,7 @@ class ServerMetrics extends Page implements HasTable, HasForms
                     }),
             ])
             ->bulkActions([
-                \Filament\Tables\Actions\BulkAction::make('test_all')
+                \Filament\Actions\BulkAction::make('test_all')
                     ->label('Test All Connections')
                     ->icon('heroicon-o-signal')
                     ->action(function (Collection $records) {

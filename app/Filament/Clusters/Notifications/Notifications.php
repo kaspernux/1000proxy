@@ -3,10 +3,11 @@
 namespace App\Filament\Clusters\Notifications;
 
 use Filament\Clusters\Cluster;
+use BackedEnum;
 
 class Notifications extends Cluster
 {
-    protected static ?string $navigationIcon = 'heroicon-o-bell-alert';
+    protected static BackedEnum|string|null $navigationIcon = 'heroicon-o-bell-alert';
     protected static ?string $navigationLabel = 'Notifications';
     protected static ?int $navigationSort = 90;
 

@@ -44,7 +44,7 @@ class ServerManagementService
                 $results['server_details'][] = [
                     'server_id' => $server->id,
                     'name' => $server->name,
-                    'location' => "{$server->country}, {$server->city}",
+                    'location' => $server->country,
                     'status' => $healthStatus['status'],
                     'response_time' => $healthStatus['response_time'],
                     'uptime_percentage' => $healthStatus['uptime_percentage'],
@@ -60,10 +60,10 @@ class ServerManagementService
                     $results['unhealthy_servers']++;
                 }
 
-                // Update server status in database
+                // Update server status in database (align column names)
                 $server->update([
                     'status' => $healthStatus['status'],
-                    'last_health_check' => now(),
+                    'last_health_check_at' => now(),
                     'response_time_ms' => $healthStatus['response_time'],
                     'uptime_percentage' => $healthStatus['uptime_percentage']
                 ]);
@@ -217,14 +217,12 @@ class ServerManagementService
      */
     public function provisionNewServer(array $provisioningData): array
     {
-        DB::beginTransaction();
-
+        \DB::beginTransaction();
         try {
             // Create server record
             $server = Server::create([
                 'name' => $provisioningData['name'],
                 'country' => $provisioningData['country'],
-                'city' => $provisioningData['city'],
                 'ip_address' => $provisioningData['ip_address'],
                 'panel_url' => $provisioningData['panel_url'],
                 'panel_username' => $provisioningData['panel_username'],
@@ -254,11 +252,10 @@ class ServerManagementService
             $server->update([
                 'status' => $healthCheck['status'],
                 'is_active' => $healthCheck['status'] === 'healthy',
-                'last_health_check' => now()
+                'last_health_check_at' => now()
             ]);
 
-            DB::commit();
-
+            \DB::commit();
             return [
                 'success' => true,
                 'server' => $server,
@@ -266,10 +263,8 @@ class ServerManagementService
                 'configuration_result' => $configResult,
                 'message' => 'Server provisioned successfully'
             ];
-
         } catch (\Exception $e) {
-            DB::rollBack();
-
+            \DB::rollBack();
             Log::error('Server provisioning failed', [
                 'error' => $e->getMessage(),
                 'provisioning_data' => $provisioningData
@@ -473,13 +468,14 @@ class ServerManagementService
      */
     public function getManagementDashboardData(): array
     {
-        $servers = Server::with(['plans', 'serverInbounds'])->get();
+    $servers = Server::with(['plans', 'inbounds'])->get();
 
         return [
             'summary' => [
                 'total_servers' => $servers->count(),
                 'active_servers' => $servers->where('is_active', true)->count(),
-                'healthy_servers' => $servers->where('status', 'healthy')->count(),
+                // health_status is the column that stores healthy/critical; status is up/down/paused
+                'healthy_servers' => $servers->where('health_status', 'healthy')->count(),
                 'servers_with_alerts' => $this->getServersWithAlerts()->count(),
                 'total_clients' => $this->getTotalActiveClients(),
                 'total_bandwidth_gb' => $this->getTotalBandwidthUsage(),
@@ -604,7 +600,7 @@ class ServerManagementService
                 'server_id' => $server->id,
                 'server_category_id' => $category->id,
                 'name' => "{$category->name} - {$server->name}",
-                'description' => "High-performance {$category->name} proxy service in {$server->city}, {$server->country}",
+                'description' => "High-performance {$category->name} proxy service in {$server->country}",
                 'price_monthly' => $this->getDefaultPrice($category->name),
                 'max_concurrent_connections' => $this->getDefaultConnections($category->name),
                 'bandwidth_limit_gb' => 100,
@@ -695,7 +691,7 @@ class ServerManagementService
     protected function getTotalActiveClients(): int
     {
         return Cache::remember('total_active_clients', now()->addMinutes(5), function() {
-            return Server::where('is_active', true)->sum('current_clients') ?? 0;
+            return Server::where('is_active', true)->sum('active_clients') ?? 0;
         });
     }
 
@@ -725,12 +721,13 @@ class ServerManagementService
     protected function getGeographicDistribution(Collection $servers): array
     {
         return $servers->groupBy('country')
-            ->map(function($countryServers, $country) {
+            ->map(function ($countryServers, $country) {
                 return [
                     'country' => $country,
                     'server_count' => $countryServers->count(),
-                    'healthy_count' => $countryServers->where('status', 'healthy')->count(),
-                    'cities' => $countryServers->pluck('city')->unique()->values()
+                    'healthy_count' => $countryServers->where('health_status', 'healthy')->count(),
+                    // No city column; keep key for compatibility but ensure it's a plain array for Blade implode()
+                    'cities' => [],
                 ];
             })
             ->values()
@@ -759,7 +756,17 @@ class ServerManagementService
             ->orderByDesc('uptime_percentage')
             ->orderBy('response_time_ms')
             ->limit($limit)
-            ->get(['id', 'name', 'country', 'city', 'uptime_percentage', 'response_time_ms'])
+            ->get(['id', 'name', 'country', 'uptime_percentage', 'response_time_ms'])
+            ->map(function ($s) {
+                return [
+                    'id' => $s->id,
+                    'name' => $s->name,
+                    'country' => $s->country,
+                    'city' => null, // compatibility key for views
+                    'uptime_percentage' => $s->uptime_percentage,
+                    'response_time_ms' => $s->response_time_ms,
+                ];
+            })
             ->toArray();
     }
 
@@ -767,11 +774,23 @@ class ServerManagementService
     {
         return Server::where('is_active', true)
             ->where(function($query) {
-                $query->where('status', '!=', 'healthy')
+                // health_status reflects healthy/critical; status is up/down/paused
+                $query->where('health_status', '!=', 'healthy')
                       ->orWhere('uptime_percentage', '<', 99)
                       ->orWhere('response_time_ms', '>', 1000);
             })
-            ->get(['id', 'name', 'country', 'city', 'status', 'uptime_percentage', 'response_time_ms'])
+            ->get(['id', 'name', 'country', 'status', 'uptime_percentage', 'response_time_ms'])
+            ->map(function ($s) {
+                return [
+                    'id' => $s->id,
+                    'name' => $s->name,
+                    'country' => $s->country,
+                    'city' => null, // compatibility key for views
+                    'status' => $s->status,
+                    'uptime_percentage' => $s->uptime_percentage,
+                    'response_time_ms' => $s->response_time_ms,
+                ];
+            })
             ->toArray();
     }
 }

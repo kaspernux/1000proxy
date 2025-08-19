@@ -11,27 +11,28 @@ use App\Models\ServerPlan;
 use App\Models\OrderServerClient;
 use Filament\Forms;
 use Filament\Forms\Form;
+use Filament\Schemas\Schema;
 use Filament\Resources\Resource;
-use Filament\Forms\Components\Group;
-use Filament\Forms\Components\Section;
+use Filament\Schemas\Components\Group;
+use Filament\Schemas\Components\Section;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
-use Filament\Forms\Components\Grid;
+use Filament\Schemas\Components\Grid;
 use Filament\Forms\Components\Fieldset;
 use Filament\Forms\Components\Placeholder;
 use Filament\Tables;
 use Filament\Tables\Table;
-use Filament\Tables\Actions\DeleteBulkAction;
+use Filament\Actions\DeleteBulkAction;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Columns\BadgeColumn;
-use Filament\Tables\Actions\Action;
-use Filament\Tables\Actions\ActionGroup;
-use Filament\Tables\Actions\ViewAction;
-use Filament\Tables\Actions\EditAction;
-use Filament\Tables\Actions\DeleteAction;
-use Filament\Tables\Actions\BulkAction;
+use Filament\Actions\Action;
+use Filament\Actions\ActionGroup;
+use Filament\Actions\ViewAction;
+use Filament\Actions\EditAction;
+use Filament\Actions\DeleteAction;
+use Filament\Actions\BulkAction;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Filters\TernaryFilter;
 use Filament\Infolists\Infolist;
@@ -41,13 +42,21 @@ use Filament\Infolists\Components\IconEntry;
 use Filament\Notifications\Notification;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
+use BackedEnum;
 
 class OrderItemResource extends Resource
 {
     protected static ?string $model = OrderItem::class;
-    protected static ?string $navigationIcon = 'heroicon-o-shopping-cart';
+    protected static BackedEnum|string|null $navigationIcon = 'heroicon-o-shopping-cart';
     protected static ?string $cluster = ProxyShop::class;
     protected static ?int $navigationSort = 20;
+
+    public static function canAccess(): bool
+    {
+        $user = auth()->user();
+        // Allow support roles to view order items; mutations controlled by policies
+        return (bool) ($user?->isAdmin() || $user?->isManager() || $user?->isSupportManager() || $user?->isSalesSupport());
+    }
 
     public static function getLabel(): string
     {
@@ -69,9 +78,9 @@ class OrderItemResource extends Resource
         return $incompleteCount > 0 ? (string) $incompleteCount : null;
     }
 
-    public static function form(Forms\Form $form): Forms\Form
+    public static function form(Schema $schema): Schema
     {
-        return $form
+        return $schema
             ->schema([
                 Tabs::make('Order Item Details')
                     ->tabs([
@@ -418,7 +427,7 @@ class OrderItemResource extends Resource
                     ->icon('heroicon-m-ellipsis-vertical'),
             ])
             ->bulkActions([
-                Tables\Actions\BulkActionGroup::make([
+                \Filament\Actions\BulkActionGroup::make([
                     BulkAction::make('mark_agent_bought')
                         ->label('Mark as Agent Purchase')
                         ->icon('heroicon-o-user-plus')
@@ -467,9 +476,9 @@ class OrderItemResource extends Resource
             );
     }
 
-    public static function infolist(Infolist $infolist): Infolist
+    public static function infolist(Schema $schema): Schema
     {
-        return $infolist
+        return $schema
             ->schema([
                 \Filament\Infolists\Components\Tabs::make('Order Item Details')->tabs([
                     \Filament\Infolists\Components\Tabs\Tab::make('Overview')

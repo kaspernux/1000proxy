@@ -17,20 +17,21 @@ use App\Filament\Customer\Widgets\CustomerRecentOrdersWidget;
 use App\Models\Wallet;
 use App\Models\Order;
 use App\Models\ServerClient;
+use BackedEnum;
 
 class Dashboard extends Page
 {
 
-    protected static ?string $navigationIcon = 'heroicon-o-home';
+    protected static BackedEnum|string|null $navigationIcon = 'heroicon-o-home';
     protected static ?string $title      = 'Dashboard';
-    protected static string $view = 'filament.customer.pages.dashboard';
+    protected string $view = 'filament.customer.pages.dashboard';
     protected static ?int $navigationSort = 1;
     protected static bool $shouldRegisterNavigation = true; // explicit
 
     /**
-     * @return int|string|array<string,int|string|null>
+     * @return array<string,int>|int
      */
-    public function getColumns(): int|string|array
+    public function getColumns(): array|int
     {
         return [ 'md' => 2, 'xl' => 3 ];
     }

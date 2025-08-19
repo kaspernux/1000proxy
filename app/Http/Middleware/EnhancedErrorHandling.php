@@ -167,6 +167,11 @@ class EnhancedErrorHandling
         $statusCode = $this->getStatusCode($e);
         $message = $this->getErrorMessage($e, $request);
 
+        // For authorization failures, return a 403 response (no redirect), as tests expect.
+        if ($statusCode === 403) {
+            return response($message ?: 'Forbidden.', 403);
+        }
+
         // Set flash message for web responses
         session()->flash('error', $message);
 

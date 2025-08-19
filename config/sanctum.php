@@ -18,7 +18,8 @@ return [
     'stateful' => explode(',', env('SANCTUM_STATEFUL_DOMAINS', sprintf(
         '%s%s',
         'localhost,localhost:3000,127.0.0.1,127.0.0.1:8000,::1',
-        Sanctum::currentApplicationUrlWithPort()
+        Sanctum::currentApplicationUrlWithPort(),
+        // Sanctum::currentRequestHost(),
     ))),
 
     /*
@@ -33,10 +34,7 @@ return [
     |
     */
 
-    // Important: Only include session-based guards here to avoid recursion.
-    // Sanctum will fall back to personal access tokens automatically.
-    // Never list sanctum-driven guards (like 'api' or 'customer_api') here.
-    'guard' => ['web', 'customer'],
+    'guard' => ['web'],
 
     /*
     |--------------------------------------------------------------------------

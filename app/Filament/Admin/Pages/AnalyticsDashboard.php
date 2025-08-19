@@ -5,13 +5,14 @@ namespace App\Filament\Admin\Pages;
 use Filament\Pages\Page;
 use Illuminate\Support\Facades\Cache;
 use App\Services\BusinessIntelligenceService;
+use BackedEnum;
 
 class AnalyticsDashboard extends Page
 {
-    protected static ?string $navigationIcon = 'heroicon-o-chart-bar-square';
+    protected static BackedEnum|string|null $navigationIcon = 'heroicon-o-chart-bar-square';
     protected static ?string $navigationLabel = 'Analytics Dashboard';
-    protected static string $view = 'filament.admin.pages.analytics-dashboard';
-    protected static ?int $navigationSort = 2;
+    protected string $view = 'filament.admin.pages.analytics-dashboard';
+    protected static ?int $navigationSort = 6;
     protected static ?string $slug = 'analytics';
 
     public $timeRange = '30d';
@@ -19,6 +20,12 @@ class AnalyticsDashboard extends Page
     public $analyticsData = [];
     public $paymentMethodFilter = '';
     public $planFilter = '';
+
+    public static function canAccess(): bool
+    {
+        $user = auth()->user();
+        return $user && $user->canViewReports();
+    }
 
     public function mount(): void
     {
@@ -124,7 +131,96 @@ class AnalyticsDashboard extends Page
             'revenue' => $raw['data']['revenue'] ?? [],
             'users' => $raw['data']['users'] ?? [],
             'servers' => $raw['data']['servers'] ?? [],
-            'performance' => $raw['data']['performance'] ?? [],
+            // Normalize performance metrics to expected structure for blade
+            'performance' => (function () use ($raw) {
+                $perf = $raw['data']['performance'] ?? [];
+                if (empty($perf) || !is_array($perf)) return [];
+
+                $normalized = [];
+                foreach ($perf as $key => $val) {
+                    // If already in expected structure
+                    if (is_array($val) && array_key_exists('value', $val)) {
+                        $normalized[$key] = [
+                            'value' => $val['value'],
+                            'unit' => $val['unit'] ?? '',
+                            'status' => $val['status'] ?? 'good',
+                        ];
+                        continue;
+                    }
+
+                    // Map known collections to a single representative metric
+                    switch ($key) {
+                        case 'response_times':
+                            // Expect array like ['api'=>ms, 'database'=>ms, 'cache'=>ms]
+                            $api = is_array($val) ? ($val['api'] ?? null) : null;
+                            $value = is_numeric($api) ? (int)$api : (is_numeric($val) ? (int)$val : 0);
+                            $normalized['response_time'] = [
+                                'value' => $value,
+                                'unit' => 'ms',
+                                'status' => $value <= 300 ? 'good' : 'warning',
+                            ];
+                            break;
+                        case 'error_rates':
+                            // Sum 4xx/5xx/timeouts as a proxy percentage
+                            $sum = 0;
+                            if (is_array($val)) {
+                                foreach ($val as $v) { $sum += is_numeric($v) ? (float)$v : 0; }
+                            } elseif (is_numeric($val)) {
+                                $sum = (float)$val;
+                            }
+                            $normalized['error_rate'] = [
+                                'value' => round($sum, 2),
+                                'unit' => '%',
+                                'status' => $sum < 5 ? 'good' : 'warning',
+                            ];
+                            break;
+                        case 'api_usage':
+                            $req = is_array($val) ? ($val['total_requests'] ?? 0) : (is_numeric($val) ? (int)$val : 0);
+                            $normalized['api_requests'] = [
+                                'value' => (int)$req,
+                                'unit' => '',
+                                'status' => 'good',
+                            ];
+                            break;
+                        case 'database_performance':
+                            $qt = is_array($val) ? ($val['query_time'] ?? null) : null;
+                            $value = is_numeric($qt) ? (int)$qt : (is_numeric($val) ? (int)$val : 0);
+                            $normalized['db_query_time'] = [
+                                'value' => $value,
+                                'unit' => 'ms',
+                                'status' => $value <= 300 ? 'good' : 'warning',
+                            ];
+                            break;
+                        case 'cache_hit_rate':
+                            $value = is_numeric($val) ? (float)$val : 0;
+                            $normalized['cache_hit_rate'] = [
+                                'value' => round($value, 1),
+                                'unit' => '%',
+                                'status' => $value >= 85 ? 'good' : 'warning',
+                            ];
+                            break;
+                        case 'system_load':
+                            $cpu = is_array($val) ? ($val['cpu'] ?? null) : null;
+                            $value = is_numeric($cpu) ? (int)$cpu : (is_numeric($val) ? (int)$val : 0);
+                            $normalized['system_cpu'] = [
+                                'value' => $value,
+                                'unit' => '%',
+                                'status' => $value <= 80 ? 'good' : 'warning',
+                            ];
+                            break;
+                        default:
+                            // Fallback for unknown keys
+                            $scalar = is_numeric($val) ? $val : (is_array($val) ? (reset($val) ?: 0) : 0);
+                            $normalized[$key] = [
+                                'value' => (float)$scalar,
+                                'unit' => '',
+                                'status' => 'good',
+                            ];
+                    }
+                }
+
+                return $normalized;
+            })(),
             'forecasting' => $raw['data']['forecasts'] ?? [],
             // Transform raw segment arrays into simple counts for legacy blade
             'segmentation' => (function () use ($raw) {
@@ -145,6 +241,35 @@ class AnalyticsDashboard extends Page
                 'churned_customers' => count($raw['data']['segments']['segments']['churned_customers'] ?? []),
             ],
         ];
+
+        // Normalize users block for blade expectations
+        if (isset($data['users']) && is_array($data['users'])) {
+            // Inject activity_rate if missing (active vs total users)
+            if (!isset($data['users']['activity_rate'])) {
+                $total = (int)($data['users']['total_users'] ?? 0);
+                $active = (int)($data['users']['active_users'] ?? 0);
+                $data['users']['activity_rate'] = $total > 0 ? round(($active / $total) * 100, 2) : 0;
+            }
+
+            // Normalize daily_registrations to have formatted_date and count fields
+            if (isset($data['users']['daily_registrations']) && is_iterable($data['users']['daily_registrations'])) {
+                $daily = [];
+                foreach ($data['users']['daily_registrations'] as $date => $value) {
+                    if (is_array($value) && isset($value['date'])) {
+                        $daily[] = $value;
+                    } else {
+                        $count = is_array($value) ? ($value['registrations'] ?? $value['count'] ?? 0) : ($value->registrations ?? $value->count ?? 0);
+                        $daily[] = [
+                            'date' => is_string($date) ? $date : ($value['date'] ?? now()->toDateString()),
+                            'formatted_date' => \Carbon\Carbon::parse(is_string($date) ? $date : ($value['date'] ?? now()))->format('M j'),
+                            'count' => (int) $count,
+                        ];
+                    }
+                }
+                usort($daily, fn($a, $b) => strcmp($a['date'], $b['date']));
+                $data['users']['daily_registrations'] = $daily;
+            }
+        }
 
         // Normalize revenue daily series for blade (expects array with formatted_date)
         if (isset($data['revenue']['daily_revenue']) && is_iterable($data['revenue']['daily_revenue'])) {

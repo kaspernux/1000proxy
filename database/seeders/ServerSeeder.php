@@ -39,7 +39,7 @@ class ServerSeeder extends Seeder
             'Singapore' => 'SG',
         ];
 
-        foreach ($countries as $country) {
+    foreach ($countries as $country) {
             foreach ($brands->take(2) as $brand) { // 2 brands per country
                 foreach ($categories->take(2) as $category) { // 2 categories per brand
                     $server = Server::create([
@@ -105,6 +105,42 @@ class ServerSeeder extends Seeder
                 }
                 }
             }
+        }
+
+    // Create the real live X-UI server with provided credentials
+    $this->command->info('Seeding the live Amsterdam X-UI server...');
+        $liveBrand = ServerBrand::where('slug', 'proxy-titan')->first() ?: $brands->first();
+        $liveCategory = ServerCategory::where('slug', 'streaming')->first() ?: $categories->first();
+
+        if ($liveBrand && $liveCategory) {
+            $liveServer = Server::updateOrCreate(
+                [
+                    'host' => 'amsterdam.1000proxy.me',
+                    'panel_port' => 1111,
+                ],
+                [
+                    'name' => 'Amsterdam #1',
+                    'server_brand_id' => $liveBrand->id,
+                    'server_category_id' => $liveCategory->id,
+                    'username' => '72A0Wvvv7o',
+                    'password' => 'nyMT9YSIym',
+                    'web_base_path' => '/proxy',
+                    'panel_url' => 'http://amsterdam.1000proxy.me:1111/proxy',
+                    'country' => 'Netherlands',
+                    'status' => 'up',
+                    'ip' => '0.0.0.0',
+                    'port' => 443,
+                    'api_version' => '3x-ui',
+                    'api_capabilities' => ['login','inbounds','clients','traffic'],
+                    'auto_provisioning' => true,
+                    'auto_sync_enabled' => true,
+                    'sync_interval_minutes' => 5,
+                ]
+            );
+
+            // Plans for the live server are seeded by ServerPlanSeeder to avoid duplication
+        } else {
+            $this->command->warn('Live server seeding skipped: missing brand or category.');
         }
 
         $this->command->info('Created servers and server plans successfully!');

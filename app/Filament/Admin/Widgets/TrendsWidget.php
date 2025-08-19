@@ -8,7 +8,7 @@ use Illuminate\Support\Facades\Cache;
 
 class TrendsWidget extends ChartWidget
 {
-    protected static ?string $heading = 'Key Trends';
+    protected ?string $heading = 'Key Trends';
     protected static ?int $sort = 12;
     protected int|string|array $columnSpan = 'full';
 

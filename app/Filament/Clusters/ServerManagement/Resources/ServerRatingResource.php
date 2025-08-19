@@ -8,33 +8,44 @@ use App\Filament\Clusters\ServerManagement\Resources\ServerRatingResource\Relati
 use App\Models\ServerRating;
 use Filament\Forms;
 use Filament\Forms\Form;
+use Filament\Schemas\Schema;
+use BackedEnum;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\SoftDeletingScope;
+use App\Filament\Concerns\HasPerformanceOptimizations;
 
 class ServerRatingResource extends Resource
     {
+    use HasPerformanceOptimizations;
     protected static ?string $model = ServerRating::class;
 
-    protected static ?string $navigationIcon = 'heroicon-o-star';
+    protected static string | BackedEnum | null $navigationIcon = 'heroicon-o-star';
 
     protected static ?int $navigationSort = 10;
 
     protected static ?string $cluster = ServerManagement::class;
+
+    public static function canAccess(): bool
+    {
+        $user = auth()->user();
+        return (bool) ($user?->isAdmin() || $user?->isManager() || $user?->isSupportManager());
+    }
 
     public static function getLabel(): string
     {
         return 'Ratings';
     }
 
-    public static function form(Form $form): Form
+    public static function form(Schema $schema): Schema
         {
-        return $form
+        return $schema
             ->schema([
                 Forms\Components\Group::make([
                     Forms\Components\Section::make('Server and Customer Details')
+                        ->description('Select the server and customer this rating applies to')
                         ->schema([
                             Forms\Components\Select::make('server_id')
                                 ->relationship('server', 'name')
@@ -53,6 +64,7 @@ class ServerRatingResource extends Resource
 
                 Forms\Components\Group::make([
                     Forms\Components\Section::make('Rating Information')
+                        ->description('Provide a rating from 1 to 5 (decimals allowed)')
                         ->schema([
                             Forms\Components\TextInput::make('rating')
                                 ->required()
@@ -64,7 +76,7 @@ class ServerRatingResource extends Resource
 
     public static function table(Table $table): Table
         {
-        return $table
+        $table = $table
             ->columns([
                 Tables\Columns\TextColumn::make('server.name')
                     ->numeric()
@@ -88,17 +100,27 @@ class ServerRatingResource extends Resource
                 //
             ])
             ->actions([
-                Tables\Actions\ActionGroup::make([
-                    Tables\Actions\EditAction::make(),
-                    Tables\Actions\ViewAction::make(),
-                    Tables\Actions\DeleteAction::make(),
+                \Filament\Actions\ActionGroup::make([
+                    \Filament\Actions\EditAction::make(),
+                    \Filament\Actions\ViewAction::make(),
+                    \Filament\Actions\DeleteAction::make(),
                 ]),
             ])
             ->bulkActions([
-                Tables\Actions\BulkActionGroup::make([
-                    Tables\Actions\DeleteBulkAction::make(),
+                \Filament\Actions\BulkActionGroup::make([
+                    \Filament\Actions\DeleteBulkAction::make(),
                 ]),
-            ]);
+            ])
+            ->defaultSort('created_at', 'desc');
+
+        return self::applyTablePreset($table, [
+            'defaultPage' => 25,
+            'empty' => [
+                'icon' => 'heroicon-o-star',
+                'heading' => 'No ratings found',
+                'description' => 'Ratings appear after customers review a server.',
+            ],
+        ]);
         }
 
     public static function getRelations(): array

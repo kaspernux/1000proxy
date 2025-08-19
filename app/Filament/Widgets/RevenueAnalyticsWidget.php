@@ -11,13 +11,13 @@ use Illuminate\Support\Facades\Cache;
 
 class RevenueAnalyticsWidget extends ChartWidget
 {
-    protected static ?string $heading = 'Revenue Analytics';
+    protected ?string $heading = 'Revenue Analytics';
 
     protected static ?int $sort = 2;
 
     protected int | string | array $columnSpan = 2;
 
-    protected static ?string $pollingInterval = '60s';
+    protected ?string $pollingInterval = '60s';
 
     public ?string $filter = 'today';
 

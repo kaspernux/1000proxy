@@ -14,7 +14,9 @@ return [
     |
     */
 
-    'default' => env('MAIL_MAILER', 'mailcoach'),
+    // Default to log in production-like environments to avoid misconfigured transports,
+    // tests override via phpunit.xml to 'array'.
+    'default' => env('MAIL_MAILER', env('APP_ENV') === 'production' ? 'smtp' : 'log'),
 
     /*
     |--------------------------------------------------------------------------
@@ -129,5 +131,9 @@ return [
             resource_path('views/emails'), // fallback path for custom mail templates
         ],
     ],
+
+    // Dedicated mailer for health alerts to avoid outages when primary SMTP is down.
+    // Set HEALTH_MAILER=log or failover in .env. Defaults to 'failover'.
+    'health_mailer' => env('HEALTH_MAILER', 'failover'),
 
 ];

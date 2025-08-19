@@ -6,8 +6,10 @@ use App\Filament\Clusters\CustomerManagement;
 use App\Filament\Clusters\CustomerManagement\Resources\SubscriptionResource\Pages;
 use App\Filament\Clusters\CustomerManagement\Resources\SubscriptionResource\RelationManagers;
 use App\Models\Subscription;
+use BackedEnum;
 use Filament\Forms;
 use Filament\Forms\Form;
+use Filament\Schemas\Schema;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
@@ -18,19 +20,25 @@ class SubscriptionResource extends Resource
     {
     protected static ?string $model = Subscription::class;
 
-    protected static ?string $navigationIcon = 'heroicon-o-ticket';
+    protected static BackedEnum|string|null $navigationIcon = 'heroicon-o-ticket';
 
     protected static ?string $cluster = CustomerManagement::class;
 
-    public static function form(Form $form): Form
+    public static function canAccess(): bool
+    {
+        $user = auth()->user();
+        return (bool) ($user?->isAdmin() || $user?->isManager() || $user?->isSupportManager());
+    }
+
+    public static function form(Schema $schema): Schema
         {
-        return $form
+        return $schema
             ->schema([
                 Forms\Components\Group::make([
                     Forms\Components\Section::make('Subscription Details')
                         ->schema([
-                            Forms\Components\Select::make('user_id')
-                                ->relationship('user', 'name')
+                            Forms\Components\Select::make('customer_id')
+                                ->relationship('customer', 'name')
                                 ->required()
                                 ->columnSpan(2),
                             Forms\Components\TextInput::make('quantity')
@@ -70,7 +78,7 @@ class SubscriptionResource extends Resource
         {
         return $table
             ->columns([
-                Tables\Columns\TextColumn::make('user.name')
+                Tables\Columns\TextColumn::make('customer.name')
                     ->numeric()
                     ->sortable(),
                 Tables\Columns\TextColumn::make('name')
@@ -103,15 +111,15 @@ class SubscriptionResource extends Resource
                 //
             ])
             ->actions([
-                Tables\Actions\ActionGroup::make([
-                    Tables\Actions\EditAction::make(),
-                    Tables\Actions\ViewAction::make(),
-                    Tables\Actions\DeleteAction::make(),
+                \Filament\Actions\ActionGroup::make([
+                    \Filament\Actions\EditAction::make(),
+                    \Filament\Actions\ViewAction::make(),
+                    \Filament\Actions\DeleteAction::make(),
                 ]),
             ])
             ->bulkActions([
-                Tables\Actions\BulkActionGroup::make([
-                    Tables\Actions\DeleteBulkAction::make(),
+                \Filament\Actions\BulkActionGroup::make([
+                    \Filament\Actions\DeleteBulkAction::make(),
                 ]),
             ]);
         }

@@ -8,7 +8,7 @@ use Illuminate\Support\Facades\Cache;
 
 class UserGrowthChartWidget extends ChartWidget
 {
-    protected static ?string $heading = 'User Registration Trend';
+    protected ?string $heading = 'User Registration Trend';
 
     protected static ?int $sort = 2;
 

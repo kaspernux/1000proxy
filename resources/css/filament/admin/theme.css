@@ -1,0 +1,4 @@
+/* Minimal Filament Admin theme (Tailwind v4 CSS-first) */
+@import "tailwindcss";
+
+/* Keep tweaks scoped and minimal. Avoid global overrides. */

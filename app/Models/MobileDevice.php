@@ -13,7 +13,7 @@ class MobileDevice extends Model
     use HasFactory;
 
     protected $fillable = [
-        'user_id',
+        'customer_id',
         'device_identifier',
         'device_name',
         'device_type',
@@ -41,9 +41,9 @@ class MobileDevice extends Model
         'offline_data_size' => 'integer'
     ];
 
-    public function user(): BelongsTo
+    public function customer(): BelongsTo
     {
-        return $this->belongsTo(User::class);
+        return $this->belongsTo(Customer::class);
     }
 
     public function sessions(): HasMany

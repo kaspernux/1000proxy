@@ -12,13 +12,14 @@ use App\Models\PaymentMethod;
 use App\Models\WalletTransaction;
 use Filament\Forms;
 use Filament\Forms\Form;
+use Filament\Schemas\Schema;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\SoftDeletingScope;
-use Filament\Forms\Components\Group;
-use Filament\Forms\Components\Section;
+use Filament\Schemas\Components\Group;
+use Filament\Schemas\Components\Section;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\MarkdownEditor;
@@ -29,11 +30,11 @@ use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\ToggleButtons;
 use Filament\Support\RawJs;
 use Illuminate\Support\Str;
-use Filament\Tables\Actions;
+// use Filament\Tables\Actions; // Deprecated in Filament v4; use \Filament\Actions instead
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Columns\BadgeColumn;
 use Filament\Tables\Columns\IconColumn;
-use Filament\Tables\Actions\DeleteBulkAction;
+use Filament\Actions\DeleteBulkAction;
 use Filament\Forms\Components\SelectColumn;
 use GuzzleHttp\Client;
 use Filament\Forms\Components\Toggle;
@@ -41,26 +42,26 @@ use Filament\Forms\Components\Grid;
 use Filament\Forms\Components\Fieldset;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\DateTimePicker;
-use Filament\Tables\Actions\Action;
-use Filament\Tables\Actions\ActionGroup;
-use Filament\Tables\Actions\ViewAction;
-use Filament\Tables\Actions\EditAction;
-use Filament\Tables\Actions\DeleteAction;
-use Filament\Tables\Actions\BulkAction;
+use Filament\Actions\Action;
+use Filament\Actions\ActionGroup;
+use Filament\Actions\ViewAction;
+use Filament\Actions\EditAction;
+use Filament\Actions\DeleteAction;
+use Filament\Actions\BulkAction;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Filters\TernaryFilter;
 use Filament\Tables\Filters\Filter;
-use Filament\Infolists\Infolist;
 use Filament\Infolists\Components\Tabs;
 use Filament\Infolists\Components\TextEntry;
 use Filament\Infolists\Components\IconEntry;
 use Filament\Notifications\Notification;
 use Illuminate\Support\Collection;
+use BackedEnum;
 
 class InvoiceResource extends Resource
 {
     protected static ?string $model = Invoice::class;
-    protected static ?string $navigationIcon = 'heroicon-o-banknotes';
+    protected static BackedEnum|string|null $navigationIcon = 'heroicon-o-banknotes';
     protected static ?string $cluster = ProxyShop::class;
     protected static ?int $navigationSort = 30;
 
@@ -84,9 +85,9 @@ class InvoiceResource extends Resource
         return $pendingCount > 0 ? (string) $pendingCount : null;
     }
 
-    public static function form(Form $form): Form
+    public static function form(Schema $schema): Schema
     {
-        return $form
+        return $schema
             ->schema([
                 Tabs::make('Invoice Management')
                     ->tabs([
@@ -596,7 +597,7 @@ class InvoiceResource extends Resource
                     ->icon('heroicon-m-ellipsis-vertical'),
             ])
             ->bulkActions([
-                Tables\Actions\BulkActionGroup::make([
+                \Filament\Actions\BulkActionGroup::make([
                     BulkAction::make('mark_paid')
                         ->label('Mark as Paid')
                         ->icon('heroicon-o-check-circle')
@@ -645,9 +646,9 @@ class InvoiceResource extends Resource
             );
     }
 
-    public static function infolist(Infolist $infolist): Infolist
+    public static function infolist(Schema $schema): Schema
     {
-        return $infolist
+        return $schema
             ->schema([
                 \Filament\Infolists\Components\Tabs::make('Invoice Details')->tabs([
                     \Filament\Infolists\Components\Tabs\Tab::make('Overview')

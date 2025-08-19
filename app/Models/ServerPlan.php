@@ -19,9 +19,8 @@ class ServerPlan extends Model
         'server_id',
         'server_brand_id',        // Brand relationship for filtering
         'server_category_id',     // Category relationship for filtering
-    // Legacy compatibility aliases accepted during create/update
-    'brand_id',               // mapped to server_brand_id via mutator
-    'category_id',            // mapped to server_category_id via mutator
+        'brand_id',               // mapped to server_brand_id via mutator
+        'category_id',            // mapped to server_category_id via mutator
         'name',
         'slug',
         'product_image',
@@ -47,7 +46,6 @@ class ServerPlan extends Model
         'trial_days',
         'setup_fee',
         'renewable',
-        // Advanced filtering fields
         'country_code',           // ISO country code for location filtering
         'region',                 // Region/state for location filtering
         'protocol',               // Protocol type for filtering
@@ -55,15 +53,14 @@ class ServerPlan extends Model
         'supports_ipv6',          // IPv6 support for filtering
         'popularity_score',       // Popularity for sorting
         'server_status',          // Server status for filtering
-    // Legacy / compatibility fields referenced in tests & docs
-    'duration_days',          // Mirror of days for clarity
-    'max_connections',        // Legacy naming for concurrent_connections
-    'bandwidth_limit_gb',     // Legacy naming for data_limit_gb
+        'duration_days',          // Mirror of days for clarity
+        'max_connections',        // Legacy naming for concurrent_connections
+        'bandwidth_limit_gb',     // Legacy naming for data_limit_gb
     ];
 
     protected $casts = [
-    // Ensure primary key is consistently treated as integer for strict comparisons in tests
-    'id' => 'integer',
+        // Ensure primary key is consistently treated as integer for strict comparisons in tests
+        'id' => 'integer',
         'is_active' => 'boolean',
         'is_featured' => 'boolean',
         'is_popular' => 'boolean',
@@ -79,9 +76,9 @@ class ServerPlan extends Model
         'data_limit_gb' => 'decimal:2',
         'popularity_score' => 'integer',
         'bandwidth_mbps' => 'integer',
-    'duration_days' => 'integer',
-    'max_connections' => 'integer',
-    'bandwidth_limit_gb' => 'integer',
+        'duration_days' => 'integer',
+        'max_connections' => 'integer',
+        'bandwidth_limit_gb' => 'integer',
     ];
 
     /**

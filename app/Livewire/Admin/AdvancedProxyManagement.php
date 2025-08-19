@@ -396,7 +396,7 @@ class AdvancedProxyManagement extends Component
     {
         if (!$this->selectedUserId) return collect();
 
-        return Order::where('user_id', $this->selectedUserId)
+    return Order::where('customer_id', $this->selectedUserId)
                    ->where('payment_status', 'paid')
                    ->where('status', 'active')
                    ->with(['serverPlan.server'])

@@ -55,8 +55,9 @@ class CacheService
         return Cache::remember($cacheKey, self::CACHE_DURATION_SHORT, function () use ($serverId) {
             return [
                 'total_clients' => ServerClient::where('server_id', $serverId)->count(),
+                // Active clients are those with lifecycle status 'active'
                 'active_clients' => ServerClient::where('server_id', $serverId)
-                    ->where('is_active', true)
+                    ->where('status', 'active')
                     ->count(),
                 // Sum computed bandwidth (traffic_used_mb OR derived from remote_up/down)
                 'total_bandwidth_mb' => ServerClient::where('server_id', $serverId)
@@ -68,14 +69,15 @@ class CacheService
     }
 
     /**
-     * Get user's server clients with caching
+     * Get a customer's server clients with caching (legacy key uses userId).
+     * Uses ServerClient::scopeWhereUserId to map to customer_id for compatibility.
      */
     public function getUserServerClients(int $userId): \Illuminate\Support\Collection
     {
         $cacheKey = "user_server_clients_{$userId}";
 
         return Cache::remember($cacheKey, self::CACHE_DURATION_SHORT, function () use ($userId) {
-            return ServerClient::where('user_id', $userId)
+            return ServerClient::whereUserId($userId)
                 ->with(['server', 'serverPlan', 'order'])
                 ->orderBy('created_at', 'desc')
                 ->get();
@@ -102,7 +104,7 @@ class CacheService
                     ->whereYear('created_at', now()->year)
                     ->sum('grand_amount'),
                 'active_clients' => DB::table('server_clients')
-                    ->where('is_active', true)
+                    ->where('status', 'active')
                     ->count(),
             ];
         });

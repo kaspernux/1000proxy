@@ -41,11 +41,9 @@ class PaymentProcessorTest extends TestCase
     {
         parent::setUp();
 
-        // Create test user and customer
-        $this->user = User::factory()->create();
-        $this->customer = Customer::factory()->create([
-            'user_id' => $this->user->id
-        ]);
+    // Create test user and customer (no linkage on customer)
+    $this->user = User::factory()->create();
+    $this->customer = Customer::factory()->create();
 
         // Create test data
         $this->createTestData();

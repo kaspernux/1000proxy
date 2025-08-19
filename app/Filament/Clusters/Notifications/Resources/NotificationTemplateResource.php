@@ -2,9 +2,12 @@
 
 namespace App\Filament\Clusters\Notifications\Resources;
 
+use UnitEnum;
+use BackedEnum;
 use App\Models\NotificationTemplate;
 use Filament\Forms;
 use Filament\Forms\Form;
+use Filament\Schemas\Schema;
 use Filament\Tables;
 use Filament\Tables\Table;
 use Filament\Resources\Resource;
@@ -14,9 +17,9 @@ class NotificationTemplateResource extends Resource
 {
     protected static ?string $model = NotificationTemplate::class;
 
-    protected static ?string $navigationIcon = 'heroicon-o-bell';
+    protected static BackedEnum|string|null $navigationIcon = 'heroicon-o-bell';
     protected static ?string $navigationLabel = 'Notification Templates';
-    protected static ?string $navigationGroup = 'Notifications';
+    protected static UnitEnum|string|null $navigationGroup = 'Notifications';
 
     public static function canViewAny(): bool
     {
@@ -48,9 +51,9 @@ class NotificationTemplateResource extends Resource
         return $user && in_array($user->role, ['admin']);
     }
 
-    public static function form(Form $form): Form
+    public static function form(Schema $schema): Schema
     {
-        return $form->schema([
+        return $schema->schema([
             Forms\Components\Grid::make(2)->schema([
                 Forms\Components\TextInput::make('key')->required()->maxLength(100)->unique(ignoreRecord: true),
                 Forms\Components\TextInput::make('name')->required()->maxLength(150),
@@ -94,12 +97,12 @@ class NotificationTemplateResource extends Resource
                 Tables\Filters\TrashedFilter::make()->hidden(),
             ])
             ->actions([
-                Tables\Actions\EditAction::make(),
-                Tables\Actions\DeleteAction::make(),
+                \Filament\Actions\EditAction::make(),
+                \Filament\Actions\DeleteAction::make(),
             ])
             ->bulkActions([
-                Tables\Actions\BulkActionGroup::make([
-                    Tables\Actions\DeleteBulkAction::make(),
+                \Filament\Actions\BulkActionGroup::make([
+                    \Filament\Actions\DeleteBulkAction::make(),
                 ]),
             ]);
     }

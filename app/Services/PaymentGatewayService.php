@@ -37,9 +37,9 @@ class PaymentGatewayService
     }
 
     /**
-     * Get available payment methods for a user
+     * Get available payment methods for a customer
      */
-    public function getAvailablePaymentMethods(User $user, string $currency = 'USD'): array
+    public function getAvailablePaymentMethods(Customer $customer, string $currency = 'USD'): array
     {
         try {
             $availableMethods = [];
@@ -210,7 +210,7 @@ class PaymentGatewayService
     }
 
     /**
-     * Check if gateway is available for user location
+     * Check if gateway is available for customer location
      */
     protected function isGatewayAvailable(string $gateway, ?string $location): bool
     {
@@ -253,11 +253,11 @@ class PaymentGatewayService
     }
 
     /**
-     * Get optimal payment method for user
+     * Get optimal payment method for customer
      */
-    public function getOptimalPaymentMethod(User $user, float $amount, string $currency = 'USD'): ?array
+    public function getOptimalPaymentMethod(Customer $customer, float $amount, string $currency = 'USD'): ?array
     {
-        $availableMethods = $this->getAvailablePaymentMethods($user, $currency);
+        $availableMethods = $this->getAvailablePaymentMethods($customer, $currency);
 
         if (empty($availableMethods)) {
             return null;
@@ -1508,8 +1508,8 @@ class PaymentGatewayService
             if ($order && $order->customer) {
                 // Send payment failed notification
                 $this->mailService->sendPaymentFailedEmail(
-                    // Maintain signature with User type by constructing a lightweight object
-                    new \App\Models\User(['email' => $order->customer->email, 'name' => $order->customer->name, 'id' => 0]),
+                    // Maintain signature with Customer type by constructing a lightweight object
+                    new \App\Models\Customer(['email' => $order->customer->email, 'name' => $order->customer->name, 'id' => 0]),
                     $paymentData['order_id'],
                     $paymentData['amount'] ?? 0,
                     $paymentResult['error'] ?? 'Payment processing failed'

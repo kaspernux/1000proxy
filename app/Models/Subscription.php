@@ -21,9 +21,9 @@ class Subscription extends Model
         'ends_at',
     ];
 
-    public function user(): BelongsTo
+    public function customer(): BelongsTo
         {
-        return $this->belongsTo(User::class);
+        return $this->belongsTo(Customer::class, 'customer_id');
         }
 
     public function isActive()

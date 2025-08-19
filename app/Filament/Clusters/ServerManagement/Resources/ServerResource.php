@@ -4,18 +4,20 @@ namespace App\Filament\Clusters\ServerManagement\Resources;
 
 use App\Filament\Clusters\ServerManagement\Resources\ServerResource\Pages;
 use App\Filament\Clusters\ServerManagement;
+use App\Filament\Concerns\HasPerformanceOptimizations;
 use App\Models\Server;
 use App\Models\ServerBrand;
 use App\Models\ServerCategory;
 use App\Services\XUIService;
 use Illuminate\Support\Facades\Log;
 use Filament\Forms;
-use Filament\Forms\Form;
+use Filament\Schemas\Schema;
+use BackedEnum;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
-use Filament\Forms\Components\Group;
-use Filament\Forms\Components\Section;
+use Filament\Schemas\Components\Group;
+use Filament\Schemas\Components\Section;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Textarea;
@@ -26,11 +28,12 @@ use Filament\Tables\Columns\BadgeColumn;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Filters\Filter;
-use Filament\Tables\Actions\Action;
-use Filament\Tables\Actions\EditAction;
-use Filament\Tables\Actions\ViewAction;
-use Filament\Tables\Actions\BulkActionGroup;
-use Filament\Tables\Actions\DeleteBulkAction;
+use Filament\Schemas\Components\Grid;
+use Filament\Actions\Action;
+use Filament\Actions\EditAction;
+use Filament\Actions\ViewAction;
+use Filament\Actions\BulkActionGroup;
+use Filament\Actions\DeleteBulkAction;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
 use Filament\Notifications\Notification;
@@ -39,11 +42,19 @@ use Illuminate\Support\Carbon;
 
 class ServerResource extends Resource
 {
+    use HasPerformanceOptimizations;
     protected static ?string $model = Server::class;
 
     protected static ?string $cluster = ServerManagement::class;
 
-    protected static ?string $navigationIcon = 'heroicon-o-server-stack';
+    public static function canAccess(): bool
+    {
+        $user = auth()->user();
+        // Admin/manager manage; support_manager can view per policy, sales_support no.
+        return (bool) ($user?->isAdmin() || $user?->isManager() || $user?->isSupportManager());
+    }
+
+    protected static string | BackedEnum | null $navigationIcon = 'heroicon-o-server-stack';
 
     protected static ?int $navigationSort = 1;
 
@@ -60,16 +71,16 @@ class ServerResource extends Resource
         return 'XUI Servers';
     }
 
-    public static function form(Form $form): Form
+    public static function form(Schema $schema): Schema
     {
-        return $form
+        return $schema
             ->schema([
                 Group::make()->schema([
                     Section::make('🔧 Basic Information')
                         ->description('Core server identification and categorization')
                         ->icon('heroicon-o-server')
                         ->schema([
-                            Forms\Components\Grid::make(2)->schema([
+                            Grid::make(2)->schema([
                                 TextInput::make('name')
                                     ->required()
                                     ->maxLength(255)
@@ -89,7 +100,7 @@ class ServerResource extends Resource
                                     ->helperText('Server physical location'),
                             ]),
 
-                            Forms\Components\Grid::make(2)->schema([
+                            Grid::make(2)->schema([
                                 Forms\Components\Select::make('server_category_id')
                                     ->label('Category')
                                     ->relationship('category', 'name')
@@ -115,7 +126,7 @@ class ServerResource extends Resource
                                 ->placeholder('Enter server description and features')
                                 ->helperText('Detailed server description and key features'),
 
-                            Forms\Components\Grid::make(2)->schema([
+                            Grid::make(2)->schema([
                                 TextInput::make('flag')
                                     ->maxLength(10)
                                     ->prefixIcon('heroicon-o-flag')
@@ -138,7 +149,7 @@ class ServerResource extends Resource
                         ->description('Panel access and connectivity configuration')
                         ->icon('heroicon-o-link')
                         ->schema([
-                            Forms\Components\Grid::make(3)->schema([
+                            Grid::make(3)->schema([
                                 TextInput::make('host')
                                     ->label('Host/Hostname')
                                     ->maxLength(255)
@@ -186,7 +197,7 @@ class ServerResource extends Resource
                                     ->helperText('Full URL to access the X-UI panel'),
                             ]),
 
-                            Forms\Components\Grid::make(3)->schema([
+                            Grid::make(3)->schema([
                                 TextInput::make('port')
                                     ->label('Main Port')
                                     ->numeric()
@@ -219,7 +230,7 @@ class ServerResource extends Resource
                                     ->prefixIcon('heroicon-o-shield-check'),
                             ]),
 
-                            Forms\Components\Grid::make(2)->schema([
+                            Grid::make(2)->schema([
                                 TextInput::make('username')
                                     ->label('Panel Username')
                                     ->maxLength(255)
@@ -263,7 +274,7 @@ class ServerResource extends Resource
                         ->icon('heroicon-o-shield-check')
                         ->collapsible()
                         ->schema([
-                            Forms\Components\Grid::make(2)->schema([
+                            Grid::make(2)->schema([
                                 Forms\Components\Select::make('type')
                                     ->label('Panel Type')
                                     ->options([
@@ -285,10 +296,11 @@ class ServerResource extends Resource
                                         'none' => '🔓 None',
                                     ])
                                     ->default('tls')
-                                    ->prefixIcon('heroicon-o-shield-exclamation'),
+                                    ->prefixIcon('heroicon-o-shield-exclamation')
+                                    ->helperText('Choose the transport security protocol used by clients.'),
                             ]),
 
-                            Forms\Components\Grid::make(2)->schema([
+                            Grid::make(2)->schema([
                                 TextInput::make('sni')
                                     ->label('SNI (Server Name Indication)')
                                     ->maxLength(255)
@@ -312,39 +324,39 @@ class ServerResource extends Resource
                                 ->label('Request Headers')
                                 ->rows(3)
                                 ->placeholder('{"Host": "example.com"}')
-                                ->helperText('Custom request headers (JSON format)'),
+                                ->helperText('Custom request headers (JSON format). Leave empty for defaults.'),
 
                             Textarea::make('response_header')
                                 ->label('Response Headers')
                                 ->rows(3)
                                 ->placeholder('{"Content-Type": "application/json"}')
-                                ->helperText('Custom response headers (JSON format)'),
+                                ->helperText('Custom response headers (JSON format). Leave empty to use panel defaults.'),
 
-                            Forms\Components\Grid::make(2)->schema([
+                            Grid::make(2)->schema([
                                 Textarea::make('reality')
                                     ->label('Reality Settings')
                                     ->rows(4)
                                     ->placeholder('{"dest": "google.com:443", "serverNames": ["google.com"]}')
-                                    ->helperText('Reality protocol configuration (JSON format)'),
+                                    ->helperText('Reality protocol configuration (JSON format). Applies only when Security is set to Reality.'),
 
                                 Textarea::make('tlsSettings')
                                     ->label('TLS Settings')
                                     ->rows(4)
                                     ->placeholder('{"serverName": "example.com", "certificates": []}')
-                                    ->helperText('TLS configuration settings (JSON format)'),
+                                    ->helperText('TLS configuration settings (JSON format). Applies when Security is TLS.'),
                             ]),
 
                             Textarea::make('xui_config')
                                 ->label('XUI Configuration')
                                 ->rows(5)
                                 ->placeholder('{"api_timeout": 30, "retry_count": 3}')
-                                ->helperText('Additional XUI panel configuration (JSON format)'),
+                                ->helperText('Additional XUI panel configuration (JSON format). For advanced overrides.'),
 
                             Textarea::make('connection_settings')
                                 ->label('Connection Settings')
                                 ->rows(4)
                                 ->placeholder('{"keep_alive": true, "compression": false}')
-                                ->helperText('Advanced connection settings (JSON format)'),
+                                ->helperText('Advanced connection settings (JSON format). Use with caution.'),
                         ])->columns(1),
                 ])->columnSpan(2),
 
@@ -367,7 +379,7 @@ class ServerResource extends Resource
                                 ->placeholder('Latest health check result')
                                 ->helperText('Latest health check message'),
 
-                            Forms\Components\Grid::make(1)->schema([
+                            Grid::make(1)->schema([
                                 TextInput::make('total_clients')
                                     ->label('Total Clients')
                                     ->numeric()
@@ -479,7 +491,7 @@ class ServerResource extends Resource
                                 ->prefixIcon('heroicon-o-code-bracket')
                                 ->helperText('X-UI API version'),
 
-                            Forms\Components\Grid::make(2)->schema([
+                            Grid::make(2)->schema([
                                 TextInput::make('api_timeout')
                                     ->label('API Timeout (seconds)')
                                     ->numeric()
@@ -517,7 +529,7 @@ class ServerResource extends Resource
                         ->icon('heroicon-o-key')
                         ->collapsible()
                         ->schema([
-                            Forms\Components\Grid::make(2)->schema([
+                            Grid::make(2)->schema([
                                 Placeholder::make('session_expires_info')
                                     ->label('Session Expires')
                                     ->content(fn (?Server $record): string =>
@@ -531,7 +543,7 @@ class ServerResource extends Resource
                                         $record->last_login_at->format('M j, Y g:i A') : 'Never logged in'),
                             ]),
 
-                            Forms\Components\Grid::make(2)->schema([
+                            Grid::make(2)->schema([
                                 TextInput::make('login_attempts')
                                     ->label('Failed Login Attempts')
                                     ->numeric()
@@ -603,7 +615,7 @@ class ServerResource extends Resource
                         ->icon('heroicon-o-rss')
                         ->collapsible()
                         ->schema([
-                            Forms\Components\Grid::make(2)->schema([
+                            Grid::make(2)->schema([
                                 TextInput::make('api_version')
                                     ->label('API Version')
                                     ->maxLength(20)
@@ -621,7 +633,7 @@ class ServerResource extends Resource
                                     ->helperText('API request timeout'),
                             ]),
 
-                            Forms\Components\Grid::make(2)->schema([
+                            Grid::make(2)->schema([
                                 TextInput::make('api_retry_count')
                                     ->label('API Retry Count')
                                     ->numeric()
@@ -691,7 +703,7 @@ class ServerResource extends Resource
 
     public static function table(Table $table): Table
     {
-        return $table
+        $table = $table
             ->columns([
                 TextColumn::make('name')
                     ->label('🏷️ Server Name')
@@ -983,7 +995,6 @@ class ServerResource extends Resource
                                     'last_connected_at' => now(),
                                     'status' => 'healthy'
                                 ]);
-
                                 Notification::make()
                                     ->title('🟢 Connection Successful')
                                     ->body("Successfully connected to {$record->name}")
@@ -1108,7 +1119,7 @@ class ServerResource extends Resource
                 BulkActionGroup::make([
                     DeleteBulkAction::make(),
 
-                    Tables\Actions\BulkAction::make('bulk_test_connection')
+                    \Filament\Actions\BulkAction::make('bulk_test_connection')
                         ->label('🔗 Test Connections')
                         ->icon('heroicon-o-signal')
                         ->color('info')
@@ -1143,7 +1154,7 @@ class ServerResource extends Resource
                                 ->send();
                         }),
 
-                    Tables\Actions\BulkAction::make('bulk_sync_data')
+                    \Filament\Actions\BulkAction::make('bulk_sync_data')
                         ->label('🔄 Sync All Data')
                         ->icon('heroicon-o-arrow-path')
                         ->color('warning')
@@ -1176,7 +1187,7 @@ class ServerResource extends Resource
                                 ->send();
                         }),
 
-                    Tables\Actions\BulkAction::make('bulk_login_and_sync')
+                    \Filament\Actions\BulkAction::make('bulk_login_and_sync')
                         ->label('🔐 Login & Sync')
                         ->icon('heroicon-o-arrows-right-left')
                         ->color('success')
@@ -1203,7 +1214,7 @@ class ServerResource extends Resource
                                 ->send();
                         }),
 
-                    Tables\Actions\BulkAction::make('bulk_enable_auto_provisioning')
+                    \Filament\Actions\BulkAction::make('bulk_enable_auto_provisioning')
                         ->label('🚀 Enable Auto Provisioning')
                         ->icon('heroicon-o-play')
                         ->color('success')
@@ -1220,7 +1231,7 @@ class ServerResource extends Resource
                                 ->send();
                         }),
 
-                    Tables\Actions\BulkAction::make('bulk_enable_auto_sync')
+                    \Filament\Actions\BulkAction::make('bulk_enable_auto_sync')
                         ->label('🔄 Enable Auto Sync')
                         ->icon('heroicon-o-arrow-path')
                         ->color('info')
@@ -1237,7 +1248,7 @@ class ServerResource extends Resource
                                 ->send();
                         }),
 
-                    Tables\Actions\BulkAction::make('bulk_reset_sessions')
+                    \Filament\Actions\BulkAction::make('bulk_reset_sessions')
                         ->label('🔐 Reset XUI Sessions')
                         ->icon('heroicon-o-key')
                         ->color('warning')
@@ -1261,7 +1272,7 @@ class ServerResource extends Resource
                                 ->send();
                         }),
 
-                    Tables\Actions\BulkAction::make('bulk_health_check')
+                    \Filament\Actions\BulkAction::make('bulk_health_check')
                         ->label('💓 Health Check')
                         ->icon('heroicon-o-heart')
                         ->color('success')
@@ -1309,7 +1320,7 @@ class ServerResource extends Resource
                                 ->send();
                         }),
 
-                    Tables\Actions\BulkAction::make('bulk_backup_create')
+                    \Filament\Actions\BulkAction::make('bulk_backup_create')
                         ->label('💾 Create Backups')
                         ->icon('heroicon-o-cloud-arrow-down')
                         ->color('secondary')
@@ -1339,7 +1350,7 @@ class ServerResource extends Resource
                                 ->send();
                         }),
 
-                    Tables\Actions\BulkAction::make('bulk_cleanup_depleted')
+                    \Filament\Actions\BulkAction::make('bulk_cleanup_depleted')
                         ->label('🧹 Cleanup Depleted Clients')
                         ->icon('heroicon-o-trash')
                         ->color('danger')
@@ -1376,7 +1387,7 @@ class ServerResource extends Resource
                                 ->send();
                         }),
 
-                    Tables\Actions\BulkAction::make('reset_all_traffics')
+                    \Filament\Actions\BulkAction::make('reset_all_traffics')
                         ->label('📊 Reset Client Traffics')
                         ->icon('heroicon-o-arrow-path')
                         ->color('warning')
@@ -1414,7 +1425,7 @@ class ServerResource extends Resource
                                 ->send();
                         }),
 
-                    Tables\Actions\BulkAction::make('create_backups')
+                    \Filament\Actions\BulkAction::make('create_backups')
                         ->label('📦 Create Backups')
                         ->icon('heroicon-o-arrow-down-tray')
                         ->color('info')
@@ -1443,7 +1454,7 @@ class ServerResource extends Resource
                                 ->send();
                         }),
 
-                    Tables\Actions\BulkAction::make('update_server_status')
+                    \Filament\Actions\BulkAction::make('update_server_status')
                         ->label('🔄 Update Status')
                         ->icon('heroicon-o-arrow-path')
                         ->color('gray')
@@ -1480,10 +1491,16 @@ class ServerResource extends Resource
                 ]),
             ])
             ->defaultSort('created_at', 'desc')
-            ->striped()
-            ->paginated([10, 25, 50, 100])
-            ->poll('30s') // Auto-refresh every 30 seconds
-            ->extremePaginationLinks();
+            ->poll('30s'); // Auto-refresh every 30 seconds
+
+        return self::applyTablePreset($table, [
+            'defaultPage' => 50,
+            'empty' => [
+                'icon' => 'heroicon-o-server-stack',
+                'heading' => 'No servers found',
+                'description' => 'Provision a new server or adjust your filters to see results.',
+            ],
+        ]);
     }
 
     public static function getPages(): array

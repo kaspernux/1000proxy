@@ -84,6 +84,17 @@ class UserFactory extends Factory
     }
 
     /**
+     * Create an analyst user.
+     */
+    public function analyst(): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'role' => 'analyst',
+            'is_active' => true,
+        ]);
+    }
+
+    /**
      * Create an inactive user.
      */
     public function inactive(): static

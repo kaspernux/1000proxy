@@ -2,7 +2,7 @@
 
 namespace App\Services;
 
-use App\Models\User;
+use App\Models\Customer;
 use App\Models\Server;
 use App\Models\Order;
 use App\Services\AdvancedProxyService;
@@ -77,7 +77,7 @@ class IPRotationScheduler
                 return $now->diffInSeconds($lastRotation) >= $config['rotation_interval'];
 
             case 'request_based':
-                $requestCount = $this->getRequestCount($config['user_id']);
+                $requestCount = $this->getRequestCount($config['customer_id']);
                 return $requestCount >= ($config['max_requests'] ?? 1000);
 
             case 'random':
@@ -99,28 +99,28 @@ class IPRotationScheduler
     private function executeRotation($config): array
     {
         try {
-            $userId = $config['user_id'];
-            $user = User::find($userId);
+            $customerId = $config['customer_id'];
+            $customer = Customer::find($customerId);
 
-            if (!$user) {
-                throw new \Exception("User not found: {$userId}");
+            if (!$customer) {
+                throw new \Exception("Customer not found: {$customerId}");
             }
 
-            // Get user's active proxies
-            $userProxies = $this->getUserActiveProxies($user);
+            // Get customer's active proxies
+            $customerProxies = $this->getUserActiveProxies($customer);
 
-            if ($userProxies->isEmpty()) {
-                throw new \Exception("No active proxies found for user: {$userId}");
+            if ($customerProxies->isEmpty()) {
+                throw new \Exception("No active proxies found for customer: {$customerId}");
             }
 
             $rotationResults = [];
 
-            foreach ($userProxies as $proxy) {
+            foreach ($customerProxies as $proxy) {
                 $rotationResult = $this->rotateProxyIP($proxy, $config);
                 $rotationResults[] = $rotationResult;
 
                 // Add delay between rotations to avoid overwhelming servers
-                if (count($userProxies) > 1) {
+                if (count($customerProxies) > 1) {
                     sleep(rand(1, 3));
                 }
             }
@@ -130,16 +130,16 @@ class IPRotationScheduler
 
             return [
                 'success' => true,
-                'user_id' => $userId,
+                'customer_id' => $customerId,
                 'rotated_proxies' => count($rotationResults),
                 'rotation_results' => $rotationResults,
                 'rotation_time' => now()->toISOString()
             ];
         } catch (\Exception $e) {
-            Log::error("IP rotation execution error for user {$config['user_id']}: " . $e->getMessage());
+            Log::error("IP rotation execution error for customer {$config['customer_id']}: " . $e->getMessage());
             return [
                 'success' => false,
-                'user_id' => $config['user_id'],
+                'customer_id' => $config['customer_id'],
                 'error' => $e->getMessage()
             ];
         }
@@ -202,8 +202,8 @@ class IPRotationScheduler
      */
     private function shouldRotateBasedOnPerformance($config): bool
     {
-        $userId = $config['user_id'];
-        $performanceMetrics = $this->getPerformanceMetrics($userId);
+        $customerId = $config['customer_id'];
+        $performanceMetrics = $this->getPerformanceMetrics($customerId);
 
         // Check response time threshold
         if (isset($performanceMetrics['avg_response_time']) &&
@@ -233,14 +233,14 @@ class IPRotationScheduler
     {
         $configs = [];
 
-        // Get all users with active rotation configurations
-        $users = User::whereHas('orders', function ($query) {
+        // Get all customers with active rotation configurations
+        $customers = Customer::whereHas('orders', function ($query) {
             $query->where('payment_status', 'paid')
                   ->where('status', 'up');
         })->get();
 
-        foreach ($users as $user) {
-            $rotationConfig = Cache::get("rotation_config_{$user->id}");
+        foreach ($customers as $customer) {
+            $rotationConfig = Cache::get("rotation_config_{$customer->id}");
             if ($rotationConfig && ($rotationConfig['enabled'] ?? false)) {
                 $configs[] = $rotationConfig;
             }
@@ -250,11 +250,11 @@ class IPRotationScheduler
     }
 
     /**
-     * Get user's active proxies
+     * Get customer's active proxies
      */
-    private function getUserActiveProxies($user): \Illuminate\Support\Collection
+    private function getUserActiveProxies($customer): \Illuminate\Support\Collection
     {
-        return collect($user->orders()
+        return collect($customer->orders()
             ->where('payment_status', 'paid')
             ->where('status', 'up')
             ->with(['serverPlan.server'])
@@ -357,7 +357,7 @@ class IPRotationScheduler
      */
     private function updateRotationStatistics($config, $results): void
     {
-        $stats = Cache::get("rotation_stats_{$config['user_id']}", [
+        $stats = Cache::get("rotation_stats_{$config['customer_id']}", [
             'total_rotations' => 0,
             'successful_rotations' => 0,
             'failed_rotations' => 0,
@@ -372,11 +372,11 @@ class IPRotationScheduler
         $stats['failed_rotations'] += $failedRotations;
         $stats['last_rotation'] = now()->toISOString();
 
-        Cache::put("rotation_stats_{$config['user_id']}", $stats, 86400);
+        Cache::put("rotation_stats_{$config['customer_id']}", $stats, 86400);
 
         // Update configuration with last rotation time
         $config['last_rotation'] = now()->toISOString();
-        Cache::put("rotation_config_{$config['user_id']}", $config, 3600);
+        Cache::put("rotation_config_{$config['customer_id']}", $config, 3600);
     }
 
     /**
@@ -385,12 +385,12 @@ class IPRotationScheduler
     private function updateNextRotationTime($config): void
     {
         $nextRotation = now()->addSeconds($config['rotation_interval']);
-        Cache::put("next_rotation_{$config['user_id']}", $nextRotation->toISOString(), 3600);
+        Cache::put("next_rotation_{$config['customer_id']}", $nextRotation->toISOString(), 3600);
     }
 
     // Helper methods with mock implementations
-    private function getRequestCount($userId): int { return rand(500, 1500); }
-    private function getPerformanceMetrics($userId): array {
+    private function getRequestCount($customerId): int { return rand(500, 1500); }
+    private function getPerformanceMetrics($customerId): array {
         return [
             'avg_response_time' => rand(100, 3000),
             'error_rate' => rand(1, 10),

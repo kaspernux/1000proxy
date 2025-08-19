@@ -20,7 +20,7 @@ class InfrastructureHealthWidget extends BaseWidget
 
     protected int|string|array $columnSpan = 'full';
 
-    protected static ?string $pollingInterval = '60s';
+    protected ?string $pollingInterval = '60s';
 
     /**
      * Real-time listeners (wired from Echo in resources/js/echo.js) so widget updates instantly.

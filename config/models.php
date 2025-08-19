@@ -396,6 +396,19 @@ return [
         'with_property_constants' => false,
 
         /*
+         |--------------------------------------------------------------------------
+         | Optionally includes a full list of columns in the base generated models,
+         | which can be used to avoid making calls like
+         |
+         | ...
+         | \Illuminate\Support\Facades\Schema::getColumnListing
+         | ...
+         |
+         | which can be slow, especially for large tables.
+         */
+        'with_column_list' => false,
+
+        /*
         |--------------------------------------------------------------------------
         | Disable Pluralization Name
         |--------------------------------------------------------------------------

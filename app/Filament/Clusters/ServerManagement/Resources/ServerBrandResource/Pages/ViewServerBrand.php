@@ -6,7 +6,7 @@ use App\Filament\Clusters\ServerManagement\Resources\ServerBrandResource;
 use Filament\Actions;
 use Filament\Resources\Pages\ViewRecord;
 use Filament\Infolists;
-use Filament\Infolists\Infolist;
+use Filament\Schemas\Schema;
 use Filament\Support\Enums\FontWeight;
 
 class ViewServerBrand extends ViewRecord
@@ -22,9 +22,9 @@ class ViewServerBrand extends ViewRecord
         ];
     }
 
-    public function infolist(Infolist $infolist): Infolist
+    public function infolist(Schema $schema): Schema
     {
-        return $infolist
+        return $schema
             ->schema([
                 Infolists\Components\Section::make('Brand Overview')
                     ->schema([

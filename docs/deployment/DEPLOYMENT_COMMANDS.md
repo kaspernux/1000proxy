@@ -101,7 +101,7 @@ sudo -u proxy1000 php artisan schedule:run --verbose --no-interaction || true
 
 ## 15. Post-deploy review
 ```
-tail -n 100 storage/logs/laravel.log
+tail -n 200 storage/logs/laravel-$(date +%F).log
 sudo -u proxy1000 php artisan queue:stats || true
 ```
 

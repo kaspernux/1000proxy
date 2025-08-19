@@ -8,7 +8,7 @@ use Illuminate\Support\Facades\Cache;
 
 class RevenueByMethodWidget extends ChartWidget
 {
-    protected static ?string $heading = 'Revenue by Payment Method';
+    protected ?string $heading = 'Revenue by Payment Method';
 
     protected static ?int $sort = 4;
 

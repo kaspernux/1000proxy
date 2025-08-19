@@ -4,15 +4,15 @@ namespace App\Filament\Customer\Pages;
 
 use Filament\Pages\Page;
 use Filament\Forms\Form;
-use Filament\Forms\Components\Section;
-use Filament\Forms\Components\Grid;
+use Filament\Schemas\Components\Section;
+use Filament\Schemas\Components\Grid;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Toggle;
 use Filament\Tables\Table;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Filters\SelectFilter;
-use Filament\Tables\Actions\Action;
+use Filament\Actions\Action;
 use Filament\Actions\Action as PageAction;
 use Filament\Support\Enums\FontWeight;
 use Filament\Tables\Contracts\HasTable;
@@ -28,15 +28,16 @@ use Filament\Notifications\Notification;
 use Filament\Tables\Concerns\InteractsWithTable;
 use Filament\Forms\Concerns\InteractsWithForms;
 use Carbon\Carbon;
+use BackedEnum;
 
 class AutomatedRenewals extends Page implements HasTable, HasForms
 {
     use InteractsWithTable;
     use InteractsWithForms;
 
-    protected static ?string $navigationIcon = 'heroicon-o-arrow-path';
+    protected static string | BackedEnum | null $navigationIcon = 'heroicon-o-arrow-path';
     protected static ?string $navigationLabel = 'Auto Renewals';
-    protected static string $view = 'filament.customer.pages.automated-renewals';
+    protected string $view = 'filament.customer.pages.automated-renewals';
     protected static ?int $navigationSort = 7;
 
     public $renewalSettings = [
@@ -294,7 +295,7 @@ class AutomatedRenewals extends Page implements HasTable, HasForms
                     ]),
             ])
             ->bulkActions([
-                \Filament\Tables\Actions\BulkAction::make('enable_auto_renew')
+                \Filament\Actions\BulkAction::make('enable_auto_renew')
                     ->label('Enable Auto-Renewal')
                     ->icon('heroicon-o-check')
                     ->color('success')
@@ -306,7 +307,7 @@ class AutomatedRenewals extends Page implements HasTable, HasForms
                             ->send();
                     }),
 
-                \Filament\Tables\Actions\BulkAction::make('disable_auto_renew')
+                \Filament\Actions\BulkAction::make('disable_auto_renew')
                     ->label('Disable Auto-Renewal')
                     ->icon('heroicon-o-x-mark')
                     ->color('danger')

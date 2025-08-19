@@ -8,7 +8,7 @@ use Illuminate\Support\Facades\Cache;
 
 class RecommendationsWidget extends Widget
 {
-    protected static string $view = 'filament.admin.widgets.recommendations-widget';
+    protected string $view = 'filament.admin.widgets.recommendations-widget';
     protected static ?int $sort = 11;
     protected int|string|array $columnSpan = 'full';
 

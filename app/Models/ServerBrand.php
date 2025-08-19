@@ -17,7 +17,7 @@ class ServerBrand extends Model
         'name',
         'slug',
         'image',
-    'description',
+        'description',
         'desc',
         'is_active',
         'website_url',

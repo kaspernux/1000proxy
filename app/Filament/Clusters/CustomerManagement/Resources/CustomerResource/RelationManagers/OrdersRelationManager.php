@@ -4,11 +4,12 @@ namespace App\Filament\Clusters\CustomerManagement\Resources\CustomerResource\Re
 
 use Filament\Forms;
 use Filament\Forms\Form;
+use Filament\Schemas\Schema;
 use Filament\Resources\RelationManagers\RelationManager;
 use Filament\Tables;
 use Filament\Tables\Table;
-use Filament\Forms\Components\Section;
-use Filament\Forms\Components\Group;
+use Filament\Schemas\Components\Section;
+use Filament\Schemas\Components\Group;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\SelectColumn;
 use Filament\Forms\Components\ToggleButtons;
@@ -24,9 +25,9 @@ class OrdersRelationManager extends RelationManager
     protected static ?string $modelLabel = 'Order';
     protected static ?string $pluralModelLabel = 'Orders';
 
-    public function form(Form $form): Form
+    public function form(Schema $schema): Schema
     {
-        return $form
+        return $schema
             ->schema([
                 Section::make('Order Information')
                     ->schema([
@@ -169,20 +170,21 @@ class OrdersRelationManager extends RelationManager
                     ]),
             ])
             ->headerActions([
-                Tables\Actions\CreateAction::make(),
+                    \Filament\Actions\CreateAction::make()
+                    ->visible(fn () => auth()->user()?->can('create', \App\Models\Order::class) ?? false),
 
            ])
             ->actions([
-                Tables\Actions\ActionGroup::make([
-                    Tables\Actions\EditAction::make(),
-                    Tables\Actions\ViewAction::make(),
-                    Tables\Actions\DeleteAction::make(),
-                ]),
+                \Filament\Actions\ActionGroup::make([
+                    \Filament\Actions\EditAction::make(),
+                    \Filament\Actions\ViewAction::make(),
+                    \Filament\Actions\DeleteAction::make(),
+                ])
             ])
             ->bulkActions([
-                Tables\Actions\BulkActionGroup::make([
-                    Tables\Actions\DeleteBulkAction::make(),
-                ]),
+                \Filament\Actions\BulkActionGroup::make([
+                    \Filament\Actions\DeleteBulkAction::make(),
+                ])
             ])
             ->defaultSort('created_at', 'desc');
     }

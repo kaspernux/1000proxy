@@ -14,7 +14,7 @@ class Wallet extends Model
     protected $fillable = [
         'customer_id',
         'balance',
-    'currency',
+        'currency',
         'btc_address',
         'xmr_address',
         'sol_address',

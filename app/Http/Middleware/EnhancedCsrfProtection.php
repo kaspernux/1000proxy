@@ -20,7 +20,6 @@ class EnhancedCsrfProtection extends Middleware
     'stripe/webhook',
     'paypal/webhook',
     'nowpayments/webhook',
-    // Ensure Telegram webhook with optional secret path is exempt
     'telegram/webhook*',
     'livewire/update',
     'livewire/upload-file',

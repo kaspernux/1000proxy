@@ -6,7 +6,7 @@ use Filament\Widgets\ChartWidget;
 
 class InsightsWidget extends ChartWidget
 {
-    protected static ?string $heading = 'AI-Generated Insights';
+    protected ?string $heading = 'AI-Generated Insights';
 
     protected static ?int $sort = 5;
 

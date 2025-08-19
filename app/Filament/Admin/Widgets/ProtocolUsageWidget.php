@@ -8,7 +8,7 @@ use Illuminate\Support\Facades\Cache;
 
 class ProtocolUsageWidget extends ChartWidget
 {
-    protected static ?string $heading = 'Protocol Usage';
+    protected ?string $heading = 'Protocol Usage';
     protected static ?int $sort = 10;
 
     protected function getData(): array

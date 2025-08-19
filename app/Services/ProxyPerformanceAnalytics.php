@@ -2,7 +2,7 @@
 
 namespace App\Services;
 
-use App\Models\User;
+use App\Models\Customer;
 use App\Models\Server;
 use App\Models\Order;
 use Illuminate\Support\Facades\Cache;
@@ -20,37 +20,37 @@ class ProxyPerformanceAnalytics
     private $metricsRetentionDays = 90;
 
     /**
-     * Get comprehensive performance analytics for a user
+     * Get comprehensive performance analytics for a customer
      */
-    public function getUserPerformanceAnalytics($userId, $timeRange = '24h'): array
+    public function getUserPerformanceAnalytics($customerId, $timeRange = '24h'): array
     {
         try {
-            $user = User::find($userId);
-            if (!$user) {
-                throw new \Exception("User not found: {$userId}");
+            $customer = Customer::find($customerId);
+            if (!$customer) {
+                throw new \Exception("Customer not found: {$customerId}");
             }
 
             $analytics = [
-                'user_id' => $userId,
+                'customer_id' => $customerId,
                 'time_range' => $timeRange,
-                'performance_overview' => $this->getPerformanceOverview($userId, $timeRange),
-                'traffic_analytics' => $this->getTrafficAnalytics($userId, $timeRange),
-                'connection_metrics' => $this->getConnectionMetrics($userId, $timeRange),
-                'response_time_analytics' => $this->getResponseTimeAnalytics($userId, $timeRange),
-                'error_analysis' => $this->getErrorAnalysis($userId, $timeRange),
-                'bandwidth_utilization' => $this->getBandwidthUtilization($userId, $timeRange),
-                'geographic_distribution' => $this->getGeographicDistribution($userId, $timeRange),
-                'protocol_performance' => $this->getProtocolPerformance($userId, $timeRange),
-                'server_performance' => $this->getServerPerformance($userId, $timeRange),
-                'security_metrics' => $this->getSecurityMetrics($userId, $timeRange),
-                'cost_efficiency' => $this->getCostEfficiencyMetrics($userId, $timeRange),
-                'predictive_analytics' => $this->getPredictiveAnalytics($userId),
-                'recommendations' => $this->getPerformanceRecommendations($userId),
+                'performance_overview' => $this->getPerformanceOverview($customerId, $timeRange),
+                'traffic_analytics' => $this->getTrafficAnalytics($customerId, $timeRange),
+                'connection_metrics' => $this->getConnectionMetrics($customerId, $timeRange),
+                'response_time_analytics' => $this->getResponseTimeAnalytics($customerId, $timeRange),
+                'error_analysis' => $this->getErrorAnalysis($customerId, $timeRange),
+                'bandwidth_utilization' => $this->getBandwidthUtilization($customerId, $timeRange),
+                'geographic_distribution' => $this->getGeographicDistribution($customerId, $timeRange),
+                'protocol_performance' => $this->getProtocolPerformance($customerId, $timeRange),
+                'server_performance' => $this->getServerPerformance($customerId, $timeRange),
+                'security_metrics' => $this->getSecurityMetrics($customerId, $timeRange),
+                'cost_efficiency' => $this->getCostEfficiencyMetrics($customerId, $timeRange),
+                'predictive_analytics' => $this->getPredictiveAnalytics($customerId),
+                'recommendations' => $this->getPerformanceRecommendations($customerId),
                 'generated_at' => now()->toISOString()
             ];
 
             // Cache analytics for quick retrieval
-            $this->cacheAnalytics($userId, $timeRange, $analytics);
+            $this->cacheAnalytics($customerId, $timeRange, $analytics);
 
             return [
                 'success' => true,
@@ -68,9 +68,9 @@ class ProxyPerformanceAnalytics
     /**
      * Get performance overview metrics
      */
-    private function getPerformanceOverview($userId, $timeRange): array
+    private function getPerformanceOverview($customerId, $timeRange): array
     {
-        $orders = $this->getUserActiveOrders($userId);
+        $orders = $this->getUserActiveOrders($customerId);
         $totalServers = $orders->count();
 
         return [
@@ -82,7 +82,7 @@ class ProxyPerformanceAnalytics
             'concurrent_connections' => $this->getCurrentConcurrentConnections($orders),
             'peak_connections' => $this->getPeakConnections($orders, $timeRange),
             'data_transfer_efficiency' => $this->calculateDataTransferEfficiency($orders, $timeRange),
-            'cost_per_gb' => $this->calculateCostPerGB($userId, $timeRange),
+            'cost_per_gb' => $this->calculateCostPerGB($customerId, $timeRange),
             'performance_score' => $this->calculateOverallPerformanceScore($orders, $timeRange)
         ];
     }
@@ -90,10 +90,10 @@ class ProxyPerformanceAnalytics
     /**
      * Get traffic analytics
      */
-    private function getTrafficAnalytics($userId, $timeRange): array
+    private function getTrafficAnalytics($customerId, $timeRange): array
     {
         $timeData = $this->parseTimeRange($timeRange);
-        $orders = $this->getUserActiveOrders($userId);
+        $orders = $this->getUserActiveOrders($customerId);
 
         return [
             'total_requests' => $this->getTotalRequests($orders, $timeRange),
@@ -105,16 +105,16 @@ class ProxyPerformanceAnalytics
             'protocol_distribution' => $this->getProtocolDistribution($orders, $timeRange),
             'hourly_traffic' => $this->getHourlyTrafficBreakdown($orders, $timeRange),
             'daily_traffic' => $this->getDailyTrafficBreakdown($orders, $timeRange),
-            'traffic_growth_rate' => $this->getTrafficGrowthRate($userId, $timeRange)
+            'traffic_growth_rate' => $this->getTrafficGrowthRate($customerId, $timeRange)
         ];
     }
 
     /**
      * Get connection metrics
      */
-    private function getConnectionMetrics($userId, $timeRange): array
+    private function getConnectionMetrics($customerId, $timeRange): array
     {
-        $orders = $this->getUserActiveOrders($userId);
+        $orders = $this->getUserActiveOrders($customerId);
 
         return [
             'total_connections' => $this->getTotalConnections($orders, $timeRange),
@@ -133,9 +133,9 @@ class ProxyPerformanceAnalytics
     /**
      * Get response time analytics
      */
-    private function getResponseTimeAnalytics($userId, $timeRange): array
+    private function getResponseTimeAnalytics($customerId, $timeRange): array
     {
-        $orders = $this->getUserActiveOrders($userId);
+        $orders = $this->getUserActiveOrders($customerId);
 
         return [
             'average_response_time' => $this->getAverageResponseTime($orders, $timeRange),
@@ -154,9 +154,9 @@ class ProxyPerformanceAnalytics
     /**
      * Get error analysis
      */
-    private function getErrorAnalysis($userId, $timeRange): array
+    private function getErrorAnalysis($customerId, $timeRange): array
     {
-        $orders = $this->getUserActiveOrders($userId);
+        $orders = $this->getUserActiveOrders($customerId);
 
         return [
             'total_errors' => $this->getTotalErrors($orders, $timeRange),
@@ -175,9 +175,9 @@ class ProxyPerformanceAnalytics
     /**
      * Get bandwidth utilization
      */
-    private function getBandwidthUtilization($userId, $timeRange): array
+    private function getBandwidthUtilization($customerId, $timeRange): array
     {
-        $orders = $this->getUserActiveOrders($userId);
+        $orders = $this->getUserActiveOrders($customerId);
 
         return [
             'total_bandwidth_allocated_mbps' => $this->getTotalAllocatedBandwidth($orders),
@@ -189,22 +189,22 @@ class ProxyPerformanceAnalytics
             'bandwidth_by_server' => $this->getBandwidthByServer($orders, $timeRange),
             'bandwidth_trends' => $this->getBandwidthTrends($orders, $timeRange),
             'bandwidth_optimization_potential' => $this->getBandwidthOptimizationPotential($orders, $timeRange),
-            'cost_per_bandwidth' => $this->getCostPerBandwidth($userId, $timeRange)
+            'cost_per_bandwidth' => $this->getCostPerBandwidth($customerId, $timeRange)
         ];
     }
 
     /**
      * Get geographic distribution
      */
-    private function getGeographicDistribution($userId, $timeRange): array
+    private function getGeographicDistribution($customerId, $timeRange): array
     {
-        $orders = $this->getUserActiveOrders($userId);
+        $orders = $this->getUserActiveOrders($customerId);
 
         return [
             'servers_by_country' => $this->getServersByCountry($orders),
             'traffic_by_region' => $this->getTrafficByRegion($orders, $timeRange),
             'performance_by_region' => $this->getPerformanceByRegion($orders, $timeRange),
-            'user_distribution' => $this->getUserGeographicDistribution($userId, $timeRange),
+            'user_distribution' => $this->getUserGeographicDistribution($customerId, $timeRange),
             'latency_heatmap' => $this->getLatencyHeatmap($orders, $timeRange),
             'regional_cost_analysis' => $this->getRegionalCostAnalysis($orders, $timeRange),
             'coverage_analysis' => $this->getCoverageAnalysis($orders),
@@ -215,9 +215,9 @@ class ProxyPerformanceAnalytics
     /**
      * Get protocol performance
      */
-    private function getProtocolPerformance($userId, $timeRange): array
+    private function getProtocolPerformance($customerId, $timeRange): array
     {
-        $orders = $this->getUserActiveOrders($userId);
+        $orders = $this->getUserActiveOrders($customerId);
 
         return [
             'protocols_in_use' => $this->getProtocolsInUse($orders),
@@ -234,9 +234,9 @@ class ProxyPerformanceAnalytics
     /**
      * Get server performance metrics
      */
-    private function getServerPerformance($userId, $timeRange): array
+    private function getServerPerformance($customerId, $timeRange): array
     {
-        $orders = $this->getUserActiveOrders($userId);
+        $orders = $this->getUserActiveOrders($customerId);
         $servers = $orders->pluck('serverPlan.server')->filter();
 
         return [
@@ -256,9 +256,9 @@ class ProxyPerformanceAnalytics
     /**
      * Get security metrics
      */
-    private function getSecurityMetrics($userId, $timeRange): array
+    private function getSecurityMetrics($customerId, $timeRange): array
     {
-        $orders = $this->getUserActiveOrders($userId);
+        $orders = $this->getUserActiveOrders($customerId);
 
         return [
             'security_incidents' => $this->getSecurityIncidents($orders, $timeRange),
@@ -276,46 +276,46 @@ class ProxyPerformanceAnalytics
     /**
      * Get cost efficiency metrics
      */
-    private function getCostEfficiencyMetrics($userId, $timeRange): array
+    private function getCostEfficiencyMetrics($customerId, $timeRange): array
     {
-        $orders = $this->getUserActiveOrders($userId);
+        $orders = $this->getUserActiveOrders($customerId);
 
         return [
-            'total_cost' => $this->getTotalCost($userId, $timeRange),
-            'cost_per_request' => $this->getCostPerRequest($userId, $timeRange),
-            'cost_per_gb_transferred' => $this->getCostPerGBTransferred($userId, $timeRange),
-            'cost_per_server' => $this->getCostPerServer($userId, $timeRange),
-            'roi_analysis' => $this->getROIAnalysis($userId, $timeRange),
-            'cost_optimization_opportunities' => $this->getCostOptimizationOpportunities($userId, $timeRange),
-            'budget_utilization' => $this->getBudgetUtilization($userId, $timeRange),
-            'cost_trends' => $this->getCostTrends($userId, $timeRange),
-            'pricing_recommendations' => $this->getPricingRecommendations($userId, $timeRange)
+            'total_cost' => $this->getTotalCost($customerId, $timeRange),
+            'cost_per_request' => $this->getCostPerRequest($customerId, $timeRange),
+            'cost_per_gb_transferred' => $this->getCostPerGBTransferred($customerId, $timeRange),
+            'cost_per_server' => $this->getCostPerServer($customerId, $timeRange),
+            'roi_analysis' => $this->getROIAnalysis($customerId, $timeRange),
+            'cost_optimization_opportunities' => $this->getCostOptimizationOpportunities($customerId, $timeRange),
+            'budget_utilization' => $this->getBudgetUtilization($customerId, $timeRange),
+            'cost_trends' => $this->getCostTrends($customerId, $timeRange),
+            'pricing_recommendations' => $this->getPricingRecommendations($customerId, $timeRange)
         ];
     }
 
     /**
      * Get predictive analytics
      */
-    private function getPredictiveAnalytics($userId): array
+    private function getPredictiveAnalytics($customerId): array
     {
         return [
-            'traffic_forecast' => $this->getTrafficForecast($userId),
-            'capacity_planning' => $this->getCapacityPlanning($userId),
-            'cost_projections' => $this->getCostProjections($userId),
-            'performance_predictions' => $this->getPerformancePredictions($userId),
-            'maintenance_schedule' => $this->getPredictiveMaintenanceSchedule($userId),
-            'scaling_predictions' => $this->getScalingPredictions($userId),
-            'risk_assessments' => $this->getRiskAssessments($userId),
-            'optimization_opportunities' => $this->getOptimizationOpportunities($userId)
+            'traffic_forecast' => $this->getTrafficForecast($customerId),
+            'capacity_planning' => $this->getCapacityPlanning($customerId),
+            'cost_projections' => $this->getCostProjections($customerId),
+            'performance_predictions' => $this->getPerformancePredictions($customerId),
+            'maintenance_schedule' => $this->getPredictiveMaintenanceSchedule($customerId),
+            'scaling_predictions' => $this->getScalingPredictions($customerId),
+            'risk_assessments' => $this->getRiskAssessments($customerId),
+            'optimization_opportunities' => $this->getOptimizationOpportunities($customerId)
         ];
     }
 
     /**
      * Get performance recommendations
      */
-    private function getPerformanceRecommendations($userId): array
+    private function getPerformanceRecommendations($customerId): array
     {
-        $orders = $this->getUserActiveOrders($userId);
+        $orders = $this->getUserActiveOrders($customerId);
 
         return [
             'immediate_actions' => $this->getImmediateActions($orders),
@@ -331,9 +331,9 @@ class ProxyPerformanceAnalytics
 
     // Helper methods
 
-    private function getUserActiveOrders($userId)
+    private function getUserActiveOrders($customerId)
     {
-        return Order::where('user_id', $userId)
+    return Order::where('customer_id', $customerId)
             ->where('payment_status', 'paid')
             ->where('status', 'up')
             ->with(['serverPlan.server'])
@@ -360,9 +360,9 @@ class ProxyPerformanceAnalytics
         }
     }
 
-    private function cacheAnalytics($userId, $timeRange, $analytics): void
+    private function cacheAnalytics($customerId, $timeRange, $analytics): void
     {
-        $cacheKey = "analytics_{$userId}_{$timeRange}";
+        $cacheKey = "analytics_{$customerId}_{$timeRange}";
         Cache::put($cacheKey, $analytics, 300); // Cache for 5 minutes
     }
 
@@ -374,7 +374,7 @@ class ProxyPerformanceAnalytics
     private function getCurrentConcurrentConnections($orders): int { return rand(50, 500); }
     private function getPeakConnections($orders, $timeRange): int { return rand(100, 1000); }
     private function calculateDataTransferEfficiency($orders, $timeRange): float { return rand(80, 95); }
-    private function calculateCostPerGB($userId, $timeRange): float { return rand(10, 50) / 100; }
+    private function calculateCostPerGB($customerId, $timeRange): float { return rand(10, 50) / 100; }
     private function calculateOverallPerformanceScore($orders, $timeRange): int { return rand(80, 100); }
 
     // Traffic Analytics Mock Methods
@@ -387,7 +387,7 @@ class ProxyPerformanceAnalytics
     private function getProtocolDistribution($orders, $timeRange): array { return ['vless' => 60, 'vmess' => 30, 'trojan' => 10]; }
     private function getHourlyTrafficBreakdown($orders, $timeRange): array { return array_fill(0, 24, rand(100, 1000)); }
     private function getDailyTrafficBreakdown($orders, $timeRange): array { return array_fill(0, 7, rand(1000, 10000)); }
-    private function getTrafficGrowthRate($userId, $timeRange): float
+    private function getTrafficGrowthRate($customerId, $timeRange): float
     {
         return rand(5, 25);
     }
@@ -438,13 +438,13 @@ class ProxyPerformanceAnalytics
     private function getBandwidthByServer($orders, $timeRange): array { return ['server_1' => 300, 'server_2' => 500]; }
     private function getBandwidthTrends($orders, $timeRange): array { return ['trend' => 'stable']; }
     private function getBandwidthOptimizationPotential($orders, $timeRange): float { return rand(10, 30); }
-    private function getCostPerBandwidth($userId, $timeRange): float { return rand(5, 20) / 100; }
+    private function getCostPerBandwidth($customerId, $timeRange): float { return rand(5, 20) / 100; }
 
     // Geographic Distribution Mock Methods
     private function getServersByCountry($orders): array { return ['US' => 5, 'DE' => 3, 'JP' => 2]; }
     private function getTrafficByRegion($orders, $timeRange): array { return ['NA' => 40, 'EU' => 35, 'ASIA' => 25]; }
     private function getPerformanceByRegion($orders, $timeRange): array { return ['NA' => 95, 'EU' => 92, 'ASIA' => 88]; }
-    private function getUserGeographicDistribution($userId, $timeRange): array { return ['US' => 45, 'DE' => 30, 'UK' => 25]; }
+    private function getUserGeographicDistribution($customerId, $timeRange): array { return ['US' => 45, 'DE' => 30, 'UK' => 25]; }
     private function getLatencyHeatmap($orders, $timeRange): array { return ['data' => 'heatmap_matrix']; }
     private function getRegionalCostAnalysis($orders, $timeRange): array { return ['US' => 0.05, 'EU' => 0.08]; }
     private function getCoverageAnalysis($orders): array { return ['regions_covered' => 15, 'gaps' => 5]; }
@@ -483,25 +483,25 @@ class ProxyPerformanceAnalytics
     private function getSecurityRecommendations($orders, $timeRange): array { return ['enable_2fa' => true]; }
 
     // Cost Efficiency Mock Methods
-    private function getTotalCost($userId, $timeRange): float { return rand(100, 1000); }
-    private function getCostPerRequest($userId, $timeRange): float { return rand(1, 10) / 1000; }
-    private function getCostPerGBTransferred($userId, $timeRange): float { return rand(5, 50) / 100; }
-    private function getCostPerServer($userId, $timeRange): float { return rand(20, 100); }
-    private function getROIAnalysis($userId, $timeRange): array { return ['roi_percentage' => rand(150, 300)]; }
-    private function getCostOptimizationOpportunities($userId, $timeRange): array { return ['potential_savings' => rand(10, 30)]; }
-    private function getBudgetUtilization($userId, $timeRange): array { return ['utilized' => 75, 'remaining' => 25]; }
-    private function getCostTrends($userId, $timeRange): array { return ['trend' => 'stable']; }
-    private function getPricingRecommendations($userId, $timeRange): array { return ['optimize_plans' => true]; }
+    private function getTotalCost($customerId, $timeRange): float { return rand(100, 1000); }
+    private function getCostPerRequest($customerId, $timeRange): float { return rand(1, 10) / 1000; }
+    private function getCostPerGBTransferred($customerId, $timeRange): float { return rand(5, 50) / 100; }
+    private function getCostPerServer($customerId, $timeRange): float { return rand(20, 100); }
+    private function getROIAnalysis($customerId, $timeRange): array { return ['roi_percentage' => rand(150, 300)]; }
+    private function getCostOptimizationOpportunities($customerId, $timeRange): array { return ['potential_savings' => rand(10, 30)]; }
+    private function getBudgetUtilization($customerId, $timeRange): array { return ['utilized' => 75, 'remaining' => 25]; }
+    private function getCostTrends($customerId, $timeRange): array { return ['trend' => 'stable']; }
+    private function getPricingRecommendations($customerId, $timeRange): array { return ['optimize_plans' => true]; }
 
     // Predictive Analytics Mock Methods
-    private function getTrafficForecast($userId): array { return ['next_month' => rand(110, 150)]; }
-    private function getCapacityPlanning($userId): array { return ['additional_servers_needed' => rand(1, 5)]; }
-    private function getCostProjections($userId): array { return ['next_month_cost' => rand(200, 800)]; }
-    private function getPerformancePredictions($userId): array { return ['expected_performance' => rand(90, 98)]; }
-    private function getPredictiveMaintenanceSchedule($userId): array { return ['scheduled_date' => '2024-02-15']; }
-    private function getScalingPredictions($userId): array { return ['scale_timeline' => '2 weeks']; }
-    private function getRiskAssessments($userId): array { return ['risk_level' => 'low']; }
-    private function getOptimizationOpportunities($userId): array { return ['opportunities' => 3]; }
+    private function getTrafficForecast($customerId): array { return ['next_month' => rand(110, 150)]; }
+    private function getCapacityPlanning($customerId): array { return ['additional_servers_needed' => rand(1, 5)]; }
+    private function getCostProjections($customerId): array { return ['next_month_cost' => rand(200, 800)]; }
+    private function getPerformancePredictions($customerId): array { return ['expected_performance' => rand(90, 98)]; }
+    private function getPredictiveMaintenanceSchedule($customerId): array { return ['scheduled_date' => '2024-02-15']; }
+    private function getScalingPredictions($customerId): array { return ['scale_timeline' => '2 weeks']; }
+    private function getRiskAssessments($customerId): array { return ['risk_level' => 'low']; }
+    private function getOptimizationOpportunities($customerId): array { return ['opportunities' => 3]; }
 
     // Performance Recommendations Mock Methods
     private function getImmediateActions($orders): array { return ['update_ssl_cert' => true]; }
