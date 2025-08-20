@@ -18,6 +18,11 @@ class StaffUsers extends Page implements HasTable
 {
     use InteractsWithTable, HasPerformanceOptimizations;
 
+    public static function shouldRegisterNavigation(): bool
+    {
+        return false;
+    }
+
     protected static BackedEnum|string|null $navigationIcon = 'heroicon-o-users';
     protected static ?string $navigationLabel = 'Staff Users';
     protected static ?string $title = 'Staff Users';
