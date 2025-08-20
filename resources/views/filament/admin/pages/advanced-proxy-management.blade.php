@@ -1,84 +1,97 @@
 <x-filament-panels::page>
 <div class="fi-section-content-ctn">
-    <div class="min-h-screen bg-gradient-to-br from-green-900 via-gray-900 to-indigo-900 py-8 px-2 sm:px-6 lg:px-8">
-        <div class="max-w-7xl mx-auto">
+    <div class="py-6 px-2 sm:px-6 lg:px-8">
+        <div class="max-w-7xl mx-auto space-y-8">
         <!-- Header -->
-        <header class="flex flex-col md:flex-row md:items-center md:justify-between gap-6 bg-white/10 dark:bg-gray-900/80 shadow-2xl rounded-2xl px-6 py-8 mb-8 border border-white/20">
+        <header class="flex flex-col md:flex-row md:items-center md:justify-between gap-6 bg-white dark:bg-gray-800 rounded-xl shadow-sm ring-1 ring-gray-200/60 dark:ring-gray-700/60 px-6 py-6">
             <div>
-                <h1 class="text-3xl md:text-4xl font-extrabold text-white tracking-tight">Advanced Proxy Management</h1>
-                <p class="mt-2 text-lg text-white/80">Comprehensive proxy control, monitoring, and analytics</p>
+                <h1 class="text-2xl md:text-3xl font-semibold text-gray-900 dark:text-white">Advanced Proxy Management</h1>
+                <p class="mt-1.5 text-sm text-gray-600 dark:text-gray-400">Comprehensive proxy control, monitoring, and analytics</p>
             </div>
-            <nav class="flex flex-col md:flex-row md:items-center gap-4">
-                <div class="flex items-center gap-2">
-                    <span class="h-3 w-3 bg-green-400 rounded-full animate-pulse"></span>
-                    <span class="text-sm text-white/80">System Healthy</span>
-                </div>
+            <nav class="flex flex-col md:flex-row md:items-center gap-3">
+                <span class="inline-flex items-center gap-2 px-2.5 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300">
+                    <span class="h-1.5 w-1.5 bg-green-500 rounded-full animate-pulse"></span>
+                    System Healthy
+                </span>
                 <button
                     wire:click="refreshPerformanceData"
-                    class="inline-flex items-center px-5 py-2 border border-white/20 text-sm font-semibold rounded-lg text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-400 transition"
+                    class="inline-flex items-center justify-center gap-2 rounded-md bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 text-sm font-semibold shadow-sm ring-1 ring-inset ring-indigo-500/30"
                 >
-                    <x-heroicon-o-arrow-path class="w-4 h-4 mr-2" />
+                    <x-heroicon-o-arrow-path class="w-4 h-4" />
                     Refresh
                 </button>
             </nav>
         </header>
 
+        <!-- Loading Overlay for actions -->
+    <div wire:loading.flex wire:target="refreshPerformanceData,refreshAnalytics,setupLoadBalancing,setupHealthMonitoring,applyAdvancedConfiguration,enableAutoIPRotation,configureCustomSchedule,enableStickySession,manageProxy,rebalanceWeights,runHealthSweep,rotateSubset,syncXUI,quarantineProxy,restoreProxy,blacklistEndpoint,clearBlacklist" class="fixed inset-0 bg-black/50 z-50 items-center justify-center">
+            <div class="bg-white dark:bg-gray-900 rounded-xl ring-1 ring-gray-200/60 dark:ring-gray-700/60 p-6 max-w-sm mx-4">
+                <div class="flex items-center gap-3">
+                    <x-heroicon-o-arrow-path class="animate-spin h-6 w-6 text-indigo-600" />
+                    <div>
+                        <div class="text-sm font-medium text-gray-900 dark:text-white">Processing…</div>
+                        <div class="text-xs text-gray-600 dark:text-gray-400">Please wait</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <!-- Main Content -->
-        <main class="py-4">
+        <main class="">
             <!-- Quick Stats -->
-            <section aria-label="Quick Stats" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-                <div class="bg-white/10 border border-white/20 shadow-2xl rounded-xl p-5 flex items-center gap-4">
-                    <div class="w-12 h-12 bg-blue-500 rounded-lg flex items-center justify-center">
-                        <x-heroicon-o-check-badge class="w-6 h-6 text-white" />
+            <section aria-label="Quick Stats" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm ring-1 ring-gray-200/60 dark:ring-gray-700/60 p-5 flex items-center gap-4">
+                    <div class="p-2.5 rounded-lg bg-blue-50 dark:bg-blue-900/30">
+                        <x-heroicon-o-check-badge class="w-6 h-6 text-blue-600 dark:text-blue-300" />
                     </div>
                     <div class="flex-1 min-w-0">
                         <dl>
-                            <dt class="text-sm font-medium text-white/80 truncate">Active Proxies</dt>
-                            <dd class="text-2xl font-bold text-white">{{ number_format($serverStats['total_proxies'] ?? 0) }}</dd>
+                            <dt class="text-sm font-medium text-gray-600 dark:text-gray-400 truncate">Active Proxies</dt>
+                            <dd class="text-2xl font-semibold text-gray-900 dark:text-white">{{ number_format($serverStats['total_proxies'] ?? 0) }}</dd>
                         </dl>
                     </div>
                 </div>
-                <div class="bg-white/10 border border-white/20 shadow-2xl rounded-xl p-5 flex items-center gap-4">
-                    <div class="w-12 h-12 bg-green-500 rounded-lg flex items-center justify-center">
-                        <x-heroicon-o-bolt class="w-6 h-6 text-white" />
+                <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm ring-1 ring-gray-200/60 dark:ring-gray-700/60 p-5 flex items-center gap-4">
+                    <div class="p-2.5 rounded-lg bg-green-50 dark:bg-green-900/30">
+                        <x-heroicon-o-bolt class="w-6 h-6 text-green-600 dark:text-green-300" />
                     </div>
                     <div class="flex-1 min-w-0">
                         <dl>
-                            <dt class="text-sm font-medium text-white/80 truncate">Avg Response Time</dt>
-                            <dd class="text-2xl font-bold text-white">{{ $serverStats['avg_response_time'] ?? 0 }}ms</dd>
+                            <dt class="text-sm font-medium text-gray-600 dark:text-gray-400 truncate">Avg Response Time</dt>
+                            <dd class="text-2xl font-semibold text-gray-900 dark:text-white">{{ $serverStats['avg_response_time'] ?? 0 }}ms</dd>
                         </dl>
                     </div>
                 </div>
-                <div class="bg-white/10 border border-white/20 shadow-2xl rounded-xl p-5 flex items-center gap-4">
-                    <div class="w-12 h-12 bg-yellow-500 rounded-lg flex items-center justify-center">
-                        <x-heroicon-o-server class="w-6 h-6 text-white" />
+                <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm ring-1 ring-gray-200/60 dark:ring-gray-700/60 p-5 flex items-center gap-4">
+                    <div class="p-2.5 rounded-lg bg-yellow-50 dark:bg-yellow-900/30">
+                        <x-heroicon-o-server class="w-6 h-6 text-yellow-600 dark:text-yellow-300" />
                     </div>
                     <div class="flex-1 min-w-0">
                         <dl>
-                            <dt class="text-sm font-medium text-white/80 truncate">Active Servers</dt>
-                            <dd class="text-2xl font-bold text-white">{{ $serverStats['active_servers'] ?? 0 }}</dd>
+                            <dt class="text-sm font-medium text-gray-600 dark:text-gray-400 truncate">Active Servers</dt>
+                            <dd class="text-2xl font-semibold text-gray-900 dark:text-white">{{ $serverStats['active_servers'] ?? 0 }}</dd>
                         </dl>
                     </div>
                 </div>
-                <div class="bg-white/10 border border-white/20 shadow-2xl rounded-xl p-5 flex items-center gap-4">
-                    <div class="w-12 h-12 bg-purple-500 rounded-lg flex items-center justify-center">
-                        <x-heroicon-o-chart-bar-square class="w-6 h-6 text-white" />
+                <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm ring-1 ring-gray-200/60 dark:ring-gray-700/60 p-5 flex items-center gap-4">
+                    <div class="p-2.5 rounded-lg bg-purple-50 dark:bg-purple-900/30">
+                        <x-heroicon-o-chart-bar-square class="w-6 h-6 text-purple-600 dark:text-purple-300" />
                     </div>
                     <div class="flex-1 min-w-0">
                         <dl>
-                            <dt class="text-sm font-medium text-white/80 truncate">Daily Bandwidth</dt>
-                            <dd class="text-2xl font-bold text-white">{{ $serverStats['total_bandwidth'] ?? '0 GB' }}</dd>
+                            <dt class="text-sm font-medium text-gray-600 dark:text-gray-400 truncate">Daily Bandwidth</dt>
+                            <dd class="text-2xl font-semibold text-gray-900 dark:text-white">{{ $serverStats['total_bandwidth'] ?? '0 GB' }}</dd>
                         </dl>
                     </div>
                 </div>
             </section>
 
             {{-- User Selection --}}
-            <div class="bg-white dark:bg-gray-800 shadow rounded-lg mb-8">
+            <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm ring-1 ring-gray-200/60 dark:ring-gray-700/60 my-8">
                 <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
                     <h2 class="text-lg font-medium text-gray-900 dark:text-white">User Selection</h2>
                 </div>
-                <div class="p-6">
+                <div class="px-6 py-8">
                     <div class="flex items-center space-x-4">
                         <div class="flex-1">
                             <label for="user-select" class="block text-sm font-medium text-gray-700 dark:text-gray-300">
@@ -101,12 +114,66 @@
                             </div>
                         @endif
                     </div>
+                    @if($selectedUserId)
+                        <div class="mt-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                            <button wire:click="rebalanceWeights" class="inline-flex items-center justify-center gap-2 rounded-md bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 text-sm font-semibold shadow-sm ring-1 ring-inset ring-blue-500/30">
+                                <x-heroicon-o-adjustments-horizontal class="w-4 h-4" />
+                                <span>Rebalance Weights</span>
+                            </button>
+                            <button wire:click="runHealthSweep" class="inline-flex items-center justify-center gap-2 rounded-md bg-green-600 hover:bg-green-700 text-white px-3 py-2 text-sm font-semibold shadow-sm ring-1 ring-inset ring-green-500/30">
+                                <x-heroicon-o-shield-check class="w-4 h-4" />
+                                <span>Run Health Sweep</span>
+                            </button>
+                            <button wire:click="rotateSubset(20)" class="inline-flex items-center justify-center gap-2 rounded-md bg-amber-600 hover:bg-amber-700 text-white px-3 py-2 text-sm font-semibold shadow-sm ring-1 ring-inset ring-amber-500/30">
+                                <x-heroicon-o-arrow-path-rounded-square class="w-4 h-4" />
+                                <span>Rotate 20%</span>
+                            </button>
+                            <button wire:click="syncXUI" class="inline-flex items-center justify-center gap-2 rounded-md bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-2 text-sm font-semibold shadow-sm ring-1 ring-inset ring-indigo-500/30">
+                                <x-heroicon-o-cloud-arrow-up class="w-4 h-4" />
+                                <span>Sync XUI</span>
+                            </button>
+                            <button wire:click="clearBlacklist" class="inline-flex items-center justify-center gap-2 rounded-md bg-rose-600 hover:bg-rose-700 text-white px-3 py-2 text-sm font-semibold shadow-sm ring-1 ring-inset ring-rose-500/30">
+                                <x-heroicon-o-no-symbol class="w-4 h-4" />
+                                <span>Clear Blacklist</span>
+                            </button>
+                        </div>
+
+                        {{-- Control lists display --}}
+                        <div class="mt-6 grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div class="rounded-lg p-4 bg-gray-50 dark:bg-gray-700 ring-1 ring-gray-200/60 dark:ring-gray-700/60">
+                                <h4 class="text-sm font-semibold text-gray-900 dark:text-white mb-3">Blacklisted Endpoints</h4>
+                                @if(!empty($blacklist))
+                                    <div class="flex flex-wrap gap-2">
+                                        @foreach($blacklist as $ip)
+                                            <span class="inline-flex items-center rounded-full bg-rose-100 text-rose-800 dark:bg-rose-900/30 dark:text-rose-300 px-2.5 py-0.5 text-xs font-medium">{{ $ip }}</span>
+                                        @endforeach
+                                    </div>
+                                @else
+                                    <p class="text-xs text-gray-500 dark:text-gray-400">No blacklisted endpoints</p>
+                                @endif
+                            </div>
+                            <div class="rounded-lg p-4 bg-gray-50 dark:bg-gray-700 ring-1 ring-gray-200/60 dark:ring-gray-700/60">
+                                <h4 class="text-sm font-semibold text-gray-900 dark:text-white mb-3">Quarantined Proxies</h4>
+                                @if(!empty($quarantined))
+                                    <div class="flex flex-wrap gap-2">
+                                        @foreach($quarantined as $pid)
+                                            <button wire:click="restoreProxy({{ (int)$pid }})" class="inline-flex items-center gap-1 rounded-full bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300 px-2.5 py-0.5 text-xs font-medium hover:ring-1 hover:ring-amber-400">
+                                                <x-heroicon-o-arrow-uturn-left class="w-3.5 h-3.5" /> #{{ (int)$pid }}
+                                            </button>
+                                        @endforeach
+                                    </div>
+                                @else
+                                    <p class="text-xs text-gray-500 dark:text-gray-400">No quarantined proxies</p>
+                                @endif
+                            </div>
+                        </div>
+                    @endif
                 </div>
             </div>
 
             @if($selectedUserId)
                 {{-- Tab Navigation --}}
-                <div class="bg-white dark:bg-gray-800 shadow rounded-lg mb-8">
+                <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm ring-1 ring-gray-200/60 dark:ring-gray-700/60">
                     <div class="border-b border-gray-200 dark:border-gray-700">
                         <nav class="-mb-px flex space-x-8 px-6" aria-label="Tabs">
                             <button
@@ -159,7 +226,7 @@
                                         <h3 class="text-lg font-medium text-gray-900 dark:text-white mb-4">Active Proxies</h3>
                                         <div class="space-y-3">
                                             @foreach($userProxies as $proxy)
-                                                <div class="border border-gray-200 dark:border-gray-600 rounded-lg p-4">
+                                                <div class="rounded-lg p-4 bg-gray-50 dark:bg-gray-700 ring-1 ring-gray-200/60 dark:ring-gray-700/60">
                                                     <div class="flex justify-between items-start">
                                                         <div>
                                                             <h4 class="font-medium text-gray-900 dark:text-white">
@@ -175,15 +242,27 @@
                                                         <div class="flex space-x-2">
                                                             <button
                                                                 wire:click="manageProxy('restart_proxy', {{ $proxy->id }})"
-                                                                class="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded"
+                                                                class="inline-flex items-center justify-center gap-1.5 text-xs rounded-md bg-blue-600/10 text-blue-700 dark:text-blue-300 px-2 py-1 ring-1 ring-inset ring-blue-500/30 hover:bg-blue-600/15"
                                                             >
                                                                 Restart
                                                             </button>
                                                             <button
                                                                 wire:click="manageProxy('rotate_ip', {{ $proxy->id }})"
-                                                                class="text-xs bg-green-100 text-green-800 px-2 py-1 rounded"
+                                                                class="inline-flex items-center justify-center gap-1.5 text-xs rounded-md bg-green-600/10 text-green-700 dark:text-green-300 px-2 py-1 ring-1 ring-inset ring-green-500/30 hover:bg-green-600/15"
                                                             >
                                                                 Rotate IP
+                                                            </button>
+                                                            <button
+                                                                wire:click="quarantineProxy({{ $proxy->id }})"
+                                                                class="inline-flex items-center justify-center gap-1.5 text-xs rounded-md bg-amber-600/10 text-amber-700 dark:text-amber-300 px-2 py-1 ring-1 ring-inset ring-amber-500/30 hover:bg-amber-600/15"
+                                                            >
+                                                                Quarantine
+                                                            </button>
+                                                            <button
+                                                                wire:click="restoreProxy({{ $proxy->id }})"
+                                                                class="inline-flex items-center justify-center gap-1.5 text-xs rounded-md bg-teal-600/10 text-teal-700 dark:text-teal-300 px-2 py-1 ring-1 ring-inset ring-teal-500/30 hover:bg-teal-600/15"
+                                                            >
+                                                                Restore
                                                             </button>
                                                         </div>
                                                     </div>
@@ -281,7 +360,7 @@
 
                                     <div>
                                         <h3 class="text-lg font-medium text-gray-900 dark:text-white mb-4">Current Rotation Status</h3>
-                                        <div class="bg-gray-50 dark:bg-gray-700 rounded-lg p-4">
+                                        <div class="bg-gray-50 dark:bg-gray-700 rounded-lg p-4 ring-1 ring-gray-200/60 dark:ring-gray-700/60">
                                             @if(!empty($rotationConfigs))
                                                 <div class="space-y-3">
                                                     <div class="flex justify-between">
@@ -367,7 +446,7 @@
 
                                     <div>
                                         <h3 class="text-lg font-medium text-gray-900 dark:text-white mb-4">Load Balancer Status</h3>
-                                        <div class="bg-gray-50 dark:bg-gray-700 rounded-lg p-4">
+                                        <div class="bg-gray-50 dark:bg-gray-700 rounded-lg p-4 ring-1 ring-gray-200/60 dark:ring-gray-700/60">
                                             @if(!empty($loadBalancers))
                                                 <div class="space-y-3">
                                                     <div class="flex justify-between">
@@ -436,7 +515,7 @@
 
                                     <div>
                                         <h3 class="text-lg font-medium text-gray-900 dark:text-white mb-4">Current Health Status</h3>
-                                        <div class="bg-gray-50 dark:bg-gray-700 rounded-lg p-4">
+                                        <div class="bg-gray-50 dark:bg-gray-700 rounded-lg p-4 ring-1 ring-gray-200/60 dark:ring-gray-700/60">
                                             @if(!empty($healthStatus))
                                                 <div class="space-y-3">
                                                     <div class="flex justify-between">
@@ -519,7 +598,7 @@
 
                                     <div>
                                         <h3 class="text-lg font-medium text-gray-900 dark:text-white mb-4">Performance Metrics</h3>
-                                        <div class="bg-gray-50 dark:bg-gray-700 rounded-lg p-4">
+                                        <div class="bg-gray-50 dark:bg-gray-700 rounded-lg p-4 ring-1 ring-gray-200/60 dark:ring-gray-700/60">
                                             <div class="space-y-3">
                                                 <div class="flex justify-between">
                                                     <span class="text-sm text-gray-600 dark:text-gray-400">Requests/sec:</span>

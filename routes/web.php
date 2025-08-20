@@ -521,13 +521,13 @@ Route::middleware(['redirect.customer', RedirectIfCustomer::class])->group(funct
 
     // Staff Users management (JSON endpoints for admin tooling)
     Route::prefix('staff-users')->middleware(['web','auth'])->group(function () {
-            Route::get('/', [StaffUserController::class, 'index'])->name('admin.staff-users.index');
-            Route::post('/', [StaffUserController::class, 'store'])->name('admin.staff-users.store');
-            Route::patch('/{user}', [StaffUserController::class, 'update'])->name('admin.staff-users.update');
-            Route::delete('/{user}', [StaffUserController::class, 'destroy'])->name('admin.staff-users.destroy');
-            Route::post('/{user}/toggle-status', [StaffUserController::class, 'toggleStatus'])->name('admin.staff-users.toggle');
-            Route::post('/{user}/role', [StaffUserController::class, 'setRole'])->name('admin.staff-users.set-role');
-        });
+        Route::get('/', [StaffUserController::class, 'index'])->name('admin.staff-users.index');
+        Route::post('/', [StaffUserController::class, 'store'])->name('admin.staff-users.store');
+        Route::patch('/{user}', [StaffUserController::class, 'update'])->name('admin.staff-users.update');
+        Route::delete('/{user}', [StaffUserController::class, 'destroy'])->name('admin.staff-users.destroy');
+        Route::post('/{user}/toggle-status', [StaffUserController::class, 'toggleStatus'])->name('admin.staff-users.toggle');
+        Route::post('/{user}/role', [StaffUserController::class, 'setRole'])->name('admin.staff-users.set-role');
+    });
     });
 });
 

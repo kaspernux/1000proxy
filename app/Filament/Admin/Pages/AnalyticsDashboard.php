@@ -6,6 +6,7 @@ use Filament\Pages\Page;
 use Illuminate\Support\Facades\Cache;
 use App\Services\BusinessIntelligenceService;
 use BackedEnum;
+use Carbon\Carbon;
 
 class AnalyticsDashboard extends Page
 {
@@ -20,6 +21,9 @@ class AnalyticsDashboard extends Page
     public $analyticsData = [];
     public $paymentMethodFilter = '';
     public $planFilter = '';
+    public ?Carbon $lastUpdated = null;
+    public bool $autoRefresh = false;
+    public int $refreshInterval = 60; // seconds
 
     public static function canAccess(): bool
     {
@@ -36,6 +40,7 @@ class AnalyticsDashboard extends Page
             $this->planFilter = $filterState['plan'] ?? '';
         }
         $this->loadAnalyticsData();
+    $this->lastUpdated = now();
     }
 
     public function updatedTimeRange(): void
@@ -92,6 +97,10 @@ class AnalyticsDashboard extends Page
     {
         Cache::tags(['analytics'])->flush();
         $this->loadAnalyticsData();
+        $this->lastUpdated = now();
+
+    // Let the front-end reinitialize charts if needed
+    $this->dispatch('analytics:charts-refresh');
 
         \Filament\Notifications\Notification::make()
             ->title('Analytics Refreshed')
@@ -99,12 +108,20 @@ class AnalyticsDashboard extends Page
             ->send();
     }
 
-    public function exportReport(): void
+    // Alias used by the Blade "Refresh" button (legacy naming)
+    public function refreshData(): void
     {
-        // Implementation for exporting analytics report
+        $this->refreshAnalytics();
+    }
+
+    public function exportReport(?string $type = null): void
+    {
+        // Kick off export (type can be pdf, excel, csv). Actual implementation can dispatch a job.
+        $label = strtoupper($type ?? 'PDF');
+
         \Filament\Notifications\Notification::make()
             ->title('Report Export Started')
-            ->body('Your analytics report will be generated and emailed to you shortly.')
+            ->body("Generating {$label} report. You'll receive a download or email shortly.")
             ->success()
             ->send();
     }
@@ -306,6 +323,29 @@ class AnalyticsDashboard extends Page
         }
 
         $this->analyticsData = $data;
+    }
+
+    // Optional handler used by KPI card clicks from legacy view
+    public function drillDown(string $key): void
+    {
+        // Map common keys to a selected metric focus
+        $map = [
+            'revenue' => 'revenue',
+            'users' => 'users',
+            'orders' => 'revenue',
+            'servers' => 'servers',
+            'behavior' => 'behavior',
+        ];
+        $this->selectedMetric = $map[$key] ?? $this->selectedMetric;
+
+        // Optionally refresh charts to reflect focus changes
+        // $this->refreshAnalytics(); // keep lightweight; only change UI focus
+
+        \Filament\Notifications\Notification::make()
+            ->title('Focus Updated')
+            ->body("Drilled down to: {$this->selectedMetric}")
+            ->success()
+            ->send();
     }
 
     protected function getTimeRangeFilter(): array

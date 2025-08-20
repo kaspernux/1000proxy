@@ -99,15 +99,17 @@ class StaffManagement extends Page implements HasTable, HasForms
         $table = $table
             ->query($this->userService->searchUsers($this->filters))
             ->columns([
-                TextColumn::make('id')
-                    ->label('ID')
-                    ->sortable()
-                    ->searchable(),
+                // Avatar column with tooltip
+                TextColumn::make('avatar')
+                    ->label('Avatar')
+                    ->formatStateUsing(fn ($record) => view('components.avatar', ['user' => $record]))
+                    ->html(),
 
                 TextColumn::make('name')
                     ->label('Name')
                     ->sortable()
                     ->searchable()
+                    ->tooltip(fn ($record) => $record->email)
                     ->limit(30),
 
                 TextColumn::make('email')
@@ -125,11 +127,13 @@ class StaffManagement extends Page implements HasTable, HasForms
                         'warning' => 'support_manager',
                         'success' => 'sales_support',
                     ])
+                    ->tooltip(fn ($record) => ucwords(str_replace('_', ' ', $record->role)))
                     ->sortable(),
 
                 IconColumn::make('is_active')
                     ->label('Active')
                     ->boolean()
+                    ->tooltip(fn ($record) => $record->is_active ? 'Active' : 'Inactive')
                     ->sortable(),
 
                 BadgeColumn::make('telegram_status')
@@ -138,7 +142,8 @@ class StaffManagement extends Page implements HasTable, HasForms
                     ->colors([
                         'success' => 'Linked',
                         'gray' => 'Not Linked',
-                    ]),
+                    ])
+                    ->tooltip(fn ($record) => $record->telegram_chat_id ? 'Telegram Linked' : 'Not Linked'),
 
                 TextColumn::make('last_login_at')
                     ->label('Last Login')

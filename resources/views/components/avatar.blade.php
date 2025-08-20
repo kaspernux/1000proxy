@@ -1,0 +1,1 @@
+<img src="{{ $user->profile_photo_url ?? 'https://ui-avatars.com/api/?name=' . urlencode($user->name) }}" alt="{{ $user->name }}" class="w-8 h-8 rounded-full border border-gray-300 dark:border-gray-600" title="{{ $user->name }}" />

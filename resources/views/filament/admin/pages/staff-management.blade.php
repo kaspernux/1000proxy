@@ -1,232 +1,125 @@
+
 <x-filament-panels::page>
-    <div class="fi-section-content-ctn">
-        <div class="my-6">
-            <h1 class="text-2xl font-bold text-gray-900 dark:text-white">Staff Management</h1>
+    <x-filament::section class="!p-0">
+        <!-- Sticky Header with Quick Actions -->
+        <div class="sticky top-0 z-30 bg-white/80 dark:bg-gray-900/80 backdrop-blur border-b border-gray-200 dark:border-gray-700 flex items-center gap-4 px-6 py-3 shadow-sm">
+            <span class="text-xl font-bold text-gray-900 dark:text-white flex-1">Staff Management</span>
+            @foreach($this->getHeaderActions() as $action)
+                {{ $action }}
+            @endforeach
+        </div>
+
+    <div class="space-y-8 px-6 py-8">
             <p class="text-sm text-gray-600 dark:text-gray-400">Advanced user management with bulk operations and analytics</p>
-        </div>
 
-        <!-- Statistics Cards -->
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-            @php
-                $stats = $this->getStatisticsData();
-            @endphp
-
-            <div class="bg-white dark:bg-gray-800 overflow-hidden shadow rounded-lg">
-                <div class="p-5">
-                    <div class="flex items-center">
-                        <div class="flex-shrink-0">
-                            <div class="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center">
-                                <x-heroicon-o-users class="w-5 h-5 text-white" />
-                            </div>
-                        </div>
-                        <div class="ml-5 w-0 flex-1">
-                            <dl>
-                                <dt class="text-sm font-medium text-gray-500 dark:text-gray-400 truncate">Total Users</dt>
-                                <dd class="text-lg font-medium text-gray-900 dark:text-white">{{ $stats['total_users'] ?? 0 }}</dd>
-                            </dl>
-                        </div>
+            <!-- Statistics InfoCards -->
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                <x-filament::card class="flex items-center gap-4">
+                    <div class="w-10 h-10 flex items-center justify-center rounded-full bg-blue-100 dark:bg-blue-900/30">
+                        <x-heroicon-o-users class="w-6 h-6 text-blue-600 dark:text-blue-300" />
                     </div>
-                </div>
+                    <div>
+                        <div class="text-xs text-gray-500 dark:text-gray-400">Total Users</div>
+                        <div class="text-xl font-bold text-gray-900 dark:text-white">{{ $stats['total_users'] ?? 0 }}</div>
+                    </div>
+                </x-filament::card>
+                <x-filament::card class="flex items-center gap-4">
+                    <div class="w-10 h-10 flex items-center justify-center rounded-full bg-green-100 dark:bg-green-900/30">
+                        <x-heroicon-o-check-circle class="w-6 h-6 text-green-600 dark:text-green-300" />
+                    </div>
+                    <div>
+                        <div class="text-xs text-gray-500 dark:text-gray-400">Active Users</div>
+                        <div class="text-xl font-bold text-gray-900 dark:text-white">{{ $stats['active_users'] ?? 0 }}</div>
+                    </div>
+                </x-filament::card>
+                <x-filament::card class="flex items-center gap-4">
+                    <div class="w-10 h-10 flex items-center justify-center rounded-full bg-purple-100 dark:bg-purple-900/30">
+                        <x-heroicon-o-chat-bubble-left-right class="w-6 h-6 text-purple-600 dark:text-purple-300" />
+                    </div>
+                    <div>
+                        <div class="text-xs text-gray-500 dark:text-gray-400">Telegram Linked</div>
+                        <div class="text-xl font-bold text-gray-900 dark:text-white">{{ $stats['telegram_linked'] ?? 0 }}</div>
+                    </div>
+                </x-filament::card>
+                <x-filament::card class="flex items-center gap-4">
+                    <div class="w-10 h-10 flex items-center justify-center rounded-full bg-red-100 dark:bg-red-900/30">
+                        <x-heroicon-o-shield-check class="w-6 h-6 text-red-600 dark:text-red-300" />
+                    </div>
+                    <div>
+                        <div class="text-xs text-gray-500 dark:text-gray-400">Admin Users</div>
+                        <div class="text-xl font-bold text-gray-900 dark:text-white">{{ $stats['admin_users'] ?? 0 }}</div>
+                    </div>
+                </x-filament::card>
             </div>
 
-            <div class="bg-white dark:bg-gray-800 overflow-hidden shadow rounded-lg">
-                <div class="p-5">
-                    <div class="flex items-center">
-                        <div class="flex-shrink-0">
-                            <div class="w-8 h-8 bg-green-500 rounded-full flex items-center justify-center">
-                                <x-heroicon-o-check-circle class="w-5 h-5 text-white" />
-                            </div>
-                        </div>
-                        <div class="ml-5 w-0 flex-1">
-                            <dl>
-                                <dt class="text-sm font-medium text-gray-500 dark:text-gray-400 truncate">Active Users</dt>
-                                <dd class="text-lg font-medium text-gray-900 dark:text-white">{{ $stats['active_users'] ?? 0 }}</dd>
-                            </dl>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <div class="bg-white dark:bg-gray-800 overflow-hidden shadow rounded-lg">
-                <div class="p-5">
-                    <div class="flex items-center">
-                        <div class="flex-shrink-0">
-                            <div class="w-8 h-8 bg-purple-500 rounded-full flex items-center justify-center">
-                                <x-heroicon-o-chat-bubble-left-right class="w-5 h-5 text-white" />
-                            </div>
-                        </div>
-                        <div class="ml-5 w-0 flex-1">
-                            <dl>
-                                <dt class="text-sm font-medium text-gray-500 dark:text-gray-400 truncate">Telegram Linked</dt>
-                                <dd class="text-lg font-medium text-gray-900 dark:text-white">{{ $stats['telegram_linked'] ?? 0 }}</dd>
-                            </dl>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <div class="bg-white dark:bg-gray-800 overflow-hidden shadow rounded-lg">
-                <div class="p-5">
-                    <div class="flex items-center">
-                        <div class="flex-shrink-0">
-                            <div class="w-8 h-8 bg-red-500 rounded-full flex items-center justify-center">
-                                <x-heroicon-o-shield-check class="w-5 h-5 text-white" />
-                            </div>
-                        </div>
-                        <div class="ml-5 w-0 flex-1">
-                            <dl>
-                                <dt class="text-sm font-medium text-gray-500 dark:text-gray-400 truncate">Admin Users</dt>
-                                <dd class="text-lg font-medium text-gray-900 dark:text-white">{{ $stats['admin_users'] ?? 0 }}</dd>
-                            </dl>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Role Distribution Chart -->
-        @if(!empty($stats['role_distribution']))
-        <div class="bg-white dark:bg-gray-800 overflow-hidden shadow rounded-lg mb-6">
-            <div class="px-4 py-5 sm:p-6">
-                <h3 class="text-lg leading-6 font-medium text-gray-900 dark:text-white mb-4">Role Distribution</h3>
+            <!-- Role Distribution Chart -->
+            @if(!empty($stats['role_distribution']))
+            <x-filament::card class="mb-6">
+                <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">Role Distribution</h3>
                 <div class="flex flex-wrap gap-4">
                     @foreach($stats['role_distribution'] as $role => $count)
-                        <div class="flex items-center">
-                            <div class="w-4 h-4 rounded-full mr-2
-                                @if($role === 'admin') bg-red-500
-                                @elseif($role === 'manager') bg-blue-500
-                                @elseif($role === 'support_manager') bg-yellow-500
-                                @elseif($role === 'sales_support') bg-green-500
-                                @else bg-gray-500
-                                @endif">
-                            </div>
-                            <span class="text-sm text-gray-700 dark:text-gray-300">
-                                {{ ucwords(str_replace('_', ' ', $role)) }}: {{ $count }}
-                            </span>
-                        </div>
+                        <span class="inline-flex items-center rounded-full px-3 py-1 text-sm font-medium
+                            @if($role==='admin') bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300
+                            @elseif($role==='manager') bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300
+                            @elseif($role==='support_manager') bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300
+                            @elseif($role==='sales_support') bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300
+                            @else bg-gray-100 text-gray-800 dark:bg-gray-900/30 dark:text-gray-300
+                            @endif">
+                            {{ ucwords(str_replace('_', ' ', $role)) }}: {{ $count }}
+                        </span>
                     @endforeach
                 </div>
-            </div>
-        </div>
-        @endif
+                <!-- Chart.js role chart can be added here if desired -->
+            </x-filament::card>
+            @endif
 
-        <!-- Advanced Filters -->
-        <div class="bg-white dark:bg-gray-800 overflow-hidden shadow rounded-lg mb-6">
-            <div class="px-4 py-5 sm:p-6">
-                <h3 class="text-lg leading-6 font-medium text-gray-900 dark:text-white mb-4">Advanced Filters</h3>
-                <div class="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-4">
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Search</label>
-                        <input type="text"
-                            wire:model="filters.search"
-                            placeholder="Name, email, telegram..."
-                            class="mt-1 block w-full border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 dark:bg-gray-700 dark:text-white">
-                    </div>
-
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Role</label>
-                        <select wire:model="filters.role"
-                                class="mt-1 block w-full border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 dark:bg-gray-700 dark:text-white">
-                            <option value="">All Roles</option>
-                            <option value="admin">Admin</option>
-                            <option value="manager">Manager</option>
-                            <option value="support_manager">Support Manager</option>
-                            <option value="sales_support">Sales Support</option>
-                        </select>
-                    </div>
-
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Status</label>
-                        <select wire:model="filters.is_active"
-                                class="mt-1 block w-full border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 dark:bg-gray-700 dark:text-white">
-                            <option value="">All Status</option>
-                            <option value="1">Active</option>
-                            <option value="0">Inactive</option>
-                        </select>
-                    </div>
-
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Telegram</label>
-                        <select wire:model="filters.has_telegram"
-                                class="mt-1 block w-full border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 dark:bg-gray-700 dark:text-white">
-                            <option value="">All Users</option>
-                            <option value="1">Linked</option>
-                            <option value="0">Not Linked</option>
-                        </select>
-                    </div>
-
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Last Active</label>
-                        <select wire:model="filters.last_active_days"
-                                class="mt-1 block w-full border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 dark:bg-gray-700 dark:text-white">
-                            <option value="">Any Time</option>
-                            <option value="1">Last 24 hours</option>
-                            <option value="7">Last 7 days</option>
-                            <option value="30">Last 30 days</option>
-                        </select>
-                    </div>
-
-                    <div class="flex items-end">
-                        <button wire:click="$set('filters', [])"
-                                class="w-full bg-gray-600 hover:bg-gray-700 text-white font-medium py-2 px-4 rounded-md transition duration-150 ease-in-out">
-                            Clear Filters
-                        </button>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- User Table -->
-        <div class="bg-white dark:bg-gray-800 overflow-hidden shadow rounded-lg">
-            <div class="px-4 py-5 sm:p-6">
+            <!-- Filament Table (filters, actions, badges, avatars, etc. are handled in PHP) -->
+            <x-filament::card>
                 {{ $this->table }}
-            </div>
-        </div>
+            </x-filament::card>
 
-        <!-- Activity Charts -->
-        @if(!empty($stats['daily_registrations']) || !empty($stats['daily_logins']))
-        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
-            @if(!empty($stats['daily_registrations']))
-            <div class="bg-white dark:bg-gray-800 overflow-hidden shadow rounded-lg">
-                <div class="px-4 py-5 sm:p-6">
-                    <h3 class="text-lg leading-6 font-medium text-gray-900 dark:text-white mb-4">Daily Registrations (Last 30 Days)</h3>
-                    <div class="h-64 flex items-center justify-center text-gray-500 dark:text-gray-400">
-                        <canvas id="registrations-chart" class="w-full h-full"></canvas>
+            <!-- Charts always render, even if data is empty -->
+            <!-- Activity Charts -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
+                    <div class="bg-white dark:bg-gray-800 overflow-hidden shadow rounded-lg">
+                        <div class="px-4 py-5 sm:p-6">
+                            <h3 class="text-lg leading-6 font-medium text-gray-900 dark:text-white mb-4">Daily Registrations (Last 30 Days)</h3>
+                            <div class="h-64 flex items-center justify-center text-gray-500 dark:text-gray-400">
+                                <canvas id="registrations-chart" class="w-full h-full" style="min-height: 256px;"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="bg-white dark:bg-gray-800 overflow-hidden shadow rounded-lg">
+                        <div class="px-4 py-5 sm:p-6">
+                            <h3 class="text-lg leading-6 font-medium text-gray-900 dark:text-white mb-4">Daily Logins (Last 30 Days)</h3>
+                            <div class="h-64 flex items-center justify-center text-gray-500 dark:text-gray-400">
+                                <canvas id="logins-chart" class="w-full h-full" style="min-height: 256px;"></canvas>
+                            </div>
+                        </div>
                     </div>
                 </div>
-            </div>
-            @endif
-
-            @if(!empty($stats['daily_logins']))
-            <div class="bg-white dark:bg-gray-800 overflow-hidden shadow rounded-lg">
-                <div class="px-4 py-5 sm:p-6">
-                    <h3 class="text-lg leading-6 font-medium text-gray-900 dark:text-white mb-4">Daily Logins (Last 30 Days)</h3>
-                    <div class="h-64 flex items-center justify-center text-gray-500 dark:text-gray-400">
-                        <canvas id="logins-chart" class="w-full h-full"></canvas>
-                    </div>
-                </div>
-            </div>
-            @endif
-        </div>
-        @endif
-        </div>
     </div>
+    </x-filament::section>
 
     @push('scripts')
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script>
     document.addEventListener('DOMContentLoaded', function() {
-        // Registration Chart
-        @if(!empty($stats['daily_registrations']))
+        // Always provide at least one label/value so chart always renders
+        const regLabels = {!! json_encode(count($stats['daily_registrations'] ?? []) ? array_keys($stats['daily_registrations']) : ['No Data']) !!};
+        const regData = {!! json_encode(count($stats['daily_registrations'] ?? []) ? array_values($stats['daily_registrations']) : [0]) !!};
+        const logLabels = {!! json_encode(count($stats['daily_logins'] ?? []) ? array_keys($stats['daily_logins']) : ['No Data']) !!};
+        const logData = {!! json_encode(count($stats['daily_logins'] ?? []) ? array_values($stats['daily_logins']) : [0]) !!};
+
         const registrationsCtx = document.getElementById('registrations-chart');
         if (registrationsCtx) {
             new Chart(registrationsCtx, {
                 type: 'line',
                 data: {
-                    labels: {!! json_encode(array_keys($stats['daily_registrations'])) !!},
+                    labels: regLabels,
                     datasets: [{
                         label: 'Registrations',
-                        data: {!! json_encode(array_values($stats['daily_registrations'])) !!},
+                        data: regData,
                         borderColor: 'rgb(59, 130, 246)',
                         backgroundColor: 'rgba(59, 130, 246, 0.1)',
                         tension: 0.4
@@ -237,25 +130,50 @@
                     maintainAspectRatio: false,
                     scales: {
                         y: {
-                            beginAtZero: true
+                            display: true,
+                            min: 0,
+                            max: 1,
+                            beginAtZero: true,
+                            ticks: {
+                                stepSize: 1,
+                                color: '#6B7280',
+                                callback: function(value, index, values) {
+                                    // Always show at least two ticks: 0 and 1
+                                    if (value === 0 || value === 1) return value;
+                                    return '';
+                                },
+                                count: 2
+                            },
+                            grid: {
+                                color: '#E5E7EB'
+                            }
+                        },
+                        x: {
+                            display: true,
+                            ticks: {
+                                color: '#6B7280',
+                                callback: function(value, index, values) {
+                                    return regLabels[index] || 'No Data';
+                                }
+                            },
+                            grid: {
+                                color: '#E5E7EB'
+                            }
                         }
                     }
                 }
             });
         }
-        @endif
 
-        // Logins Chart
-        @if(!empty($stats['daily_logins']))
         const loginsCtx = document.getElementById('logins-chart');
         if (loginsCtx) {
             new Chart(loginsCtx, {
                 type: 'line',
                 data: {
-                    labels: {!! json_encode(array_keys($stats['daily_logins'])) !!},
+                    labels: logLabels,
                     datasets: [{
                         label: 'Logins',
-                        data: {!! json_encode(array_values($stats['daily_logins'])) !!},
+                        data: logData,
                         borderColor: 'rgb(34, 197, 94)',
                         backgroundColor: 'rgba(34, 197, 94, 0.1)',
                         tension: 0.4
@@ -266,13 +184,39 @@
                     maintainAspectRatio: false,
                     scales: {
                         y: {
-                            beginAtZero: true
+                            display: true,
+                            min: 0,
+                            max: 1,
+                            beginAtZero: true,
+                            ticks: {
+                                stepSize: 1,
+                                color: '#6B7280',
+                                callback: function(value, index, values) {
+                                    if (value === 0 || value === 1) return value;
+                                    return '';
+                                },
+                                count: 2
+                            },
+                            grid: {
+                                color: '#E5E7EB'
+                            }
+                        },
+                        x: {
+                            display: true,
+                            ticks: {
+                                color: '#6B7280',
+                                callback: function(value, index, values) {
+                                    return logLabels[index] || 'No Data';
+                                }
+                            },
+                            grid: {
+                                color: '#E5E7EB'
+                            }
                         }
                     }
                 }
             });
         }
-        @endif
     });
     </script>
     @endpush

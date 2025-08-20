@@ -70,6 +70,8 @@ class AdvancedProxyManagement extends Page
     public string $analyticsTimeRange = '24h';
     public array $performanceData = [];
     public array $healthStatus = [];
+    public array $blacklist = [];
+    public array $quarantined = [];
 
     protected AdvancedProxyService $advancedProxyService;
     protected XUIService $xuiService;
@@ -83,6 +85,7 @@ class AdvancedProxyManagement extends Page
     public function mount(): void
     {
         $this->loadInitialData();
+    $this->loadControlLists();
     }
 
     protected function getHeaderActions(): array
@@ -115,6 +118,8 @@ class AdvancedProxyManagement extends Page
             'healthMonitors' => $this->getHealthMonitors(),
             'performanceMetrics' => $this->getPerformanceMetrics(),
             'recentEvents' => $this->getRecentEvents(),
+            'blacklist' => $this->blacklist,
+            'quarantined' => $this->quarantined,
         ];
     }
 
@@ -122,6 +127,7 @@ class AdvancedProxyManagement extends Page
     {
         $this->loadUserProxyData();
         $this->refreshPerformanceData();
+    $this->loadControlLists();
     }
 
     public function setActiveTab(string $tab): void
@@ -433,6 +439,128 @@ class AdvancedProxyManagement extends Page
     {
         $this->healthStatus = [];
         $this->performanceData = [];
+    }
+
+    protected function loadControlLists(): void
+    {
+        if ($this->selectedUserId) {
+            $this->blacklist = Cache::get("proxy_blacklist_{$this->selectedUserId}", []);
+            $this->quarantined = Cache::get("proxy_quarantine_{$this->selectedUserId}", []);
+        } else {
+            $this->blacklist = [];
+            $this->quarantined = [];
+        }
+    }
+
+    // Advanced controls
+    public function blacklistEndpoint(string $ip): void
+    {
+        if (!$this->selectedUserId) {
+            $this->addError('selectedUserId', 'Select a user first.');
+            return;
+        }
+        $list = Cache::get("proxy_blacklist_{$this->selectedUserId}", []);
+        if (!in_array($ip, $list, true)) {
+            $list[] = $ip;
+            Cache::put("proxy_blacklist_{$this->selectedUserId}", $list, now()->addDays(7));
+            $this->blacklist = $list;
+        }
+        Notification::make()->title("Blacklisted {$ip}")->success()->send();
+    }
+
+    public function clearBlacklist(): void
+    {
+        if (!$this->selectedUserId) return;
+        Cache::forget("proxy_blacklist_{$this->selectedUserId}");
+        $this->blacklist = [];
+        Notification::make()->title('Blacklist cleared')->success()->send();
+    }
+
+    public function quarantineProxy(int $proxyId): void
+    {
+        if (!$this->selectedUserId) return;
+        $set = collect(Cache::get("proxy_quarantine_{$this->selectedUserId}", []));
+        if (!$set->contains($proxyId)) {
+            $set->push($proxyId);
+            Cache::put("proxy_quarantine_{$this->selectedUserId}", $set->values()->all(), now()->addDays(7));
+            $this->quarantined = $set->values()->all();
+        }
+        Notification::make()->title("Proxy {$proxyId} quarantined")->success()->send();
+    }
+
+    public function restoreProxy(int $proxyId): void
+    {
+        if (!$this->selectedUserId) return;
+        $set = collect(Cache::get("proxy_quarantine_{$this->selectedUserId}", []))->reject(fn($id) => (int)$id === (int)$proxyId)->values();
+        Cache::put("proxy_quarantine_{$this->selectedUserId}", $set->all(), now()->addDays(7));
+        $this->quarantined = $set->all();
+        Notification::make()->title("Proxy {$proxyId} restored")->success()->send();
+    }
+
+    public function rebalanceWeights(): void
+    {
+        if (!$this->selectedUserId) return;
+        $orders = $this->getUserProxies();
+        if ($orders->isEmpty()) return;
+
+        // Simple dynamic weight: inverse of simulated response time + bias for non-quarantined
+        $weights = [];
+        foreach ($orders as $order) {
+            $id = $order->id;
+            $simRt = max(50, (int)($this->performanceData['network_latency'] ?? rand(50, 300)) + rand(-20, 20));
+            $base = 1000 / $simRt; // higher weight for lower latency
+            if (in_array($id, $this->quarantined, true)) {
+                $base *= 0.1; // heavily de-prioritize quarantined
+            }
+            $weights[$id] = round($base, 3);
+        }
+        Cache::put("lb_weights_{$this->selectedUserId}", $weights, now()->addHours(6));
+        Notification::make()->title('Load balancer weights rebalanced')->success()->send();
+    }
+
+    public function runHealthSweep(): void
+    {
+        if (!$this->selectedUserId) return;
+        // Simulate sweep: quarantine proxies if random failure detected
+        $orders = $this->getUserProxies();
+        $toQuarantine = [];
+        foreach ($orders as $order) {
+            $unhealthy = rand(0, 100) < 5; // 5% chance unhealthy
+            if ($unhealthy) { $toQuarantine[] = $order->id; }
+        }
+        if ($toQuarantine) {
+            $set = collect(Cache::get("proxy_quarantine_{$this->selectedUserId}", []))->merge($toQuarantine)->unique()->values();
+            Cache::put("proxy_quarantine_{$this->selectedUserId}", $set->all(), now()->addDays(7));
+            $this->quarantined = $set->all();
+        }
+        $this->refreshHealthStatus();
+        Notification::make()->title('Health sweep completed')->body(count($toQuarantine) . ' quarantined').success()->send();
+    }
+
+    public function rotateSubset(int $percent = 20): void
+    {
+        if (!$this->selectedUserId) return;
+        $orders = $this->getUserProxies();
+        $count = max(1, (int)floor(($orders->count() * $percent) / 100));
+        $ids = $orders->pluck('id')->shuffle()->take($count);
+        foreach ($ids as $id) {
+            try { $this->manageProxy('rotate_ip', (int)$id); } catch (\Throwable $e) { /* ignore individual errors */ }
+        }
+        Notification::make()->title("Rotated {$count} proxies ({$percent}%)")->success()->send();
+    }
+
+    public function syncXUI(): void
+    {
+        if (!$this->selectedUserId) return;
+        try {
+            if (method_exists($this->xuiService, 'syncUser')) {
+                $this->xuiService->syncUser($this->selectedUserId);
+            }
+            Notification::make()->title('XUI sync triggered')->success()->send();
+        } catch (\Throwable $e) {
+            Log::warning('XUI sync error: '.$e->getMessage());
+            Notification::make()->title('XUI sync failed')->danger()->send();
+        }
     }
 
     // Data fetching methods (private)

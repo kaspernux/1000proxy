@@ -98,7 +98,7 @@ class AdminPanelProvider extends PanelProvider
                 \App\Filament\Admin\Pages\MarketingAutomationManagement::class,
                 \App\Filament\Admin\Pages\ThirdPartyIntegrationManagement::class,
                 \App\Filament\Admin\Pages\StaffDashboard::class,
-                \App\Filament\Admin\Pages\StaffUsers::class,
+                // \App\Filament\Admin\Pages\StaffUsers::class, // removed, merged into StaffManagement
                 \App\Filament\Admin\Pages\StaffManagement::class,
                 \App\Filament\Admin\Pages\ServerManagementDashboard::class,
                 \App\Filament\Admin\Pages\TelegramBotManagement::class,
