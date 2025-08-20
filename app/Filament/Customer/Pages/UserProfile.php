@@ -4,6 +4,7 @@ namespace App\Filament\Customer\Pages;
 
 use Filament\Pages\Page;
 use Filament\Forms\Form;
+use Filament\Schemas\Schema;
 use Filament\Schemas\Components\Section;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Textarea;
@@ -17,9 +18,6 @@ use Filament\Forms\Contracts\HasForms;
 use Filament\Forms\Concerns\InteractsWithForms;
 use Filament\Infolists\Concerns\InteractsWithInfolists;
 use Filament\Infolists\Contracts\HasInfolists;
-use Filament\Infolists\Infolist;
-use Filament\Infolists\Components\Section as InfoSection;
-use Filament\Infolists\Components\Grid as InfoGrid;
 use Filament\Infolists\Components\TextEntry;
 use Filament\Actions\Action;
 use Filament\Actions\ActionGroup;
@@ -92,14 +90,14 @@ class UserProfile extends Page implements HasForms, HasInfolists
         ];
     }
 
-    public function infolist(Infolist $infolist): Infolist
+    public function infolist(Schema $schema): Schema
     {
-        return $infolist
+        return $schema
             ->schema([
-                InfoSection::make('Account Summary')
+                Section::make('Account Summary')
                     ->description('A snapshot of your account status and recent activity.')
                     ->schema([
-                        InfoGrid::make([
+                        Grid::make([
                             'default' => 2,
                             'md' => 4,
                         ])->schema([
@@ -136,7 +134,7 @@ class UserProfile extends Page implements HasForms, HasInfolists
             ]);
     }
 
-    public function form(Form $form): Form
+    public function form(Schema $form): Schema
     {
         return $form
             ->schema([
@@ -168,7 +166,6 @@ class UserProfile extends Page implements HasForms, HasInfolists
                                     ->placeholder('Enter your full name'),
 
                                 TextInput::make('email')
-                                    ->label('Email Address')
                                     ->email()
                                     ->required()
                                     ->maxLength(255)
@@ -315,9 +312,7 @@ class UserProfile extends Page implements HasForms, HasInfolists
                                     ->content(fn (): string => $this->accountStats['account_age'] ?? 'Unknown'),
                             ]),
                     ]),
-            ])
-            ->statePath('data')
-            ->model(Auth::guard('customer')->user());
+            ]);
     }
 
     protected function getHeaderActions(): array

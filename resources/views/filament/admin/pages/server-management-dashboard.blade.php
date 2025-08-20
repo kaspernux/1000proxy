@@ -13,8 +13,8 @@
                     </div>
                 </div>
             </div>
-            <div class="p-6">
-                {{ $this->form }}
+            <div class="p-6 text-sm text-gray-600 dark:text-gray-400">
+                Use the page header actions above to run health checks or provision new servers.
             </div>
         </div>
 

@@ -37,6 +37,10 @@ use Filament\Notifications\Notification;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Gate;
 use BackedEnum;
+use Filament\Infolists\Infolist;
+use Filament\Infolists\Components\Section as InfolistSection;
+use Filament\Infolists\Components\Grid as InfolistGrid;
+use Filament\Infolists\Components\TextEntry;
 
 class OrderResource extends Resource
 {
@@ -271,7 +275,11 @@ class OrderResource extends Resource
                     ->formatStateUsing(fn (Order $record): string =>
                         $record->currency . ' ' . number_format($record->grand_amount, 2))
                     ->weight('bold')
-                    ->color('success'),
+                    ->color('success')
+                    ->summarize([
+                        Tables\Columns\Summarizers\Sum::make()->label('Total')->money(),
+                        Tables\Columns\Summarizers\Average::make()->label('Avg')->money(),
+                    ]),
 
                 BadgeColumn::make('payment_status')
                     ->label('💳 Payment')
@@ -359,7 +367,10 @@ class OrderResource extends Resource
                     ->sortable()
                     ->description(fn (Order $record): string =>
                         $record->created_at ? $record->created_at->diffForHumans() : '')
-                    ->toggleable(),
+                    ->toggleable()
+                    ->summarize([
+                        Tables\Columns\Summarizers\Count::make()->label('Count'),
+                    ]),
 
                 TextColumn::make('updated_at')
                     ->label('🔄 Updated')
@@ -493,6 +504,7 @@ class OrderResource extends Resource
                         route('filament.admin.proxy-shop.resources.order-items.index', ['order' => $record->id])),
                 // Removed legacy manager assignment action; users do not own or get assigned to orders
             ])
+            // Header column toggle is not available in current Filament version; removed for compatibility
             ->bulkActions([
                 // Keep export_csv outside of the BulkActionGroup so tests can capture the StreamedResponse
                 \Filament\Actions\BulkAction::make('export_csv')
@@ -600,5 +612,35 @@ class OrderResource extends Resource
     public static function getGlobalSearchAttributes(): array
     {
         return ['id', 'customer.name', 'customer.email', 'payment_invoice_url'];
+    }
+
+    // Infolist for View page
+    public static function infolist(Schema $schema): Schema
+    {
+        return $schema->schema([
+            InfolistSection::make('Order Overview')
+                ->schema([
+                    InfolistGrid::make(3)->schema([
+                        TextEntry::make('id')->label('Order ID')->badge()->color('primary')->prefix('#'),
+                        TextEntry::make('customer.name')->label('Customer')->icon('heroicon-o-user'),
+                        TextEntry::make('created_at')->label('Order Date')->dateTime('M j, Y g:i A')->since(),
+                    ]),
+                ])->columns(1),
+
+            InfolistSection::make('Payment & Status')
+                ->schema([
+                    InfolistGrid::make(3)->schema([
+                        TextEntry::make('grand_amount')->label('Amount')->money(fn($record) => $record->currency)->icon('heroicon-o-currency-dollar')->color('success'),
+                        TextEntry::make('payment_method')->label('Method')->badge(),
+                        TextEntry::make('payment_status')->label('Payment')->badge(),
+                        TextEntry::make('order_status')->label('Order')->badge(),
+                    ]),
+                ])->columns(1),
+
+            InfolistSection::make('Links')
+                ->schema([
+                    TextEntry::make('payment_invoice_url')->label('Invoice URL')->url()->copyable(),
+                ])->columns(1),
+        ]);
     }
 }

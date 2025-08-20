@@ -4,8 +4,10 @@ namespace App\Filament\Customer\Pages;
 
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Select;
-use Filament\Forms\Components\Grid;
+use Filament\Schemas\Components\Grid;
 use Filament\Pages\Page;
+use Filament\Forms\Contracts\HasForms;
+use Filament\Forms\Concerns\InteractsWithForms;
 use App\Models\Server;
 use App\Models\User;
 use Illuminate\Support\Facades\Auth;
@@ -13,8 +15,9 @@ use Filament\Notifications\Notification;
 use Illuminate\Database\Eloquent\Builder;
 use BackedEnum;
 
-class ServerBrowsing extends Page
+class ServerBrowsing extends Page implements HasForms
 {
+    use InteractsWithForms;
     protected static string | BackedEnum | null $navigationIcon = 'heroicon-o-server';
     protected static ?string $navigationLabel = 'Browse Servers';
     protected string $view = 'filament.customer.pages.server-browsing';
@@ -29,6 +32,7 @@ class ServerBrowsing extends Page
         'search' => null,
         'sort' => 'price_asc',
         'favorites_only' => false,
+    'plan_days' => null,
     ];
 
     public $showFilters = false;
@@ -39,6 +43,7 @@ class ServerBrowsing extends Page
     public $topCountries = [];
     public $page = 1;
     public $hasMore = true;
+    public bool $compactView = false;
 
     public function mount()
     {
@@ -47,12 +52,20 @@ class ServerBrowsing extends Page
         $this->loadServers();
     }
 
+    public function form($form)
+    {
+        // Bind form state directly to the existing $filters array
+        return $form
+            ->schema($this->getFormSchema())
+            ->statePath('filters');
+    }
+
     public function getFormSchema(): array
     {
         return [
             Grid::make(2)
                 ->schema([
-                    TextInput::make('filters.search')
+                    TextInput::make('search')
                         ->label('Search Servers')
                         ->placeholder('Search by name, country, or description...')
                         ->suffixIcon('heroicon-m-magnifying-glass')
@@ -60,7 +73,7 @@ class ServerBrowsing extends Page
                         ->live(debounce: 500)
                         ->columnSpanFull(),
 
-                    Select::make('filters.country')
+                    Select::make('country')
                         ->label('Country / Region')
                         ->placeholder('All Countries')
                         ->options($this->countries)
@@ -68,7 +81,7 @@ class ServerBrowsing extends Page
                         ->suffixIcon('heroicon-m-globe-alt')
                         ->live(),
 
-                    Select::make('filters.type')
+                    Select::make('type')
                         ->label('Server Type')
                         ->placeholder('All Types')
                         ->options([
@@ -80,21 +93,21 @@ class ServerBrowsing extends Page
                         ->suffixIcon('heroicon-m-server')
                         ->live(),
 
-                    TextInput::make('filters.price_min')
+                    TextInput::make('price_min')
                         ->label('Min Price ($)')
                         ->numeric()
                         ->placeholder('0')
                         ->prefix('$')
                         ->live(debounce: 500),
 
-                    TextInput::make('filters.price_max')
+                    TextInput::make('price_max')
                         ->label('Max Price ($)')
                         ->numeric()
                         ->placeholder('1000')
                         ->prefix('$')
                         ->live(debounce: 500),
 
-                    Select::make('filters.sort')
+                    Select::make('sort')
                         ->label('Sort By')
                         ->options([
                             'price_asc' => '💰 Price: Low to High',

@@ -54,7 +54,7 @@ class NotificationTemplateResource extends Resource
     public static function form(Schema $schema): Schema
     {
         return $schema->schema([
-            Forms\Components\Grid::make(2)->schema([
+            \Filament\Schemas\Components\Grid::make(2)->schema([
                 Forms\Components\TextInput::make('key')->required()->maxLength(100)->unique(ignoreRecord: true),
                 Forms\Components\TextInput::make('name')->required()->maxLength(150),
                 Forms\Components\Select::make('channel')->options([

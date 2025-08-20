@@ -3,10 +3,13 @@
 namespace App\Filament\Admin\Pages;
 
 use Filament\Pages\Page;
+use Filament\Forms\Contracts\HasForms;
+use Filament\Forms\Concerns\InteractsWithForms;
 use Filament\Forms;
 use Filament\Forms\Form;
-use Filament\Forms\Get;
+use Filament\Schemas\Schema;
 use Filament\Notifications\Notification;
+use Filament\Schemas\Components\Section as SchemaSection;
 use BackedEnum;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cache;
@@ -14,8 +17,9 @@ use Illuminate\Support\Str;
 use App\Services\TwoFactorService;
 use SimpleSoftwareIO\QrCode\Facades\QrCode;
 
-class ProfileSettings extends Page
+class ProfileSettings extends Page implements HasForms
 {
+    use InteractsWithForms;
     protected static string | BackedEnum | null $navigationIcon = 'heroicon-o-cog-6-tooth';
     protected static ?string $navigationLabel = 'Profile & Settings';
     protected static ?int $navigationSort = 99;
@@ -43,13 +47,13 @@ class ProfileSettings extends Page
         ]);
     }
 
-    public function form(Form $form): Form
+    public function form(Schema $schema): Schema
     {
         $timezones = collect(\DateTimeZone::listIdentifiers())->mapWithKeys(fn($tz) => [$tz => $tz])->all();
 
-        return $form
+        return $schema
             ->schema([
-                Forms\Components\Section::make('Profile')
+                SchemaSection::make('Profile')
                     ->icon('heroicon-o-user')
                     ->columns(2)
                     ->schema([
@@ -58,7 +62,7 @@ class ProfileSettings extends Page
                         Forms\Components\TextInput::make('phone')->tel()->maxLength(32),
                     ]),
 
-                Forms\Components\Section::make('Preferences')
+                SchemaSection::make('Preferences')
                     ->icon('heroicon-o-adjustments-vertical')
                     ->columns(3)
                     ->schema([
@@ -77,13 +81,13 @@ class ProfileSettings extends Page
                             ->native(false),
                     ]),
 
-                Forms\Components\Section::make('Notifications')
+                SchemaSection::make('Notifications')
                     ->icon('heroicon-o-bell')
                     ->schema([
                         Forms\Components\Toggle::make('email_notifications')
                             ->label('Email notifications')
                             ->inline(false),
-                        Forms\Components\Fieldset::make('Telegram')
+                        SchemaSection::make('Telegram')
                             ->schema([
                                 Forms\Components\Toggle::make('notify.telegram.direct')
                                     ->label('Direct messages')
@@ -99,7 +103,7 @@ class ProfileSettings extends Page
                             ])->columns(1),
                     ]),
 
-                Forms\Components\Section::make('Security')
+                SchemaSection::make('Security')
                     ->icon('heroicon-o-lock-closed')
                     ->schema([
                         Forms\Components\TextInput::make('current_password')
@@ -127,7 +131,9 @@ class ProfileSettings extends Page
                             ->numeric()
                             ->minLength(6)
                             ->maxLength(6)
-                            ->visible(fn(Get $get) => (bool) $get('two_factor_enabled') && empty(auth()->user()->two_factor_secret))
+                            // Note: In Schemas layout context, Filament passes a Schemas Get utility.
+                            // Avoid strict typehint to support both Forms and Schemas Get implementations.
+                            ->visible(fn($get) => (bool) $get('two_factor_enabled') && empty(auth()->user()->two_factor_secret))
                             ->dehydrateStateUsing(fn($s) => null),
                     ])->columns(3),
             ])

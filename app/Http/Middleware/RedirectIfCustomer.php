@@ -16,7 +16,20 @@ class RedirectIfCustomer
         }
 
         if (Auth::guard('customer')->check()) {
-            // When a customer hits admin panel or restricted areas, respond with 403 per tests.
+            // Always allow admin authentication pages so staff can sign in even if a customer session exists.
+            if (
+                $request->is('admin/login') ||
+                $request->is('admin/password-reset') ||
+                $request->is('admin/password-reset/*') ||
+                $request->is('admin/forgot-password') ||
+                $request->is('admin/forgot-password/*') ||
+                // Allow admin logout so staff can sign out even if a customer session exists
+                ($request->is('admin/logout') && $request->isMethod('post'))
+            ) {
+                return $next($request);
+            }
+
+            // When a customer hits other admin panel areas, respond with 403 per tests.
             if ($request->is('admin') || $request->is('admin/*')) {
                 abort(403);
             }

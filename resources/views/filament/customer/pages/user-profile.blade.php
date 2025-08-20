@@ -1,5 +1,5 @@
 <x-filament-panels::page>
-    <div class="fi-page-content space-y-8">
+    <div class="fi-page-content space-y-5">
         <!-- Enhanced Profile Header -->
         <div class="bg-gradient-to-r from-primary-500 via-blue-600 to-purple-700 overflow-hidden shadow-2xl rounded-3xl relative">
             <!-- Decorative background pattern -->
@@ -7,7 +7,7 @@
             <div class="absolute top-0 right-0 -mt-8 -mr-8 w-40 h-40 bg-white/10 rounded-full blur-2xl"></div>
             <div class="absolute bottom-0 left-0 -mb-8 -ml-8 w-32 h-32 bg-primary-400/20 rounded-full blur-2xl"></div>
             
-            <div class="relative px-6 py-10 sm:px-10 sm:py-16">
+            <div class="relative px-6 py-8 sm:px-10 sm:py-12">
             <div class="flex flex-col md:flex-row md:items-center gap-8">
                 <!-- Avatar Section -->
                 <div class="flex-shrink-0">
@@ -72,17 +72,17 @@
 
         <!-- Infolist Summary Header -->
         <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
-            <div class="p-4">
-                {{ $this->infolist }}
+            <div class="p-3">
+                {!! $this->infolist->toHtml() !!}
             </div>
         </div>
 
         <!-- Enhanced Account Statistics -->
-        <div class="bg-white my-16 dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
-            <div class="flex flex-col md:flex-row md:space-x-6 space-y-6 md:space-y-0 p-6 justify-center items-center">
+        <div class="bg-white my-8 dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
+            <div class="flex flex-col md:flex-row md:space-x-4 space-y-4 md:space-y-0 p-4 justify-center items-center">
             <!-- Total Orders -->
             <div class="flex-1 bg-white dark:bg-gray-800 overflow-hidden shadow-xl rounded-2xl hover:shadow-2xl transition-shadow duration-300 flex flex-col items-center justify-center text-center min-w-[180px]">
-                <div class="p-6 flex flex-col items-center justify-center">
+                <div class="p-4 flex flex-col items-center justify-center">
                 <div class="text-3xl font-bold text-gray-900 dark:text-white">
                     {{ $this->accountStats['total_orders'] ?? 0 }}
                 </div>
@@ -92,7 +92,7 @@
 
             <!-- Active Services -->
             <div class="flex-1 bg-white dark:bg-gray-800 overflow-hidden shadow-xl rounded-2xl hover:shadow-2xl transition-shadow duration-300 flex flex-col items-center justify-center text-center min-w-[180px]">
-                <div class="p-6 flex flex-col items-center justify-center">
+                <div class="p-4 flex flex-col items-center justify-center">
                 <div class="text-3xl font-bold text-gray-900 dark:text-white">
                     {{ $this->accountStats['active_services'] ?? 0 }}
                 </div>
@@ -102,7 +102,7 @@
 
             <!-- Total Spent -->
             <div class="flex-1 bg-white dark:bg-gray-800 overflow-hidden shadow-xl rounded-2xl hover:shadow-2xl transition-shadow duration-300 flex flex-col items-center justify-center text-center min-w-[180px]">
-                <div class="p-6 flex flex-col items-center justify-center">
+                <div class="p-4 flex flex-col items-center justify-center">
                 <div class="text-3xl font-bold text-gray-900 dark:text-white">
                     ${{ number_format($this->accountStats['total_spent'] ?? 0, 2) }}
                 </div>
@@ -112,7 +112,7 @@
 
             <!-- Wallet Balance -->
             <div class="flex-1 bg-white dark:bg-gray-800 overflow-hidden shadow-xl rounded-2xl hover:shadow-2xl transition-shadow duration-300 flex flex-col items-center justify-center text-center min-w-[180px]">
-                <div class="p-6 flex flex-col items-center justify-center">
+                <div class="p-4 flex flex-col items-center justify-center">
                 <div class="text-3xl font-bold text-gray-900 dark:text-white">
                     ${{ number_format($this->accountStats['wallet_balance'] ?? 0, 2) }}
                 </div>
@@ -123,10 +123,10 @@
         </div>
 
         <!-- Enhanced Forms Layout -->
-        <div class="bg-white my-16  dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
+    <div class="bg-white my-8  dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
             <!-- Profile Information -->
             <div class="bg-white dark:bg-gray-800 shadow-xl rounded-2xl overflow-hidden">
-                <div class="px-6 py-4 bg-gradient-to-r from-primary-50 to-blue-50 dark:from-primary-900/20 dark:to-blue-900/20 border-b border-gray-200 dark:border-gray-700">
+                <div class="px-5 py-3 bg-gradient-to-r from-primary-50 to-blue-50 dark:from-primary-900/20 dark:to-blue-900/20 border-b border-gray-200 dark:border-gray-700">
                     <div class="flex items-center gap-3">
                         <div class="p-2 bg-primary-100 dark:bg-primary-900/30 rounded-xl">
                             <x-heroicon-o-user class="w-6 h-6 text-primary-600 dark:text-primary-400" />
@@ -136,15 +136,15 @@
                         </div>
                     </div>
                 </div>
-                <div class="p-6">
+                <div class="p-4">
                     {{ $this->form }}
                 </div>
             </div>
         </div>
 
         <!-- Account Activity -->
-        <div class="bg-white my-16 dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
-            <div class="bg-gradient-to-r from-indigo-500 to-purple-600 p-6">
+        <div class="bg-white my-8 dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
+            <div class="bg-gradient-to-r from-indigo-500 to-purple-600 p-4">
                 <div class="flex items-center gap-3">
                     <div class="p-2 bg-white/20 rounded-xl">
                         <x-heroicon-o-clock class="w-6 h-6 text-white" />
@@ -155,22 +155,41 @@
                     </div>
                 </div>
             </div>
-            <div class="p-6">
+            <div class="p-4">
                 <div class="flow-root">
                     <ul class="-mb-8">
                         <li>
-                            <div class="relative pb-8">
-                                <span class="absolute top-4 left-4 -ml-px h-full w-0.5 bg-gray-200 dark:bg-gray-600"></span>
+                            <div class="relative pb-6">
+                                <span class="absolute top-3 left-4 -ml-px h-full w-0.5 bg-gray-200 dark:bg-gray-600"></span>
                                 <div class="relative flex space-x-3">
-                                    <div class="h-8 w-8 rounded-full bg-blue-500 dark:bg-blue-600 flex items-center justify-center ring-8 ring-white dark:ring-gray-800">
+                                    <div class="h-7 w-7 rounded-full bg-blue-500 dark:bg-blue-600 flex items-center justify-center ring-6 ring-white dark:ring-gray-800">
                                         <x-heroicon-o-user class="w-4 h-4 text-white" />
                                     </div>
-                                    <div class="min-w-0 flex-1 pt-1.5 flex justify-between space-x-4">
+                                    <div class="min-w-0 flex-1 pt-1 flex justify-between space-x-4">
                                         <div>
                                             <p class="text-sm text-gray-600 dark:text-gray-300">Profile accessed</p>
                                         </div>
                                         <div class="text-right text-sm whitespace-nowrap text-gray-500 dark:text-gray-400">
                                             {{ now()->format('M j, H:i') }}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </li>
+
+                        <li>
+                            <div class="relative pb-6">
+                                <span class="absolute top-3 left-4 -ml-px h-full w-0.5 bg-gray-200 dark:bg-gray-600"></span>
+                                <div class="relative flex space-x-3">
+                                    <div class="h-7 w-7 rounded-full bg-amber-500 dark:bg-amber-600 flex items-center justify-center ring-6 ring-white dark:ring-gray-800">
+                                        <x-heroicon-o-arrow-right-on-rectangle class="w-4 h-4 text-white" />
+                                    </div>
+                                    <div class="min-w-0 flex-1 pt-1 flex justify-between space-x-4">
+                                        <div>
+                                            <p class="text-sm text-gray-600 dark:text-gray-300">Last login</p>
+                                        </div>
+                                        <div class="text-right text-sm whitespace-nowrap text-gray-500 dark:text-gray-400">
+                                            {{ $this->accountStats['last_login'] ?? 'Never' }}
                                         </div>
                                     </div>
                                 </div>
@@ -186,13 +205,13 @@
 
                         @if($lastOrder)
                         <li>
-                            <div class="relative pb-8">
-                                <span class="absolute top-4 left-4 -ml-px h-full w-0.5 bg-gray-200 dark:bg-gray-600"></span>
+                            <div class="relative pb-6">
+                                <span class="absolute top-3 left-4 -ml-px h-full w-0.5 bg-gray-200 dark:bg-gray-600"></span>
                                 <div class="relative flex space-x-3">
-                                    <div class="h-8 w-8 rounded-full bg-green-500 dark:bg-green-600 flex items-center justify-center ring-8 ring-white dark:ring-gray-800">
+                                    <div class="h-7 w-7 rounded-full bg-green-500 dark:bg-green-600 flex items-center justify-center ring-6 ring-white dark:ring-gray-800">
                                         <x-heroicon-o-shopping-bag class="w-4 h-4 text-white" />
                                     </div>
-                                    <div class="min-w-0 flex-1 pt-1.5 flex justify-between space-x-4">
+                                    <div class="min-w-0 flex-1 pt-1 flex justify-between space-x-4">
                                         <div>
                                             <p class="text-sm text-gray-600 dark:text-gray-300">Order #{{ $lastOrder->id }} placed</p>
                                         </div>
@@ -208,10 +227,10 @@
                         <li>
                             <div class="relative">
                                 <div class="relative flex space-x-3">
-                                    <div class="h-8 w-8 rounded-full bg-gray-400 dark:bg-gray-600 flex items-center justify-center ring-8 ring-white dark:ring-gray-800">
+                                    <div class="h-7 w-7 rounded-full bg-gray-400 dark:bg-gray-600 flex items-center justify-center ring-6 ring-white dark:ring-gray-800">
                                         <x-heroicon-o-user-plus class="w-4 h-4 text-white" />
                                     </div>
-                                    <div class="min-w-0 flex-1 pt-1.5 flex justify-between space-x-4">
+                                    <div class="min-w-0 flex-1 pt-1 flex justify-between space-x-4">
                                         <div>
                                             <p class="text-sm text-gray-600 dark:text-gray-300">Account created</p>
                                         </div>
@@ -228,8 +247,8 @@
         </div>
 
         <!-- Data & Privacy -->
-        <div class="bg-white my-16 dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
-            <div class="bg-gradient-to-r from-gray-500 to-gray-700 p-6">
+        <div class="bg-white my-8 dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
+            <div class="bg-gradient-to-r from-gray-500 to-gray-700 p-4">
                 <div class="flex items-center gap-3">
                     <div class="p-2 bg-white/20 rounded-xl">
                         <x-heroicon-o-document-text class="w-6 h-6 text-white" />
@@ -240,7 +259,7 @@
                     </div>
                 </div>
             </div>
-            <div class="p-6">
+            <div class="p-4">
                 <div class="space-y-6">
                     <div class="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-700 rounded-lg">
                         <div>

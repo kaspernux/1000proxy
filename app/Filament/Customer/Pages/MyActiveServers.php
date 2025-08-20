@@ -22,10 +22,9 @@ use Filament\Notifications\Notification;
 use Filament\Tables\Concerns\InteractsWithTable;
 use Filament\Forms;
 use Filament\Forms\Concerns\InteractsWithForms;
-use Filament\Forms\Form;
+use Filament\Schemas\Schema;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Toggle;
-use Filament\Forms\Components\Actions as FormActions;
 use Filament\Tables;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Filters\Filter;
@@ -357,7 +356,7 @@ class MyActiveServers extends Page implements HasTable
             ->persistSortInSession();
     }
 
-    public function form(Form $form): Form
+    public function form(Schema $form): Schema
     {
         return $form
             ->schema([
@@ -375,13 +374,6 @@ class MyActiveServers extends Page implements HasTable
                     ->label('Include inactive/suspended in export')
                     ->default(false)
                     ->helperText('Only applies to CSV export.'),
-
-                FormActions::make([
-                    \Filament\Forms\Components\Actions\Action::make('run')
-                        ->label('Run')
-                        ->color('primary')
-                        ->submit('run'),
-                ])->fullWidth(),
             ])
             ->statePath('data');
     }

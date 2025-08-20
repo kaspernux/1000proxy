@@ -37,10 +37,11 @@ trait HasPerformanceOptimizations
             $table = $table->paginationPageOptions($pageOptions);
         }
 
-        // Defer initial load where available for large datasets (skip in tests)
-        if (method_exists($table, 'deferLoading') && !app()->environment('testing')) {
-            $table = $table->deferLoading();
-        }
+    // Note: deferLoading() can cause null table queries during initial render in some Filament versions.
+    // Disabled to ensure summary queries and other features have a valid query on first render.
+    // if (method_exists($table, 'deferLoading') && !app()->environment('testing')) {
+    //     $table = $table->deferLoading();
+    // }
 
         // Density preset
         if ($compact && method_exists($table, 'recordClasses')) {
@@ -118,9 +119,10 @@ trait HasPerformanceOptimizations
         }
 
         // Optional methods guarded by existence checks
-        if (method_exists($table, 'deferLoading')) {
-            $table = $table->deferLoading();
-        }
+    // Disabled for compatibility with summary/query evaluation during initial render.
+    // if (method_exists($table, 'deferLoading')) {
+    //     $table = $table->deferLoading();
+    // }
         if (method_exists($table, 'striped')) {
             $table = $table->striped();
         }
@@ -137,9 +139,10 @@ trait HasPerformanceOptimizations
     protected function configureLazyLoading(Table $table): Table
     {
         // Use deferLoading() for async loading when available (skip in tests)
-        if (method_exists($table, 'deferLoading') && !app()->environment('testing')) {
-            $table = $table->deferLoading();
-        }
+    // Disabled for compatibility with summary/query evaluation during initial render.
+    // if (method_exists($table, 'deferLoading') && !app()->environment('testing')) {
+    //     $table = $table->deferLoading();
+    // }
 
         // Customize empty state (supported across versions)
         return $table

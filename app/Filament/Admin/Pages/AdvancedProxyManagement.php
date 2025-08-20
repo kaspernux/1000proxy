@@ -8,6 +8,7 @@ use Livewire\WithPagination;
 use App\Services\AdvancedProxyService;
 use App\Services\XUIService;
 use App\Models\User;
+use App\Models\Customer;
 use App\Models\Server;
 use App\Models\Order;
 use Illuminate\Support\Facades\Cache;
@@ -437,10 +438,13 @@ class AdvancedProxyManagement extends Page
     // Data fetching methods (private)
     private function getUsers()
     {
-        return User::whereHas('orders', function ($query) {
-            $query->where('payment_status', 'paid')
-                  ->where('status', 'active');
-        })->select('id', 'name', 'email')->get();
+        // In our domain, orders belong to Customer, not User.
+        return Customer::whereHas('orders', function ($query) {
+                $query->where('payment_status', 'paid')
+                      ->where('order_status', 'completed');
+            })
+            ->select('id', 'name', 'email')
+            ->get();
     }
 
     private function getUserProxies()
@@ -449,7 +453,7 @@ class AdvancedProxyManagement extends Page
 
     return Order::where('customer_id', $this->selectedUserId)
                    ->where('payment_status', 'paid')
-                   ->where('status', 'active')
+                   ->where('order_status', 'completed')
                    ->with(['serverPlan.server'])
                    ->get();
     }

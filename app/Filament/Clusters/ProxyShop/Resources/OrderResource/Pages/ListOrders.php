@@ -12,6 +12,17 @@ class ListOrders extends ListRecords
 {
     protected static string $resource = OrderResource::class;
 
+    protected function getTableModel(): string
+    {
+        return \App\Models\Order::class;
+    }
+
+    protected function getTableQuery(): Builder
+    {
+        // Ensure a concrete base query is provided for Filament Tables internals on first render
+        return $this->getModel()::query();
+    }
+
     protected function getHeaderActions(): array
     {
     // Creation is disabled; orders originate from customer checkout only.
@@ -93,4 +104,5 @@ class ListOrders extends ListRecords
                 ->badgeColor('danger'),
         ];
     }
+
 }

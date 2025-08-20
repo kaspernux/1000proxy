@@ -51,7 +51,10 @@ class ActivityLogResource extends Resource
     {
         $table = $table
             ->columns([
-                Tables\Columns\TextColumn::make('created_at')->since()->sortable()->label('When'),
+                Tables\Columns\TextColumn::make('created_at')->since()->sortable()->label('When')
+                    ->summarize([
+                        Tables\Columns\Summarizers\Count::make()->label('Total'),
+                    ]),
                 Tables\Columns\TextColumn::make('user.name')->label('User')->toggleable()->searchable(),
                 Tables\Columns\TextColumn::make('action')->badge()->colors([
                     'success' => 'created',
@@ -62,6 +65,12 @@ class ActivityLogResource extends Resource
                 Tables\Columns\TextColumn::make('subject_id')->label('ID')->sortable(),
                 Tables\Columns\TextColumn::make('ip_address')->toggleable(isToggledHiddenByDefault: true),
             ])
+            ->actions([
+                \Filament\Actions\ActionGroup::make([
+                    \Filament\Actions\ViewAction::make(),
+                    \Filament\Actions\DeleteAction::make()->visible(fn () => auth()->user()?->hasRole('super-admin')),
+                ])->label('Actions')->icon('heroicon-o-ellipsis-vertical'),
+            ])
             ->filters([
                 Tables\Filters\Filter::make('created_today')->label('Today')
                     ->query(fn (Builder $q) => $q->whereDate('created_at', now()->toDateString())),
@@ -70,10 +79,10 @@ class ActivityLogResource extends Resource
                         Forms\Components\DatePicker::make('from'),
                         Forms\Components\DatePicker::make('to'),
                     ])->query(function (Builder $q, array $data) {
-                        if ($data['from'] ?? null) {
+                        if (! empty($data['from'])) {
                             $q->whereDate('created_at', '>=', $data['from']);
                         }
-                        if ($data['to'] ?? null) {
+                        if (! empty($data['to'])) {
                             $q->whereDate('created_at', '<=', $data['to']);
                         }
                         return $q;
@@ -97,10 +106,6 @@ class ActivityLogResource extends Resource
                     ->query(fn (Builder $q, array $data) => ($data['subject_type'] ?? null) ? $q->where('subject_type', $data['subject_type']) : $q),
             ])
             ->defaultSort('id', 'desc')
-            ->actions([
-                \Filament\Actions\ViewAction::make(),
-                \Filament\Actions\DeleteAction::make()->visible(fn () => auth()->user()?->hasRole('super-admin')),
-            ])
             ->bulkActions([
                 \Filament\Actions\BulkAction::make('export_csv')
                     ->label('Export CSV')
@@ -130,7 +135,9 @@ class ActivityLogResource extends Resource
                     })
                     ->deselectRecordsAfterCompletion(),
                 \Filament\Actions\DeleteBulkAction::make()->visible(fn () => auth()->user()?->hasRole('super-admin')),
-            ]);
+            ])
+            // Header column toggle action removed for compatibility with current Filament version
+            ;
 
         return self::applyTablePreset($table, [
             'defaultPage' => 50,

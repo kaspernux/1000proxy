@@ -27,12 +27,17 @@
         </x-filament::dropdown.list.item>
 
         <x-filament::dropdown.list.item
-            href="{{ route('filament.customer.logout') }}"
+            tag="button"
+            type="button"
+            onclick="document.getElementById('customerLogoutForm')?.submit()"
             icon="heroicon-o-arrow-left-start-on-rectangle"
-            tag="a"
         >
             Logout
         </x-filament::dropdown.list.item>
+
+    <form id="customerLogoutForm" action="{{ route('filament.customer.auth.logout') }}" method="POST" class="hidden">
+            @csrf
+        </form>
 
         <x-filament::dropdown.list.item tag="div" disabled>
             <div class="text-xs uppercase text-gray-400 px-3 pt-2 pb-1">Stats</div>

@@ -60,8 +60,7 @@ class AdminPanelProvider extends PanelProvider
             \App\Http\Middleware\ForceAdminForActivityLogs::class, // ensure proper 403 on activity logs
             LivewirePerformanceProbe::class, // log slow admin renders
             \App\Http\Middleware\ProbeAdminAuth::class,
-            // Authenticate must run after the session has started
-            Authenticate::class,
+            // Do NOT include Authenticate here, it must only wrap protected panel routes.
         ];
 
         return $panel
@@ -77,6 +76,9 @@ class AdminPanelProvider extends PanelProvider
                 'primary' => Color::Amber,
             ])
             ->maxContentWidth(Width::Full)
+            // Enable database notifications bell for staff
+            ->databaseNotifications(true, livewireComponent: null, isLazy: true)
+            ->databaseNotificationsPolling('20s')
             // Use the global app.css as the Filament theme stylesheet
                 // Use native Filament v4 theme (no custom viteTheme override)
             ->defaultThemeMode(match (session('theme_mode', 'system')) {
@@ -134,7 +136,10 @@ class AdminPanelProvider extends PanelProvider
                     ->icon('heroicon-o-arrow-left-start-on-rectangle'),
             ])
             ->middleware($adminMiddleware)
-            ->authMiddleware([])
+            // Protect panel apps with Filament's auth middleware (excludes login/reset routes)
+            ->authMiddleware([
+                Authenticate::class,
+            ])
             ->bootUsing(function(){
                 // Ensure SweetAlert2 + Livewire Alert scripts are available inside the Filament customer panel
                 \Filament\Support\Facades\FilamentView::registerRenderHook(
@@ -164,6 +169,32 @@ class AdminPanelProvider extends PanelProvider
                     \Filament\Support\Facades\FilamentView::registerRenderHook(
                         \Filament\View\PanelsRenderHook::HEAD_END,
                         fn () => new \Illuminate\Support\HtmlString( app(\Illuminate\Foundation\Vite::class)(['resources/css/filament/custom-panels.css']) ),
+                    );
+
+                    // Add a small theme toggle quick-action next to page header actions
+                    \Filament\Support\Facades\FilamentView::registerRenderHook(
+                        \Filament\View\PanelsRenderHook::PAGE_HEADER_ACTIONS_AFTER,
+                        function () {
+                            return new \Illuminate\Support\HtmlString(<<<'HTML'
+                                <div class="hidden md:flex items-center gap-2">
+                                    <button id="admin-theme-toggle" type="button" class="inline-flex items-center gap-1 px-2 py-1 text-sm rounded bg-gray-700 text-white hover:bg-gray-800">
+                                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="size-4"><path d="M21.752 15.002A9.718 9.718 0 0019.5 15.75c-5.385 0-9.75-4.365-9.75-9.75 0-.79.091-1.56.263-2.296A9.753 9.753 0 003 11.25C3 16.635 7.365 21 12.75 21a9.753 9.753 0 009.002-5.998z" /></svg>
+                                        <span>Theme</span>
+                                    </button>
+                                </div>
+                                <script>
+                                    (function(){
+                                        document.addEventListener('click', function(e){
+                                            if (e.target && (e.target.id === 'admin-theme-toggle' || e.target.closest('#admin-theme-toggle'))) {
+                                                const root = document.documentElement;
+                                                const isDark = root.classList.toggle('dark');
+                                                fetch('/api/theme', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content }, body: JSON.stringify({ mode: isDark ? 'dark' : 'light' }) }).catch(()=>{});
+                                            }
+                                        });
+                                    })();
+                                </script>
+                            HTML);
+                        }
                     );
             });
     }

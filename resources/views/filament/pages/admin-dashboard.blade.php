@@ -33,7 +33,9 @@
         </div>
 
         <!-- (Optional) Quick Actions Row placeholder -->
-        {{-- <div class="grid gap-4 md:gap-6 grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 mb-10"></div> --}}
+        <div class="mb-6">
+            @includeIf('filament.admin.partials.top-quick-actions')
+        </div>
     </div>
 
     <!-- Core Widgets Grid (no outer grid wrapper to avoid nested wrapping) -->

@@ -24,21 +24,23 @@
         <!-- Gradient Statistic Cards -->
         <div class="grid gap-6 md:gap-8 grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 mb-12">
             <!-- Total Servers -->
-            <x-filament::section class="p-5 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl shadow-sm">
-                <div class="flex items-start justify-between">
+            <div class="group relative p-5 rounded-2xl shadow-lg ring-1 ring-white/10 overflow-hidden text-white bg-gradient-to-br from-blue-600 to-indigo-600">
+                <div class="absolute -top-10 -right-10 w-36 h-36 bg-white/10 rounded-full blur-2xl"></div>
+                <div class="relative flex items-start justify-between">
                     <div>
-                        <p class="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400 mb-1">Total Servers</p>
-                        <p class="text-3xl font-bold text-gray-900 dark:text-white">{{ \App\Models\Server::where('is_active', true)->count() }}</p>
-                        <p class="mt-2 flex items-center text-xs text-gray-500 dark:text-gray-400">
-                            <x-heroicon-o-arrow-trending-up class="h-4 w-4 mr-1 text-primary-500" /> Active lineup
+                        <p class="text-xs font-medium uppercase tracking-wide text-white/80 mb-1">Total Servers</p>
+                        <p class="text-3xl font-bold">{{ \App\Models\Server::where('is_active', true)->count() }}</p>
+                        <p class="mt-2 flex items-center text-xs text-white/85">
+                            <x-heroicon-o-arrow-trending-up class="h-4 w-4 mr-1 text-white/90" /> Active lineup
                         </p>
                     </div>
                 </div>
-            </x-filament::section>
+            </div>
 
             <!-- Active Servers -->
-            <x-filament::section class="p-5 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl shadow-sm">
-                <div class="flex items-start justify-between">
+            <div class="group relative p-5 rounded-2xl shadow-lg ring-1 ring-white/10 overflow-hidden text-white bg-gradient-to-br from-emerald-600 to-green-600">
+                <div class="absolute -top-10 -right-10 w-36 h-36 bg-white/10 rounded-full blur-2xl"></div>
+                <div class="relative flex items-start justify-between">
                     <div>
                         <p class="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400 mb-1">Active Now</p>
                         <p class="text-3xl font-bold text-gray-900 dark:text-white">{{ \App\Models\Server::where('is_active', true)->where('status', 'active')->count() }}</p>
@@ -47,7 +49,7 @@
                         </p>
                     </div>
                 </div>
-            </x-filament::section>
+            </div>
 
             <!-- Countries -->
             <x-filament::section class="p-5 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl shadow-sm">
@@ -72,10 +74,10 @@
             </x-filament::section>
         </div>
 
-        {{-- Main Grid: Filters + (existing secondary panels remain) --}}
-        <div class="grid py-4 grid-cols-1 lg:grid-cols-3 gap-4 md:gap-6 mb-16">
-            {{-- Enhanced Server Filters (simplified neutral design) --}}
-            <x-filament::section class="lg:col-start-3 lg:row-span-2 order-last lg:order-none py-6">
+        {{-- Main area: Left sidebar filters + right content (servers) --}}
+        <div class="grid py-4 grid-cols-1 lg:grid-cols-3 gap-6 mb-16 items-stretch">
+            {{-- Enhanced Server Filters (matching height on desktop) --}}
+            <x-filament::section class="py-6 h-full flex flex-col lg:col-span-1">
                 <x-slot name="heading">
                     <div class="flex items-center justify-between w-full">
                         <div class="flex items-center gap-2">
@@ -132,18 +134,22 @@
                         </div>
                     </div>
 
-                    {{-- Active Filters Summary --}}
+                    {{-- Active Filters Summary with chips --}}
                     @php($activeFilters = collect($filters)->filter(fn($v,$k)=>$v && $k !== 'sort'))
                     @if($activeFilters->isNotEmpty())
                         <div class="p-4 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
                             <div class="flex items-center gap-2 mb-3">
                                 <x-heroicon-o-adjustments-horizontal class="w-4 h-4 text-gray-500" />
                                 <span class="text-sm font-medium text-gray-900 dark:text-white">Active Filters</span>
+                                <button type="button" wire:click="resetFilters()" class="ml-auto text-xs text-primary-600 hover:underline">Clear all</button>
                             </div>
                             <div class="flex flex-wrap gap-1">
                                 @foreach($activeFilters as $k => $v)
                                     <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-xs bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-600">
                                         <x-heroicon-o-tag class="w-3 h-3" /> {{ ucfirst(str_replace('_',' ',$k)) }}: {{ $v }}
+                                        <button type="button" wire:click="$set('filters.{{$k}}', null)" class="ml-1 text-gray-500 hover:text-gray-700 dark:hover:text-gray-200">
+                                            <x-heroicon-o-x-mark class="w-3 h-3" />
+                                        </button>
                                     </span>
                                 @endforeach
                             </div>
@@ -162,38 +168,168 @@
                     </div>
                 </div>
             </x-filament::section>
+
+            {{-- Right content: Servers list --}}
+            <div class="space-y-6 h-full lg:col-span-2">
+                {{-- Servers Grid --}}
+                <x-filament::section class="py-6 h-full flex flex-col">
+                    <x-slot name="heading">
+                        <div class="flex items-center justify-between w-full">
+                            <div class="flex items-center gap-2">
+                                <x-heroicon-o-server-stack class="w-5 h-5 text-primary-600" />
+                                Available Servers
+                            </div>
+                            <div class="flex items-center gap-3 text-sm text-gray-600 dark:text-gray-400">
+                                @php($activeFilters = collect($filters)->filter(fn($v,$k)=>$v && !in_array($k, ['sort','favorites_only'])))
+                                <div class="hidden sm:flex items-center gap-2">
+                                    <span class="text-xs">{{ $activeFilters->count() }} filters active</span>
+                                    @if($activeFilters->count() > 0)
+                                        <button type="button" wire:click="resetFilters" class="text-xs text-primary-600 hover:underline">Clear all</button>
+                                    @endif
+                                </div>
+                                <x-filament::button size="xs" color="gray" wire:click="$toggle('compactView')" icon="{{ $compactView ? 'heroicon-o-rectangle-group' : 'heroicon-o-squares-2x2' }}">
+                                    {{ $compactView ? 'Comfort' : 'Compact' }}
+                                </x-filament::button>
+                                <div>{{ count($servers) }} found</div>
+                            </div>
+                        </div>
+                    </x-slot>
+
+                    @if(count($servers) > 0)
+                        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 gap-{{ $compactView ? '3' : '4' }}">
+                            @foreach($servers as $server)
+                                <div class="group relative bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-{{ $compactView ? '3' : '4' }} hover:shadow-md hover:border-primary-300 dark:hover:border-primary-700 transition-all duration-200">
+                                    {{-- Server Header --}}
+                                    <div class="flex items-start justify-between mb-3">
+                                        <div class="flex-1 min-w-0">
+                                            <h4 class="font-semibold text-gray-900 dark:text-white mb-{{ $compactView ? '0.5' : '1' }} truncate">
+                                                {{ $server->name }}
+                                            </h4>
+                                            <x-filament::badge 
+                                                :color="$server->status === 'active' ? 'success' : 'danger'"
+                                                size="xs"
+                                            >
+                                                {{ ucfirst($server->status) }}
+                                            </x-filament::badge>
+                                        </div>
+                                        {{-- Favorite Button --}}
+                                        <x-filament::icon-button
+                                            icon="heroicon-o-heart"
+                                            :color="$this->isFavorite($server->id) ? 'danger' : 'gray'"
+                                            size="xs"
+                                            wire:click="toggleFavorite({{ $server->id }})"
+                                        />
+                                    </div>
+
+                                    {{-- Server Details --}}
+                                    <div class="space-y-{{ $compactView ? '1.5' : '2' }} mb-{{ $compactView ? '3' : '4' }}">
+                                        <div class="flex items-center justify-between text-xs">
+                                            <div class="flex items-center gap-1 text-gray-600 dark:text-gray-400">
+                                                <x-heroicon-o-map-pin class="w-3 h-3" />
+                                                <span>Location</span>
+                                            </div>
+                                            <span class="text-gray-900 dark:text-white font-medium">{{ $server->country }}</span>
+                                        </div>
+                                        @if($server->type)
+                                        <div class="flex items-center justify-between text-xs">
+                                            <div class="flex items-center gap-1 text-gray-600 dark:text-gray-400">
+                                                <x-heroicon-o-cog-6-tooth class="w-3 h-3" />
+                                                <span>Type</span>
+                                            </div>
+                                            <span class="text-gray-900 dark:text-white font-medium">{{ ucfirst($server->type) }}</span>
+                                        </div>
+                                        @endif
+                                        @if($server->plans && $server->plans->count() > 0)
+                                        <div class="flex items-center justify-between text-xs">
+                                            <div class="flex items-center gap-1 text-gray-600 dark:text-gray-400">
+                                                <x-heroicon-o-currency-dollar class="w-3 h-3" />
+                                                <span>Price</span>
+                                            </div>
+                                            <div class="flex items-center gap-1">
+                                                <span class="text-{{ $compactView ? 'xs' : 'sm' }} font-bold text-primary-600 dark:text-primary-400">
+                                                    ${{ $server->plans->first()->price }}
+                                                </span>
+                                                <span class="text-xs text-gray-500">/mo</span>
+                                            </div>
+                                        </div>
+                                        @endif
+                                        {{-- Performance Indicator --}}
+                                        <div class="flex items-center justify-between text-xs">
+                                            <div class="flex items-center gap-1 text-gray-600 dark:text-gray-400">
+                                                <x-heroicon-o-signal class="w-3 h-3" />
+                                                <span>Rating</span>
+                                            </div>
+                                            <div class="flex items-center gap-1">
+                                                @php($stars = $this->starArray($server))
+                                                @foreach($stars as $filled)
+                                                    <x-heroicon-s-star class="w-{{ $compactView ? '2' : '2.5' }} h-{{ $compactView ? '2' : '2.5' }} {{ $filled ? 'text-warning-400' : 'text-gray-300 dark:text-gray-600' }}" />
+                                                @endforeach
+                                                <span class="text-xs text-gray-500 ml-1">{{ $this->formatRating($server) }}</span>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {{-- Action Button --}}
+                                    <x-filament::button
+                                        color="primary" 
+                                        icon="heroicon-o-arrow-right"
+                                        size="{{ $compactView ? '2xs' : 'xs' }}"
+                                        class="w-full"
+                                        wire:click="selectServer({{ $server->id }})"
+                                    >
+                                        Select Server
+                                    </x-filament::button>
+                                </div>
+                            @endforeach
+                        </div>
+
+                        <div class="mt-6 flex flex-col items-center gap-2">
+                            @if($hasMore)
+                                <x-filament::button
+                                    color="gray"
+                                    icon="heroicon-o-plus"
+                                    size="sm"
+                                    wire:click="loadMore"
+                                    wire:loading.attr="disabled"
+                                >
+                                    <span wire:loading.remove>Load More Servers</span>
+                                    <span wire:loading.flex class="items-center gap-1">
+                                        <x-heroicon-o-arrow-path class="w-4 h-4 animate-spin" /> Loading...
+                                    </span>
+                                </x-filament::button>
+                            @else
+                                <p class="text-xs text-gray-500">End of results</p>
+                            @endif
+                        </div>
+                    @else
+                        <div class="text-center py-12">
+                            <div class="flex flex-col items-center gap-4">
+                                <div class="p-4 bg-gray-100 dark:bg-gray-800 rounded-full">
+                                    <x-heroicon-o-server-stack class="w-8 h-8 text-gray-400" />
+                                </div>
+                                <div>
+                                    <h3 class="font-semibold text-gray-900 dark:text-white mb-2">No servers found</h3>
+                                    <p class="text-gray-500 dark:text-gray-400 text-sm mb-4">Try adjusting your filters to see more results.</p>
+                                    <x-filament::button
+                                        color="primary"
+                                        icon="heroicon-o-arrow-path"
+                                        size="sm"
+                                        wire:click="resetFilters()"
+                                    >
+                                        Reset Filters
+                                    </x-filament::button>
+                                </div>
+                            </div>
+                        </div>
+                    @endif
+                </x-filament::section>
+            </div>
         </div>
 
         {{-- Retain remaining original content sections below --}}
 
-        {{-- Row 2: Quick Filters, Protocol Comparison, and Featured Banner --}}
-        <div class="grid py-4 grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 md:gap-6 mb-16">
-            {{-- Quick Filters (neutral buttons) --}}
-            <x-filament::section class="py-6">
-                <x-slot name="heading">
-                    <div class="flex items-center gap-2">
-                        <x-heroicon-o-adjustments-horizontal class="w-5 h-5 text-gray-500" />
-                        <span class="font-medium">Quick Filters</span>
-                    </div>
-                </x-slot>
-                <div class="flex flex-wrap gap-2">
-                    @foreach([
-                        ['country','us','US','heroicon-o-flag'],
-                        ['country','eu','EU','heroicon-o-flag'],
-                        ['country','asia','Asia','heroicon-o-flag'],
-                        ['price_max',10,'Under $10','heroicon-o-currency-dollar'],
-                        ['price_max',25,'Under $25','heroicon-o-currency-dollar'],
-                    ] as $q)
-                        @php($active = ($filters[$q[0]] ?? null) === $q[1])
-                        <button type="button" wire:click="$set('filters.'.$q[0], '{{ $q[1] }}')" class="inline-flex items-center gap-1 px-3 py-1.5 rounded-md text-xs font-medium border transition {{ $active ? 'bg-primary-600 text-white border-primary-600' : 'bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700' }}">
-                            <x-filament::icon :icon="$q[3]" class="w-4 h-4" /> {{ $q[2] }}
-                        </button>
-                    @endforeach
-                    <button type="button" wire:click="resetFilters()" class="inline-flex items-center gap-1 px-3 py-1.5 rounded-md text-xs font-medium border bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700">
-                        <x-heroicon-o-arrow-path class="w-4 h-4" /> Reset
-                    </button>
-                </div>
-            </x-filament::section>
+    {{-- Row 2: Protocol Comparison and Featured Banner --}}
+    <div class="grid py-4 grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 md:gap-6 mb-16">
 
             {{-- Protocols (clean list) --}}
             <x-filament::section class="py-6">
@@ -223,7 +359,7 @@
             </x-filament::section>
 
             {{-- Featured (subtle callout) --}}
-            <x-filament::section class="md:col-span-2 xl:col-span-1 py-6">
+            <x-filament::section class="py-6">
                 <x-slot name="heading">
                     <div class="flex items-center gap-2">
                         <x-heroicon-o-star class="w-5 h-5 text-gray-500" />
@@ -239,159 +375,41 @@
                     <div class="text-xs text-gray-500 dark:text-gray-500">Updated daily.</div>
                 </div>
             </x-filament::section>
-        </div>
 
-        {{-- Row 3: Main Content Area - Servers --}}
-    <div class="py-4 space-y-4 md:space-y-6 mt-12">
-            {{-- Servers Grid --}}
+            {{-- Plans (quick filters by duration) --}}
             <x-filament::section class="py-6">
                 <x-slot name="heading">
-                    <div class="flex items-center justify-between w-full">
-                        <div class="flex items-center gap-2">
-                            <x-heroicon-o-server-stack class="w-5 h-5 text-primary-600" />
-                            Available Servers
-                        </div>
-                        <div class="text-sm text-gray-500">
-                            {{ count($servers) }} servers found
-                        </div>
+                    <div class="flex items-center gap-2">
+                        <x-heroicon-o-clipboard-document-check class="w-5 h-5 text-gray-500" />
+                        <span class="font-medium">Plans</span>
                     </div>
                 </x-slot>
-                
-                @if(count($servers) > 0)
-                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-                        @foreach($servers as $server)
-                            <div class="group relative bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-4 hover:shadow-md hover:border-primary-300 dark:hover:border-primary-700 transition-all duration-200">
-                                {{-- Server Header --}}
-                                <div class="flex items-start justify-between mb-3">
-                                    <div class="flex-1 min-w-0">
-                                        <h4 class="font-semibold text-gray-900 dark:text-white mb-1 truncate">
-                                            {{ $server->name }}
-                                        </h4>
-                                        <x-filament::badge 
-                                            :color="$server->status === 'active' ? 'success' : 'danger'"
-                                            size="xs"
-                                        >
-                                            {{ ucfirst($server->status) }}
-                                        </x-filament::badge>
-                                    </div>
-                                    
-                                    {{-- Favorite Button --}}
-                                    <x-filament::icon-button
-                                        icon="heroicon-o-heart"
-                                        :color="$this->isFavorite($server->id) ? 'danger' : 'gray'"
-                                        size="xs"
-                                        wire:click="toggleFavorite({{ $server->id }})"
-                                    />
-                                </div>
-                                
-                                {{-- Server Details --}}
-                                <div class="space-y-2 mb-4">
-                                    <div class="flex items-center justify-between text-xs">
-                                        <div class="flex items-center gap-1 text-gray-600 dark:text-gray-400">
-                                            <x-heroicon-o-map-pin class="w-3 h-3" />
-                                            <span>Location</span>
-                                        </div>
-                                        <span class="text-gray-900 dark:text-white font-medium">{{ $server->country }}</span>
-                                    </div>
-                                    
-                                    @if($server->type)
-                                    <div class="flex items-center justify-between text-xs">
-                                        <div class="flex items-center gap-1 text-gray-600 dark:text-gray-400">
-                                            <x-heroicon-o-cog-6-tooth class="w-3 h-3" />
-                                            <span>Type</span>
-                                        </div>
-                                        <span class="text-gray-900 dark:text-white font-medium">{{ ucfirst($server->type) }}</span>
-                                    </div>
-                                    @endif
-                                    
-                                    @if($server->plans && $server->plans->count() > 0)
-                                    <div class="flex items-center justify-between text-xs">
-                                        <div class="flex items-center gap-1 text-gray-600 dark:text-gray-400">
-                                            <x-heroicon-o-currency-dollar class="w-3 h-3" />
-                                            <span>Price</span>
-                                        </div>
-                                        <div class="flex items-center gap-1">
-                                            <span class="text-sm font-bold text-primary-600 dark:text-primary-400">
-                                                ${{ $server->plans->first()->price }}
-                                            </span>
-                                            <span class="text-xs text-gray-500">/mo</span>
-                                        </div>
-                                    </div>
-                                    @endif
-                                    
-                                    {{-- Performance Indicator --}}
-                                    <div class="flex items-center justify-between text-xs">
-                                        <div class="flex items-center gap-1 text-gray-600 dark:text-gray-400">
-                                            <x-heroicon-o-signal class="w-3 h-3" />
-                                            <span>Rating</span>
-                                        </div>
-                                        <div class="flex items-center gap-1">
-                                            @php($stars = $this->starArray($server))
-                                            @foreach($stars as $filled)
-                                                <x-heroicon-s-star class="w-2.5 h-2.5 {{ $filled ? 'text-warning-400' : 'text-gray-300 dark:text-gray-600' }}" />
-                                            @endforeach
-                                            <span class="text-xs text-gray-500 ml-1">{{ $this->formatRating($server) }}</span>
-                                        </div>
-                                    </div>
-                                </div>
-                                
-                                {{-- Action Button --}}
-                                <x-filament::button
-                                    color="primary" 
-                                    icon="heroicon-o-arrow-right"
-                                    size="xs"
-                                    class="w-full"
-                                    wire:click="selectServer({{ $server->id }})"
-                                >
-                                    Select Server
-                                </x-filament::button>
-                            </div>
+                <div class="space-y-3">
+                    <p class="text-sm text-gray-600 dark:text-gray-400">Quickly filter by subscription length.</p>
+                    <div class="flex flex-wrap gap-2">
+                        @php($options = [[30,'Monthly'],[90,'Quarterly'],[180,'Semi-Annual'],[365,'Annual']])
+                        @foreach($options as [$days,$label])
+                            @php($active = (int)($filters['plan_days'] ?? 0) === $days)
+                            <button
+                                type="button"
+                                wire:click="$set('filters.plan_days', {{ $days }})"
+                                class="px-3 py-1.5 rounded-md text-xs font-medium border transition {{ $active ? 'bg-primary-600 text-white border-primary-600' : 'bg-gray-50 dark:bg-gray-700 text-gray-700 dark:text-gray-300 border-gray-200 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-600' }}">
+                                {{ $label }}
+                            </button>
                         @endforeach
-                    </div>
-                    
-                    <div class="mt-6 flex flex-col items-center gap-2">
-                        @if($hasMore)
-                            <x-filament::button
-                                color="gray"
-                                icon="heroicon-o-plus"
-                                size="sm"
-                                wire:click="loadMore"
-                                wire:loading.attr="disabled"
-                            >
-                                <span wire:loading.remove>Load More Servers</span>
-                                <span wire:loading.flex class="items-center gap-1">
-                                    <x-heroicon-o-arrow-path class="w-4 h-4 animate-spin" /> Loading...
-                                </span>
-                            </x-filament::button>
-                        @else
-                            <p class="text-xs text-gray-500">End of results</p>
+                        @if($filters['plan_days'])
+                            <button type="button" wire:click="$set('filters.plan_days', null)" class="px-3 py-1.5 rounded-md text-xs font-medium border border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700">
+                                Clear
+                            </button>
                         @endif
                     </div>
-                @else
-                    <div class="text-center py-12">
-                        <div class="flex flex-col items-center gap-4">
-                            <div class="p-4 bg-gray-100 dark:bg-gray-800 rounded-full">
-                                <x-heroicon-o-server-stack class="w-8 h-8 text-gray-400" />
-                            </div>
-                            <div>
-                                <h3 class="font-semibold text-gray-900 dark:text-white mb-2">No servers found</h3>
-                                <p class="text-gray-500 dark:text-gray-400 text-sm mb-4">Try adjusting your filters to see more results.</p>
-                                <x-filament::button
-                                    color="primary"
-                                    icon="heroicon-o-arrow-path"
-                                    size="sm"
-                                    wire:click="resetFilters()"
-                                >
-                                    Reset Filters
-                                </x-filament::button>
-                            </div>
-                        </div>
-                    </div>
-                @endif
+                </div>
             </x-filament::section>
+        </div>
 
-            {{-- Row 4: Enhanced Help Section and System Status --}}
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6 mt-16">
+        {{-- Row 3: Enhanced Help Section and System Status --}}
+        <div class="py-4 space-y-4 md:space-y-6 mt-12">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
                 {{-- Enhanced Help Section --}}
                 <x-filament::section class="py-6">
                     <x-slot name="heading">
@@ -540,9 +558,7 @@
         </div>
         {{-- Auto-refresh JavaScript --}}
         @script
-        <script>
             setInterval(function() { $wire.call('loadServers'); }, 30000);
-        </script>
         @endscript
     </div>
 </x-filament-panels::page>
