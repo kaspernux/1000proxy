@@ -140,6 +140,24 @@ services:
             retries: 3
             start_period: 40s
 
+    # tdlib-gateway:
+    #     image: ghcr.io/your-org/tdlib-gateway:latest
+    #     environment:
+    #         - TDLIB_API_ID=${TELEGRAM_API_ID}
+    #         - TDLIB_API_HASH=${TELEGRAM_API_HASH}
+    #         - BOT_TOKEN=${TELEGRAM_BOT_TOKEN}
+    #         - GATEWAY_KEY=${TDLIB_GATEWAY_KEY:-${APP_KEY}}
+    #     volumes:
+    #         - ./storage/tdlib:/data
+    #     networks:
+    #         - proxy-network
+    #     healthcheck:
+    #         test: ["CMD", "wget", "-qO-", "http://localhost:8080/health"]
+    #         interval: 30s
+    #         timeout: 5s
+    #         retries: 5
+    #         start_period: 30s
+
     mailhog:
         image: mailhog/mailhog:latest
         ports:

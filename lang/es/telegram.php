@@ -91,6 +91,9 @@ return [
         'linking_success' => "✅ ¡Cuenta vinculada con éxito!\n\nBienvenido, :name 🎉\n\nTu Telegram ahora está conectado a tu cuenta 1000proxy. Escribe /help para ver los comandos.",
     ],
     'messages' => [
+    'link_intro' => 'Vincula tu Telegram para gestionar tu cuenta:',
+    'link_steps' => "Para vincular tu cuenta:\n\n1) Abre: :url\n2) Inicia sesión o crea una cuenta\n3) Ve a Configuración de la cuenta → Vincular Telegram\n4) Copia el código de 8 caracteres y envíalo aquí\n\nPuedes pegar el código en cualquier momento.",
+    'link_help' => '¿Necesitas ayuda? Escribe /help',
     'rate_limited' => '⏳ Estás enviando mensajes demasiado rápido. Por favor, espera.',
     // Common hints
     'use_config_hint' => '💡 Usa /config_[client_id] para obtener la configuración',
@@ -200,11 +203,13 @@ return [
         // Filters
         'filters' => 'Filtros',
         'clear_filters' => 'Borrar filtros',
+        'buy_now' => 'Comprar ahora',
     ],
-    'common' => [ 'open_dashboard' => 'Abrir panel', 'open' => 'abrir', 'create_account' => 'Crear cuenta', 'browse_plans' => 'Ver planes', 'help' => 'Ayuda', 'prev' => 'Anterior', 'next' => 'Siguiente', 'page' => 'Página', 'actions' => 'Acciones', 'promotions' => 'Promociones', 'all' => 'Todos', 'clear' => 'Borrar' ],
+    'common' => [ 'open_dashboard' => 'Abrir panel', 'open' => 'abrir', 'create_account' => 'Crear cuenta', 'browse_plans' => 'Ver planes', 'docs' => 'Docs', 'help' => 'Ayuda', 'prev' => 'Anterior', 'next' => 'Siguiente', 'page' => 'Página', 'actions' => 'Acciones', 'promotions' => 'Promociones', 'all' => 'Todos', 'clear' => 'Borrar' ],
     'commands' => [
         'start' => 'Vincula tu cuenta y comienza',
         'menu' => 'Abrir el menú principal',
+    'link' => 'Vincula tu Telegram a tu cuenta',
     'help' => 'Mostrar ayuda y comandos disponibles',
     'login' => 'Obtener enlace mágico de inicio de sesión',
         'balance' => 'Consultar saldo de la cartera',

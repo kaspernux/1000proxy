@@ -31,6 +31,7 @@ return new class extends Migration
             $table->index('region');
 
             $table->enum('protocol', ['vless', 'vmess', 'trojan', 'shadowsocks', 'mixed'])->default('vless');
+            $table->json('supported_protocols')->nullable();
             $table->index('protocol');
 
             $table->integer('bandwidth_mbps')->nullable()->comment('Bandwidth in Mbps');
@@ -42,7 +43,7 @@ return new class extends Migration
             $table->integer('popularity_score')->default(0)->comment('Calculated popularity score');
             $table->index('popularity_score');
 
-            $table->enum('server_status', ['online', 'offline', 'maintenance'])->default('online');
+            $table->enum('server_status', ['online', 'offline', 'maintenance', 'limited'])->default('online');
             $table->index('server_status');
 
             // Product info
@@ -52,13 +53,20 @@ return new class extends Migration
             $table->text('description')->nullable();
             $table->integer('capacity')->nullable();
             $table->decimal('price', 10, 2);
+            $table->decimal('original_price', 10, 2)->nullable();
             $table->enum('type', ['single', 'multiple', 'dedicated', 'branded'])->default('single');
             $table->integer('days')->default(30);
+            $table->string('billing_cycle', 20)->default('monthly');
+            $table->index('billing_cycle');
             $table->integer('volume')->default(1);
+            $table->boolean('unlimited_traffic')->default(false);
+            $table->index('unlimited_traffic');
 
             // Status flags
             $table->boolean('is_active')->default(true);
             $table->boolean('is_featured')->default(false);
+            $table->string('visibility', 20)->default('public');
+            $table->index('visibility');
             $table->boolean('in_stock')->default(true);
             $table->boolean('on_sale')->default(true);
 

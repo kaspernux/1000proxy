@@ -5,10 +5,19 @@ namespace App\Filament\Admin\Resources\ActivityLogResource\Pages;
 use App\Filament\Admin\Resources\ActivityLogResource;
 use App\Models\ActivityLog;
 use Filament\Resources\Pages\ListRecords;
+use Filament\Tables; 
+use Filament\Forms;
+use Illuminate\Database\Eloquent\Builder;
 
 class ListActivityLogs extends ListRecords
 {
     protected static string $resource = ActivityLogResource::class;
+
+    protected function getTableQuery(): Builder
+    {
+        // Provide an explicit base query to the table to avoid relying on a null model.
+        return ActivityLog::query()->with(['user', 'customer']);
+    }
 
     /**
      * Ensure non-admin users receive a 403 (not a redirect) before Filament's
@@ -38,6 +47,36 @@ class ListActivityLogs extends ListRecords
                 ->label('Home')
                 ->icon('heroicon-o-home')
                 ->url(fn () => url('/'))
+                ->color('gray'),
+            \Filament\Actions\Action::make('refresh')
+                ->label('Refresh')
+                ->icon('heroicon-o-arrow-path')
+                ->color('gray')
+                ->action(fn () => $this->dispatch('$refresh')),
+            \Filament\Actions\Action::make('quick_filters')
+                ->label('Quick Filters')
+                ->icon('heroicon-o-funnel')
+                ->form([
+                    Forms\Components\Select::make('action')->options([
+                        'created' => 'Created',
+                        'updated' => 'Updated',
+                        'deleted' => 'Deleted',
+                        'login' => 'Login',
+                        'logout' => 'Logout',
+                        'password_reset' => 'Password Reset',
+                    ])->native(false)->placeholder('Any action'),
+                    Forms\Components\DatePicker::make('from'),
+                    Forms\Components\DatePicker::make('to'),
+                ])
+                ->action(function (array $data) {
+                    // Persist filter state into table filters
+                    $table = $this->getTable();
+                    $filters = $table->getFilters();
+                    $state = [];
+                    if (!empty($data['action'])) { $state['action'] = ['action' => $data['action']]; }
+                    if (!empty($data['from']) || !empty($data['to'])) { $state['date_range'] = ['from' => $data['from'] ?? null, 'to' => $data['to'] ?? null]; }
+                    $this->tableFilters = array_merge($this->tableFilters ?? [], $state);
+                })
                 ->color('gray'),
             \Filament\Actions\Action::make('export_recent')
                 ->label('Export Recent CSV')
@@ -70,4 +109,6 @@ class ListActivityLogs extends ListRecords
                 ->color('gray'),
         ];
     }
+
+    // Tabs are disabled in this environment due to missing Filament page Tab support.
 }

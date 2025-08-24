@@ -1,14 +1,6 @@
 
 <x-filament-panels::page>
     <x-filament::section class="!p-0">
-        <!-- Sticky Header with Quick Actions -->
-        <div class="sticky top-0 z-30 bg-white/80 dark:bg-gray-900/80 backdrop-blur border-b border-gray-200 dark:border-gray-700 flex items-center gap-4 px-6 py-3 shadow-sm">
-            <span class="text-xl font-bold text-gray-900 dark:text-white flex-1">Staff Management</span>
-            @foreach($this->getHeaderActions() as $action)
-                {{ $action }}
-            @endforeach
-        </div>
-
     <div class="space-y-8 px-6 py-8">
             <p class="text-sm text-gray-600 dark:text-gray-400">Advanced user management with bulk operations and analytics</p>
 

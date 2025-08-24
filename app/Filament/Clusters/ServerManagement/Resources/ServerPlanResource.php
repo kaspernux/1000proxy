@@ -14,6 +14,11 @@ use Filament\Schemas\Components\Group;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Toggle;
 use Filament\Schemas\Components\Section;
+use Filament\Schemas\Components\Tabs;
+use Filament\Infolists\Infolist;
+use Filament\Infolists\Components\Section as InfolistSection;
+use Filament\Infolists\Components\TextEntry;
+use Filament\Infolists\Components\IconEntry;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Forms\Components\TextInput;
@@ -22,6 +27,8 @@ use Filament\Forms\Components\FileUpload;
 use Filament\Tables\Filters\SelectFilter;
 use App\Filament\Clusters\ServerManagement;
 use Filament\Forms\Components\MarkdownEditor;
+use Filament\Forms\Components\Wizard;
+use Filament\Forms\Components\Wizard\Step;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
 use App\Filament\Clusters\ServerManagement\Resources\ServerPlanResource\Pages;
@@ -65,8 +72,162 @@ class ServerPlanResource extends Resource
 
     public static function form(Schema $schema): Schema
     {
-        return $schema
+    return $schema
         ->schema([
+            // Create-only full-width wizard for an advanced, guided UX (Schemas API)
+            \Filament\Schemas\Components\Wizard::make()
+                ->label('Create Plan')
+                ->columnSpanFull()
+                ->extraAttributes(['class' => 'w-full'])
+                ->visibleOn('create')
+                ->steps([
+                    \Filament\Schemas\Components\Wizard\Step::make('Basics')
+                        ->icon('heroicon-o-identification')
+                        ->schema([
+                            \Filament\Schemas\Components\Grid::make(2)->schema([
+                                TextInput::make('name')
+                                    ->required()
+                                    ->maxLength(255)
+                                    ->live(onBlur: true)
+                                    ->afterStateUpdated(function (string $operation, $state, $set) {
+                                        if ($operation === 'create') {
+                                            $set('slug', Str::slug($state));
+                                        }
+                                    })
+                                    ->helperText('Descriptive plan name (e.g., "Gaming Pro - 30 Days")'),
+
+                                TextInput::make('slug')
+                                    ->required()
+                                    ->disabled()
+                                    ->unique(ServerPlan::class, 'slug', ignoreRecord: true)
+                                    ->helperText('Auto-generated URL-friendly identifier'),
+                            ]),
+
+                            \Filament\Schemas\Components\Grid::make(3)->schema([
+                                Select::make('server_id')->relationship('server', 'name')->required()->searchable()->preload(),
+                                Select::make('server_brand_id')->relationship('brand', 'name')->searchable()->preload(),
+                                Select::make('server_category_id')->relationship('category', 'name')->searchable()->preload(),
+                            ]),
+
+                            Select::make('type')
+                                ->options([
+                                    'single' => 'Single',
+                                    'multiple' => 'Multiple',
+                                    'dedicated' => 'Dedicated',
+                                    'branded' => 'Branded',
+                                ])
+                                ->default('single')
+                                ->required()
+                                ->helperText('Plan tier/type'),
+                        ])->columns(1),
+
+                    \Filament\Schemas\Components\Wizard\Step::make('Pricing & Billing')
+                        ->icon('heroicon-o-banknotes')
+                        ->schema([
+                            \Filament\Schemas\Components\Grid::make(3)->schema([
+                                TextInput::make('price')->required()->numeric()->prefix('$')->minValue(0)->step('0.01'),
+                                TextInput::make('original_price')->label('Original Price')->numeric()->prefix('$')->minValue(0)->step('0.01'),
+                                Select::make('billing_cycle')->label('Billing Cycle')->options([
+                                    'hourly' => 'Hourly',
+                                    'daily' => 'Daily',
+                                    'weekly' => 'Weekly',
+                                    'monthly' => 'Monthly',
+                                    'quarterly' => '3 Months',
+                                    'biannually' => '6 Months',
+                                    'annually' => 'Yearly',
+                                    'lifetime' => 'Lifetime',
+                                ])->default('monthly'),
+                            ]),
+
+                            \Filament\Schemas\Components\Grid::make(3)->schema([
+                                TextInput::make('setup_fee')->label('Setup Fee')->numeric()->prefix('$')->default(0)->minValue(0)->step('0.01'),
+                                TextInput::make('days')->label('Validity (Days)')->required()->numeric()->default(30)->suffix('days')->minValue(1),
+                                TextInput::make('trial_days')->label('Trial Days')->numeric()->default(0)->minValue(0),
+                            ]),
+
+                            \Filament\Schemas\Components\Grid::make(2)->schema([
+                                Toggle::make('renewable')->default(true)->helperText('Can customers renew this plan?'),
+                                Toggle::make('on_sale')->helperText('Mark plan as on sale'),
+                            ]),
+                        ])->columns(1),
+
+                    \Filament\Schemas\Components\Wizard\Step::make('Resources')
+                        ->icon('heroicon-o-cpu-chip')
+                        ->schema([
+                            \Filament\Schemas\Components\Grid::make(3)->schema([
+                                TextInput::make('volume')->label('Data Volume (GB)')->required()->numeric()->default(500)->suffix('GB')->minValue(1),
+                                Toggle::make('unlimited_traffic')->label('Unlimited Traffic')->default(false),
+                                TextInput::make('data_limit_gb')->label('Hard Data Limit (GB)')->numeric()->suffix('GB'),
+                            ]),
+                            \Filament\Schemas\Components\Grid::make(3)->schema([
+                                TextInput::make('bandwidth_mbps')->label('Bandwidth (Mbps)')->numeric()->suffix('Mbps'),
+                                TextInput::make('concurrent_connections')->label('Max Concurrent Connections')->numeric()->default(1)->minValue(1),
+                                TextInput::make('capacity')->label('User Capacity')->default(1)->required()->numeric()->minValue(1),
+                            ]),
+                            Toggle::make('supports_ipv6')->label('IPv6 Support')->default(false),
+                        ])->columns(1),
+
+                    \Filament\Schemas\Components\Wizard\Step::make('Advanced')
+                        ->icon('heroicon-o-adjustments-horizontal')
+                        ->schema([
+                            \Filament\Schemas\Components\Grid::make(2)->schema([
+                                Select::make('preferred_inbound_id')->relationship('preferredInbound', 'remark')->searchable()->preload(),
+                                Select::make('protocol')->options([
+                                    'vmess' => 'VMess', 'vless' => 'VLESS', 'trojan' => 'Trojan', 'shadowsocks' => 'Shadowsocks', 'mixed' => 'Mixed',
+                                ])->default('vless')->required(),
+                            ]),
+                            \Filament\Schemas\Components\Grid::make(2)->schema([
+                                TextInput::make('supported_protocols')->label('Supported Protocols (CSV)')
+                                    ->helperText('Comma-separated values; saved as JSON array')
+                                    ->afterStateHydrated(function ($state, callable $set) {
+                                        if (is_array($state)) {
+                                            $set('supported_protocols', implode(', ', $state));
+                                        }
+                                    })
+                                    ->dehydrateStateUsing(function ($state) {
+                                        if (is_string($state)) {
+                                            $trimmed = trim($state);
+                                            if ($trimmed === '') return null;
+                                            return array_values(array_filter(array_map('trim', explode(',', $trimmed))));
+                                        }
+                                        return $state;
+                                    }),
+                                TextInput::make('max_clients')->label('Max Clients')->numeric()->default(100)->minValue(1),
+                            ]),
+                            Toggle::make('auto_provision')->label('Auto Provisioning')->default(false),
+                        ])->columns(1),
+
+                    \Filament\Schemas\Components\Wizard\Step::make('Location & Status')
+                        ->icon('heroicon-o-map')
+                        ->schema([
+                            \Filament\Schemas\Components\Grid::make(3)->schema([
+                                TextInput::make('country_code')->label('Country Code')->maxLength(2)->placeholder('US'),
+                                TextInput::make('region')->label('Region/State')->maxLength(255),
+                                TextInput::make('popularity_score')->label('Popularity Score')->numeric()->default(0),
+                            ]),
+                            \Filament\Schemas\Components\Grid::make(4)->schema([
+                                Select::make('server_status')->options([
+                                    'online' => 'Online', 'offline' => 'Offline', 'maintenance' => 'Maintenance', 'limited' => 'Limited',
+                                ])->default('online'),
+                                Select::make('visibility')->options([
+                                    'public' => 'Public', 'private' => 'Private', 'hidden' => 'Hidden',
+                                ])->default('public'),
+                                Toggle::make('is_active')->label('Active')->default(true),
+                                Toggle::make('is_featured')->label('Featured')->default(false),
+                            ]),
+                            \Filament\Schemas\Components\Grid::make(2)->schema([
+                                Toggle::make('is_popular')->label('Popular')->default(false),
+                                Toggle::make('in_stock')->label('In Stock')->default(true),
+                            ]),
+                        ])->columns(1),
+
+                    \Filament\Schemas\Components\Wizard\Step::make('Media & Content')
+                        ->icon('heroicon-o-photo')
+                        ->schema([
+                            FileUpload::make('product_image')->label('Plan Image')->image()->disk('public')->directory('plan-images')->columnSpanFull(),
+                            MarkdownEditor::make('description')->label('Plan Description')->columnSpanFull(),
+                        ])->columns(1),
+                ]),
             Group::make()->schema([
                 Section::make('🏷️ Plan Identity & Basic Info')->schema([
                     TextInput::make('name')
@@ -133,6 +294,30 @@ class ServerPlanResource extends Resource
                         ->columnSpan(1)
                         ->helperText('Plan price in USD'),
 
+                    TextInput::make('original_price')
+                        ->label('Original Price')
+                        ->numeric()
+                        ->prefix('$')
+                        ->minValue(0)
+                        ->step('0.01')
+                        ->columnSpan(1)
+                        ->helperText('Optional original price for strikethrough display'),
+
+                    Select::make('billing_cycle')
+                        ->label('Billing Cycle')
+                        ->options([
+                            'hourly' => 'Hourly',
+                            'daily' => 'Daily',
+                            'weekly' => 'Weekly',
+                            'monthly' => 'Monthly',
+                            'quarterly' => '3 Months',
+                            'biannually' => '6 Months',
+                            'annually' => 'Yearly',
+                            'lifetime' => 'Lifetime',
+                        ])
+                        ->default('monthly')
+                        ->columnSpan(1),
+
                     TextInput::make('setup_fee')
                         ->label('Setup Fee')
                         ->numeric()
@@ -170,7 +355,7 @@ class ServerPlanResource extends Resource
                         ->columnSpan(1)
                         ->helperText('Mark plan as on sale'),
                 ])->columns(2),
-            ])->columnSpan(2),
+            ])->columnSpan(2)->hidden(fn ($context) => $context === 'create'),
 
             Group::make()->schema([
                 Section::make('📊 Resources & Performance')->schema([
@@ -182,6 +367,11 @@ class ServerPlanResource extends Resource
                         ->suffix('GB')
                         ->minValue(1)
                         ->helperText('Total data allowance in GB'),
+
+                    Toggle::make('unlimited_traffic')
+                        ->label('Unlimited Traffic')
+                        ->default(false)
+                        ->helperText('If enabled, ignores data volume limits'),
 
                     TextInput::make('data_limit_gb')
                         ->label('Hard Data Limit (GB)')
@@ -235,6 +425,32 @@ class ServerPlanResource extends Resource
                         ->required()
                         ->helperText('Primary protocol type'),
 
+                    \Filament\Schemas\Components\Grid::make(2)->schema([
+                        TextInput::make('supported_protocols')
+                            ->label('Supported Protocols (CSV)')
+                            ->helperText('Optional: comma-separated list; saved as JSON array')
+                            ->afterStateHydrated(function ($state, callable $set) {
+                                if (is_array($state)) {
+                                    $set('supported_protocols', implode(', ', $state));
+                                }
+                            })
+                            ->dehydrateStateUsing(function ($state) {
+                                if (is_string($state)) {
+                                    $trimmed = trim($state);
+                                    if ($trimmed === '') {
+                                        return null; // keep DB null when empty
+                                    }
+                                    $items = array_values(array_filter(array_map('trim', explode(',', $trimmed))));
+                                    return $items;
+                                }
+                                return $state;
+                            }),
+                        TextInput::make('capacity')
+                            ->label('User Capacity')
+                            ->numeric()
+                            ->minValue(1),
+                    ]),
+
                     TextInput::make('max_clients')
                         ->label('Max Clients')
                         ->numeric()
@@ -254,7 +470,7 @@ class ServerPlanResource extends Resource
                         ->default(false)
                         ->helperText('Automatically provision clients upon purchase'),
                 ]),
-            ])->columnSpan(1),
+            ])->columnSpan(1)->hidden(fn ($context) => $context === 'create'),
 
             Group::make()->schema([
                 Section::make('🌍 Location & Filtering')->schema([
@@ -297,12 +513,26 @@ class ServerPlanResource extends Resource
                         ->default(false)
                         ->helperText('Highlight this plan'),
 
+                    Toggle::make('is_popular')
+                        ->label('Popular')
+                        ->default(false)
+                        ->helperText('Mark as popular for marketing'),
+
+                    Select::make('visibility')
+                        ->options([
+                            'public' => 'Public',
+                            'private' => 'Private',
+                            'hidden' => 'Hidden',
+                        ])
+                        ->default('public')
+                        ->helperText('Visibility in storefront'),
+
                     Toggle::make('in_stock')
                         ->label('In Stock')
                         ->default(true)
                         ->helperText('Plan is currently available'),
-                ])->columns(3),
-            ])->columnSpanFull(),
+                ])->columns(4),
+            ])->columnSpanFull()->hidden(fn ($context) => $context === 'create'),
 
             Group::make()->schema([
                 Section::make('📝 Content & Media')->schema([
@@ -321,6 +551,43 @@ class ServerPlanResource extends Resource
                 ]),
             ])->columnSpanFull(),
         ])->columns(3);
+    }
+
+    public static function infolist(Schema $schema): Schema
+    {
+        return $schema->schema([
+            Tabs::make('Plan Details')->tabs([
+                Tabs\Tab::make('Overview')->schema([
+                    InfolistSection::make('Summary')->schema([
+                        TextEntry::make('name')->label('Plan'),
+                        TextEntry::make('server.name')->label('Server')->badge(),
+                        TextEntry::make('price')->label('Price')->money('USD'),
+                        TextEntry::make('original_price')->label('Original')->money('USD')->placeholder('—'),
+                        TextEntry::make('billing_cycle')->label('Billing')->badge(),
+                        TextEntry::make('days')->label('Duration')->formatStateUsing(fn ($s) => $s . ' days'),
+                    ])->columns(3),
+                ]),
+                Tabs\Tab::make('Capacity')->schema([
+                    InfolistSection::make('Usage & Limits')->schema([
+                        TextEntry::make('volume')->label('Data (GB)'),
+                        TextEntry::make('unlimited_traffic')->label('Unlimited')->boolean(),
+                        TextEntry::make('concurrent_connections')->label('Max Connections'),
+                        TextEntry::make('bandwidth_mbps')->label('Bandwidth (Mbps)'),
+                    ])->columns(4),
+                ]),
+                Tabs\Tab::make('Meta')->schema([
+                    InfolistSection::make('Meta')->schema([
+                        TextEntry::make('visibility')->badge(),
+                        TextEntry::make('is_active')->label('Active')->boolean(),
+                        TextEntry::make('is_featured')->label('Featured')->boolean(),
+                        TextEntry::make('in_stock')->label('In Stock')->boolean(),
+                        TextEntry::make('on_sale')->label('On Sale')->boolean(),
+                        TextEntry::make('created_at')->dateTime()->label('Created'),
+                        TextEntry::make('updated_at')->dateTime()->label('Updated'),
+                    ])->columns(3),
+                ]),
+            ])
+        ]);
     }
 
     public static function table(Table $table): Table
@@ -406,7 +673,7 @@ class ServerPlanResource extends Resource
                     ]),
                 TextColumn::make('total_sales')
                     ->label('Sales')
-                    ->getStateUsing(fn ($record) => $record->orders()->count())
+                    ->getStateUsing(fn ($record) => $record->orderItems()->count())
                     ->numeric()
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),

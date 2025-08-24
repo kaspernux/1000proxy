@@ -29,7 +29,14 @@ class TelegramSetBranding extends Command
         $menuUrl = $this->option('menu-url');
         if ($menu === 'web_app') {
             if (!$menuText) {
-                $menuText = (string) \Lang::get('telegram.bot.menu_text', [], app()->getLocale());
+                $locale = app()->getLocale();
+                $menuText = (string) \Lang::get('telegram.bot.menu_text', [], $locale);
+                if ($menuText === 'telegram.bot.menu_text' || $menuText === '') {
+                    $menuText = (string) \Lang::get('telegram.bot.menu_text', [], 'en');
+                }
+                if ($menuText === 'telegram.bot.menu_text' || $menuText === '') {
+                    $menuText = 'Open 1K PROXY';
+                }
             }
             if (!$menuUrl) {
                 $menuUrl = (string) config('app.url');

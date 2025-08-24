@@ -16,7 +16,10 @@ class RevenueAnalytics extends Page
     protected function getHeaderWidgets(): array
     {
         return [
-            \App\Filament\Widgets\AdminChartsWidget::class,
+            // Overview KPIs and breakdowns
+            \App\Filament\Admin\Widgets\RevenueOverviewWidget::class,
+            // Trend chart
+            \App\Filament\Admin\Widgets\RevenueChartWidget::class,
         ];
     }
 }

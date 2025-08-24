@@ -42,7 +42,7 @@ class ServerPerformanceWidget extends BaseWidget
 
             Stat::make('Bandwidth Usage', number_format(($healthMetrics['total_bandwidth_used_gb'] ?? (($healthMetrics['total_bandwidth_used_mb'] ?? 0)/1024)), 1) . ' GB')
                 ->description('Total usage')
-                ->descriptionIcon('heroicon-m-arrow-up-down')
+                ->descriptionIcon('heroicon-m-arrows-up-down')
                 ->color('info'),
         ];
     }

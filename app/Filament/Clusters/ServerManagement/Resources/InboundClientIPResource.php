@@ -31,6 +31,14 @@ use Illuminate\Support\Facades\Http;
 use BackedEnum;
 use UnitEnum;
 use Filament\Schemas\Schema;
+use Filament\Schemas\Components\Wizard;
+use Filament\Schemas\Components\Wizard\Step;
+use Filament\Schemas\Components\Grid;
+use Filament\Infolists\Infolist;
+use Filament\Infolists\Components\Tabs;
+use Filament\Infolists\Components\Section as InfolistSection;
+use Filament\Infolists\Components\TextEntry;
+use Filament\Infolists\Components\IconEntry;
 
 class InboundClientIPResource extends Resource
 {
@@ -55,6 +63,29 @@ class InboundClientIPResource extends Resource
     {
         return $schema
             ->schema([
+                // Create-only wizard
+                Wizard::make()->label('Add Client IPs')
+                    ->columnSpanFull()
+                    ->extraAttributes(['class' => 'w-full'])
+                    ->visibleOn('create')
+                    ->steps([
+                        Step::make('Client')
+                            ->icon('heroicon-o-user')
+                            ->schema([
+                                Forms\Components\TextInput::make('client_email')->label('Client Email')->email()->required()->maxLength(255),
+                            ])->columns(1),
+                        Step::make('IPs')
+                            ->icon('heroicon-o-globe-alt')
+                            ->schema([
+                                Forms\Components\Textarea::make('ips')
+                                    ->label('IP Addresses')
+                                    ->required()
+                                    ->rows(8)
+                                    ->placeholder("192.168.1.1\n10.0.0.1\n2001:0db8::1")
+                                    ->helperText('Enter one IP per line. IPv4 and IPv6 supported.'),
+                            ])->columns(1),
+                    ]),
+
                 Group::make()->schema([
                     Section::make('📧 Client Information')->schema([
                         TextInput::make('client_email')
@@ -77,6 +108,38 @@ class InboundClientIPResource extends Resource
                     ]),
                 ])->columnSpanFull(),
             ]);
+    }
+
+    public static function infolist(Schema $schema): Schema
+    {
+        return $schema->schema([
+            Tabs::make('Client IP Details')
+                ->persistTab()
+                ->tabs([
+                    Tabs\Tab::make('Overview')
+                        ->icon('heroicon-m-eye')
+                        ->schema([
+                            InfolistSection::make('Summary')
+                                ->columns(3)
+                                ->schema([
+                                    TextEntry::make('client_email')->label('Client Email')->color('primary'),
+                                    TextEntry::make('ips')->label('IP Addresses')->formatStateUsing(fn($s) => str_replace("\n", ', ', (string) $s))->wrap(),
+                                ]),
+                        ]),
+                    Tabs\Tab::make('Meta')
+                        ->icon('heroicon-m-clock')
+                        ->schema([
+                            InfolistSection::make('Timestamps')
+                                ->columns(2)
+                                ->schema([
+                                    TextEntry::make('created_at')->label('Created')->since(),
+                                    TextEntry::make('updated_at')->label('Updated')->since(),
+                                ]),
+                        ]),
+                ])
+                ->contained(true)
+                ->columnSpanFull(),
+        ]);
     }
 
     public static function table(Table $table): Table

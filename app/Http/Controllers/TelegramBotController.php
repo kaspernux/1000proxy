@@ -44,10 +44,18 @@ class TelegramBotController extends Controller
                 return response('Unauthorized', 401);
             }
 
-            // Process the update asynchronously via queue
-            ProcessTelegramMessage::dispatch($update)
-                ->onQueue('telegram')
-                ->delay(now()->addSeconds(1)); // Small delay to ensure webhook responds quickly
+            // Decide whether to process synchronously or via queue
+            $processSync = (config('queue.default') === 'sync') || (bool) env('TELEGRAM_WEBHOOK_SYNC', false);
+
+            if ($processSync) {
+                // Process immediately (useful in dev or when no worker is running)
+                $this->telegramBotService->processUpdate($update);
+            } else {
+                // Process the update asynchronously via queue
+                ProcessTelegramMessage::dispatch($update)
+                    ->onQueue('telegram')
+                    ->delay(now()->addSeconds(1)); // Small delay to ensure webhook responds quickly
+            }
 
             return response('OK', 200);
         } catch (\Exception $e) {

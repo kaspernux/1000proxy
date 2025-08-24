@@ -18,6 +18,7 @@ class InsightsReport extends Page
         return [
             \App\Filament\Admin\Widgets\InsightsWidget::class,
             \App\Filament\Admin\Widgets\RecommendationsWidget::class,
+            \App\Filament\Admin\Widgets\RevenueForecastWidget::class,
         ];
     }
 }

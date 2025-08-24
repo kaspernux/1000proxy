@@ -42,6 +42,7 @@ use App\Console\Commands\SystemHealthCheck;
 use App\Console\Commands\TelegramSetWebhook;
 use App\Console\Commands\TelegramSetCommands;
 use App\Console\Commands\TelegramSetBranding;
+use App\Console\Commands\TelegramPublishBrandingQueued;
 use App\Console\Commands\TelegramTestBot;
 use App\Console\Commands\TelegramWebhookInfo;
 use App\Console\Commands\TelegramSmokeProfile;
@@ -106,6 +107,7 @@ $app = Application::configure(basePath: dirname(__DIR__))
         TelegramSetWebhook::class,
         TelegramSetCommands::class,
     TelegramSetBranding::class,
+    TelegramPublishBrandingQueued::class,
         TelegramTestBot::class,
         TelegramWebhookInfo::class,
     TelegramSmokeProfile::class,

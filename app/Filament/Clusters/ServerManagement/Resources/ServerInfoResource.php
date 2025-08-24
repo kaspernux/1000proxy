@@ -21,6 +21,14 @@ use App\Livewire\Traits\LivewireAlertV4;
 use App\Services\XUIService;
 use App\Filament\Clusters\ServerManagement;
 use App\Filament\Clusters\ServerManagement\Resources\ServerInfoResource\Pages;
+use Filament\Schemas\Components\Wizard;
+use Filament\Schemas\Components\Wizard\Step;
+use Filament\Schemas\Components\Grid;
+use Filament\Infolists\Infolist;
+use Filament\Infolists\Components\Tabs;
+use Filament\Infolists\Components\Section as InfolistSection;
+use Filament\Infolists\Components\TextEntry;
+use Filament\Infolists\Components\IconEntry;
 
 
 class ServerInfoResource extends Resource
@@ -58,6 +66,41 @@ class ServerInfoResource extends Resource
     {
         return $schema
             ->schema([
+                // Create-only wizard
+                Wizard::make()->label('Setup Server Info')
+                    ->columnSpanFull()
+                    ->extraAttributes(['class' => 'w-full'])
+                    ->visibleOn('create')
+                    ->steps([
+                        Step::make('Basics')
+                            ->icon('heroicon-o-information-circle')
+                            ->schema([
+                                \Filament\Schemas\Components\Grid::make(2)->schema([
+                                    Forms\Components\Select::make('server_id')->relationship('server', 'name')->searchable()->preload()->required(),
+                                    Forms\Components\TextInput::make('title')->required()->maxLength(255),
+                                ]),
+                                Forms\Components\TextInput::make('tag')->maxLength(255),
+                            ])->columns(1),
+                        Step::make('Status')
+                            ->icon('heroicon-o-cog-8-tooth')
+                            ->schema([
+                                \Filament\Schemas\Components\Grid::make(2)->schema([
+                                    Forms\Components\Select::make('state')->options([
+                                        'up' => '🟢 Up',
+                                        'down' => '🔴 Down',
+                                        'paused' => '⏸️ Paused',
+                                        'maintenance' => '🔧 Maintenance',
+                                    ])->required(),
+                                    Forms\Components\Toggle::make('active')->label('Active')->default(true),
+                                ]),
+                            ])->columns(1),
+                        Step::make('Description')
+                            ->icon('heroicon-o-document-text')
+                            ->schema([
+                                Forms\Components\MarkdownEditor::make('remark')->label('Detailed Information')->fileAttachmentsDirectory('ServerInfo'),
+                            ])->columns(1),
+                    ]),
+
                 Group::make()->schema([
                     Section::make('🏷️ Server Information Details')->schema([
                         Select::make('server_id')
@@ -333,6 +376,51 @@ class ServerInfoResource extends Resource
                 'heading' => 'No server info yet',
                 'description' => 'Create a record or tweak filters.',
             ],
+        ]);
+    }
+
+    public static function infolist(Schema $schema): Schema
+    {
+        return $schema->schema([
+            Tabs::make('Server Info')
+                ->persistTab()
+                ->tabs([
+                    Tabs\Tab::make('Overview')
+                        ->icon('heroicon-m-eye')
+                        ->schema([
+                            InfolistSection::make('Summary')
+                                ->columns(3)
+                                ->schema([
+                                    TextEntry::make('server.name')->label('Server')->color('primary'),
+                                    TextEntry::make('title')->label('Title')->weight('medium'),
+                                    TextEntry::make('tag')->label('Tag')->badge()->color('info'),
+                                    IconEntry::make('active')->label('Active')->boolean(),
+                                    TextEntry::make('state')->label('State')->badge(),
+                                    TextEntry::make('ucount')->label('User Count')->badge(),
+                                ]),
+                        ]),
+                    Tabs\Tab::make('Description')
+                        ->icon('heroicon-m-document-text')
+                        ->schema([
+                            InfolistSection::make('Details')
+                                ->columns(1)
+                                ->schema([
+                                    TextEntry::make('remark')->label('Information')->markdown(),
+                                ]),
+                        ]),
+                    Tabs\Tab::make('Meta')
+                        ->icon('heroicon-m-clock')
+                        ->schema([
+                            InfolistSection::make('Timestamps')
+                                ->columns(2)
+                                ->schema([
+                                    TextEntry::make('created_at')->label('Created')->since(),
+                                    TextEntry::make('updated_at')->label('Updated')->since(),
+                                ]),
+                        ]),
+                ])
+                ->contained(true)
+                ->columnSpanFull(),
         ]);
     }
 

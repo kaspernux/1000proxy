@@ -27,7 +27,12 @@ class ProcessTelegramMessage implements ShouldQueue, ShouldBeUnique
     public function __construct(array $update)
     {
         $this->update = $update;
-        $this->onQueue('telegram'); // Use dedicated telegram queue
+        // Use configured default connection unless an override is set
+        $connection = config('queue.telegram_connection');
+        if ($connection) {
+            $this->onConnection($connection);
+        }
+        $this->onQueue('telegram'); // Dedicated telegram queue
     }
 
     /**

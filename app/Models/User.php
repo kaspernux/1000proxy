@@ -11,12 +11,13 @@ use Laravel\Sanctum\HasApiTokens;
 use App\Traits\HasStaffRoles;
 use Spatie\Permission\Traits\HasRoles;
 use Filament\Panel;
+use App\Traits\LogsActivity;
 
 
 
 class User extends Authenticatable implements FilamentUser
     {
-    use HasFactory, Notifiable, HasFactory, HasApiTokens, HasStaffRoles, HasRoles;
+    use HasFactory, Notifiable, HasFactory, HasApiTokens, HasStaffRoles, HasRoles, LogsActivity;
 
     /**
      * The attributes that are mass assignable.

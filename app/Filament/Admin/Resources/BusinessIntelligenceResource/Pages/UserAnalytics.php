@@ -18,6 +18,7 @@ class UserAnalytics extends Page
         return [
             \App\Filament\Admin\Widgets\UserGrowthChartWidget::class,
             \App\Filament\Admin\Widgets\UserSegmentationWidget::class,
+            \App\Filament\Widgets\AdminDashboardStatsWidget::class,
         ];
     }
 }

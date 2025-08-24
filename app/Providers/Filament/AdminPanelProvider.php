@@ -39,6 +39,7 @@ use Filament\Facades\Filament;
 use Illuminate\Support\Facades\Vite;
 use Filament\Enums\ThemeMode;
 use Illuminate\Support\HtmlString;
+use Illuminate\Support\Str;
 
 class AdminPanelProvider extends PanelProvider
 {
@@ -63,7 +64,7 @@ class AdminPanelProvider extends PanelProvider
             // Do NOT include Authenticate here, it must only wrap protected panel routes.
         ];
 
-        return $panel
+    return $panel
             ->default()
             ->id('admin')
             ->path('admin')
@@ -97,10 +98,8 @@ class AdminPanelProvider extends PanelProvider
                 \App\Filament\Admin\Pages\AdvancedProxyManagement::class,
                 \App\Filament\Admin\Pages\MarketingAutomationManagement::class,
                 \App\Filament\Admin\Pages\ThirdPartyIntegrationManagement::class,
-                \App\Filament\Admin\Pages\StaffDashboard::class,
                 // \App\Filament\Admin\Pages\StaffUsers::class, // removed, merged into StaffManagement
                 \App\Filament\Admin\Pages\StaffManagement::class,
-                \App\Filament\Admin\Pages\ServerManagementDashboard::class,
                 \App\Filament\Admin\Pages\TelegramBotManagement::class,
             ])
             ->widgets([
@@ -109,7 +108,6 @@ class AdminPanelProvider extends PanelProvider
                 AdminChartsWidget::class,
                 LatestOrdersWidget::class,
                 EnhancedPerformanceStatsWidget::class,
-                AdminMonitoringWidget::class,
                 UserActivityMonitoringWidget::class,
             ])
             ->userMenuItems([
@@ -133,7 +131,8 @@ class AdminPanelProvider extends PanelProvider
 
                 'logout'  => \Filament\Navigation\MenuItem::make('logout')
                     ->label('Log out')
-                    ->icon('heroicon-o-arrow-left-start-on-rectangle'),
+                    ->icon('heroicon-o-arrow-left-start-on-rectangle')
+                    ->url(fn () => url('/admin/logout')),
             ])
             ->middleware($adminMiddleware)
             // Protect panel apps with Filament's auth middleware (excludes login/reset routes)
@@ -141,6 +140,77 @@ class AdminPanelProvider extends PanelProvider
                 Authenticate::class,
             ])
             ->bootUsing(function(){
+                // Ensure BI widgets are registered with Livewire so subsequent AJAX requests resolve aliases
+                // Livewire v3 will generate aliases like `app.filament.admin.widgets.revenue-*-widget`
+                // when mounting by class; explicitly register to avoid ComponentNotFoundException
+                Livewire::component(
+                    'app.filament.admin.widgets.revenue-overview-widget',
+                    \App\Filament\Admin\Widgets\RevenueOverviewWidget::class,
+                );
+                Livewire::component(
+                    'app.filament.admin.widgets.revenue-chart-widget',
+                    \App\Filament\Admin\Widgets\RevenueChartWidget::class,
+                );
+
+                // Auto-register all Filament widget classes under app/Filament/**/Widgets with predictable aliases
+                // Examples:
+                //  - App\Filament\Widgets\AdminMonitoringWidget => app.filament.widgets.admin-monitoring-widget
+                //  - App\Filament\Admin\Widgets\RevenueOverviewWidget => app.filament.admin.widgets.revenue-overview-widget
+                $widgetDirs = [
+                    app_path('Filament/Widgets'),
+                    app_path('Filament/Admin/Widgets'),
+                ];
+
+                foreach ($widgetDirs as $dir) {
+                    if (! is_dir($dir)) {
+                        continue;
+                    }
+
+                    $iterator = new \RecursiveIteratorIterator(
+                        new \RecursiveDirectoryIterator($dir, \FilesystemIterator::SKIP_DOTS)
+                    );
+
+                    foreach ($iterator as $fileInfo) {
+                        if ($fileInfo->getExtension() !== 'php') {
+                            continue;
+                        }
+
+                        $filePath = $fileInfo->getPathname();
+                        $relative = Str::after($filePath, app_path() . DIRECTORY_SEPARATOR);
+                        $class = 'App\\' . str_replace([
+                            DIRECTORY_SEPARATOR,
+                            '.php',
+                        ], [
+                            '\\',
+                            '',
+                        ], $relative);
+
+                        if (! class_exists($class)) {
+                            continue;
+                        }
+
+                        // Build alias: app.filament.<subnamespaces...>.<kebab(class_basename)>
+                        $afterFilament = Str::after($class, 'App\\Filament\\');
+                        $segments = explode('\\', $afterFilament);
+                        // remove empty segments and lowercase/kebab them
+                        $nsParts = array_filter(array_map(function ($seg) {
+                            return Str::kebab($seg);
+                        }, array_slice($segments, 0, -1)));
+                        $alias = 'app.filament';
+                        if (! empty($nsParts)) {
+                            $alias .= '.' . implode('.', $nsParts);
+                        }
+                        $alias .= '.' . Str::kebab(class_basename($class));
+
+                        // Register if not already registered or to ensure consistency
+                        try {
+                            Livewire::component($alias, $class);
+                        } catch (\Throwable $e) {
+                            // Swallow to avoid breaking panel boot if a class is not a Livewire component
+                        }
+                    }
+                }
+
                 // Ensure SweetAlert2 + Livewire Alert scripts are available inside the Filament customer panel
                 \Filament\Support\Facades\FilamentView::registerRenderHook(
                     \Filament\View\PanelsRenderHook::BODY_END,

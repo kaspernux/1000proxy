@@ -4,6 +4,7 @@ namespace App\Filament\Admin\Resources\ActivityLogResource\Pages;
 
 use App\Filament\Admin\Resources\ActivityLogResource;
 use Filament\Resources\Pages\ViewRecord;
+// Infolist is configured on the Resource via Schema; keep this page minimal.
 
 class ViewActivityLog extends ViewRecord
 {
@@ -16,4 +17,5 @@ class ViewActivityLog extends ViewRecord
         }
         parent::mount($record);
     }
+
 }

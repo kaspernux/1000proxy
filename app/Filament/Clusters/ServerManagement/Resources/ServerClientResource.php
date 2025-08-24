@@ -50,6 +50,8 @@ use Filament\Notifications\Notification;
 use BackedEnum;
 use UnitEnum;
 use Filament\Schemas\Schema;
+use Filament\Schemas\Components\Wizard;
+use Filament\Schemas\Components\Wizard\Step;
 
 class ServerClientResource extends Resource
 {
@@ -80,6 +82,126 @@ class ServerClientResource extends Resource
     {
         return $schema
             ->schema([
+                // Create-only wizard
+                Wizard::make()->label('Setup Client')
+                    ->columnSpanFull()
+                    ->extraAttributes(['class' => 'w-full'])
+                    ->visibleOn('create')
+                    ->steps([
+                        Step::make('Identity & Inbound')
+                            ->icon('heroicon-o-user')
+                            ->schema([
+                                Section::make('Who is this client?')
+                                    ->description('Choose the inbound and identify the client. Email must be unique per inbound.')
+                                    ->schema([
+                                        \Filament\Schemas\Components\Grid::make(2)->schema([
+                                            Select::make('server_inbound_id')
+                                                ->relationship('inbound', 'remark')
+                                                ->required()
+                                                ->searchable()
+                                                ->preload()
+                                                ->helperText('Inbound to attach this client to'),
+
+                                            TextInput::make('email')
+                                                ->label('Client Email/ID')
+                                                ->required()
+                                                ->email()
+                                                ->maxLength(255)
+                                                ->helperText('This will be used as the 3X-UI client identifier'),
+                                        ]),
+
+                                        \Filament\Schemas\Components\Grid::make(2)->schema([
+                                            TextInput::make('id')
+                                                ->label('Client UUID')
+                                                ->placeholder('Auto-generated if empty')
+                                                ->maxLength(36)
+                                                ->helperText('Leave empty to let 3X-UI generate a UUID'),
+                                            Toggle::make('enable')->label('Enabled')->default(true),
+                                        ]),
+                                    ]),
+                            ])->columns(1),
+
+                        Step::make('Network & Security')
+                            ->icon('heroicon-o-shield-check')
+                            ->schema([
+                                Section::make('Connection & throttling')
+                                    ->description('Optional controls for client flow and connection limits')
+                                    ->schema([
+                                        \Filament\Schemas\Components\Grid::make(2)->schema([
+                                            Select::make('flow')->label('Flow Control')->options([
+                                                'xtls-rprx-vision' => 'XTLS-RPRX-Vision',
+                                                'xtls-rprx-direct' => 'XTLS-RPRX-Direct',
+                                                '' => 'None',
+                                            ])->helperText('3X-UI flow control method'),
+                                            TextInput::make('limit_ip')->label('IP Connection Limit')->numeric()->minValue(0)->maxValue(100)->default(2),
+                                        ]),
+                                        \Filament\Schemas\Components\Grid::make(2)->schema([
+                                            TextInput::make('tg_id')->label('Telegram ID')->placeholder('Optional'),
+                                            TextInput::make('sub_id')->label('Subscription ID')->placeholder('Optional'),
+                                        ]),
+                                    ]),
+                            ])->columns(1),
+
+                        Step::make('Traffic & Expiry')
+                            ->icon('heroicon-o-chart-bar')
+                            ->schema([
+                                Section::make('Quota & Expiry')
+                                    ->description('Set traffic limit and expiry. Leave limit empty for unlimited usage.')
+                                    ->schema([
+                                        \Filament\Schemas\Components\Grid::make(2)->schema([
+                                            TextInput::make('total_gb_bytes')->label('Traffic Limit (Bytes)')->numeric()->minValue(0)->placeholder('Unlimited'),
+                                            Forms\Components\DateTimePicker::make('expiry_time_display')
+                                                ->label('Expiry Date')
+                                                ->live()
+                                                ->afterStateUpdated(function ($state, $set) {
+                                                    if ($state) {
+                                                        $set('expiry_time', \Carbon\Carbon::parse($state)->timestamp * 1000);
+                                                    }
+                                                })
+                                                ->helperText('Will be converted to 3X-UI milliseconds timestamp'),
+                                        ]),
+                                    ]),
+                            ])->columns(1),
+
+                        Step::make('Business')
+                            ->icon('heroicon-o-briefcase')
+                            ->schema([
+                                Section::make('Commercial context')
+                                    ->schema([
+                                        \Filament\Schemas\Components\Grid::make(2)->schema([
+                                            Select::make('plan_id')->relationship('plan', 'name')->searchable()->preload(),
+                                            Select::make('customer_id')->relationship('customer', 'name')->searchable(),
+                                        ]),
+                                        Select::make('status')->options([
+                                            'pending' => '⏳ Pending',
+                                            'active' => '✅ Active',
+                                            'suspended' => '⏸️ Suspended',
+                                            'terminated' => '⛔ Terminated',
+                                            'expired' => '⏰ Expired',
+                                        ])->default('pending'),
+                                    ]),
+                            ])->columns(1),
+
+                        Step::make('Review')
+                            ->icon('heroicon-o-eye')
+                            ->schema([
+                                Section::make('Quick summary')
+                                    ->description('Verify details before creating the client')
+                                    ->schema([
+                                        \Filament\Schemas\Components\Grid::make(3)->schema([
+                                            Forms\Components\Placeholder::make('sum_email')->label('Email')->content(fn ($get) => (string) $get('email') ?: '—'),
+                                            Forms\Components\Placeholder::make('sum_inbound')->label('Inbound')->content(fn ($get) => optional(\App\Models\ServerInbound::find($get('server_inbound_id')))?->remark ?: '—'),
+                                            Forms\Components\Placeholder::make('sum_status')->label('Status')->content(fn ($get) => (string) ($get('status') ?: 'pending')),
+                                        ]),
+                                        \Filament\Schemas\Components\Grid::make(3)->schema([
+                                            Forms\Components\Placeholder::make('sum_limit')->label('Traffic Limit')->content(fn ($get) => ($get('total_gb_bytes') ? round($get('total_gb_bytes')/1073741824,2) . ' GB' : 'Unlimited')),
+                                            Forms\Components\Placeholder::make('sum_expiry')->label('Expiry')->content(fn ($get) => (string) ($get('expiry_time_display') ?: '—')),
+                                            Forms\Components\Placeholder::make('sum_flow')->label('Flow')->content(fn ($get) => (string) ($get('flow') ?: '—')),
+                                        ]),
+                                    ]),
+                            ])->columns(1),
+                    ]),
+
                 Group::make()->schema([
                     Section::make('🏷️ Client Identity & Configuration')->schema([
                         Select::make('server_inbound_id')
@@ -151,10 +273,14 @@ class ServerClientResource extends Resource
                             ->columnSpan(1)
                             ->helperText('3X-UI subscription identifier'),
                     ])->columns(2),
-                ])->columnSpan(2),
+                ])->columnSpan(2)->visibleOn('edit'),
 
                 Group::make()->schema([
-                    Section::make('📊 Traffic & Limits')->schema([
+                    Section::make('📊 Usage & Limits ')
+                        ->description('Set traffic limit in bytes (leave blank for unlimited) and configure expiry. The human date is converted to a 3X-UI millisecond timestamp.')
+                        ->columns(2)
+                        ->schema([
+                            Group::make()->schema([
                         TextInput::make('total_gb_bytes')
                             ->label('Traffic Limit (Bytes)')
                             ->numeric()
@@ -176,9 +302,9 @@ class ServerClientResource extends Resource
                                        "Total: " . number_format($total / 1024 / 1024, 2) . " MB";
                             })
                             ->hidden(fn ($context) => $context === 'create'),
-                    ]),
+                            ])->columnSpan(1),
 
-                    Section::make('⏰ Timing & Expiry')->schema([
+                            Group::make()->schema([
                         Forms\Components\DateTimePicker::make('expiry_time_display')
                             ->label('Expiry Date')
                             ->live()
@@ -195,7 +321,8 @@ class ServerClientResource extends Resource
                             ->numeric()
                             ->disabled()
                             ->helperText('3X-UI expiry timestamp in milliseconds'),
-                    ]),
+                            ])->columnSpan(1),
+                        ]),
 
                     Section::make('🔄 Sync Status')->schema([
                         Forms\Components\Placeholder::make('last_sync')
@@ -206,7 +333,7 @@ class ServerClientResource extends Resource
                             ->label('Sync Status')
                             ->content(fn ($record) => $record?->api_sync_status ?? 'Unknown'),
                     ])->hidden(fn ($context) => $context === 'create'),
-                ])->columnSpan(1),
+                ])->columnSpanFull(),
 
                 Group::make()->schema([
                     Section::make('🏢 Business Information')->schema([
@@ -241,8 +368,7 @@ class ServerClientResource extends Resource
                             ->columnSpan(1)
                             ->helperText('Current client status'),
                     ])->columns(2),
-                ])->columnSpanFull()
-                ->visibleOn('edit'),
+                ])->columnSpanFull()->visibleOn('edit'),
             ])->columns(3);
     }
 
@@ -405,6 +531,16 @@ class ServerClientResource extends Resource
                 ->label('Inbound')
                 ->searchable()
                 ->preload(),
+
+            SelectFilter::make('server')
+                ->label('Server')
+                ->options(fn () => \App\Models\Server::query()->pluck('name', 'id')->toArray())
+                ->query(function (Builder $query, $data) {
+                    if (!empty($data['value'])) {
+                        $query->whereHas('inbound', fn ($q) => $q->where('server_id', $data['value']));
+                    }
+                    return $query;
+                }),
 
             SelectFilter::make('status')
                 ->options([
@@ -572,7 +708,7 @@ class ServerClientResource extends Resource
 
                     foreach ($servers as $server) {
                         try {
-                            $xui             = new XUIService($server->id);
+                            $xui             = new XUIService($server);
                             $remoteInbounds  = $xui->listInbounds();
 
                             foreach ($remoteInbounds as $inbound) {
@@ -641,86 +777,147 @@ class ServerClientResource extends Resource
         ];
     }
 
-    // ✅ Infolist for view page
+    // ✅ Infolist for view page (polished layout)
     public static function infolist(Schema $schema): Schema
-{
-    return $schema->schema([
-        Tabs::make('Client Details')
-            ->persistTab()
-            ->tabs([
-                Tabs\Tab::make('Profile')
-                    ->icon('heroicon-m-user')
-                    ->schema([
-                        InfolistSection::make('🔐 Client Information')
-                            ->description('Details about this proxy client’s identity and usage limits.')
-                            ->columns([
-                                'sm' => 1,
-                                'md' => 2,
-                                'xl' => 3,
-                            ])
-                            ->schema([
-                                TextEntry::make('email')->label('Client Email')->color('primary'),
-                                TextEntry::make('password')->label('UUID / Password')->color('primary'),
-                                TextEntry::make('subId')->label('Subscription ID')->color('primary'),
-                                TextEntry::make('flow')->label('Flow')->color('primary'),
-                                TextEntry::make('limit_ip')->label('IP Limit')->color('primary'),
-                                TextEntry::make('total_gb_bytes')->label('Total GB')->color('primary')->formatStateUsing(fn ($state) => $state ? round($state / 1073741824, 2) . ' GB' : '0 GB'),
-                                TextEntry::make('expiry_time')->label('Expires At')->dateTime()->color('primary'),
-                                TextEntry::make('tg_id')->label('Telegram ID')->default('—')->color('primary'),
-                                IconEntry::make('enable')->label('Enabled')->boolean(),
-                                TextEntry::make('reset')->label('Reset Count')->default(0)->color('primary'),
-                            ]),
-                    ]),
+    {
+        return $schema->schema([
+            Tabs::make('Client Details')
+                ->persistTab()
+                ->tabs([
+                    Tabs\Tab::make('Overview')
+                        ->icon('heroicon-m-user-circle')
+                        ->schema([
+                            InfolistSection::make('Status & Identity')
+                                ->columns([
+                                    'sm' => 1,
+                                    'md' => 2,
+                                    'xl' => 3,
+                                ])
+                                ->schema([
+                                    TextEntry::make('email')->label('Client Email')->copyable()->color('primary'),
+                                    TextEntry::make('status')->label('Status')->badge()->color(fn($state) => match($state){
+                                        'active' => 'success', 'pending' => 'warning', 'suspended' => 'danger', 'terminated' => 'gray', 'expired' => 'info', default => 'gray',
+                                    }),
+                                    IconEntry::make('enable')->label('Enabled')->boolean(),
+                                    IconEntry::make('is_online')->label('Online')->boolean(),
+                                    TextEntry::make('inbound.remark')->label('Inbound')->badge()->color('info'),
+                                    TextEntry::make('plan.name')->label('Plan')->default('N/A')->badge()->color('secondary'),
+                                ]),
 
-                Tabs\Tab::make('Server')
-                    ->icon('heroicon-m-server')
-                    ->schema([
-                        InfolistSection::make('📡 Server Configuration')
-                            ->description('Details about the proxy server and plan used.')
-                            ->columns(2)
-                            ->schema([
-                                TextEntry::make('inbound.remark')->label('Inbound Remark')->color('primary'),
-                                TextEntry::make('plan.name')->label('Plan Name')->default('N/A')->color('primary'),
-                            ]),
-                    ]),
+                            InfolistSection::make('Usage & Limits')
+                                ->columns([
+                                    'sm' => 1,
+                                    'md' => 3,
+                                ])
+                                ->schema([
+                                    TextEntry::make('remote_up')->label('Upload')
+                                        ->formatStateUsing(fn($s) => number_format(($s ?? 0)/1024/1024/1024, 2) . ' GB')
+                                        ->badge()->color('primary'),
+                                    TextEntry::make('remote_down')->label('Download')
+                                        ->formatStateUsing(fn($s) => number_format(($s ?? 0)/1024/1024/1024, 2) . ' GB')
+                                        ->badge()->color('primary'),
+                                    TextEntry::make('total_usage')
+                                        ->label('Total Used')
+                                        ->state(fn($record) => ($record->remote_up + $record->remote_down))
+                                        ->formatStateUsing(fn($s) => number_format(($s ?? 0)/1024/1024/1024, 2) . ' GB')
+                                        ->badge()
+                                        ->color(fn($record) => ($record->total_gb_bytes ?? 0) > 0
+                                            ? ( (($record->remote_up + $record->remote_down) / $record->total_gb_bytes) > 0.9 ? 'danger' : ((($record->remote_up + $record->remote_down) / $record->total_gb_bytes) > 0.75 ? 'warning' : 'success'))
+                                            : 'primary'),
 
-                Tabs\Tab::make('QR Codes')
-                    ->icon('heroicon-m-qr-code')
-                    ->schema([
-                        InfolistSection::make('📲 Client QR Codes')
-                            ->description('Scan or download QR codes to quickly configure supported proxy clients.')
-                            ->columns([
-                                'default' => 1,
-                                'sm' => 2,
-                                'lg' => 3,
-                            ])
-                            ->schema([
-                                ImageEntry::make('qr_code_client')
-                                    ->label('Client QR')
-                                    ->disk('public')
-                                    ->tooltip('Click to open full-size')
-                                    ->openUrlInNewTab()
-                                    ->visible(fn ($record) => filled($record->qr_code_client)),
+                                    TextEntry::make('total_gb_bytes')
+                                        ->label('Limit')
+                                        ->formatStateUsing(fn($s) => $s ? round($s/1073741824,2) . ' GB' : 'Unlimited')
+                                        ->badge()->color('secondary'),
 
-                                ImageEntry::make('qr_code_sub')
-                                    ->label('Subscription QR')
-                                    ->disk('public')
-                                    ->tooltip('Click to open full-size')
-                                    ->openUrlInNewTab()
-                                    ->visible(fn ($record) => filled($record->qr_code_sub)),
+                                    TextEntry::make('utilization')
+                                        ->label('Utilization')
+                                        ->state(fn($record) => ($record->total_gb_bytes ?? 0) > 0
+                                            ? round((($record->remote_up + $record->remote_down) / $record->total_gb_bytes) * 100, 1) . '%'
+                                            : '—')
+                                        ->badge()
+                                        ->color(fn($record) => ($record->total_gb_bytes ?? 0) > 0
+                                            ? ( (($record->remote_up + $record->remote_down) / $record->total_gb_bytes) > 0.9 ? 'danger' : ((($record->remote_up + $record->remote_down) / $record->total_gb_bytes) > 0.75 ? 'warning' : 'success'))
+                                            : 'primary'),
 
-                                ImageEntry::make('qr_code_sub_json')
-                                    ->label('JSON Subscription QR')
-                                    ->disk('public')
-                                    ->tooltip('Click to open full-size')
-                                    ->openUrlInNewTab()
-                                    ->visible(fn ($record) => filled($record->qr_code_sub_json)),
-                            ]),
-                    ]),
-            ])
-            ->contained(true)
-            ->columnSpanFull(),
-    ]);
-}
+                                    TextEntry::make('expiry_time')->label('Expires At')->dateTime()->badge()->color('info'),
+                                    TextEntry::make('reset')->label('Reset Count')->badge()->color('warning'),
+                                ]),
+                        ]),
+
+                    Tabs\Tab::make('Server')
+                        ->icon('heroicon-m-server')
+                        ->schema([
+                            InfolistSection::make('Server & Plan')
+                                ->columns([
+                                    'sm' => 1,
+                                    'md' => 2,
+                                ])
+                                ->schema([
+                                    TextEntry::make('inbound.server.name')->label('Server')->color('primary')
+                                        ->url(fn($record) => optional($record->inbound?->server_id) ? \App\Filament\Clusters\ServerManagement\Resources\ServerResource::getUrl('view', ['record' => $record->inbound->server_id]) : null)
+                                        ->openUrlInNewTab(),
+                                    TextEntry::make('inbound.remark')->label('Inbound')->badge()->color('info')
+                                        ->url(fn($record) => optional($record->inbound?->id) ? \App\Filament\Clusters\ServerManagement\Resources\ServerInboundResource::getUrl('view', ['record' => $record->inbound->id]) : null)
+                                        ->openUrlInNewTab(),
+                                    TextEntry::make('plan.name')->label('Plan')->badge()->color('secondary'),
+                                    TextEntry::make('customer.name')->label('Customer')->default('—'),
+                                ]),
+                        ]),
+
+                    Tabs\Tab::make('QR Codes')
+                        ->icon('heroicon-m-qr-code')
+                        ->schema([
+                            InfolistSection::make('📲 Client QR Codes')
+                                ->description('Scan or download QR codes to quickly configure supported proxy clients.')
+                                ->columns([
+                                    'default' => 1,
+                                    'sm' => 2,
+                                    'lg' => 3,
+                                ])
+                                ->schema([
+                                    ImageEntry::make('qr_code_client')
+                                        ->label('Client QR')
+                                        ->disk('public')
+                                        ->tooltip('Click to open full-size')
+                                        ->openUrlInNewTab()
+                                        ->visible(fn ($record) => filled($record->qr_code_client)),
+
+                                    ImageEntry::make('qr_code_sub')
+                                        ->label('Subscription QR')
+                                        ->disk('public')
+                                        ->tooltip('Click to open full-size')
+                                        ->openUrlInNewTab()
+                                        ->visible(fn ($record) => filled($record->qr_code_sub)),
+
+                                    ImageEntry::make('qr_code_sub_json')
+                                        ->label('JSON Subscription QR')
+                                        ->disk('public')
+                                        ->tooltip('Click to open full-size')
+                                        ->openUrlInNewTab()
+                                        ->visible(fn ($record) => filled($record->qr_code_sub_json)),
+                                ]),
+                        ]),
+
+                    Tabs\Tab::make('Meta')
+                        ->icon('heroicon-m-clock')
+                        ->schema([
+                            InfolistSection::make('Timestamps & Sync')
+                                ->columns([
+                                    'sm' => 1,
+                                    'md' => 2,
+                                    'xl' => 3,
+                                ])
+                                ->schema([
+                                    TextEntry::make('last_api_sync_at')->label('Last API Sync')->since(),
+                                    TextEntry::make('created_at')->label('Created')->since(),
+                                    TextEntry::make('updated_at')->label('Updated')->since(),
+                                ]),
+                        ]),
+                ])
+                ->contained(true)
+                ->columnSpanFull(),
+        ]);
+    }
 
 }

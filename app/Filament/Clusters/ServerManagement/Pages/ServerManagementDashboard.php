@@ -1,32 +1,31 @@
 <?php
 
-namespace App\Filament\Admin\Pages;
+namespace App\Filament\Clusters\ServerManagement\Pages;
 
 use UnitEnum;
 use BackedEnum;
+use App\Filament\Clusters\ServerManagement as ServerManagementCluster;
 use App\Services\ServerManagementService;
 use App\Models\Server;
 use Filament\Pages\Page;
 use Filament\Actions\Action;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Select;
-use Filament\Forms\Components\Textarea;
 use Filament\Forms\Form;
 use Filament\Notifications\Notification;
-use Illuminate\Support\Facades\Cache;
 
 class ServerManagementDashboard extends Page
 {
+    protected static ?string $cluster = ServerManagementCluster::class;
+
     protected static string | BackedEnum | null $navigationIcon = 'heroicon-o-server-stack';
-    protected string $view = 'filament.admin.pages.server-management-dashboard';
-    protected static ?string $navigationLabel = 'Server Management';
+    protected string $view = 'filament.clusters.server-management.pages.server-management-dashboard';
+    protected static ?string $navigationLabel = 'Dashboard';
     protected static ?string $title = 'Server Management Dashboard';
-    protected static ?int $navigationSort = 2;
-    protected static string | UnitEnum | null $navigationGroup = 'Infrastructure';
+    protected static ?int $navigationSort = 0;
 
     public array $dashboardData = [];
     public array $bulkHealthResults = [];
-    public bool $showProvisioningForm = false;
 
     protected ServerManagementService $serverManagementService;
 
@@ -144,8 +143,8 @@ class ServerManagementDashboard extends Page
         try {
             $this->bulkHealthResults = $this->serverManagementService->performBulkHealthCheck();
 
-            $healthyCount = $this->bulkHealthResults['healthy_servers'];
-            $totalCount = $this->bulkHealthResults['total_servers'];
+            $healthyCount = $this->bulkHealthResults['healthy_servers'] ?? 0;
+            $totalCount = $this->bulkHealthResults['total_servers'] ?? 0;
 
             Notification::make()
                 ->title('Health Check Completed')
@@ -169,7 +168,7 @@ class ServerManagementDashboard extends Page
         try {
             $result = $this->serverManagementService->provisionNewServer($data);
 
-            if ($result['success']) {
+            if (($result['success'] ?? false) === true) {
                 Notification::make()
                     ->title('Server Provisioned Successfully')
                     ->body("Server '{$data['name']}' has been provisioned and configured")
@@ -196,8 +195,8 @@ class ServerManagementDashboard extends Page
             $server = Server::findOrFail($serverId);
             $healthResult = $this->serverManagementService->checkServerHealth($server);
 
-            $status = $healthResult['status'];
-            $responseTime = $healthResult['response_time'];
+            $status = $healthResult['status'] ?? 'unknown';
+            $responseTime = $healthResult['response_time'] ?? 0;
 
             Notification::make()
                 ->title("Server Health: {$status}")
@@ -222,8 +221,8 @@ class ServerManagementDashboard extends Page
             $server = Server::findOrFail($serverId);
             $performanceResult = $this->serverManagementService->monitorServerPerformance($server);
 
-            if ($performanceResult['success']) {
-                $alertsCount = count($performanceResult['alerts']);
+            if (($performanceResult['success'] ?? false) === true) {
+                $alertsCount = count($performanceResult['alerts'] ?? []);
 
                 if ($alertsCount > 0) {
                     $alertTypes = collect($performanceResult['alerts'])

@@ -56,6 +56,11 @@ class ServerPlan extends Model
         'duration_days',          // Mirror of days for clarity
         'max_connections',        // Legacy naming for concurrent_connections
         'bandwidth_limit_gb',     // Legacy naming for data_limit_gb
+    'original_price',         // strikethrough price
+    'billing_cycle',          // hourly/daily/weekly/monthly/etc
+    'visibility',             // public/private/hidden
+    'unlimited_traffic',      // unlimited flag
+    'supported_protocols',    // JSON list of protocols
     ];
 
     protected $casts = [
@@ -79,6 +84,11 @@ class ServerPlan extends Model
         'duration_days' => 'integer',
         'max_connections' => 'integer',
         'bandwidth_limit_gb' => 'integer',
+    'original_price' => 'decimal:2',
+    'billing_cycle' => 'string',
+    'visibility' => 'string',
+    'unlimited_traffic' => 'boolean',
+    'supported_protocols' => 'array',
     ];
 
     /**

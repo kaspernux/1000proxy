@@ -26,6 +26,8 @@ use Filament\Forms\Concerns\InteractsWithForms;
 use Filament\Forms\Contracts\HasForms;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Password;
+use Illuminate\Support\Str;
 use App\Filament\Concerns\HasPerformanceOptimizations;
 use BackedEnum;
 
@@ -60,6 +62,40 @@ class StaffManagement extends Page implements HasTable, HasForms
     public function getHeaderActions(): array
     {
         return [
+            Action::make('refresh')
+                ->label('Refresh')
+                ->icon('heroicon-o-arrow-path')
+                ->color('gray')
+                ->action(fn () => $this->refreshStatistics()),
+            Action::make('inviteStaff')
+                ->label('Invite Staff')
+                ->icon('heroicon-o-user-plus')
+                ->color('primary')
+                ->visible(fn () => auth()->user()?->isAdmin() || auth()->user()?->isManager())
+                ->form([
+                    TextInput::make('name')
+                        ->label('Full Name')
+                        ->required()
+                        ->maxLength(255),
+                    TextInput::make('email')
+                        ->label('Email')
+                        ->email()
+                        ->required(),
+                    Select::make('role')
+                        ->label('Role')
+                        ->options(\App\Models\User::getAvailableRoles())
+                        ->default('sales_support')
+                        ->required(),
+                    Toggle::make('is_active')
+                        ->label('Active on Invite')
+                        ->default(true),
+                    Textarea::make('note')
+                        ->label('Message (optional)')
+                        ->rows(3)
+                        ->placeholder('Welcome note included in the invite email...')
+                        ->columnSpanFull(),
+                ])
+                ->action('inviteStaff'),
             Action::make('exportUsers')
                 ->label('Export Users')
                 ->icon('heroicon-o-arrow-down-tray')
@@ -90,7 +126,16 @@ class StaffManagement extends Page implements HasTable, HasForms
                         ->label('Type'),
                 ])
                 ->action('sendBulkNotification')
-                ->color('primary'),
+                ->color('primary')
+                ->visible(fn () => auth()->user()?->isAdmin() || auth()->user()?->isManager()),
+
+            Action::make('help')
+                ->label('Help')
+                ->icon('heroicon-o-question-mark-circle')
+                ->color('gray')
+                ->modalHeading('About Staff Management')
+                ->modalContent(new \Illuminate\Support\HtmlString('Manage internal staff accounts, roles, and bulk actions. Use filters to narrow by role or status.'))
+                ->modalSubmitAction(false),
         ];
     }
 
@@ -156,6 +201,19 @@ class StaffManagement extends Page implements HasTable, HasForms
                     ->dateTime()
                     ->sortable(),
             ])
+            ->actions([
+                Action::make('toggle')
+                    ->label(fn (User $record) => $record->is_active ? 'Deactivate' : 'Activate')
+                    ->color(fn (User $record) => $record->is_active ? 'danger' : 'success')
+                    ->visible(fn () => auth()->user()?->isAdmin() || auth()->user()?->isManager())
+                    ->action(fn (User $record) => $this->toggleUserStatus($record->id)),
+                Action::make('sendResetLink')
+                    ->label('Send Reset Link')
+                    ->color('warning')
+                    ->requiresConfirmation()
+                    ->visible(fn () => auth()->user()?->isAdmin() || auth()->user()?->isManager())
+                    ->action(fn (User $record) => $this->sendResetLink($record->id)),
+            ])
             ->filters([
                 SelectFilter::make('role')
                     ->options([
@@ -190,14 +248,16 @@ class StaffManagement extends Page implements HasTable, HasForms
                     ->icon('heroicon-o-check-circle')
                     ->action('bulkActivate')
                     ->requiresConfirmation()
-                    ->color('success'),
+                    ->color('success')
+                    ->visible(fn () => auth()->user()?->isAdmin() || auth()->user()?->isManager()),
 
                 BulkAction::make('deactivate')
                     ->label('Deactivate')
                     ->icon('heroicon-o-x-circle')
                     ->action('bulkDeactivate')
                     ->requiresConfirmation()
-                    ->color('danger'),
+                    ->color('danger')
+                    ->visible(fn () => auth()->user()?->isAdmin() || auth()->user()?->isManager()),
 
                 BulkAction::make('changeRole')
                     ->label('Change Role')
@@ -215,14 +275,16 @@ class StaffManagement extends Page implements HasTable, HasForms
                     ])
                     ->action('bulkChangeRole')
                     ->requiresConfirmation()
-                    ->color('warning'),
+                    ->color('warning')
+                    ->visible(fn () => auth()->user()?->isAdmin()),
 
                 BulkAction::make('passwordReset')
                     ->label('Send Password Reset')
                     ->icon('heroicon-o-key')
                     ->action('bulkPasswordReset')
                     ->requiresConfirmation()
-                    ->color('primary'),
+                    ->color('primary')
+                    ->visible(fn () => auth()->user()?->isAdmin() || auth()->user()?->isManager()),
             ])
             ->defaultSort('created_at', 'desc');
 
@@ -234,6 +296,98 @@ class StaffManagement extends Page implements HasTable, HasForms
                 'description' => 'Try changing filters or add new staff users.',
             ],
         ]);
+    }
+
+    public function refreshStatistics(): void
+    {
+        $this->statistics = $this->userService->getUserStatistics();
+        Notification::make()->title('Statistics refreshed')->success()->send();
+    }
+
+    public function toggleUserStatus(int $userId): void
+    {
+        $user = User::findOrFail($userId);
+        if (! (auth()->user()?->isAdmin() || auth()->user()?->isManager())) {
+            Notification::make()->title('Not authorized')->danger()->send();
+            return;
+        }
+        $user->is_active = ! $user->is_active;
+        $user->save();
+        $this->refreshStatistics();
+        Notification::make()
+            ->title(($user->is_active ? 'Activated ' : 'Deactivated ') . $user->name)
+            ->success()
+            ->send();
+    }
+
+    public function sendResetLink(int $userId): void
+    {
+        if (! (auth()->user()?->isAdmin() || auth()->user()?->isManager())) {
+            Notification::make()->title('Not authorized')->danger()->send();
+            return;
+        }
+        $user = User::findOrFail($userId);
+        $status = Password::sendResetLink(['email' => $user->email]);
+        if ($status === Password::RESET_LINK_SENT) {
+            Notification::make()->title('Password reset email sent')->success()->send();
+        } else {
+            Notification::make()->title('Failed to send reset email')->danger()->send();
+        }
+    }
+
+    public function inviteStaff(array $data): void
+    {
+        if (! (auth()->user()?->isAdmin() || auth()->user()?->isManager())) {
+            Notification::make()->title('Not authorized')->danger()->send();
+            return;
+        }
+
+        // Normalize email
+        $email = strtolower(trim($data['email'] ?? ''));
+        if ($email === '' || !filter_var($email, FILTER_VALIDATE_EMAIL)) {
+            Notification::make()->title('Invalid email address')->danger()->send();
+            return;
+        }
+
+        $existing = User::where('email', $email)->first();
+        if ($existing) {
+            // Send reset link as invite for existing user
+            $status = Password::sendResetLink(['email' => $existing->email]);
+            if ($status === Password::RESET_LINK_SENT) {
+                Notification::make()->title('Invitation (reset link) sent to existing user.')->success()->send();
+            } else {
+                Notification::make()->title('Failed to send invite to existing user.')->danger()->send();
+            }
+            return;
+        }
+
+        // Create a placeholder account with a random password (hashed by cast)
+        $user = new User();
+        $user->name = trim((string)($data['name'] ?? '')) ?: 'New Staff';
+        $user->email = $email;
+        $user->role = $data['role'] ?? 'sales_support';
+        $user->is_active = (bool)($data['is_active'] ?? true);
+        $user->password = Str::random(32);
+        $user->save();
+
+        // Send reset link as invitation
+        $status = Password::sendResetLink(['email' => $user->email]);
+
+        if ($status === Password::RESET_LINK_SENT) {
+            Notification::make()
+                ->title('Invitation sent')
+                ->body('An invitation email with a secure link was sent to ' . $user->email)
+                ->success()
+                ->send();
+        } else {
+            Notification::make()
+                ->title('Invitation failed')
+                ->body('We could not send the invitation email. Please try again.')
+                ->danger()
+                ->send();
+        }
+
+        $this->refreshStatistics();
     }
 
     public function bulkActivate(Collection $records): void

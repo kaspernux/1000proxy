@@ -40,6 +40,13 @@ Schedule::command('analytics:generate-report --period=monthly')
     ->at('08:00')
     ->withoutOverlapping();
 
+// Weekly Telegram bot branding and commands refresh
+Schedule::command('telegram:publish-branding-queued --with-commands')
+    ->weekly()
+    ->sundays()
+    ->at('04:30')
+    ->withoutOverlapping();
+
 // Clean up old logs
 Schedule::command('log:clear')
     ->weekly()

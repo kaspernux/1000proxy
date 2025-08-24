@@ -9,6 +9,8 @@ use App\Models\Server;
 use App\Models\ServerBrand;
 use App\Models\ServerCategory;
 use App\Services\XUIService;
+use App\Filament\Clusters\ServerManagement\Resources\ServerInboundResource as InboundResource;
+use App\Filament\Clusters\ServerManagement\Resources\ServerClientResource as ClientResource;
 use Illuminate\Support\Facades\Log;
 use Filament\Forms;
 use Filament\Schemas\Schema;
@@ -39,6 +41,8 @@ use Illuminate\Database\Eloquent\Collection;
 use Filament\Notifications\Notification;
 use Illuminate\Support\Str;
 use Illuminate\Support\Carbon;
+use Filament\Schemas\Components\Wizard;
+use Filament\Schemas\Components\Wizard\Step;
 
 class ServerResource extends Resource
 {
@@ -75,6 +79,169 @@ class ServerResource extends Resource
     {
         return $schema
             ->schema([
+                // Create-only guided wizard for better onboarding UX
+                Wizard::make()->label('Setup Server')
+                    ->columnSpanFull()
+                    ->extraAttributes(['class' => 'w-full'])
+                    ->visibleOn('create')
+                    ->steps([
+                        Step::make('Basics')
+                            ->icon('heroicon-o-server')
+                            ->schema([
+                                Grid::make(2)->schema([
+                                    TextInput::make('name')
+                                        ->required()
+                                        ->maxLength(255)
+                                        ->placeholder('My EU Proxy 01')
+                                        ->helperText('A friendly name for this server'),
+
+                                    Forms\Components\Select::make('server_category_id')
+                                        ->label('Category')
+                                        ->relationship('category', 'name')
+                                        ->searchable()
+                                        ->preload()
+                                        ->placeholder('General'),
+                                ]),
+
+                                Grid::make(2)->schema([
+                                    Forms\Components\Select::make('server_brand_id')
+                                        ->label('Brand')
+                                        ->relationship('brand', 'name')
+                                        ->searchable()
+                                        ->preload()
+                                        ->placeholder('Select provider'),
+
+                                    TextInput::make('country')
+                                        ->label('Country')
+                                        ->maxLength(255)
+                                        ->placeholder('Germany'),
+                                ]),
+
+                                Textarea::make('description')
+                                    ->rows(3)
+                                    ->placeholder('Short description or notes (optional)'),
+                            ])->columns(1),
+
+                        Step::make('Connection')
+                            ->icon('heroicon-o-link')
+                            ->schema([
+                                Grid::make(3)->schema([
+                                    TextInput::make('panel_url')
+                                        ->label('Panel URL')
+                                        ->url()
+                                        ->placeholder('https://panel.example.com')
+                                        ->helperText('If set, host/port may be auto-derived'),
+
+                                    TextInput::make('host')
+                                        ->label('Host/Hostname')
+                                        ->maxLength(255)
+                                        ->placeholder('panel.example.com'),
+
+                                    TextInput::make('panel_port')
+                                        ->label('Panel Port')
+                                        ->numeric()
+                                        ->minValue(1)
+                                        ->maxValue(65535)
+                                        ->default(2053)
+                                        ->placeholder('2053'),
+                                ]),
+
+                                Grid::make(3)->schema([
+                                    TextInput::make('ip_address')
+                                        ->label('IP Address')
+                                        ->required()
+                                        ->rules(['ip'])
+                                        ->afterStateUpdated(fn($state, callable $set) => $set('ip', $state))
+                                        ->placeholder('192.0.2.10'),
+
+                                    TextInput::make('web_base_path')
+                                        ->label('Web Base Path')
+                                        ->default('/')
+                                        ->placeholder('/')
+                                        ->helperText('e.g. / or /proxy')
+                                        ->dehydrateStateUsing(function($state){
+                                            if (!$state) return '/';
+                                            $state = '/' . trim($state, '/');
+                                            return $state === '//' ? '/' : $state;
+                                        }),
+
+                                    Forms\Components\Select::make('port_type')
+                                        ->label('Port Type')
+                                        ->options([
+                                            'https' => 'HTTPS',
+                                            'http' => 'HTTP',
+                                            'tcp' => 'TCP',
+                                            'udp' => 'UDP',
+                                        ])
+                                        ->default('https'),
+                                ]),
+
+                                Grid::make(2)->schema([
+                                    TextInput::make('username')
+                                        ->label('Panel Username')
+                                        ->required()
+                                        ->placeholder('admin'),
+
+                                    TextInput::make('password')
+                                        ->label('Panel Password')
+                                        ->password()
+                                        ->required()
+                                        ->placeholder('••••••••'),
+                                ]),
+                            ])->columns(1),
+
+                        Step::make('Security & Protocol')
+                            ->icon('heroicon-o-shield-check')
+                            ->schema([
+                                Grid::make(3)->schema([
+                                    Forms\Components\Select::make('type')
+                                        ->label('Panel Type')
+                                        ->options([
+                                            'sanaei' => '3X-UI (Sanaei)',
+                                            'alireza' => 'Alireza',
+                                            'marzban' => 'Marzban',
+                                            'other' => 'Other',
+                                        ])
+                                        ->default('sanaei')
+                                        ->required(),
+
+                                    Forms\Components\Select::make('security')
+                                        ->label('Security')
+                                        ->options([
+                                            'tls' => 'TLS',
+                                            'reality' => 'Reality',
+                                            'none' => 'None',
+                                        ])
+                                        ->default('tls'),
+
+                                    Forms\Components\Select::make('header_type')
+                                        ->label('Header Type')
+                                        ->options([
+                                            'none' => 'None',
+                                            'http' => 'HTTP',
+                                            'ws' => 'WebSocket',
+                                            'grpc' => 'gRPC',
+                                        ])
+                                        ->default('none'),
+                                ]),
+
+                                Grid::make(3)->schema([
+                                    TextInput::make('sni')->label('SNI')->placeholder('example.com'),
+                                    TextInput::make('port')->label('Main Port')->numeric()->minValue(1)->maxValue(65535)->placeholder('443'),
+                                    TextInput::make('flag')->label('Flag (ISO code)')->maxLength(10)->placeholder('DE'),
+                                ]),
+                            ])->columns(1),
+
+                        Step::make('Automation')
+                            ->icon('heroicon-o-cog-8-tooth')
+                            ->schema([
+                                Grid::make(3)->schema([
+                                    Toggle::make('auto_sync_enabled')->label('Auto Sync')->default(true),
+                                    Toggle::make('auto_provisioning')->label('Auto Provisioning')->default(false),
+                                    TextInput::make('sync_interval_minutes')->label('Sync Interval (min)')->numeric()->minValue(1)->maxValue(1440)->default(30),
+                                ]),
+                            ])->columns(1),
+                    ]),
                 Group::make()->schema([
                     Section::make('🔧 Basic Information')
                         ->description('Core server identification and categorization')
@@ -358,7 +525,7 @@ class ServerResource extends Resource
                                 ->placeholder('{"keep_alive": true, "compression": false}')
                                 ->helperText('Advanced connection settings (JSON format). Use with caution.'),
                         ])->columns(1),
-                ])->columnSpan(2),
+                ])->columnSpan(2)->hidden(fn ($context) => $context === 'create'),
 
                 Group::make()->schema([
                     Section::make('📊 Status & Monitoring')
@@ -378,6 +545,21 @@ class ServerResource extends Resource
                                 ->rows(2)
                                 ->placeholder('Latest health check result')
                                 ->helperText('Latest health check message'),
+
+                            Grid::make(2)->schema([
+                                TextInput::make('response_time_ms')
+                                    ->label('Response Time (ms)')
+                                    ->numeric()
+                                    ->minValue(0)
+                                    ->helperText('Average API response time'),
+
+                                TextInput::make('uptime_percentage')
+                                    ->label('Uptime (%)')
+                                    ->numeric()
+                                    ->minValue(0)
+                                    ->maxValue(100)
+                                    ->helperText('Rolling uptime percentage'),
+                            ]),
 
                             Grid::make(1)->schema([
                                 TextInput::make('total_clients')
@@ -522,6 +704,11 @@ class ServerResource extends Resource
                                 ->rows(3)
                                 ->disabled()
                                 ->helperText('Current X-UI session cookie'),
+
+                            TextInput::make('session_cookie_name')
+                                ->label('Session Cookie Name')
+                                ->disabled()
+                                ->helperText('Cookie key name used by X-UI (if applicable)'),
                         ]),
 
                     Section::make('🔐 XUI Session Management')
@@ -696,7 +883,7 @@ class ServerResource extends Resource
                                     $record && $record->session_expires_at ?
                                     $record->session_expires_at->format('M j, Y g:i A') : 'No active session'),
                         ]),
-                ])->columnSpan(1),
+                ])->columnSpan(1)->hidden(fn ($context) => $context === 'create'),
             ])
             ->columns(3);
     }
@@ -728,18 +915,22 @@ class ServerResource extends Resource
                 BadgeColumn::make('status')
                     ->label('📊 Status')
                     ->colors([
-                        'success' => 'healthy',
+                        'success' => ['healthy', 'up'],
+                        'danger' => ['unhealthy', 'down', 'offline'],
                         'warning' => 'warning',
-                        'danger' => ['unhealthy', 'offline'],
-                        'secondary' => 'maintenance',
+                        'secondary' => ['maintenance', 'paused'],
                     ])
                     ->icons([
-                        'heroicon-o-heart' => 'healthy',
+                        'heroicon-o-heart' => ['healthy', 'up'],
+                        'heroicon-o-x-circle' => ['unhealthy', 'down', 'offline'],
                         'heroicon-o-exclamation-triangle' => 'warning',
-                        'heroicon-o-x-circle' => ['unhealthy', 'offline'],
+                        'heroicon-o-pause-circle' => 'paused',
                         'heroicon-o-wrench-screwdriver' => 'maintenance',
                     ])
                     ->formatStateUsing(fn (string $state): string => match($state) {
+                        'up' => '🟢 Up',
+                        'down' => '🔴 Down',
+                        'paused' => '⏸️ Paused',
                         'healthy' => '🟢 Healthy',
                         'warning' => '🟡 Warning',
                         'unhealthy' => '🔴 Unhealthy',
@@ -811,6 +1002,30 @@ class ServerResource extends Resource
                     ->icon('heroicon-o-users')
                     ->color('success')
                     ->alignCenter(),
+
+                BadgeColumn::make('response_time_ms')
+                    ->label('⏱️ Resp (ms)')
+                    ->numeric()
+                    ->colors([
+                        'success' => fn ($state) => $state !== null && $state < 300,
+                        'warning' => fn ($state) => $state !== null && $state >= 300 && $state < 800,
+                        'danger' => fn ($state) => $state !== null && $state >= 800,
+                    ])
+                    ->icon('heroicon-o-bolt')
+                    ->alignCenter()
+                    ->toggleable(),
+
+                BadgeColumn::make('uptime_percentage')
+                    ->label('📈 Uptime %')
+                    ->formatStateUsing(fn ($state) => $state !== null ? number_format((float)$state, 2) : '—')
+                    ->colors([
+                        'danger' => fn ($state) => $state !== null && $state < 95,
+                        'warning' => fn ($state) => $state !== null && $state >= 95 && $state < 99.5,
+                        'success' => fn ($state) => $state !== null && $state >= 99.5,
+                    ])
+                    ->icon('heroicon-o-chart-bar')
+                    ->alignCenter()
+                    ->toggleable(),
 
                 TextColumn::make('total_clients')
                     ->label('📊 Total')
@@ -886,6 +1101,10 @@ class ServerResource extends Resource
                 SelectFilter::make('status')
                     ->label('📊 Status Filter')
                     ->options([
+                        'up' => '🟢 Up',
+                        'down' => '🔴 Down',
+                        'paused' => '⏸️ Paused',
+                        // legacy labels for backward compatibility
                         'healthy' => '🟢 Healthy',
                         'warning' => '🟡 Warning',
                         'unhealthy' => '🔴 Unhealthy',
@@ -993,7 +1212,8 @@ class ServerResource extends Resource
                             if ($result) {
                                 $record->update([
                                     'last_connected_at' => now(),
-                                    'status' => 'healthy'
+                                    'status' => 'up',
+                                    'health_status' => 'healthy',
                                 ]);
                                 Notification::make()
                                     ->title('🟢 Connection Successful')
@@ -1001,7 +1221,10 @@ class ServerResource extends Resource
                                     ->success()
                                     ->send();
                             } else {
-                                $record->update(['status' => 'unhealthy']);
+                                $record->update([
+                                    'status' => 'down',
+                                    'health_status' => 'unhealthy',
+                                ]);
 
                                 Notification::make()
                                     ->title('🔴 Connection Failed')
@@ -1070,8 +1293,8 @@ class ServerResource extends Resource
                     ->color('info')
                     ->tooltip('View all inbounds on this server')
                     ->url(fn (Server $record): string =>
-                        route('filament.admin.server-management.resources.server-inbounds.index', [
-                            'tableFilters[server_id][value]' => $record->id,
+                        InboundResource::getUrl('index', [
+                            'tableFilters[server][value]' => $record->id,
                         ])
                     ),
 
@@ -1081,8 +1304,8 @@ class ServerResource extends Resource
                     ->color('success')
                     ->tooltip('View all clients on this server')
                     ->url(fn (Server $record): string =>
-                        route('filament.admin.server-management.resources.server-clients.index', [
-                            'tableFilters[server_id][value]' => $record->id,
+                        ClientResource::getUrl('index', [
+                            'tableFilters[server][value]' => $record->id,
                         ])
                     ),
 
@@ -1135,14 +1358,23 @@ class ServerResource extends Resource
                                     if ($result) {
                                         $record->update([
                                             'last_connected_at' => now(),
-                                            'status' => 'healthy'
+                                            'status' => 'up',
+                                            'health_status' => 'healthy',
                                         ]);
                                         $successful++;
                                     } else {
-                                        $record->update(['status' => 'unhealthy']);
+                                        $record->update([
+                                            'status' => 'down',
+                                            'health_status' => 'unhealthy',
+                                        ]);
                                         $failed++;
                                     }
                                 } catch (\Exception $e) {
+                                    $record->update([
+                                        'status' => 'down',
+                                        'health_status' => 'error',
+                                        'health_message' => $e->getMessage(),
+                                    ]);
                                     $failed++;
                                 }
                             }
@@ -1287,7 +1519,7 @@ class ServerResource extends Resource
 
                                     if ($isHealthy) {
                                         $record->update([
-                                            'status' => 'healthy',
+                                            'status' => 'up',
                                             'last_health_check_at' => now(),
                                             'health_status' => 'healthy',
                                             'health_message' => 'Server is responding normally'
@@ -1295,7 +1527,7 @@ class ServerResource extends Resource
                                         $healthy++;
                                     } else {
                                         $record->update([
-                                            'status' => 'unhealthy',
+                                            'status' => 'down',
                                             'last_health_check_at' => now(),
                                             'health_status' => 'unhealthy',
                                             'health_message' => 'Server not responding'
@@ -1304,7 +1536,7 @@ class ServerResource extends Resource
                                     }
                                 } catch (\Exception $e) {
                                     $record->update([
-                                        'status' => 'offline',
+                                        'status' => 'down',
                                         'last_health_check_at' => now(),
                                         'health_status' => 'error',
                                         'health_message' => $e->getMessage()
@@ -1468,15 +1700,15 @@ class ServerResource extends Resource
                                     $isOnline = $xuiService->testConnection();
 
                                     $server->update([
-                                        'status' => $isOnline ? 'online' : 'offline',
-                                        'last_checked_at' => now(),
+                                        'status' => $isOnline ? 'up' : 'down',
+                                        'last_health_check_at' => now(),
                                     ]);
 
                                     $successCount++;
                                 } catch (\Exception $e) {
                                     $server->update([
-                                        'status' => 'offline',
-                                        'last_checked_at' => now(),
+                                        'status' => 'down',
+                                        'last_health_check_at' => now(),
                                     ]);
                                     $failCount++;
                                 }
@@ -1518,5 +1750,145 @@ class ServerResource extends Resource
         return [
             // Relation managers can be added here when they exist
         ];
+    }
+
+    // View page infolist using Filament v4 Schemas & Infolists
+    public static function infolist(\Filament\Schemas\Schema $schema): \Filament\Schemas\Schema
+    {
+        return $schema->schema([
+            \Filament\Infolists\Components\Tabs::make('Server Details')
+                ->persistTab()
+                ->tabs([
+                    \Filament\Infolists\Components\Tabs\Tab::make('Overview')
+                        ->icon('heroicon-m-server')
+                        ->schema([
+                            \Filament\Infolists\Components\Section::make('Summary')
+                                ->columns([
+                                    'sm' => 1,
+                                    'md' => 2,
+                                    'xl' => 3,
+                                ])
+                                ->schema([
+                                    \Filament\Infolists\Components\TextEntry::make('name')
+                                        ->label('Server Name')
+                                        ->icon('heroicon-o-server')
+                                        ->weight('bold')
+                                        ->color('primary'),
+
+                                    \Filament\Infolists\Components\TextEntry::make('status')
+                                        ->label('Status')
+                                        ->badge()
+                                        ->icon(fn ($state) => match ($state) {
+                                            'up' => 'heroicon-o-heart',
+                                            'down' => 'heroicon-o-x-circle',
+                                            'paused' => 'heroicon-o-pause-circle',
+                                            default => 'heroicon-o-question-mark-circle',
+                                        })
+                                        ->color(fn ($state) => match ($state) {
+                                            'up' => 'success',
+                                            'down' => 'danger',
+                                            'paused' => 'secondary',
+                                            default => 'gray',
+                                        })
+                                        ->formatStateUsing(fn ($state) => match ($state) {
+                                            'up' => 'Up', 'down' => 'Down', 'paused' => 'Paused', default => ucfirst((string) $state)
+                                        }),
+
+                                    \Filament\Infolists\Components\TextEntry::make('health_status')
+                                        ->label('Health')
+                                        ->badge()
+                                        ->icon('heroicon-o-heart')
+                                        ->color(fn ($state) => match ($state) {
+                                            'healthy' => 'success',
+                                            'warning' => 'warning',
+                                            'unhealthy' => 'danger',
+                                            default => 'gray',
+                                        }),
+
+                                    \Filament\Infolists\Components\TextEntry::make('country')
+                                        ->label('Location')
+                                        ->icon('heroicon-o-map-pin')
+                                        ->formatStateUsing(fn ($state, $record) => $record?->flag ? ($record->flag . ' ' . $state) : $state)
+                                        ->badge()
+                                        ->color('info'),
+
+                                    \Filament\Infolists\Components\TextEntry::make('type')
+                                        ->label('Panel Type')
+                                        ->badge()
+                                        ->color('warning')
+                                        ->formatStateUsing(fn ($state) => match ($state) {
+                                            'sanaei' => '3X-UI Sanaei',
+                                            'alireza' => 'Alireza',
+                                            'marzban' => 'Marzban',
+                                            default => ucfirst((string) $state)
+                                        }),
+
+                                    \Filament\Infolists\Components\TextEntry::make('last_health_check_at')
+                                        ->label('Last Health Check')
+                                        ->since()
+                                        ->icon('heroicon-o-heart'),
+                                ]),
+                        ]),
+
+                    \Filament\Infolists\Components\Tabs\Tab::make('Connectivity')
+                        ->icon('heroicon-m-link')
+                        ->schema([
+                            \Filament\Infolists\Components\Section::make('Connection & Access')
+                                ->columns([
+                                    'sm' => 1,
+                                    'md' => 2,
+                                    'xl' => 3,
+                                ])
+                                ->schema([
+                                    \Filament\Infolists\Components\TextEntry::make('host')->label('Host')->icon('heroicon-o-globe-alt')->copyable(),
+                                    \Filament\Infolists\Components\TextEntry::make('ip')->label('IP')->icon('heroicon-o-computer-desktop')->copyable(),
+                                    \Filament\Infolists\Components\TextEntry::make('port')->label('Port')->icon('heroicon-o-bolt'),
+                                    \Filament\Infolists\Components\TextEntry::make('panel_url')->label('Panel URL')->icon('heroicon-o-link')->url(fn ($state) => $state, true)->copyable(),
+                                    \Filament\Infolists\Components\TextEntry::make('web_base_path')->label('Web Base Path')->icon('heroicon-o-folder'),
+                                    \Filament\Infolists\Components\TextEntry::make('security')->label('Security')->icon('heroicon-o-shield-check')->badge(),
+                                ]),
+                        ]),
+
+                    \Filament\Infolists\Components\Tabs\Tab::make('Session')
+                        ->icon('heroicon-m-key')
+                        ->schema([
+                            \Filament\Infolists\Components\Section::make('X-UI Session')
+                                ->columns(3)
+                                ->schema([
+                                    \Filament\Infolists\Components\TextEntry::make('session_cookie_name')->label('Cookie Name')->icon('heroicon-o-cookie'),
+                                    \Filament\Infolists\Components\TextEntry::make('session_expires_at')->label('Expires')->dateTime()->since()->icon('heroicon-o-clock'),
+                                    \Filament\Infolists\Components\TextEntry::make('last_login_at')->label('Last Login')->dateTime()->since()->icon('heroicon-o-arrow-right-on-rectangle'),
+                                    \Filament\Infolists\Components\TextEntry::make('login_attempts')->label('Login Attempts')->icon('heroicon-o-exclamation-triangle')->badge()->color('warning'),
+                                ]),
+                        ]),
+
+                    \Filament\Infolists\Components\Tabs\Tab::make('Performance')
+                        ->icon('heroicon-m-chart-bar')
+                        ->schema([
+                            \Filament\Infolists\Components\Section::make('Metrics')
+                                ->columns([
+                                    'sm' => 1,
+                                    'md' => 2,
+                                    'xl' => 4,
+                                ])
+                                ->schema([
+                                    \Filament\Infolists\Components\TextEntry::make('response_time_ms')->label('Response (ms)')->badge()->color(fn ($state) => $state !== null && $state < 300 ? 'success' : ($state !== null && $state < 800 ? 'warning' : 'danger'))->icon('heroicon-o-bolt'),
+                                    \Filament\Infolists\Components\TextEntry::make('uptime_percentage')->label('Uptime %')->formatStateUsing(fn ($s) => $s !== null ? number_format((float)$s, 2) : '—')->badge()->color(fn ($s) => $s !== null && $s >= 99.5 ? 'success' : ($s !== null && $s >= 95 ? 'warning' : 'danger'))->icon('heroicon-o-chart-bar'),
+                                    \Filament\Infolists\Components\TextEntry::make('total_inbounds')->label('Inbounds')->badge()->color('info')->icon('heroicon-o-inbox-stack'),
+                                    \Filament\Infolists\Components\TextEntry::make('active_clients')->label('Active Clients')->badge()->color('success')->icon('heroicon-o-users'),
+                                    \Filament\Infolists\Components\TextEntry::make('total_online_clients')->label('Online Now')->badge()->color('success')->icon('heroicon-o-signal'),
+                                    \Filament\Infolists\Components\TextEntry::make('total_traffic_mb')->label('Total Traffic (MB)')->formatStateUsing(fn ($s) => number_format((float)($s ?? 0), 2))->badge()->color('secondary')->icon('heroicon-o-arrow-trending-up'),
+                                ]),
+
+                            \Filament\Infolists\Components\Section::make('Latest Health')
+                                ->columns(1)
+                                ->schema([
+                                    \Filament\Infolists\Components\TextEntry::make('health_message')->label('Message')->icon('heroicon-o-information-circle')->default('—'),
+                                ]),
+                        ]),
+                ])
+                ->contained(true)
+                ->columnSpanFull(),
+        ]);
     }
 }

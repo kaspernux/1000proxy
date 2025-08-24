@@ -5,10 +5,6 @@
             <p class="text-sm text-gray-600 dark:text-gray-400">Revenue trends, breakdowns, and performance.</p>
         </div>
 
-        <div class="space-y-4">
-            @foreach (method_exists($this, 'getHeaderWidgets') ? $this->getHeaderWidgets() : [] as $widget)
-                @livewire($widget)
-            @endforeach
-        </div>
+    <x-filament-widgets::widgets :widgets="method_exists($this, 'getHeaderWidgets') ? $this->getHeaderWidgets() : []" />
     </div>
 </x-filament-panels::page>

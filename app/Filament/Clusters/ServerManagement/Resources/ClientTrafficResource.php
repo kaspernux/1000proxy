@@ -36,6 +36,14 @@ use Carbon\Carbon;
 use BackedEnum;
 use UnitEnum;
 use Filament\Schemas\Schema;
+use Filament\Schemas\Components\Wizard;
+use Filament\Schemas\Components\Wizard\Step;
+use Filament\Schemas\Components\Grid;
+use Filament\Infolists\Infolist;
+use Filament\Infolists\Components\Tabs;
+use Filament\Infolists\Components\Section as InfolistSection;
+use Filament\Infolists\Components\TextEntry;
+use Filament\Infolists\Components\IconEntry;
 
 class ClientTrafficResource extends Resource
 {
@@ -66,45 +74,71 @@ class ClientTrafficResource extends Resource
     {
         return $schema
             ->schema([
+                // Create-only wizard
+                Wizard::make()->label('Setup Client Traffic')
+                    ->columnSpanFull()
+                    ->extraAttributes(['class' => 'w-full'])
+                    ->visibleOn('create')
+                    ->steps([
+                        Step::make('Associate')
+                            ->icon('heroicon-o-user')
+                            ->schema([
+                                Section::make('Link client & inbound')
+                                    ->description('Pick the inbound and the customer. Email identifies the client traffic record.')
+                                    ->schema([
+                                        \Filament\Schemas\Components\Grid::make(2)->schema([
+                                            Forms\Components\Select::make('server_inbound_id')->label('Server Inbound')->relationship('serverInbound', 'remark')->required()->searchable()->preload(),
+                                            Forms\Components\Select::make('customer_id')->label('Customer')->relationship('customer', 'name')->required()->searchable()->preload(),
+                                        ]),
+                                        \Filament\Schemas\Components\Grid::make(2)->schema([
+                                            Forms\Components\TextInput::make('email')->label('Client Email')->required()->email()->maxLength(255),
+                                            Forms\Components\Toggle::make('enable')->label('Enabled')->default(true),
+                                        ]),
+                                    ]),
+                            ])->columns(1),
+                        Step::make('Statistics')
+                            ->icon('heroicon-o-chart-bar')
+                            ->schema([
+                                Section::make('Initialize counters (bytes)')
+                                    ->description('You can leave these as 0; they will be updated by sync jobs')
+                                    ->schema([
+                                        \Filament\Schemas\Components\Grid::make(3)->schema([
+                                            Forms\Components\TextInput::make('up')->label('Upload (Bytes)')->numeric()->default(0),
+                                            Forms\Components\TextInput::make('down')->label('Download (Bytes)')->numeric()->default(0),
+                                            Forms\Components\TextInput::make('total')->label('Total (Bytes)')->numeric()->default(0),
+                                        ]),
+                                    ]),
+                            ])->columns(1),
+                        Step::make('Expiry')
+                            ->icon('heroicon-o-clock')
+                            ->schema([
+                                Section::make('Record validity')
+                                    ->description('Set when this traffic record should expire')
+                                    ->schema([
+                                        Forms\Components\DateTimePicker::make('expiry_time')->label('Expiry Date & Time')->required(),
+                                    ]),
+                            ])->columns(1),
+
+                        Step::make('Review')
+                            ->icon('heroicon-o-eye')
+                            ->schema([
+                                Section::make('Quick summary')
+                                    ->schema([
+                                        \Filament\Schemas\Components\Grid::make(3)->schema([
+                                            Forms\Components\Placeholder::make('sum_email')->label('Email')->content(fn ($get) => (string) $get('email') ?: '—'),
+                                            Forms\Components\Placeholder::make('sum_inbound')->label('Inbound')->content(fn ($get) => optional(\App\Models\ServerInbound::find($get('server_inbound_id')))?->remark ?: '—'),
+                                            Forms\Components\Placeholder::make('sum_customer')->label('Customer')->content(fn ($get) => optional(\App\Models\Customer::find($get('customer_id')))?->name ?: '—'),
+                                        ]),
+                                    ]),
+                            ])->columns(1),
+                    ]),
+
                 Group::make()->schema([
-                    Section::make('🔗 Client & Server Association')->schema([
-                        Select::make('server_inbound_id')
-                            ->label('Server Inbound')
-                            ->relationship('serverInbound', 'remark')
-                            ->required()
-                            ->searchable()
-                            ->preload()
-                            ->columnSpan(1)
-                            ->helperText('Select the server inbound for this traffic record'),
-
-                        Select::make('customer_id')
-                            ->label('Customer')
-                            ->relationship('customer', 'name')
-                            ->required()
-                            ->searchable()
-                            ->preload()
-                            ->columnSpan(1)
-                            ->helperText('Associated customer'),
-
-                        TextInput::make('email')
-                            ->label('Client Email')
-                            ->required()
-                            ->email()
-                            ->maxLength(255)
-                            ->columnSpan(1)
-                            ->helperText('Client email identifier'),
-
-                        Toggle::make('enable')
-                            ->label('Enabled')
-                            ->required()
-                            ->default(true)
-                            ->columnSpan(1)
-                            ->helperText('Enable/disable traffic tracking'),
-                    ])->columns(2),
-                ])->columnSpan(2),
-
-                Group::make()->schema([
-                    Section::make('📊 Traffic Statistics')->schema([
+                    Section::make('📊 Usage Counters')
+                        ->description('Adjust traffic counters (bytes) and set when this record expires.')
+                        ->columns(2)
+                        ->schema([
+                            Group::make()->schema([
                         TextInput::make('up')
                             ->label('Upload (Bytes)')
                             ->required()
@@ -132,15 +166,16 @@ class ClientTrafficResource extends Resource
                             ->numeric()
                             ->default(0)
                             ->helperText('Number of times traffic was reset'),
-                    ]),
+                            ])->columnSpan(1),
 
-                    Section::make('⏰ Expiry')->schema([
+                            Group::make()->schema([
                         DateTimePicker::make('expiry_time')
                             ->label('Expiry Date & Time')
                             ->required()
                             ->helperText('When this traffic record expires'),
-                    ]),
-                ])->columnSpan(1),
+                            ])->columnSpan(1),
+                        ]),
+                ])->columnSpanFull(),
             ])->columns(3);
     }
 
@@ -363,6 +398,73 @@ class ClientTrafficResource extends Resource
                 'heading' => 'No traffic records',
                 'description' => 'Adjust filters or time window.',
             ],
+        ]);
+    }
+
+    public static function infolist(Schema $schema): Schema
+    {
+        return $schema->schema([
+            Tabs::make('Traffic Details')
+                ->persistTab()
+                ->tabs([
+                    Tabs\Tab::make('Overview')
+                        ->icon('heroicon-m-user-circle')
+                        ->schema([
+                            InfolistSection::make('Identity & Status')
+                                ->columns([
+                                    'sm' => 1,
+                                    'md' => 2,
+                                    'xl' => 3,
+                                ])
+                                ->schema([
+                                    TextEntry::make('email')->label('Email')->copyable()->color('primary'),
+                                    IconEntry::make('enable')->label('Enabled')->boolean(),
+                                    TextEntry::make('customer.name')->label('Customer')->default('—')->badge()->color('secondary'),
+                                    TextEntry::make('serverInbound.remark')->label('Inbound')->badge()->color('info')
+                                        ->url(fn($record) => optional($record->serverInbound?->id) ? \App\Filament\Clusters\ServerManagement\Resources\ServerInboundResource::getUrl('view', ['record' => $record->serverInbound->id]) : null)
+                                        ->openUrlInNewTab(),
+                                ]),
+                        ]),
+
+                    Tabs\Tab::make('Usage')
+                        ->icon('heroicon-m-chart-bar')
+                        ->schema([
+                            InfolistSection::make('Traffic')
+                                ->columns([
+                                    'sm' => 1,
+                                    'md' => 3,
+                                ])
+                                ->schema([
+                                    TextEntry::make('up')->label('Upload')
+                                        ->formatStateUsing(fn($s) => number_format(($s ?? 0)/1024/1024/1024, 2) . ' GB')
+                                        ->badge()->color('primary'),
+                                    TextEntry::make('down')->label('Download')
+                                        ->formatStateUsing(fn($s) => number_format(($s ?? 0)/1024/1024/1024, 2) . ' GB')
+                                        ->badge()->color('primary'),
+                                    TextEntry::make('total')->label('Total')
+                                        ->formatStateUsing(fn($s) => number_format(($s ?? 0)/1024/1024/1024, 2) . ' GB')
+                                        ->badge()->color('info'),
+                                    TextEntry::make('reset')->label('Reset Count')->badge()->color('warning'),
+                                ]),
+                        ]),
+
+                    Tabs\Tab::make('Meta')
+                        ->icon('heroicon-m-clock')
+                        ->schema([
+                            InfolistSection::make('Timestamps')
+                                ->columns([
+                                    'sm' => 1,
+                                    'md' => 2,
+                                ])
+                                ->schema([
+                                    TextEntry::make('expiry_time')->label('Expires')->dateTime()->badge()->color('info'),
+                                    TextEntry::make('created_at')->label('Created')->since(),
+                                    TextEntry::make('updated_at')->label('Updated')->since(),
+                                ]),
+                        ]),
+                ])
+                ->contained(true)
+                ->columnSpanFull(),
         ]);
     }
 

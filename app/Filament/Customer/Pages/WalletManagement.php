@@ -6,7 +6,7 @@ use Filament\Pages\Page;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Hidden;
-use Filament\Forms\Form;
+use Filament\Schemas\Schema;
 use Filament\Forms\Contracts\HasForms;
 use Filament\Tables\Table;
 use Filament\Tables\Columns\TextColumn;
@@ -53,9 +53,9 @@ class WalletManagement extends Page implements HasForms
         $this->form->fill();
     }
 
-    public function form(Form $form): Form
+    public function form(Schema $schema): Schema
     {
-        return $form
+        return $schema
             ->schema([
                 TextInput::make('amount')
                     ->label('Top-up Amount')

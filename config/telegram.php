@@ -3,6 +3,21 @@
 use Telegram\Bot\Commands\HelpCommand;
 
 return [
+    // Driver to use for Telegram integration: 'bot_api' (default) or 'tdlib'
+    'driver' => env('TELEGRAM_DRIVER', 'bot_api'),
+
+    // Optional custom base Bot API URL (e.g., self-hosted telegram-bot-api). Example: http://telegram-bot-api:8081
+    'base_bot_url' => env('TELEGRAM_BASE_BOT_URL', null),
+
+    // TDLib gateway settings (when driver = tdlib)
+    'tdlib' => [
+        // Base URL of the TDLib gateway service (we'll scaffold it under docker-compose)
+        'gateway_url' => env('TDLIB_GATEWAY_URL', 'http://tdlib-gateway:8080'),
+        // Optional shared secret for authenticating requests between app and gateway
+        'api_key' => env('TDLIB_GATEWAY_KEY', env('APP_KEY')),
+        // Default timeout for gateway calls (seconds)
+        'timeout' => (int) env('TDLIB_GATEWAY_TIMEOUT', 10),
+    ],
     /*
     |--------------------------------------------------------------------------
     | Your Telegram Bots
@@ -214,5 +229,37 @@ return [
         // 'start' => Acme\Project\Commands\StartCommand::class,
         // 'stop' => Acme\Project\Commands\StopCommand::class,
         // 'status' => Acme\Project\Commands\StatusCommand::class,
+    ],
+
+    //
+    // Locale behavior for bot interactions
+    //
+    'locale' => [
+        // When true (default), always prefer Telegram device/app language for every update
+        'prefer_device' => (bool) env('TELEGRAM_LOCALE_PREFER_DEVICE', true),
+        // When true, a manually set override (/lang) will be honored over device language
+        'honor_manual_override' => (bool) env('TELEGRAM_LOCALE_HONOR_MANUAL', false),
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Chat Cleanup (Ephemeral UX)
+    |--------------------------------------------------------------------------
+    | When enabled, the bot deletes its previous message in a chat before
+    | sending a new one to keep the conversation clean. Only bot messages
+    | can be deleted in private chats. Users' messages are not deleted.
+    */
+    'cleanup' => [
+        'ephemeral' => (bool) env('TELEGRAM_CLEANUP_EPHEMERAL', false),
+        // Keep last N bot messages per chat (0 = delete last one each time)
+        // For rate limit safety, we default to 0 (delete only the last one)
+        'keep' => (int) env('TELEGRAM_CLEANUP_KEEP', 0),
+        // Cache TTL for storing last message id(s) (seconds)
+        'ttl' => (int) env('TELEGRAM_CLEANUP_TTL', 86400),
+    // When using TDLib driver, optionally delete the entire chat history instead of individual bot messages
+    'use_delete_chat_history' => (bool) env('TELEGRAM_CLEANUP_DELETE_CHAT_HISTORY', false),
+    // TDLib deleteChatHistory options
+    'remove_from_chat_list' => (bool) env('TELEGRAM_CLEANUP_REMOVE_FROM_LIST', false),
+    'revoke' => (bool) env('TELEGRAM_CLEANUP_REVOKE', false),
     ],
 ];

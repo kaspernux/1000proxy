@@ -1,5 +1,5 @@
 <div class="grid gap-2 sm:gap-3 grid-cols-2 md:grid-cols-4">
-    <a href="{{ route('filament.admin.pages.server-management-dashboard') }}" class="group flex items-center gap-2 rounded-lg px-3 py-2 bg-emerald-600 text-white hover:bg-emerald-700">
+    <a href="{{ route('filament.admin.server-management.pages.server-management-dashboard') }}" class="group flex items-center gap-2 rounded-lg px-3 py-2 bg-emerald-600 text-white hover:bg-emerald-700">
         <x-heroicon-o-server-stack class="size-4" />
         <span class="text-sm">Servers</span>
     </a>

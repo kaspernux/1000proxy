@@ -19,6 +19,25 @@ Route::middleware(['web','auth'])->get('/admin/exports/download', function() {
     return Storage::disk('local')->download($path);
 })->name('admin.download-export');
 
+// Explicit Filament panel logout endpoints to ensure reliable logout on both panels
+Route::middleware(['web'])->group(function () {
+    // Admin panel logout (web guard)
+    Route::get('/admin/logout', function (Request $request) {
+        auth('web')->logout();
+        $request->session()->invalidate();
+        $request->session()->regenerateToken();
+        return redirect('/admin/login');
+    })->name('admin.logout');
+
+    // Customer panel logout alias (works alongside existing GET /logout)
+    Route::get('/account/logout', function (Request $request) {
+        auth('customer')->logout();
+        $request->session()->invalidate();
+        $request->session()->regenerateToken();
+        return redirect('/');
+    });
+});
+
 // Lightweight endpoint to persist theme mode in session (used by customer panel topbar button)
 // If a customer is authenticated, also persist to their profile for future sessions.
 Route::middleware(['web'])->post('/api/theme', function (Request $request) {

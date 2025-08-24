@@ -19,6 +19,8 @@ class ServerAnalytics extends Page
             \App\Filament\Admin\Widgets\LocationPopularityWidget::class,
             \App\Filament\Admin\Widgets\ProtocolUsageWidget::class,
             \App\Filament\Admin\Widgets\TrendsWidget::class,
+            \App\Filament\Widgets\InfrastructureHealthWidget::class,
+            \App\Filament\Admin\Widgets\ServerPerformanceWidget::class,
         ];
     }
 }

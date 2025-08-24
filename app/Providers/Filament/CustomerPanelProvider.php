@@ -131,7 +131,8 @@ class CustomerPanelProvider extends PanelProvider
                 // 5) Logout — wired up automatically by Filament when keyed “logout”
                 'logout'  => MenuItem::make('logout')
                     ->label('Log out')
-                    ->icon('heroicon-o-arrow-left-start-on-rectangle'),
+                    ->icon('heroicon-o-arrow-left-start-on-rectangle')
+                    ->url(fn () => url('/logout')),
             ])
             ->bootUsing(function(){
                 // Ensure SweetAlert2 + Livewire Alert scripts are available inside the Filament customer panel

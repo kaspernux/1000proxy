@@ -23,6 +23,10 @@ use App\Policies\{OrderPolicy, ServerPolicy, PaymentMethodPolicy, CustomerPolicy
 use App\Models\ActivityLog;
 use App\Policies\ActivityLogPolicy;
 use Livewire\Livewire;
+use Illuminate\Support\Str;
+use Illuminate\Auth\Events\Login;
+use Illuminate\Auth\Events\Logout;
+use Illuminate\Auth\Events\PasswordReset;
 
 
 class AppServiceProvider extends ServiceProvider
@@ -78,10 +82,63 @@ class AppServiceProvider extends ServiceProvider
             if (class_exists(\App\Filament\Admin\Widgets\UserGrowthChartWidget::class)) {
                 Livewire::component('app.filament.admin.widgets.user-growth-chart-widget', \App\Filament\Admin\Widgets\UserGrowthChartWidget::class);
             }
+
+            // Auto-register all widgets in app/Filament/**/Widgets
+            $widgetDirs = [
+                app_path('Filament/Widgets'),
+                app_path('Filament/Admin/Widgets'),
+            ];
+
+            foreach ($widgetDirs as $dir) {
+                if (! is_dir($dir)) {
+                    continue;
+                }
+
+                $iterator = new \RecursiveIteratorIterator(
+                    new \RecursiveDirectoryIterator($dir, \FilesystemIterator::SKIP_DOTS)
+                );
+
+                foreach ($iterator as $fileInfo) {
+                    if ($fileInfo->getExtension() !== 'php') {
+                        continue;
+                    }
+
+                    $filePath = $fileInfo->getPathname();
+                    $relative = Str::after($filePath, app_path() . DIRECTORY_SEPARATOR);
+                    $class = 'App\\' . str_replace([
+                        DIRECTORY_SEPARATOR,
+                        '.php',
+                    ], [
+                        '\\',
+                        '',
+                    ], $relative);
+
+                    if (! class_exists($class)) {
+                        continue;
+                    }
+
+                    $afterFilament = Str::after($class, 'App\\Filament\\');
+                    $segments = explode('\\', $afterFilament);
+                    $nsParts = array_filter(array_map(function ($seg) {
+                        return Str::kebab($seg);
+                    }, array_slice($segments, 0, -1)));
+                    $alias = 'app.filament';
+                    if (! empty($nsParts)) {
+                        $alias .= '.' . implode('.', $nsParts);
+                    }
+                    $alias .= '.' . Str::kebab(class_basename($class));
+
+                    try {
+                        Livewire::component($alias, $class);
+                    } catch (\Throwable $e) {
+                        // ignore classes that are not Livewire-compatible
+                    }
+                }
+            }
         } catch (\Throwable $e) {
             // Do not block app boot if Livewire isn't ready in some contexts
         }
-        // Defensive: if any legacy code calls app('env'), bind it to the environment name (post-boot)
+    // Defensive: if any legacy code calls app('env'), bind it to the environment name (post-boot)
         if (!$this->app->bound('env')) {
             $this->app->bind('env', function () {
                 return config('app.env');
@@ -191,6 +248,29 @@ class AppServiceProvider extends ServiceProvider
     // Inline event listeners (no EventServiceProvider present)
     Event::listen(\App\Events\OrderPaid::class, \App\Listeners\DispatchProvisioningOnOrderPaid::class);
     Event::listen(\App\Events\OrderProvisioned::class, \App\Listeners\SendOrderProvisionedNotification::class);
+
+    // Activity logging: auth events for User and Customer guards
+    Event::listen(Login::class, function (Login $event) {
+        try {
+            app(\App\Services\ActivityLogger::class)->log('login', $event->user, [
+                'guard' => $event->guard,
+            ]);
+        } catch (\Throwable $e) { /* ignore */ }
+    });
+
+    Event::listen(Logout::class, function (Logout $event) {
+        try {
+            app(\App\Services\ActivityLogger::class)->log('logout', $event->user, [
+                'guard' => $event->guard,
+            ]);
+        } catch (\Throwable $e) { /* ignore */ }
+    });
+
+    Event::listen(PasswordReset::class, function (PasswordReset $event) {
+        try {
+            app(\App\Services\ActivityLogger::class)->log('password_reset', $event->user);
+        } catch (\Throwable $e) { /* ignore */ }
+    });
     }
 
     /**

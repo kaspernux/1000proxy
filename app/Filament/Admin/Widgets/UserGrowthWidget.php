@@ -22,6 +22,7 @@ class UserGrowthWidget extends BaseWidget
         });
 
     $userData = $analytics['data']['users'] ?? [];
+    $conversionRate = (float) ($userData['conversion_rate'] ?? 0);
 
         return [
             Stat::make('Total Users (30 days)', number_format($userData['total_users'] ?? 0))
@@ -34,10 +35,10 @@ class UserGrowthWidget extends BaseWidget
                 ->descriptionIcon('heroicon-m-users')
                 ->color('success'),
 
-            Stat::make('Conversion Rate', number_format($userData['conversion_rate'] ?? 0, 1) . '%')
+            Stat::make('Conversion Rate', number_format($conversionRate, 1) . '%')
                 ->description('Users to customers')
                 ->descriptionIcon('heroicon-m-arrow-path')
-                ->color($userData['conversion_rate'] >= 20 ? 'success' : 'warning'),
+                ->color($conversionRate >= 20 ? 'success' : 'warning'),
 
             Stat::make('Customer LTV', '$' . number_format($userData['customer_lifetime_value'] ?? 0, 2))
                 ->description('Lifetime value')

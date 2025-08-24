@@ -25,7 +25,7 @@ use Filament\Forms\Components\FileUpload;
 use Filament\Tables\Columns\ImageColumn;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\BadgeColumn;
-use Filament\Forms\Components\Grid;
+use Filament\Schemas\Components\Grid;
 use Filament\Forms\Components\Toggle;
 use Filament\Forms\Set;
 use Filament\Forms\Get;

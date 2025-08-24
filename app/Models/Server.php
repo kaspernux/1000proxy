@@ -80,6 +80,8 @@ class Server extends Model
         'provisioning_rules',
         'last_health_check_at',
         'health_message',
+    'response_time_ms',
+    'uptime_percentage',
         'alert_settings',
         'session_cookie',
         'session_cookie_name',
