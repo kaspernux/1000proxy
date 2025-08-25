@@ -243,6 +243,7 @@ class NowPaymentsService implements PaymentGatewayInterface
                     'error' => null,
                     'data' => [
                         'payment_id' => $paymentId,
+                        'order_id' => (string)($paymentData['order_id'] ?? ''),
                         'payment_url' => $invoice['invoice_url'],
                         'amount' => $invoice['price_amount'] ?? $payload['price_amount'],
                         'currency' => $invoice['price_currency'] ?? $payload['price_currency'],
@@ -267,7 +268,6 @@ class NowPaymentsService implements PaymentGatewayInterface
 
         } catch (Exception $e) {
             Log::error('NowPayments payment creation exception', [
-                'error' => $e->getMessage(),
                 'order_id' => $paymentData['order_id'] ?? null,
                 'error' => $e->getMessage(),
             ]);
@@ -286,43 +286,43 @@ class NowPaymentsService implements PaymentGatewayInterface
     public function verifyPayment(string $paymentId): array
     {
         try {
-                $apiKey = config('services.nowpayments.key');
-                if (empty($apiKey)) {
-                    return [ 'success' => false, 'error' => 'NowPayments API key not configured', 'data' => [] ];
-                }
-                $base = rtrim($this->getBaseUrl(), '/');
-                $response = Http::withHeaders([
-                    'x-api-key' => $apiKey,
-                    'Accept' => 'application/json',
-                ])->get($base.'/payment/'.$paymentId);
-                $json = $response->json();
-                if ($response->successful() && is_array($json)) {
-                    return [
-                        'success' => true,
-                        'error' => null,
-                        'data' => [
-                            'status' => $json['payment_status'] ?? 'unknown',
-                            'amount' => $json['price_amount'] ?? null,
-                            'currency' => $json['price_currency'] ?? null,
-                            'crypto_amount' => $json['pay_amount'] ?? null,
-                            'crypto_currency' => $json['pay_currency'] ?? null,
-                            'payout_currency' => $json['payout_currency']
-                                ?? $json['outcome_currency']
-                                ?? ($json['pay_currency'] ?? $json['price_currency'] ?? null),
-                            'order_id' => $json['order_id'] ?? null,
-                        ]
-                    ];
-                }
-                Log::warning('NowPayments verify failed', [
-                    'status' => $response->status(),
-                    'body' => $response->body(),
-                    'payment_id' => $paymentId,
-                ]);
-                return [ 'success' => false, 'error' => 'Verification failed: HTTP '.$response->status(), 'data' => [] ];
-            } catch (Exception $e) {
-                Log::error('NowPayments payment verification exception', [ 'error' => $e->getMessage(), 'payment_id' => $paymentId ]);
-                return [ 'success' => false, 'error' => $e->getMessage(), 'data' => [] ];
+            $apiKey = config('services.nowpayments.key');
+            if (empty($apiKey)) {
+                return [ 'success' => false, 'error' => 'NowPayments API key not configured', 'data' => [] ];
             }
+            $base = rtrim($this->getBaseUrl(), '/');
+            $response = Http::withHeaders([
+                'x-api-key' => $apiKey,
+                'Accept' => 'application/json',
+            ])->get($base.'/payment/'.$paymentId);
+            $json = $response->json();
+            if ($response->successful() && is_array($json)) {
+                return [
+                    'success' => true,
+                    'error' => null,
+                    'data' => [
+                        'status' => $json['payment_status'] ?? 'unknown',
+                        'amount' => $json['price_amount'] ?? null,
+                        'currency' => $json['price_currency'] ?? null,
+                        'crypto_amount' => $json['pay_amount'] ?? null,
+                        'crypto_currency' => $json['pay_currency'] ?? null,
+                        'payout_currency' => $json['payout_currency']
+                            ?? $json['outcome_currency']
+                            ?? ($json['pay_currency'] ?? $json['price_currency'] ?? null),
+                        'order_id' => $json['order_id'] ?? null,
+                    ]
+                ];
+            }
+            Log::warning('NowPayments verify failed', [
+                'status' => $response->status(),
+                'body' => $response->body(),
+                'payment_id' => $paymentId,
+            ]);
+            return [ 'success' => false, 'error' => 'Verification failed: HTTP '.$response->status(), 'data' => [] ];
+        } catch (Exception $e) {
+            Log::error('NowPayments payment verification exception', [ 'error' => $e->getMessage(), 'payment_id' => $paymentId ]);
+            return [ 'success' => false, 'error' => $e->getMessage(), 'data' => [] ];
+        }
     }
 
     /**

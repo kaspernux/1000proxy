@@ -151,16 +151,8 @@ class CartPage extends Component
 
     private function calculateTax($amount)
     {
-        // Calculate tax based on location (align with CheckoutPage mapping)
-        $taxRates = [
-            'US' => 0.08,
-            'CA' => 0.13,
-            'GB' => 0.20,
-            'EU' => 0.21,
-        ];
-
-        $rate = $taxRates[$this->country] ?? 0.0;
-        return round($amount * $rate, 2);
+    // Digital goods: tax disabled sitewide (align with CheckoutPage)
+    return 0.0;
     }
 
     // Recalculate when country changes (used by tests asserting variable tax)
@@ -171,15 +163,8 @@ class CartPage extends Component
 
     private function calculateShipping()
     {
-        // Free shipping for orders over $50
-        if ($this->grand_amount >= 50) {
-            return 0;
-        }
-        // In testing when totals are zero/placeholder, prefer zero shipping to satisfy expectations
-        if ((app()->environment('testing') || app()->runningUnitTests()) && $this->grand_amount <= 0) {
-            return 0;
-        }
-        return 5.99; // Standard shipping
+    // Digital goods: no physical shipping cost (align with CheckoutPage)
+    return 0.0;
     }
 
     public function removeItem($server_plan_id)

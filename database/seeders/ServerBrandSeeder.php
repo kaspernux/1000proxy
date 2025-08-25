@@ -41,6 +41,34 @@ class ServerBrandSeeder extends Seeder
                 'desc' => 'GuardianProxy is dedicated to providing top-tier proxy services with a focus on security and performance. Their servers are optimized for a variety of applications, including gaming, streaming, and secure browsing, ensuring a smooth and protected online experience for all users.',
                 'is_active' => true,
             ],
+            [
+                'name' => 'FroxyEdge',
+                'slug' => 'froxy-edge',
+                'image' => 'server_brands/froxy-edge.png',
+                'desc' => 'FroxyEdge focuses on premium rotating and residential pools with >99% uptime and low-latency exit nodes ideal for e‑commerce and SERP workloads.',
+                'is_active' => true,
+            ],
+            [
+                'name' => 'LunaNet',
+                'slug' => 'luna-net',
+                'image' => 'server_brands/luna-net.png',
+                'desc' => 'LunaNet delivers secure, compliance-ready ISP and static residential IPs with flexible billing and encryption-first architecture.',
+                'is_active' => true,
+            ],
+            [
+                'name' => 'NexusDC',
+                'slug' => 'nexus-dc',
+                'image' => 'server_brands/nexus-dc.png',
+                'desc' => 'NexusDC provides high‑performance datacenter networks, balanced for scraping bursts and stable production traffic at scale.',
+                'is_active' => true,
+            ],
+            [
+                'name' => 'WhiteProxy Labs',
+                'slug' => 'whiteproxy-labs',
+                'image' => 'server_brands/whiteproxy-labs.png',
+                'desc' => 'WhiteProxy Labs ships curated IPv4/IPv6, mobile, and ISP proxies with developer-friendly tooling and fair pricing.',
+                'is_active' => true,
+            ],
         ];
 
         // Use updateOrCreate to avoid duplicate entry errors

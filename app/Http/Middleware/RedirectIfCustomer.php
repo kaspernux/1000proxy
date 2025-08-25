@@ -16,6 +16,12 @@ class RedirectIfCustomer
         }
 
         if (Auth::guard('customer')->check()) {
+            // If an admin (web guard) is authenticated, do not block admin routes.
+            // This prevents scenarios where a user is logged in as a customer and then
+            // tries to access the admin panel with valid admin credentials.
+            if (Auth::guard('web')->check()) {
+                return $next($request);
+            }
             // Always allow admin authentication pages so staff can sign in even if a customer session exists.
             if (
                 $request->is('admin/login') ||

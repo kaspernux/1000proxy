@@ -167,6 +167,23 @@ class PaymentController extends Controller
                                 'user_id' => $customer->id
                             ]
                         ]);
+                        // Persist invoice details immediately for UI/redirect consumers
+                        $payData = $result['data'] ?? [];
+                        if (!empty($payData)) {
+                            $invoice->fill([
+                                'payment_id' => $payData['payment_id'] ?? $invoice->payment_id,
+                                'invoice_url' => $payData['payment_url'] ?? $invoice->invoice_url,
+                                'price_amount' => (string)($payData['amount'] ?? $order->total_amount ?? $order->grand_amount ?? '0.00'),
+                                'price_currency' => strtoupper($payData['currency'] ?? $currency ?? 'USD'),
+                                'pay_currency' => strtoupper($payData['crypto_currency'] ?? ''),
+                                'pay_amount' => isset($payData['crypto_amount']) ? (string)$payData['crypto_amount'] : $invoice->pay_amount,
+                                'payment_status' => $payData['status'] ?? 'pending',
+                                'ipn_callback_url' => config('nowpayments.callbackUrl') ?: route('webhook.nowpay'),
+                                'success_url' => url('/checkout/success?order=' . $order->id),
+                                'cancel_url' => url('/checkout/cancel?order=' . $order->id),
+                            ]);
+                            if ($invoice->isDirty()) { $invoice->save(); }
+                        }
                         // Safety check: if gateway responded with different order_id, log it for diagnostics
                         if (($result['data']['payment_id'] ?? false) && (($result['data']['order_id'] ?? $order->id) != $order->id)) {
                             \Log::warning('NowPayments order_id mismatch after createPayment', [

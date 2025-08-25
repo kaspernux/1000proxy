@@ -23,6 +23,8 @@ class TestRealXuiProvisioning extends Command
     {--keep-dedicated : Keep dedicated inbound even if post-creation health check fails}
     {--dedicated-port-min=20000 : Minimum port for dedicated inbound allocation}
     {--dedicated-port-max=60000 : Maximum port for dedicated inbound allocation}
+    {--single-port-min=60001 : Minimum port for single inbound allocation}
+    {--single-port-max=70000 : Maximum port for single inbound allocation}
     {--dry-run : Show what would happen without remote mutations (still logs in & lists inbounds)} 
     {--diagnostics : Show detailed diagnostic output} 
     {--insecure : Disable TLS certificate verification for debugging (NOT for production)} 
@@ -54,8 +56,8 @@ class TestRealXuiProvisioning extends Command
             $this->error('panel, username and password options are required.');
             return 1;
         }
-        if (!in_array($mode, ['shared','dedicated'])) {
-            $this->error('--mode must be shared or dedicated');
+        if (!in_array($mode, ['shared','dedicated','single','multiple'])) {
+            $this->error('--mode must be shared, dedicated, single, or multiple');
             return 1;
         }
 
@@ -172,8 +174,9 @@ class TestRealXuiProvisioning extends Command
             $columns = Schema::getColumnListing('server_plans');
             $attrs = [
                 'server_id' => $server->id,
-                'name' => 'Test Plan ' . Str::upper(Str::random(4)),
-                'slug' => 'test-plan-' . Str::lower(Str::random(4)),
+                // SEO-friendly test name for clarity in logs and UI
+                'name' => 'Amsterdam Datacenter Proxy ' . ($mode === 'dedicated' ? 'Dedicated' : 'Shared') . ' ' . Str::upper(Str::random(3)),
+                'slug' => 'ams-dc-proxy-' . ($mode === 'dedicated' ? 'dedicated' : 'shared') . '-' . Str::lower(Str::random(3)),
                 'price' => 5.00,
                 'type' => $planType,
                 'days' => 30,

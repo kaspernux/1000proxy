@@ -15,6 +15,37 @@ class ServerCategorySeeder extends Seeder
     {
         $categories = [
             [
+                'name' => 'Datacenter Proxies',
+                'slug' => Str::slug('Datacenter Proxies'),
+                'image' => 'server_categories/datacenter.png',
+                'is_active' => true,
+            ],
+            [
+                'name' => 'Residential Proxies',
+                'slug' => Str::slug('Residential Proxies'),
+                'image' => 'server_categories/residential.png',
+                'is_active' => true,
+            ],
+            [
+                'name' => 'Mobile Proxies',
+                'slug' => Str::slug('Mobile Proxies'),
+                'image' => 'server_categories/mobile.png',
+                'is_active' => true,
+            ],
+            [
+                'name' => 'Rotating Proxies',
+                'slug' => Str::slug('Rotating Proxies'),
+                'image' => 'server_categories/rotating.png',
+                'is_active' => true,
+            ],
+            [
+                'name' => 'Scraping Suite',
+                'slug' => Str::slug('Scraping Suite'),
+                'image' => 'server_categories/scraping.png',
+                'is_active' => true,
+            ],
+            // Legacy/general purpose categories to preserve prior filtering
+            [
                 'name' => 'Streaming',
                 'slug' => Str::slug('Streaming'),
                 'image' => 'server_categories/streaming.png',

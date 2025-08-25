@@ -86,6 +86,8 @@ sudo -u proxy1000 php artisan storage:link || true
 ```
 sudo -u proxy1000 php artisan horizon:terminate || true
 sudo -u proxy1000 php artisan cache:clear || true
+sudo -u proxy1000 php artisan queue:fail-probe --connection=redis --queue=default || true
+sudo -u proxy1000 php artisan queue:work redis --once --queue=defaul --no-interaction --stop-when-empty || true
 ```
 
 ## 13. Bring app online

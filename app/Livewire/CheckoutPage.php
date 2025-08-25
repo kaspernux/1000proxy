@@ -12,6 +12,7 @@ use App\Models\PaymentMethod;
 use App\Helpers\CartManagement;
 use App\Services\Payment\AutoSelector;
 use App\Services\PaymentGateways\StripePaymentService;
+// use App\Services\TaxService; // Tax disabled
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\RateLimiter;
@@ -245,34 +246,14 @@ class CheckoutPage extends Component
 
     private function calculateTax($subtotal)
     {
-        // Calculate based on country/region
-        $taxRates = [
-            'US' => 0.08,
-            'CA' => 0.13,
-            'GB' => 0.20,
-            'EU' => 0.21,
-        ];
-
-        $rate = $taxRates[$this->country] ?? 0;
-        return round($subtotal * $rate, 2);
+        // Tax disabled sitewide
+        return 0.0;
     }
 
     private function calculateShipping($subtotal)
     {
-        // Free shipping over $50
-        if ($subtotal >= 50) {
-            return 0;
-        }
-
-        // Regional shipping rates
-        $shippingRates = [
-            'US' => 5.99,
-            'CA' => 7.99,
-            'EU' => 9.99,
-            'default' => 12.99
-        ];
-
-        return $shippingRates[$this->country] ?? $shippingRates['default'];
+        // Digital goods – no physical shipping cost
+        return 0.0;
     }
 
     public function nextStep()
@@ -748,7 +729,16 @@ class CheckoutPage extends Component
             $createdItems = 0;
             foreach ($this->cart_items as $item) {
                 $planId = $item['server_plan_id'] ?? null;
-                if (!$planId) continue;
+                if (!$planId) { continue; }
+                // Guard against stale cart items referencing deleted plans
+                $planExists = \App\Models\ServerPlan::where('id', $planId)->exists();
+                if (!$planExists) {
+                    \Log::warning('Skipping stale cart item with missing server_plan_id', [
+                        'plan_id' => $planId,
+                        'order_tmp' => 'pre-create-items',
+                    ]);
+                    continue;
+                }
                 $quantity = $item['quantity'] ?? 1;
                 $unit = $item['price'];
                 $order->items()->create([
@@ -871,9 +861,22 @@ class CheckoutPage extends Component
             if ($redirectUrl) {
                 if ($gateway === 'nowpayments') {
                     try {
+                        // Persist invoice details before redirect so UI/API has data.
+                        $order->ensureInvoice([
+                            'payment_id' => $data['payment_id'] ?? null,
+                            'invoice_url' => $redirectUrl,
+                            'price_amount' => (string) ($order->total_amount ?? $order->grand_amount ?? '0.00'),
+                            'price_currency' => 'USD',
+                            'pay_currency' => $data['crypto_currency'] ?? null,
+                            'pay_amount' => isset($data['crypto_amount']) ? (string) $data['crypto_amount'] : null,
+                            'payment_status' => $data['status'] ?? 'pending',
+                            'ipn_callback_url' => config('nowpayments.callbackUrl') ?: route('webhook.nowpay'),
+                            'success_url' => route('checkout.success', ['order' => $order->id]),
+                            'cancel_url' => route('checkout.cancel', ['order' => $order->id]),
+                        ]);
                         $order->markAsProcessing($redirectUrl);
                     } catch (\Throwable $e) {
-                        \Log::warning('Failed to mark order processing after NowPayments invoice', [
+                        \Log::warning('Failed to persist invoice/mark processing after NowPayments invoice', [
                             'order_id' => $order->id,
                             'error' => $e->getMessage()
                         ]);

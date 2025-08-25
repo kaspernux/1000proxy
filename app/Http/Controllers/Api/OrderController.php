@@ -12,6 +12,7 @@ use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+// use App\Services\TaxService; // Tax disabled
 
 class OrderController extends Controller
 {
@@ -113,7 +114,10 @@ class OrderController extends Controller
 
         $quantity = $validated['quantity'] ?? 1;
         $duration = $validated['duration'] ?? 1;
-        $totalPrice = $price * $quantity * $duration;
+    $subtotal = $price * $quantity * $duration;
+    // Tax disabled; shipping always 0 for digital goods
+    $taxAmount = 0.0;
+    $totalPrice = $subtotal;
 
         // Check wallet balance
     $wallet = method_exists($customer, 'getWallet') ? $customer->getWallet() : $customer->wallet;
@@ -135,6 +139,10 @@ class OrderController extends Controller
             $order = Order::create([
                 'customer_id' => $customer->id,
                 'grand_amount' => $totalPrice,
+                'subtotal' => $subtotal,
+                'tax_amount' => $taxAmount,
+                'shipping_amount' => 0,
+                'discount_amount' => 0,
                 'total_amount' => $totalPrice,
                 'currency' => 'USD',
                 'order_status' => 'new',

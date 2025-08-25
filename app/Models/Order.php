@@ -7,6 +7,7 @@ use App\Models\Customer;
 use App\Models\OrderItem;
 use App\Models\PaymentMethod;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -23,6 +24,24 @@ class Order extends Model
             if ($order->isDirty('payment_status') && $order->payment_status === 'paid') {
                 event(new \App\Events\OrderPaid($order));
             }
+            // After commit, ensure an invoice exists and reflect latest payment status
+            DB::afterCommit(function() use ($order) {
+                try {
+                    $order->ensureInvoice();
+                } catch (\Throwable $e) {
+                    \Log::warning('ensureInvoice on order updated failed', ['order_id'=>$order->id,'error'=>$e->getMessage()]);
+                }
+            });
+        });
+        static::created(function(self $order) {
+            // Defer until after surrounding transaction (e.g., Checkout) commits to avoid duplicate invoices
+            DB::afterCommit(function() use ($order) {
+                try {
+                    $order->ensureInvoice();
+                } catch (\Throwable $e) {
+                    \Log::warning('ensureInvoice on order created failed', ['order_id'=>$order->id,'error'=>$e->getMessage()]);
+                }
+            });
         });
     // (No creation mutation now; constraint dropped by migration if present)
     }
@@ -182,6 +201,80 @@ class Order extends Model
     public function paymentMethod(): BelongsTo
     {
         return $this->belongsTo(PaymentMethod::class, 'payment_method');
+    }
+
+    /**
+     * Create or update an invoice to ensure every order has one.
+     */
+    public function ensureInvoice(array $overrides = []): ?Invoice
+    {
+        try {
+            $invoice = $this->invoice;
+            // Resolve a payment method id robustly
+            $pmId = null;
+            try {
+                if (is_numeric($this->payment_method)) {
+                    $pmId = (int) $this->payment_method;
+                }
+                if (!$pmId) {
+                    $pm = \App\Models\PaymentMethod::first();
+                    if (!$pm) {
+                        // Create a sensible default (Wallet) if table is empty
+                        $pm = \App\Models\PaymentMethod::create([
+                            'name' => 'Wallet',
+                            'slug' => 'wallet',
+                            'type' => 'wallet',
+                            'is_active' => true,
+                        ]);
+                    }
+                    $pmId = $pm?->id;
+                }
+            } catch (\Throwable $e) {
+                \Log::warning('ensureInvoice: failed to resolve payment method, invoice may use null', ['order_id'=>$this->id,'error'=>$e->getMessage()]);
+            }
+
+            $base = [
+                'customer_id' => $this->customer_id,
+                'order_id' => $this->id,
+                'payment_method_id' => $pmId,
+                'price_amount' => (string) ($this->total_amount ?? $this->grand_amount ?? '0.00'),
+                'price_currency' => $this->currency ?: 'USD',
+                'pay_amount' => (string) ($this->total_amount ?? $this->grand_amount ?? '0.00'),
+                'pay_currency' => $this->currency ?: 'USD',
+                'payment_status' => $this->payment_status ?: 'pending',
+                'order_description' => 'Order ' . ($this->order_number ?: $this->id),
+                'invoice_url' => $this->payment_invoice_url ?: '',
+            ];
+            $data = array_filter(array_merge($base, $overrides), function($v){ return $v !== null; });
+
+            if ($invoice) {
+                $invoice->fill($data);
+                if ($invoice->isDirty()) { $invoice->save(); }
+                return $invoice;
+            }
+
+            return \App\Models\Invoice::create($data);
+        } catch (\Throwable $e) {
+            \Log::error('ensureInvoice failed', ['order_id'=>$this->id, 'error'=>$e->getMessage()]);
+            return null;
+        }
+    }
+
+    // --- Tax-free policy: always enforce zero tax ---
+    /**
+     * Accessor to always expose tax_amount as 0.00
+     */
+    public function getTaxAmountAttribute($value): string
+    {
+        return number_format(0, 2, '.', '');
+    }
+
+    /**
+     * Mutator to force tax_amount to 0 on write
+     */
+    public function setTaxAmountAttribute($value): void
+    {
+        $this->attributes['tax_amount'] = 0;
     }
 
 

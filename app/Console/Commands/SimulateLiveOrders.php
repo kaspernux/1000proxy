@@ -221,8 +221,8 @@ class SimulateLiveOrders extends Command
     {
         return [
             'server_id' => $serverId,
-            'name' => 'Sim Plan ' . Str::upper(Str::random(4)),
-            'slug' => 'sim-plan-' . Str::lower(Str::random(4)),
+            'name' => 'Amsterdam Datacenter Proxy ' . ($type === 'single' ? 'Dedicated' : 'Shared') . ' ' . Str::upper(Str::random(3)),
+            'slug' => 'ams-dc-proxy-' . ($type === 'single' ? 'dedicated' : 'shared') . '-' . Str::lower(Str::random(3)),
             'price' => 10.00,
             'type' => $type,
             'days' => 30,

@@ -267,9 +267,16 @@ class Customer extends Authenticatable implements MustVerifyEmail
         // ✅ Use default wallet payment method
         $paymentMethod = \App\Models\PaymentMethod::where('slug', 'wallet')->first();
 
-        $order = \App\Models\Order::create([
+    // Tax disabled sitewide
+        $taxAmount = 0.0;
+    $order = \App\Models\Order::create([
             'customer_id' => $this->id,
-            'grand_amount' => $total,
+            'grand_amount' => $total + $taxAmount,
+            'subtotal' => $total,
+            'tax_amount' => $taxAmount,
+            'shipping_amount' => 0,
+            'discount_amount' => 0,
+            'total_amount' => $total + $taxAmount,
             'currency' => 'usd',
             'payment_method' => $paymentMethod->id ?? null,
             'order_status' => 'new',

@@ -34,15 +34,25 @@ class ServerPlanSeeder extends Seeder
 		$inboundByProtocol = $inbounds->keyBy(fn ($i) => $i->protocol ?? '');
 
 		$plans = [
-			['name' => 'Basic - Amsterdam (VLESS)',    'protocol' => 'vless',       'price' => 6.99,  'days' => 30, 'volume' => 100,  'bandwidth_mbps' => 100,  'type' => 'multiple'],
-			['name' => 'Standard - Amsterdam (VLESS)', 'protocol' => 'vless',       'price' => 9.99,  'days' => 30, 'volume' => 200,  'bandwidth_mbps' => 200,  'type' => 'multiple'],
-			['name' => 'Premium - Amsterdam (VLESS)',  'protocol' => 'vless',       'price' => 12.99, 'days' => 30, 'volume' => 300,  'bandwidth_mbps' => 300,  'type' => 'multiple'],
-			['name' => 'Pro - Amsterdam (VLESS)',      'protocol' => 'vless',       'price' => 19.99, 'days' => 30, 'volume' => 500,  'bandwidth_mbps' => 500,  'type' => 'multiple'],
-			['name' => 'Ultra - Amsterdam (VLESS)',    'protocol' => 'vless',       'price' => 24.99, 'days' => 30, 'volume' => 800,  'bandwidth_mbps' => 1000, 'type' => 'multiple'],
-			['name' => 'Basic - Amsterdam (VMess)',    'protocol' => 'vmess',       'price' => 7.99,  'days' => 30, 'volume' => 120,  'bandwidth_mbps' => 150,  'type' => 'multiple'],
-			['name' => 'Brand Edition - Amsterdam (VMess)', 'protocol' => 'vmess',  'price' => 14.99, 'days' => 30, 'volume' => 350,  'bandwidth_mbps' => 350,  'type' => 'branded'],
-			['name' => 'Dedicated - Amsterdam (Trojan)',   'protocol' => 'trojan',  'price' => 29.99, 'days' => 30, 'volume' => 1000, 'bandwidth_mbps' => 1000, 'type' => 'single'],
-			['name' => 'Budget - Amsterdam (Shadowsocks)', 'protocol' => 'shadowsocks','price' => 4.99, 'days' => 30, 'volume' => 80, 'bandwidth_mbps' => 80, 'type' => 'multiple'],
+			// Shared (multiple) VLESS/VMess SOCKS/HTTP over WS+TLS — Datacenter Proxies
+			['name' => 'DC Single VLESS (NL)',      'protocol' => 'vless',       'price' => 0.59,  'original_price' => 0.89, 'billing' => 'monthly', 'days' => 30, 'volume' => 25,   'bandwidth_mbps' => 30,   'type' => 'multiple', 'data_limit_gb' => 25,  'cc' => 1],
+			['name' => 'DC Basic VLESS (NL)',      'protocol' => 'vless',       'price' => 0.99,  'original_price' => 1.40, 'billing' => 'monthly', 'days' => 30, 'volume' => 50,   'bandwidth_mbps' => 50,   'type' => 'multiple', 'data_limit_gb' => 50,  'cc' => 2],
+			['name' => 'DC Standard VLESS (NL)',   'protocol' => 'vless',       'price' => 1.49,  'original_price' => 1.99, 'billing' => 'monthly', 'days' => 30, 'volume' => 100,  'bandwidth_mbps' => 100,  'type' => 'multiple', 'data_limit_gb' => 100, 'cc' => 3],
+			['name' => 'DC Premium VLESS (NL)',    'protocol' => 'vless',       'price' => 2.49,  'original_price' => 3.20, 'billing' => 'monthly', 'days' => 30, 'volume' => 300,  'bandwidth_mbps' => 300,  'type' => 'multiple', 'data_limit_gb' => 300, 'cc' => 5],
+			['name' => 'DC Ultra VLESS (NL)',      'protocol' => 'vless',       'price' => 3.49,  'original_price' => 4.20, 'billing' => 'monthly', 'days' => 30, 'volume' => 500,  'bandwidth_mbps' => 500,  'type' => 'multiple', 'data_limit_gb' => 500, 'cc' => 7],
+
+			['name' => 'DC Single VMess (NL)',      'protocol' => 'vmess',       'price' => 0.65,  'original_price' => 0.95, 'billing' => 'monthly', 'days' => 30, 'volume' => 30,   'bandwidth_mbps' => 50,   'type' => 'multiple', 'data_limit_gb' => 30,  'cc' => 1],
+			['name' => 'DC Basic VMess (NL)',      'protocol' => 'vmess',       'price' => 1.09,  'original_price' => 1.47, 'billing' => 'monthly', 'days' => 30, 'volume' => 60,   'bandwidth_mbps' => 100,  'type' => 'multiple', 'data_limit_gb' => 60,  'cc' => 2],
+			['name' => 'DC Premium VMess (NL)',    'protocol' => 'vmess',       'price' => 1.89,  'original_price' => 2.40, 'billing' => 'monthly', 'days' => 30, 'volume' => 200,  'bandwidth_mbps' => 300,  'type' => 'multiple', 'data_limit_gb' => 200, 'cc' => 4],
+
+			// Dedicated single-user: Trojan / VLESS with higher bandwidth and unlimited flag
+			['name' => 'Dedicated Trojan 1G (NL)', 'protocol' => 'trojan',      'price' => 9.99,  'original_price' => 12.99,'billing' => 'monthly', 'days' => 30, 'volume' => 0,    'bandwidth_mbps' => 1000, 'type' => 'single',   'unlimited_traffic' => true, 'cc' => 1],
+			['name' => 'Dedicated VLESS 1G (NL)',  'protocol' => 'vless',       'price' => 8.49,  'original_price' => 10.99,'billing' => 'monthly', 'days' => 30, 'volume' => 0,    'bandwidth_mbps' => 1000, 'type' => 'single',   'unlimited_traffic' => true, 'cc' => 1],
+			['name' => 'Dedicated VMess 1G (NL)',  'protocol' => 'vmess',       'price' => 8.99,  'original_price' => 11.49,'billing' => 'monthly', 'days' => 30, 'volume' => 0,    'bandwidth_mbps' => 1000, 'type' => 'single',   'unlimited_traffic' => true, 'cc' => 1],
+
+			// Budget and scraping-friendly Shadowsocks / SOCKS
+			['name' => 'Budget Shadowsocks (NL)',  'protocol' => 'shadowsocks', 'price' => 0.67,  'original_price' => 0.99, 'billing' => 'monthly', 'days' => 30, 'volume' => 40,   'bandwidth_mbps' => 80,   'type' => 'multiple', 'data_limit_gb' => 40,  'cc' => 2],
+			['name' => 'SOCKS DC Shared (NL)',     'protocol' => 'socks',       'price' => 0.80,  'original_price' => 1.10, 'billing' => 'monthly', 'days' => 30, 'volume' => 100,  'bandwidth_mbps' => 100,  'type' => 'multiple', 'data_limit_gb' => 100, 'cc' => 3],
 		];
 
 		foreach ($plans as $plan) {
@@ -51,38 +61,47 @@ class ServerPlanSeeder extends Seeder
 				?? optional($inboundByProtocol->get('vless'))->id
 				?? null;
 
+			$payload = [
+				'name' => $plan['name'],
+				'server_brand_id' => $brandId,
+				'server_category_id' => $categoryId,
+				'country_code' => 'NL',
+				'region' => 'Amsterdam',
+				'protocol' => $plan['protocol'],
+				'bandwidth_mbps' => $plan['bandwidth_mbps'],
+				'supports_ipv6' => true,
+				'popularity_score' => 0,
+				'server_status' => 'online',
+				'product_image' => 'server-plans/default-plan.png',
+				'description' => 'Live X-UI server plan aligned to market pricing and performance.',
+				'capacity' => 10000,
+				'price' => $plan['price'],
+				'type' => $plan['type'],
+				'days' => $plan['days'],
+				'duration_days' => $plan['days'],
+				'volume' => $plan['volume'],
+				'is_active' => true,
+				'is_featured' => false,
+				'is_popular' => false,
+				'in_stock' => true,
+				'on_sale' => true,
+				'preferred_inbound_id' => $preferredInboundId,
+				// Rich attributes
+				'original_price' => $plan['original_price'] ?? null,
+				'billing_cycle' => $plan['billing'] ?? 'monthly',
+				'unlimited_traffic' => $plan['unlimited_traffic'] ?? false,
+				'data_limit_gb' => $plan['data_limit_gb'] ?? ($plan['volume'] ?? null),
+				'concurrent_connections' => $plan['cc'] ?? 2,
+				'supported_protocols' => [$plan['protocol']],
+				'auto_provision' => true,
+			];
+
 			ServerPlan::updateOrCreate(
 				[
 					'server_id' => $server->id,
 					'slug' => $slug,
 				],
-				[
-					'name' => $plan['name'],
-					'server_brand_id' => $brandId,
-					'server_category_id' => $categoryId,
-					'country_code' => 'NL',
-					'region' => 'Amsterdam',
-					'protocol' => $plan['protocol'],
-					'bandwidth_mbps' => $plan['bandwidth_mbps'],
-					'supports_ipv6' => true,
-					'popularity_score' => 0,
-					'server_status' => 'online',
-					'name' => $plan['name'],
-					'product_image' => 'server-plans/default-plan.png',
-					'description' => 'Live server plan for Amsterdam region',
-					'capacity' => 10000,
-					'price' => $plan['price'],
-					'type' => $plan['type'],
-					'days' => $plan['days'],
-					'duration_days' => $plan['days'],
-					'volume' => $plan['volume'],
-					'is_active' => true,
-					'is_featured' => false,
-					'is_popular' => false,
-					'in_stock' => true,
-					'on_sale' => true,
-					'preferred_inbound_id' => $preferredInboundId,
-				]
+				$payload
 			);
 		}
 
