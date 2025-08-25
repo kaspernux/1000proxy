@@ -170,6 +170,8 @@ Route::prefix('payment')->middleware(['throttle:60,1'])->group(function () {
         Route::get('/status-by-id/{paymentId}', [\App\Http\Controllers\PaymentController::class, 'getPaymentStatus']);
         Route::get('/gateways', [\App\Http\Controllers\PaymentController::class, 'getAvailableGateways']);
         Route::get('/currencies', [\App\Http\Controllers\PaymentController::class, 'getCurrencies']);
+    Route::post('/minimum', [\App\Http\Controllers\PaymentController::class, 'getMinimum']);
+    Route::post('/estimate', [\App\Http\Controllers\PaymentController::class, 'getEstimatePrice']);
         Route::post('/webhook/{gateway}', [\App\Http\Controllers\PaymentController::class, 'handleWebhook']);
     });
 });

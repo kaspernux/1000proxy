@@ -210,18 +210,21 @@ class NowPaymentsService implements PaymentGatewayInterface
             }
 
             $priceCurrency = strtoupper($paymentData['currency'] ?? 'USD');
-            $payCurrency = strtolower($paymentData['crypto_currency'] ?? $paymentData['pay_currency'] ?? 'btc');
+            $payCurrency = strtolower($paymentData['crypto_currency'] ?? $paymentData['pay_currency'] ?? '');
 
             $payload = [
                 'price_amount' => (float)$paymentData['amount'],
                 'price_currency' => $priceCurrency,
-                'pay_currency' => $payCurrency,
                 'order_id' => (string)$paymentData['order_id'],
                 'order_description' => $paymentData['description'] ?? 'Proxy Service Order',
                 'ipn_callback_url' => config('nowpayments.callbackUrl') ?: route('webhook.nowpay'),
                 'success_url' => $paymentData['success_url'] ?? (rtrim(config('app.url'), '/') . (env('NOWPAYMENTS_SUCCESS_URL','/checkout/success'))),
                 'cancel_url' => $paymentData['cancel_url'] ?? (rtrim(config('app.url'), '/') . (env('NOWPAYMENTS_CANCEL_URL','/checkout/cancel'))),
             ];
+            // Only include pay_currency if explicitly provided; omitting lets user select coin on NP page and avoids min-amount errors
+            if (!empty($payCurrency)) {
+                $payload['pay_currency'] = $payCurrency;
+            }
 
             $base = rtrim($this->getBaseUrl(), '/');
             // Use invoice endpoint to obtain redirectable invoice_url
@@ -257,11 +260,53 @@ class NowPaymentsService implements PaymentGatewayInterface
                 ];
             }
 
+            // If we attempted with a specific coin and NP says it's under minimal, retry without forcing coin
+            $errMsg = is_array($invoice) ? ($invoice['message'] ?? ($invoice['error'] ?? '')) : '';
+            $underMin = (stripos($errMsg, 'less than minimal') !== false) || (stripos($errMsg, 'minimum') !== false);
+            $retried = false;
+            if (!empty($payCurrency) && $underMin) {
+                $retryPayload = $payload; unset($retryPayload['pay_currency']);
+                $retried = true;
+                $retryResp = Http::withHeaders([
+                    'x-api-key' => $apiKey,
+                    'Accept' => 'application/json',
+                ])->post($base . '/invoice', $retryPayload);
+                $retryJson = $retryResp->json();
+                if ($retryResp->successful() && isset($retryJson['invoice_url'])) {
+                    $paymentId = $retryJson['invoice_id'] ?? ($retryJson['id'] ?? null);
+                    Log::info('NowPayments invoice created after removing pay_currency (min fallback)', [
+                        'invoice_id' => $paymentId,
+                        'order_id' => $paymentData['order_id'],
+                        'requested_pay_currency' => $payCurrency,
+                    ]);
+                    return [
+                        'success' => true,
+                        'error' => null,
+                        'data' => [
+                            'payment_id' => $paymentId,
+                            'order_id' => (string)($paymentData['order_id'] ?? ''),
+                            'payment_url' => $retryJson['invoice_url'],
+                            'amount' => $retryJson['price_amount'] ?? $payload['price_amount'],
+                            'currency' => $retryJson['price_currency'] ?? $payload['price_currency'],
+                            // When coin selection is open, NP doesn't lock a crypto coin yet
+                            'crypto_currency' => $retryJson['pay_currency'] ?? null,
+                            'crypto_amount' => $retryJson['pay_amount'] ?? null,
+                            'status' => $retryJson['payment_status'] ?? 'waiting',
+                            'payout_currency' => $retryJson['payout_currency']
+                                ?? $retryJson['outcome_currency']
+                                ?? ($retryJson['pay_currency'] ?? $retryJson['price_currency'] ?? null),
+                        ]
+                    ];
+                }
+            }
+
             Log::error('NowPayments invoice creation failed', [
                 'status' => $response->status(),
                 'body' => $response->body(),
                 'order_id' => $paymentData['order_id'],
                 'env' => config('nowpayments.env'),
+                'under_minimum' => $underMin,
+                'retried_without_coin' => $retried,
             ]);
             $msg = $invoice['message'] ?? ($invoice['error'] ?? ('Failed to create invoice: HTTP '.$response->status()));
             return [ 'success' => false, 'error' => $msg, 'data' => [] ];

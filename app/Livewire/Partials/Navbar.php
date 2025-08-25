@@ -11,11 +11,13 @@ use Livewire\Attributes\On;
 class Navbar extends Component
 {
     public $total_count = 0;
+    public $tick = 0; // dummy reactive counter to force rerender when needed
 
     protected $listeners = [
         'update-cart-count' => 'updateCartCount',
         'cart-updated' => 'refreshCartCount',
-        'cartUpdated' => 'refreshCartCount'
+        'cartUpdated' => 'refreshCartCount',
+        'wallet-updated' => 'refreshWallet'
     ];
 
     public function mount()
@@ -50,5 +52,11 @@ class Navbar extends Component
     {
         // Do not refresh cart count on every render to avoid unnecessary calls
         return view('livewire.partials.navbar');
+    }
+
+    public function refreshWallet(): void
+    {
+        // Bump a reactive counter to trigger a re-render so wallet balance reflects DB changes
+        $this->tick++;
     }
 }

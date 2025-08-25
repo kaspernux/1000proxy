@@ -65,17 +65,17 @@
             <!-- Right Side Actions -->
             <div class="flex items-center space-x-2 sm:space-x-3 flex-shrink-0">
                 @php
-                    $customerUser = auth('customer')->user();
+                    $customerUser = optional(auth('customer')->user())?->fresh(['wallet']);
                     $adminUser = auth('web')->user();
                 @endphp
                 @if($customerUser)
-                    <!-- Wallet Balance -->
-                    <a href="/account/wallet-management" class="hidden sm:flex items-center space-x-2 bg-gradient-to-r from-gray-800/80 to-gray-900/80 backdrop-blur-sm border border-blue-500/30 rounded-xl px-4 py-2.5 hover:border-blue-400/50 transition-all duration-300 group">
+            <!-- Wallet Balance -->
+            <a href="/account/wallet-management" class="hidden sm:flex items-center space-x-2 bg-gradient-to-r from-gray-800/80 to-gray-900/80 backdrop-blur-sm border border-blue-500/30 rounded-xl px-4 py-2.5 hover:border-blue-400/50 transition-all duration-300 group">
                         <div class="w-6 h-6 bg-gradient-to-br from-yellow-400 to-yellow-500 rounded-lg flex items-center justify-center group-hover:scale-110 transition-transform duration-300">
                             <x-heroicon-o-wallet class="w-4 h-4 text-gray-900" />
                         </div>
                         <span class="text-sm font-semibold text-white group-hover:text-yellow-400 transition-colors duration-300">
-                            ${{ number_format($customerUser->wallet_balance ?? 0, 2) }}
+                ${{ number_format($customerUser->wallet?->balance ?? ($customerUser->wallet_balance ?? 0), 2) }}
                         </span>
                     </a>
 

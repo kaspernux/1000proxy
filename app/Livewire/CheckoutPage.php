@@ -344,7 +344,7 @@ class CheckoutPage extends Component
             // Add wallet balance validation if wallet is selected
             if ($this->payment_method === 'wallet') {
                 $customer = \Illuminate\Support\Facades\Auth::guard('customer')->user();
-                $walletBalance = $customer->wallet ? $customer->wallet->balance : 0;
+                $walletBalance = $customer?->wallet?->balance ?? ($customer->wallet_balance ?? 0);
                 if ($walletBalance < ($this->order_summary['total'] ?? 0)) {
                     throw ValidationException::withMessages([
                         'payment_method' => ['Insufficient wallet balance. Please top up your wallet or choose a different payment method.']
@@ -447,9 +447,9 @@ class CheckoutPage extends Component
      */
     private function autoSelectPaymentMethod(): void
     {
-        $activeSlugs = PaymentMethod::where('is_active', true)->pluck('slug')->toArray();
-        $customer = \Illuminate\Support\Facades\Auth::guard('customer')->user();
-        $walletBalance = $customer?->wallet_balance ?? ($customer?->wallet?->balance ?? 0);
+    $activeSlugs = PaymentMethod::where('is_active', true)->pluck('slug')->toArray();
+    $customer = \Illuminate\Support\Facades\Auth::guard('customer')->user();
+    $walletBalance = $customer?->wallet?->balance ?? ($customer?->wallet_balance ?? 0);
         $total = $this->order_summary['total'] ?? 0;
         [$method, $crypto] = AutoSelector::determine($activeSlugs, $walletBalance, $total);
         if ($method !== null) {
@@ -595,7 +595,7 @@ class CheckoutPage extends Component
             // Auto-switch if wallet chosen but insufficient and crypto available
             if ($this->payment_method === 'wallet') {
                 $customer = Auth::guard('customer')->user();
-                $walletBalance = $customer?->wallet_balance ?? ($customer?->wallet?->balance ?? 0);
+                $walletBalance = $customer?->wallet?->balance ?? ($customer?->wallet_balance ?? 0);
                 if ($walletBalance < ($this->order_summary['total'] ?? 0)) {
                     $active = $this->getActivePaymentMethodKeys();
                     if (in_array('crypto', $active, true)) {

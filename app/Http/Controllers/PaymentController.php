@@ -151,6 +151,34 @@ class PaymentController extends Controller
                         break;
                     case 'nowpayments':
                         $nowService = app(\App\Services\PaymentGateways\NowPaymentsService::class);
+                        // If client forced a specific coin, check NP minimum and drop coin if below min to avoid NP error page
+                        $requestedCoin = $request->input('crypto_currency');
+                        // Optionally suppress forcing a coin entirely to avoid NP minimal-amount issues on small orders
+                        $allowForcedCoin = (bool) (config('nowpayments.allowForcedCoin') ?? env('NOWPAYMENTS_ALLOW_FORCED_COIN', false));
+                        if (!$allowForcedCoin) {
+                            \Log::info('NowPayments: suppressing forced coin to allow chooser', [
+                                'requested' => $requestedCoin,
+                                'order_id' => $order->id,
+                            ]);
+                            $requestedCoin = null;
+                        }
+                        if (!empty($requestedCoin)) {
+                            try {
+                                $min = $nowService->getMinimumAmount(strtoupper($currency), strtoupper($requestedCoin));
+                                $minAmount = is_array($min) ? ($min['data']['min_amount'] ?? null) : null;
+                                if (is_numeric($minAmount) && (float)$amount < (float)$minAmount) {
+                                    \Log::info('NowPayments: requested coin below minimum, clearing forced coin', [
+                                        'coin' => $requestedCoin,
+                                        'amount' => $amount,
+                                        'min_amount' => $minAmount,
+                                        'order_id' => $order->id,
+                                    ]);
+                                    $requestedCoin = null;
+                                }
+                            } catch (\Throwable $t) {
+                                // Non-fatal; proceed and let service fallback handle min errors
+                            }
+                        }
                         $result = $nowService->createPayment([
                             'amount' => $amount,
                             'currency' => $currency,
@@ -158,8 +186,8 @@ class PaymentController extends Controller
                             // Previously omitted => service generated synthetic WTU-* id, causing webhook order lookup to fail.
                             'order_id' => $order->id,
                             'description' => 'Order #'.$order->id.' Payment',
-                            // Optionally allow client to choose crypto currency; fallback to request('crypto_currency') or null
-                            'crypto_currency' => $request->input('crypto_currency'),
+                            // Optionally allow client to choose crypto currency; may be cleared by the pre-check above
+                            'crypto_currency' => $requestedCoin,
                             'metadata' => [
                                 'order_id' => $order->id,
                                 'invoice_id' => $invoice->id,
@@ -358,6 +386,20 @@ class PaymentController extends Controller
                 'data' => []
             ], 500);
         }
+    }
+
+    /**
+     * Get NowPayments minimum amount for a fiat/coin pair.
+     */
+    public function getMinimum(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'currency_from' => 'required|string|size:3',
+            'currency_to' => 'required|string|size:3',
+        ]);
+        $svc = app(\App\Services\PaymentGateways\NowPaymentsService::class);
+        $res = $svc->getMinimumAmount(strtoupper($validated['currency_from']), strtoupper($validated['currency_to']));
+        return response()->json($res, $res['success'] ? 200 : 422);
     }
     /**
      * Unified wallet top-up endpoint

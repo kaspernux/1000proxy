@@ -666,10 +666,10 @@
                                             <div class="flex items-center justify-between">
                                                 <span class="text-green-200">Current Balance:</span>
                                                 <span class="text-green-400 font-bold text-lg">
-                                                    ${{ number_format(auth()->guard('customer')->user()->wallet_balance ?? 0, 2) }}
+                                                    ${{ number_format($this->customerWalletBalance, 2) }}
                                                 </span>
                                             </div>
-                                            @if((auth()->guard('customer')->user()->wallet_balance ?? 0) < ($order_summary['total'] ?? 0))
+                                            @if(($this->customerWalletBalance ?? 0) < ($order_summary['total'] ?? 0))
                                                 <div class="mt-2 text-red-400 text-sm">
                                                     Insufficient balance. Please top up your wallet first.
                                                 </div>
