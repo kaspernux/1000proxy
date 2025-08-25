@@ -526,7 +526,7 @@ class PaymentController extends Controller
                     if ($orderId) {
                         $order = Order::find($orderId);
                         if ($order) {
-                            $order->update(['payment_status' => 'paid']);
+                            $order->update(['payment_status' => 'paid', 'status' => 'completed']);
                             $order->invoice?->update(['payment_status' => 'paid']);
                             \App\Jobs\ProcessXuiOrder::dispatch($order);
                         }

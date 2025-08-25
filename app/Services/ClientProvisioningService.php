@@ -47,7 +47,10 @@ class ClientProvisioningService
         } elseif ($totalProvisioned > 0) {
             $order->updateStatus('processing');
         } else {
-            $order->updateStatus('dispute');
+            // Do not downgrade a completed order
+            if ($order->status !== 'completed') {
+                $order->updateStatus('dispute');
+            }
         }
     }
 

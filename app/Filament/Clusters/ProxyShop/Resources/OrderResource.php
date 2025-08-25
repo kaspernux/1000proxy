@@ -177,18 +177,16 @@ class OrderResource extends Resource
                                     ->live()
                                     ->helperText('Current payment status'),
 
-                                Select::make('order_status')
+                                Select::make('status')
                                     ->label('Order Status')
                                     ->options([
-                                        'new' => '🆕 New',
+                                        'pending' => '🟡 Pending',
                                         'processing' => '⚙️ Processing',
                                         'completed' => '✅ Completed',
                                         'cancelled' => '🚫 Cancelled',
                                         'dispute' => '⚠️ Dispute',
-                                        'refund_requested' => '↩️ Refund Requested',
-                                        'refunded' => '💸 Refunded',
                                     ])
-                                    ->default('new')
+                                    ->default('pending')
                                     ->required()
                                     ->prefixIcon('heroicon-o-clipboard-document-check')
                                     ->live()
@@ -309,31 +307,27 @@ class OrderResource extends Resource
                         default => ucfirst($state)
                     }),
 
-                BadgeColumn::make('order_status')
+        BadgeColumn::make('status')
                     ->label('📦 Order')
                     ->colors([
-                        'info' => 'new',
+            'info' => 'pending',
                         'warning' => 'processing',
                         'success' => 'completed',
-                        'danger' => ['cancelled', 'dispute'],
-                        'gray' => ['refund_requested', 'refunded'],
+            'danger' => ['cancelled', 'dispute'],
                     ])
                     ->icons([
-                        'heroicon-o-sparkles' => 'new',
+            'heroicon-o-clock' => 'pending',
                         'heroicon-o-cog-6-tooth' => 'processing',
                         'heroicon-o-check-circle' => 'completed',
                         'heroicon-o-x-circle' => 'cancelled',
                         'heroicon-o-exclamation-triangle' => 'dispute',
-                        'heroicon-o-arrow-uturn-left' => ['refund_requested', 'refunded'],
                     ])
                     ->formatStateUsing(fn (string $state): string => match($state) {
-                        'new' => '🆕 New',
+            'pending' => '🟡 Pending',
                         'processing' => '⚙️ Processing',
                         'completed' => '✅ Completed',
                         'cancelled' => '🚫 Cancelled',
                         'dispute' => '⚠️ Dispute',
-                        'refund_requested' => '↩️ Refund Requested',
-                        'refunded' => '💸 Refunded',
                         default => ucfirst($state)
                     }),
 
@@ -393,16 +387,14 @@ class OrderResource extends Resource
                     ])
                     ->multiple(),
 
-                SelectFilter::make('order_status')
+        SelectFilter::make('status')
                     ->label('Order Status')
                     ->options([
-                        'new' => '🆕 New',
-                        'processing' => '⚙️ Processing',
-                        'completed' => '✅ Completed',
-                        'cancelled' => '🚫 Cancelled',
-                        'dispute' => '⚠️ Dispute',
-                        'refund_requested' => '↩️ Refund Requested',
-                        'refunded' => '💸 Refunded',
+            'pending' => '🟡 Pending',
+            'processing' => '⚙️ Processing',
+            'completed' => '✅ Completed',
+            'cancelled' => '🚫 Cancelled',
+            'dispute' => '⚠️ Dispute',
                     ])
                     ->multiple(),
 
@@ -467,7 +459,8 @@ class OrderResource extends Resource
                     ->action(function (Order $record) {
                         $record->update([
                             'payment_status' => 'paid',
-                            'order_status' => 'processing'
+                            'status' => 'processing',
+                            'order_status' => 'processing',
                         ]);
 
                         Notification::make()
@@ -494,7 +487,7 @@ class OrderResource extends Resource
                             ->send();
                     })
                     ->visible(fn (Order $record): bool =>
-                        $record->order_status !== 'completed'),
+                        $record->status !== 'completed'),
 
                 Action::make('view_items')
                     ->label('View Items')
@@ -545,7 +538,8 @@ class OrderResource extends Resource
                             $records->each(fn (Order $record) =>
                                 $record->update([
                                     'payment_status' => 'paid',
-                                    'order_status' => 'processing'
+                                    'status' => 'processing',
+                                    'order_status' => 'processing',
                                 ])
                             );
 
@@ -596,12 +590,12 @@ class OrderResource extends Resource
 
     public static function getNavigationBadge(): ?string
     {
-        return static::getModel()::where('order_status', 'new')->count() ?: null;
+        return static::getModel()::where('status', 'pending')->count() ?: null;
     }
 
     public static function getNavigationBadgeColor(): ?string
     {
-        return static::getModel()::where('order_status', 'new')->count() > 0 ? 'warning' : null;
+        return static::getModel()::where('status', 'pending')->count() > 0 ? 'warning' : null;
     }
 
     public static function getGlobalSearchEloquentQuery(): Builder
@@ -633,7 +627,7 @@ class OrderResource extends Resource
                         TextEntry::make('grand_amount')->label('Amount')->money(fn($record) => $record->currency)->icon('heroicon-o-currency-dollar')->color('success'),
                         TextEntry::make('payment_method')->label('Method')->badge(),
                         TextEntry::make('payment_status')->label('Payment')->badge(),
-                        TextEntry::make('order_status')->label('Order')->badge(),
+                        TextEntry::make('status')->label('Order')->badge(),
                     ]),
                 ])->columns(1),
 

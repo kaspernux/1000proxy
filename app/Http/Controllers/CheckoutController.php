@@ -271,7 +271,7 @@ class CheckoutController extends Controller
         ]);
 
         // Update invoice
-        $invoice->update([
+    $invoice->update([
             'wallet_transaction_id' => $transaction->id,
             'invoice_url' => route('checkout.success', ['order' => $order->id]),
             // Normalize to 'paid' for internal consistency
@@ -280,7 +280,7 @@ class CheckoutController extends Controller
 
         // Mark order as paid
         $order->update([
-            'status' => 'paid',
+            'status' => 'completed',
             'payment_status' => 'paid',
             'payment_transaction_id' => $transaction->id,
         ]);

@@ -7,6 +7,7 @@ use App\Models\Order;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Auth;
 use App\Livewire\Traits\LivewireAlertV4;
 use Illuminate\Validation\ValidationException;
 
@@ -15,6 +16,7 @@ class MyOrderDetailPage extends Component
     use AuthorizesRequests, LivewireAlertV4;
 
     public Order $order;
+    public $order_items = [];
     public bool $isLoading = false;
 
     protected function rules()
@@ -24,13 +26,17 @@ class MyOrderDetailPage extends Component
         ];
     }
 
-    public function mount($orderId)
+    public function mount($order_id)
     {
         try {
-            $this->order = Order::with(['items.serverPlan', 'invoices', 'payment'])
-                ->where('id', $orderId)
+            // Eager-load valid relations; 'invoice' is singular and 'paymentMethod' exists
+            $this->order = Order::with(['items.serverPlan.server', 'invoice', 'paymentMethod'])
+                ->where('id', $order_id)
                 ->where('customer_id', Auth::guard('customer')->id())
                 ->firstOrFail();
+
+            // Expose items to the view as a dedicated property expected by the blade
+            $this->order_items = $this->order->items;
 
             // Security logging for order access
             Log::info('Order detail accessed', [
@@ -41,7 +47,7 @@ class MyOrderDetailPage extends Component
 
         } catch (\Exception $e) {
             Log::warning('Unauthorized order access attempt', [
-                'order_id' => $orderId,
+                'order_id' => $order_id,
                 'customer_id' => Auth::guard('customer')->id(),
                 'ip' => request()->ip(),
                 'error' => $e->getMessage()
@@ -93,7 +99,7 @@ class MyOrderDetailPage extends Component
             ]);
 
             // Redirect after brief delay
-            $this->dispatch('redirect-after-delay', ['url' => route('my-orders'), 'delay' => 2000]);
+            $this->dispatch('redirect-after-delay', ['url' => route('my.orders'), 'delay' => 2000]);
 
         } catch (\Exception $e) {
             Log::error('Order cancellation error', [

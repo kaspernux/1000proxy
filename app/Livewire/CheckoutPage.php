@@ -804,6 +804,8 @@ class CheckoutPage extends Component
             if (!$wallet || $wallet->balance < $order->total_amount) {
                 throw new \Exception('Insufficient wallet balance');
             }
+            // Decrement wallet balance atomically before recording transaction
+            $wallet->decrement('balance', $order->total_amount);
             $wallet->transactions()->create([
                 'wallet_id' => $wallet->id,
                 'customer_id' => $customer->id,
@@ -813,8 +815,10 @@ class CheckoutPage extends Component
                 'reference' => 'order_' . $order->id,
                 'description' => 'Payment for order ' . $order->order_number,
             ]);
-            // Wallet payment confirmed instantly; mark as paid (avoid mixed 'completed' vs 'paid')
-            $order->update(['status' => 'paid', 'payment_status' => 'paid']);
+            // Notify frontend to refresh wallet UI if present
+            try { $this->dispatch('wallet-updated', balance: $wallet->fresh()->balance); } catch (\Throwable $e) {}
+            // Wallet payment confirmed instantly; normalize to valid enums
+            $order->update(['status' => 'completed', 'payment_status' => 'paid']);
             $this->handlePaymentSuccess(['order' => $order->toArray()]);
             return;
         }

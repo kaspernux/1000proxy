@@ -53,10 +53,17 @@ class ProcessXuiOrder implements ShouldQueue
                 'trace' => $e->getTraceAsString(),
             ]);
 
-            // Mark order as disputed if all retries fail
+            // If all retries fail, only mark as dispute when order isn't already completed
             if ($this->attempts() >= $this->tries) {
-                $this->order->updateStatus('dispute');
-                Log::error("🔥 Order #{$this->order->id} marked as disputed after {$this->tries} failed attempts");
+                $this->order->refresh();
+                if ($this->order->status !== 'completed') {
+                    $this->order->updateStatus('dispute');
+                    Log::error("🔥 Order #{$this->order->id} marked as disputed after {$this->tries} failed attempts");
+                } else {
+                    Log::warning("⚠️ Provisioning failed after retries but order already completed; leaving status as completed", [
+                        'order_id' => $this->order->id,
+                    ]);
+                }
             }
 
             throw $e;
@@ -71,8 +78,11 @@ class ProcessXuiOrder implements ShouldQueue
             'attempts' => $this->attempts(),
         ]);
 
-        // Mark order as disputed
-        $this->order->updateStatus('dispute');
+        // Mark order as disputed only if not completed
+        $this->order->refresh();
+        if ($this->order->status !== 'completed') {
+            $this->order->updateStatus('dispute');
+        }
     }
 
     /**

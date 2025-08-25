@@ -16,7 +16,7 @@ return [
 
     // Default to log in production-like environments to avoid misconfigured transports,
     // tests override via phpunit.xml to 'array'.
-    'default' => env('MAIL_MAILER', env('APP_ENV') === 'production' ? 'smtp' : 'log'),
+    'default' => env('MAIL_MAILER', env('APP_ENV') === 'production' ? 'failover' : 'log'),
 
     /*
     |--------------------------------------------------------------------------

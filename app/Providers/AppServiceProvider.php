@@ -152,6 +152,26 @@ class AppServiceProvider extends ServiceProvider
             if ($defaultMailer && !in_array($defaultMailer, $supported, true)) {
                 config(['mail.default' => app()->environment('production') ? 'smtp' : 'log']);
             }
+            // Ensure the markdown mail view namespace is always registered to avoid
+            // "No hint path defined for [mail]" when using x-mail:: components
+            $mailPaths = config('mail.markdown.paths', []);
+            $fallbackPaths = [
+                resource_path('views/vendor/mail'),
+                resource_path('views/mail'),
+                resource_path('views/emails'),
+            ];
+            $paths = array_values(array_unique(array_filter(array_merge($mailPaths, $fallbackPaths), function ($p) {
+                return is_string($p) && is_dir($p);
+            })));
+            if (!empty($paths)) {
+                try { View::addNamespace('mail', $paths); } catch (\Throwable $e) { /* ignore */ }
+            }
+            // Ensure failed job driver is set to database-uuids when queues use DB/Redis
+            if (in_array(config('queue.default'), ['database', 'redis'], true)) {
+                if (config('queue.failed.driver') !== 'database-uuids') {
+                    config(['queue.failed.driver' => 'database-uuids']);
+                }
+            }
         } catch (\Throwable $e) {
             // swallow; config not ready
         }

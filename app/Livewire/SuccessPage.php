@@ -570,7 +570,7 @@ class SuccessPage extends Component
     // Order tracking and support
     public function trackOrder()
     {
-        return redirect()->route('my-order-detail', ['order' => $this->order->id]);
+    return redirect()->route('my-orders.show', ['order_id' => $this->order->id]);
     }
 
     public function contactSupport()

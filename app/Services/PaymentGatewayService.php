@@ -699,10 +699,13 @@ class PaymentGatewayService
             // Update order status
             $order = Order::find($paymentData['order_id']);
             if ($order) {
+                // Use valid enums: set payment_status to 'paid' and mark order as completed
                 $order->update([
-                    'status' => 'paid',
+                    'payment_status' => 'paid',
+                    'status' => 'completed',
+                    'order_status' => 'completed',
                     'payment_method' => $paymentResult['gateway'] ?? 'unknown',
-                    'payment_transaction_id' => $paymentResult['transaction_id'],
+                    'payment_transaction_id' => $paymentResult['transaction_id'] ?? null,
                     'paid_at' => now()
                 ]);
             }

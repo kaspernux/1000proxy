@@ -137,7 +137,7 @@ class TestMail extends Command
     private function sendTestOrderEmail(string $email): bool
     {
         $customer = new \App\Models\Customer(['id' => 999999, 'name' => 'Test Customer', 'email' => $email]);
-        $order = new Order(['id' => 999999, 'grand_amount' => 29.99, 'status' => 'completed', 'created_at' => now()]);
+    $order = new Order(['id' => 999999, 'grand_amount' => 29.99, 'status' => 'completed', 'created_at' => now()]);
         $order->setRelation('customer', $customer);
         return $this->mailService->sendOrderPlacedEmail($order);
     }
@@ -145,7 +145,7 @@ class TestMail extends Command
     private function sendTestPaymentReceivedEmail(string $email): bool
     {
         $customer = new \App\Models\Customer(['id' => 999999, 'name' => 'Test Customer', 'email' => $email]);
-        $order = new Order(['id' => 999999, 'grand_amount' => 29.99, 'status' => 'paid', 'created_at' => now()]);
+    $order = new Order(['id' => 999999, 'grand_amount' => 29.99, 'status' => 'completed', 'payment_status' => 'paid', 'created_at' => now()]);
         $order->setRelation('customer', $customer);
         return $this->mailService->sendPaymentReceivedEmail($order, 'Credit Card', 'TXN_999999');
     }

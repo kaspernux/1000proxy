@@ -236,9 +236,11 @@ class Order extends Model
             $base = [
                 'customer_id' => $this->customer_id,
                 'order_id' => $this->id,
-                'payment_method_id' => $pmId,
+                // Fallback to a valid PaymentMethod id to satisfy FK when null
+                'payment_method_id' => $pmId ?: (\App\Models\PaymentMethod::first()?->id),
                 'price_amount' => (string) ($this->total_amount ?? $this->grand_amount ?? '0.00'),
                 'price_currency' => $this->currency ?: 'USD',
+                // Ensure pay_amount is valid decimal string (not empty)
                 'pay_amount' => (string) ($this->total_amount ?? $this->grand_amount ?? '0.00'),
                 'pay_currency' => $this->currency ?: 'USD',
                 'payment_status' => $this->payment_status ?: 'pending',

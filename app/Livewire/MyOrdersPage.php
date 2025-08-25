@@ -136,7 +136,8 @@ class MyOrdersPage extends Component
     // Order management actions
     public function viewOrder($orderId)
     {
-        return redirect()->route('my-order-detail', ['order' => $orderId]);
+    // Route is defined as name 'my-orders.show' with parameter {order_id}
+    return redirect()->route('my-orders.show', ['order_id' => $orderId]);
     }
 
     public function downloadInvoice($orderId)

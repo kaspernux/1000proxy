@@ -3,6 +3,7 @@
 namespace App\Filament\Customer\Pages;
 
 use Filament\Pages\Page;
+use Carbon\Carbon;
 use Filament\Tables\Table;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Columns\IconColumn;
@@ -217,8 +218,13 @@ class OrderManagement extends Page implements HasTable
                     ->visible(function (Order $record) {
                         // Show if any service is expiring within 30 days
                         $expiringSoon = $record->items->some(function ($item) {
-                            $expiry = $item->server_client?->expiry_time;
-                            return $expiry && now()->diffInDays($expiry, false) <= 30;
+                            $raw = $item->server_client?->expiry_time;
+                            if (!$raw) return false;
+                            $expiry = $raw instanceof Carbon
+                                ? $raw
+                                : (is_numeric($raw) ? Carbon::createFromTimestampMs((int) $raw) : null);
+                            if (!$expiry) return false;
+                            return now()->diffInDays($expiry, false) <= 30;
                         });
                         return $expiringSoon;
                     })
@@ -310,8 +316,13 @@ class OrderManagement extends Page implements HasTable
                         ->visible(function (Order $record) {
                             // Show if any service is expiring within 30 days
                             $expiringSoon = $record->items->some(function ($item) {
-                                $expiry = $item->server_client?->expiry_time;
-                                return $expiry && now()->diffInDays($expiry, false) <= 30;
+                                $raw = $item->server_client?->expiry_time;
+                                if (!$raw) return false;
+                                $expiry = $raw instanceof Carbon
+                                    ? $raw
+                                    : (is_numeric($raw) ? Carbon::createFromTimestampMs((int) $raw) : null);
+                                if (!$expiry) return false;
+                                return now()->diffInDays($expiry, false) <= 30;
                             });
                             return $expiringSoon;
                         })
@@ -505,9 +516,14 @@ class OrderManagement extends Page implements HasTable
             // Renew each service
             foreach ($order->items as $item) {
                 if ($item->server_client) {
-                    // Extend expiry by one month
+                    // Extend expiry by one month (expiry_time stored in milliseconds)
+                    $raw = $item->server_client->expiry_time;
+                    $current = $raw instanceof Carbon
+                        ? $raw
+                        : (is_numeric($raw) ? Carbon::createFromTimestampMs((int) $raw) : now());
+                    $newExpiry = $current->copy()->addMonth();
                     $item->server_client->update([
-                        'expiry_time' => $item->server_client->expiry_time->addMonth()
+                        'expiry_time' => (int) $newExpiry->valueOf(), // ms timestamp
                     ]);
 
                     // Create renewal order item
