@@ -13,6 +13,7 @@ use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Form;
 use Filament\Notifications\Notification;
+use Filament\Actions\ActionGroup;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Cache;
 use Carbon\Carbon;
@@ -78,36 +79,13 @@ class ServerManagementDashboard extends Page
     protected function getHeaderActions(): array
     {
         return [
+            // Keep the two most common actions visible
             Action::make('bulkHealthCheck')
                 ->label('Run Health Check')
                 ->icon('heroicon-o-heart')
                 ->color('info')
                 ->action(function () {
                     $this->runBulkHealthCheck();
-                }),
-
-            Action::make('syncInboundsAll')
-                ->label('Sync Inbounds (All)')
-                ->icon('heroicon-o-arrow-down-tray')
-                ->color('gray')
-                ->requiresConfirmation()
-                ->modalHeading('Sync all inbounds from panels?')
-                ->modalDescription('This pulls the latest inbounds for all active servers and updates the local DB.')
-                ->action(function () {
-                    $count = 0; $errors = 0;
-                    foreach (Server::where('is_active', true)->get() as $server) {
-                        try {
-                            $xui = new \App\Services\XUIService($server);
-                            $synced = $xui->syncAllInbounds();
-                            if (is_numeric($synced)) { $count += (int) $synced; }
-                        } catch (\Throwable $e) { $errors++; }
-                    }
-                    $this->loadDashboardData();
-                    Notification::make()
-                        ->title('Inbounds Sync Completed')
-                        ->body("Synced {$count} inbound(s)" . ($errors ? ", {$errors} server(s) had errors" : ''))
-                        ->success()
-                        ->send();
                 }),
 
             Action::make('provisionServer')
@@ -173,56 +151,77 @@ class ServerManagementDashboard extends Page
                     $this->provisionNewServer($data);
                 }),
 
-            Action::make('refreshData')
-                ->label('Refresh')
-                ->icon('heroicon-o-arrow-path')
-                ->action(function () {
-                    $this->loadDashboardData();
+            // Group: Advanced Proxy (secondary ops)
+            ActionGroup::make([
+                Action::make('refreshData')
+                    ->label('Refresh Dashboard')
+                    ->icon('heroicon-o-arrow-path')
+                    ->action(function () {
+                        $this->loadDashboardData();
+                        Notification::make()->title('Dashboard refreshed')->success()->send();
+                    }),
 
-                    Notification::make()
-                        ->title('Dashboard refreshed')
-                        ->success()
-                        ->send();
-                }),
+                Action::make('forceRefresh')
+                    ->label('Force Refresh (Live)')
+                    ->icon('heroicon-o-bolt')
+                    ->color('warning')
+                    ->requiresConfirmation()
+                    ->modalHeading('Force refresh live metrics?')
+                    ->modalDescription('This will clear caches and poll all active servers for fresh metrics. May take a few seconds.')
+                    ->action(function () {
+                        $this->serverManagementService->forceRefreshDashboardCaches();
+                        $this->loadDashboardData();
+                        Notification::make()->title('Live metrics refreshed')->success()->send();
+                    }),
 
-            Action::make('forceRefresh')
-                ->label('Force Refresh (Live)')
-                ->icon('heroicon-o-bolt')
-                ->color('warning')
-                ->requiresConfirmation()
-                ->modalHeading('Force refresh live metrics?')
-                ->modalDescription('This will clear caches and poll all active servers for fresh metrics. May take a few seconds.')
-                ->action(function () {
-                    $this->serverManagementService->forceRefreshDashboardCaches();
-                    $this->loadDashboardData();
+                Action::make('syncInboundsAll')
+                    ->label('Sync Inbounds (All)')
+                    ->icon('heroicon-o-arrow-down-tray')
+                    ->color('gray')
+                    ->requiresConfirmation()
+                    ->modalHeading('Sync all inbounds from panels?')
+                    ->modalDescription('This pulls the latest inbounds for all active servers and updates the local DB.')
+                    ->action(function () {
+                        $count = 0; $errors = 0;
+                        foreach (Server::where('is_active', true)->get() as $server) {
+                            try {
+                                $xui = new \App\Services\XUIService($server);
+                                $synced = $xui->syncAllInbounds();
+                                if (is_numeric($synced)) { $count += (int) $synced; }
+                            } catch (\Throwable $e) { $errors++; }
+                        }
+                        $this->loadDashboardData();
+                        Notification::make()
+                            ->title('Inbounds Sync Completed')
+                            ->body("Synced {$count} inbound(s)" . ($errors ? ", {$errors} server(s) had errors" : ''))
+                            ->success()
+                            ->send();
+                    }),
 
-                    Notification::make()
-                        ->title('Live metrics refreshed')
-                        ->success()
-                        ->send();
-                }),
-
-            Action::make('backupAllPanels')
-                ->label('Backup All Panels')
-                ->icon('heroicon-o-cloud-arrow-up')
-                ->color('gray')
-                ->requiresConfirmation()
-                ->modalHeading('Trigger backup on all panels?')
-                ->modalDescription('Backups will be sent to admins via Telegram if configured.')
-                ->action(function () {
-                    $ok = 0; $fail = 0;
-                    foreach (Server::where('is_active', true)->get() as $server) {
-                        try {
-                            $xui = new \App\Services\XUIService($server);
-                            $xui->createBackup() ? $ok++ : $fail++;
-                        } catch (\Throwable $e) { $fail++; }
-                    }
-                    Notification::make()
-                        ->title('Backup requests sent')
-                        ->body("Succeeded: {$ok}, Failed: {$fail}")
-                        ->color($fail > 0 ? 'warning' : 'success')
-                        ->send();
-                }),
+                Action::make('backupAllPanels')
+                    ->label('Backup All Panels')
+                    ->icon('heroicon-o-cloud-arrow-up')
+                    ->color('gray')
+                    ->requiresConfirmation()
+                    ->modalHeading('Trigger backup on all panels?')
+                    ->modalDescription('Backups will be sent to admins via Telegram if configured.')
+                    ->action(function () {
+                        $ok = 0; $fail = 0;
+                        foreach (Server::where('is_active', true)->get() as $server) {
+                            try {
+                                $xui = new \App\Services\XUIService($server);
+                                $xui->createBackup() ? $ok++ : $fail++;
+                            } catch (\Throwable $e) { $fail++; }
+                        }
+                        Notification::make()
+                            ->title('Backup requests sent')
+                            ->body("Succeeded: {$ok}, Failed: {$fail}")
+                            ->color($fail > 0 ? 'warning' : 'success')
+                            ->send();
+                    }),
+            ])->label('More')
+              ->icon('heroicon-o-adjustments-horizontal')
+              ->color('gray'),
         ];
     }
 
@@ -416,7 +415,8 @@ class ServerManagementDashboard extends Page
     protected function getServerMetrics(): array
     {
         $data = [];
-        $select = ['id','name','country','max_clients','panel_url'];
+    // Include host/panel_port/web_base_path so getPanelAccessUrl can construct correct URL with port/base path
+    $select = ['id','name','country','max_clients','panel_url','host','panel_port','web_base_path'];
         if (Schema::hasColumn('servers', 'bandwidth_limit_gb')) {
             $select[] = 'bandwidth_limit_gb';
         }
@@ -441,7 +441,8 @@ class ServerManagementDashboard extends Page
                 'inbounds_count' => (int) ($server->inbounds_count ?? 0),
                 'max_clients' => (int) ($server->max_clients ?? 0),
                 'bandwidth_limit_gb' => (int) (data_get($server, 'bandwidth_limit_gb', 0) ?? 0),
-                'panel_url' => (string) ($server->panel_url ?? ''),
+                // Build full panel base URL including scheme, port, and base path when available
+                'panel_url' => (string) ($server->getApiBaseUrl()),
                 'cpu_usage' => (int)($metrics['cpu_usage'] ?? 0),
                 'memory_usage' => (int)($metrics['memory_usage'] ?? 0),
                 'disk_usage' => (int)($metrics['disk_usage'] ?? 0),

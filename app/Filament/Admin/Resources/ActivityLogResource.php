@@ -157,7 +157,6 @@ class ActivityLogResource extends Resource
                             if (!$type || !$record->subject_id) return null;
                             $map = [
                                 \App\Models\Customer::class => \App\Filament\Clusters\CustomerManagement\Resources\CustomerResource::class,
-                                \App\Models\User::class => \App\Filament\Clusters\CustomerManagement\Resources\UserResource::class,
                                 \App\Models\Order::class => \App\Filament\Clusters\ProxyShop\Resources\OrderResource::class,
                                 \App\Models\ServerClient::class => \App\Filament\Clusters\ServerManagement\Resources\ServerClientResource::class,
                                 \App\Models\ServerInbound::class => \App\Filament\Clusters\ServerManagement\Resources\ServerInboundResource::class,

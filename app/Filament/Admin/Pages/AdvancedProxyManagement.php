@@ -90,50 +90,53 @@ class AdvancedProxyManagement extends Page
 
     protected function getHeaderActions(): array
     {
+        // Single compact menu to reduce header width; keeps action icons/colors intact.
         return [
-            \Filament\Actions\Action::make('refresh')
-                ->label('Refresh')
-                ->icon('heroicon-o-arrow-path')
-                ->color('gray')
-                ->action(function () {
-                    $this->loadInitialData();
-                    Notification::make()->title('Data refreshed')->success()->send();
-                }),
-            \Filament\Actions\Action::make('force_live_refresh')
-                ->label('Force Live (X-UI)')
-                ->icon('heroicon-o-bolt')
-                ->color('success')
-                ->action(function () {
-                    $this->forceLiveRefresh();
-                }),
-            \Filament\Actions\Action::make('reset_selected_traffic')
-                ->label('Reset Traffic (Selected)')
-                ->icon('heroicon-o-arrow-path-rounded-square')
-                ->color('warning')
-                ->requiresConfirmation()
-                ->action(function () {
-                    $this->resetTrafficForSelected();
-                }),
-            \Filament\Actions\Action::make('clear_selected_ips')
-                ->label('Clear IPs (Selected)')
-                ->icon('heroicon-o-funnel')
-                ->color('warning')
-                ->requiresConfirmation()
-                ->action(function () {
-                    $this->clearIpsForSelected();
-                }),
-            \Filament\Actions\Action::make('backup_servers')
-                ->label('Send Backup to Admins')
-                ->icon('heroicon-o-cloud-arrow-up')
-                ->color('gray')
-                ->action(function () {
-                    $this->backupSelectedServers();
-                }),
-            \Filament\Actions\Action::make('docs')
-                ->label('Docs')
-                ->icon('heroicon-o-book-open')
-                ->color('gray')
-                ->url('https://github.com/your-org/1000proxy/wiki/Advanced-Proxy-Management', shouldOpenInNewTab: true),
+            \Filament\Actions\ActionGroup::make([
+                \Filament\Actions\Action::make('refresh')
+                    ->label('Refresh')
+                    ->icon('heroicon-o-arrow-path')
+                    ->color('gray')
+                    ->action(function () {
+                        $this->loadInitialData();
+                        Notification::make()->title('Data refreshed')->success()->send();
+                    }),
+                \Filament\Actions\Action::make('force_live_refresh')
+                    ->label('Force Live (X-UI)')
+                    ->icon('heroicon-o-bolt')
+                    ->color('success')
+                    ->action(function () {
+                        $this->forceLiveRefresh();
+                    }),
+                \Filament\Actions\Action::make('reset_selected_traffic')
+                    ->label('Reset Traffic (Selected)')
+                    ->icon('heroicon-o-arrow-path-rounded-square')
+                    ->color('warning')
+                    ->requiresConfirmation()
+                    ->action(function () {
+                        $this->resetTrafficForSelected();
+                    }),
+                \Filament\Actions\Action::make('clear_selected_ips')
+                    ->label('Clear IPs (Selected)')
+                    ->icon('heroicon-o-funnel')
+                    ->color('warning')
+                    ->requiresConfirmation()
+                    ->action(function () {
+                        $this->clearIpsForSelected();
+                    }),
+                \Filament\Actions\Action::make('backup_servers')
+                    ->label('Send Backup to Admins')
+                    ->icon('heroicon-o-cloud-arrow-up')
+                    ->color('gray')
+                    ->action(function () {
+                        $this->backupSelectedServers();
+                    }),
+                \Filament\Actions\Action::make('docs')
+                    ->label('Docs')
+                    ->icon('heroicon-o-book-open')
+                    ->color('gray')
+                    ->url('https://github.com/kaspernux/1000proxy', shouldOpenInNewTab: true),
+            ])->label('Advanced Proxy')->icon('heroicon-o-adjustments-horizontal'),
         ];
     }
 

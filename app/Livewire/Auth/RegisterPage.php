@@ -10,6 +10,8 @@ use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Validation\ValidationException;
 use Livewire\Attributes\Title;
 use App\Livewire\Traits\LivewireAlertV4;
+use Illuminate\Support\Facades\Notification;
+use Illuminate\Auth\Notifications\VerifyEmail;
 
 #[Title('Register - 1000 PROXIES')]
 class RegisterPage extends Component
@@ -87,14 +89,21 @@ class RegisterPage extends Component
             // Record registration attempt
             RateLimiter::hit($key, 300); // 5 minute window
 
-            // Create customer
+            // Create customer (password will be hashed via model cast)
             $customer = Customer::create([
                 'name' => trim($this->name),
                 'email' => strtolower(trim($this->email)),
-                'password' => Hash::make($this->password),
-                'email_verified_at' => now(), // Auto-verify for now
+                'password' => $this->password,
                 'is_active' => true,
             ]);
+
+            // Send email verification immediately (do not rely on default event listener)
+            try {
+                Notification::sendNow($customer, new VerifyEmail());
+                \Log::info('Verification email dispatched (sendNow)', ['customer_id' => $customer->id, 'email' => $customer->email]);
+            } catch (\Throwable $e) {
+                \Log::error('Verification email dispatch failed', ['email' => $this->email, 'error' => $e->getMessage()]);
+            }
 
             // Attach referrer if a valid referral code was used
             try {
@@ -117,14 +126,14 @@ class RegisterPage extends Component
             request()->session()->regenerate();
             session()->put('customer_last_login', now());
 
-            \Log::info('Registration successful', ['email' => $this->email, 'customer_id' => $customer->id]);
+            \Log::info('Registration successful (email verification pending)', ['email' => $this->email, 'customer_id' => $customer->id]);
 
             $this->is_loading = false;
 
-            // Success notification
-            session()->flash('success', 'Account created successfully! Welcome to 1000 PROXIES.');
-            
-            $this->redirect('/servers', navigate: true);
+            // Notify and redirect to verification notice
+            session()->flash('success', 'Account created! Please verify your email address.');
+
+            $this->redirect(route('verification.notice'), navigate: true);
             return;
 
         } catch (ValidationException $e) {

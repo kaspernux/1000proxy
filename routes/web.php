@@ -109,6 +109,8 @@ use Laravel\Horizon\Horizon;
 use Barryvdh\DomPDF\Facade\Pdf;
 use App\Http\Controllers\DepositWebhookController;
 use App\Http\Controllers\InvoiceController;
+use Illuminate\Foundation\Auth\EmailVerificationRequest;
+use Illuminate\Http\Request as HttpRequest;
 
 use App\Livewire\Components\PaymentProcessor;
 
@@ -126,21 +128,26 @@ Route::middleware(['web'])->get('/chat/widget', function () {
     return view('components.chat.widget');
 })->name('chat.widget');
 
-// Public GET login route (canonical) for CUSTOMER login (admins use Filament /admin/login)
-// Treat both customer and web guards as authenticated for guest checks to avoid showing login to logged-in users
+// Public auth routes for guests of either guard (customer or staff)
+// Treat both customer and web guards as authenticated for guest checks to avoid showing forms to logged-in users
 Route::middleware('guest:customer,web')->group(function () {
+    // Login
     Route::get('/login', LoginPage::class)->name('login');
     Route::post('/login', [\App\Http\Controllers\Auth\CustomerLoginController::class, 'store'])->name('login.store');
-    // Keep old alias but redirect to canonical to avoid duplicate forms
+    // Old alias
     Route::redirect('/auth/login', '/login', 301)->name('auth.login');
-});
 
-Route::middleware('guest')->group(function () {
+    // Register (customer accounts)
     Route::get('/register', RegisterPage::class)->name('register');
-    Route::get('/register', RegisterPage::class)->name('auth.register'); // alias
+    // Provide a clean alias without duplicating the route
+    Route::redirect('/auth/register', '/register', 301)->name('auth.register');
+
+    // Password flows
     Route::get('/reset-password/{token}', ResetPasswordPage::class)->name('password.reset');
     Route::get('/forgot', ForgotPage::class)->name('password.request');
-    Route::get('/forgot', ForgotPage::class)->name('auth.forgot'); // alias
+    Route::redirect('/auth/forgot', '/forgot', 301)->name('auth.forgot');
+    
+    // Placeholder social auth redirect
     Route::get('/auth/github', function(){ return redirect('/'); })->name('auth.github.redirect');
 });
 
@@ -173,67 +180,86 @@ Route::middleware(['auth:customer'])->group(function () {
         return redirect('/');
     })->name('customer.logout');
 
-    Route::get('/checkout', \App\Livewire\CheckoutPage::class)->name('checkout');
-    Route::post('/checkout', [CheckoutController::class, 'store'])->name('checkout.store');
-    Route::get('/checkout/success/{order}', [CheckoutController::class, 'success'])
-        ->name('checkout.success')
-        ->where('order', '[0-9]+');
-    Route::get('/checkout/cancel/{order}', [CheckoutController::class, 'cancel'])
-        ->name('checkout.cancel')
-        ->where('order', '[0-9]+');
-    Route::get('/my-orders', MyOrdersPage::class)->name('my.orders');
-    Route::get('/my-orders/{order_id}', MyOrderDetailPage::class)->name('my-orders.show');
-    Route::get('/success', SuccessPage::class)->name('success');
-    Route::get('/cancel', CancelPage::class)->name('cancel');
-    Route::get('/account-settings', AccountSettings::class)->name('account.settings');
-    // Explicit redirect for /account root to Filament customer dashboard page
-    Route::get('/account', function () {
-        return redirect()->route('filament.customer.pages.dashboard');
-    })->name('customer.account.redirect');
-    // Redirect /account to Filament customer panel dashboard instead of account settings
-    // Removed explicit /account route so Filament customer panel root can serve the dashboard
-    Route::get('/telegram-link', \App\Livewire\Auth\TelegramLink::class)->name('telegram.link');
+    // Email verification routes remain accessible to unverified customers
+    // so they can complete activation and resend links if needed.
+    // Email verification notice
+    Route::get('/email/verify', function () {
+        return view('auth.verify-email');
+    })->name('verification.notice');
 
-    // Invoice PDF download (customer-only)
-    Route::get('/account/invoices/{order}/download', [InvoiceController::class, 'download'])
-        ->name('customer.invoice.download')
-        ->where('order', '[0-9]+');
+    // Email verification callback
+    Route::get('/email/verify/{id}/{hash}', function (EmailVerificationRequest $request) {
+        $request->fulfill();
+        return redirect('/servers');
+    })->middleware(['signed'])->name('verification.verify');
 
-    // Payment routes for web UI (session/customer only)
-    Route::prefix('payment')->group(function () {
-        // Use Livewire component for payment processor UI
-        Route::get('/processor', PaymentProcessor::class)->name('payment.processor');
-        Route::get('/invoice/{order}', [PaymentController::class, 'showInvoice'])->name('payment.invoice');
-    // Session (customer) authenticated JSON gateway list for Livewire (avoids Sanctum token requirement on /api route)
-    Route::get('/gateways', [PaymentController::class, 'getAvailableGateways'])->name('payment.gateways');
+    // Resend verification email
+    Route::post('/email/verification-notification', function (HttpRequest $request) {
+        $request->user('customer')->sendEmailVerificationNotification();
+        return back()->with('status', 'verification-link-sent');
+    })->middleware(['throttle:6,1'])->name('verification.send');
+
+    // All other customer pages require verified email
+    Route::middleware(['verified'])->group(function () {
+        Route::get('/checkout', \App\Livewire\CheckoutPage::class)->name('checkout');
+        Route::post('/checkout', [CheckoutController::class, 'store'])->name('checkout.store');
+        Route::get('/checkout/success/{order}', [CheckoutController::class, 'success'])
+            ->name('checkout.success')
+            ->where('order', '[0-9]+');
+        Route::get('/checkout/cancel/{order}', [CheckoutController::class, 'cancel'])
+            ->name('checkout.cancel')
+            ->where('order', '[0-9]+');
+        Route::get('/my-orders', MyOrdersPage::class)->name('my.orders');
+        Route::get('/my-orders/{order_id}', MyOrderDetailPage::class)->name('my-orders.show');
+        Route::get('/success', SuccessPage::class)->name('success');
+        Route::get('/cancel', CancelPage::class)->name('cancel');
+        Route::get('/account-settings', AccountSettings::class)->name('account.settings');
+        // Explicit redirect for /account root to Filament customer dashboard page
+        Route::get('/account', function () {
+            return redirect()->route('filament.customer.pages.dashboard');
+        })->name('customer.account.redirect');
+        // Redirect /account to Filament customer panel dashboard instead of account settings
+        // Removed explicit /account route so Filament customer panel root can serve the dashboard
+        Route::get('/telegram-link', \App\Livewire\Auth\TelegramLink::class)->name('telegram.link');
+
+        // Invoice PDF download (customer-only)
+        Route::get('/account/invoices/{order}', [InvoiceController::class, 'download'])
+            ->name('customer.invoice.download')
+            ->where('order', '[0-9]+');
+
+        // Payment routes for web UI (session/customer only)
+        Route::prefix('payment')->group(function () {
+            // Use Livewire component for payment processor UI
+            Route::get('/processor', PaymentProcessor::class)->name('payment.processor');
+            Route::get('/invoice/{order}', [PaymentController::class, 'showInvoice'])->name('payment.invoice');
+            // Session (customer) authenticated JSON gateway list for Livewire (avoids Sanctum token requirement on /api route)
+            Route::get('/gateways', [PaymentController::class, 'getAvailableGateways'])->name('payment.gateways');
+        });
+
+        // Wallet routes (use PaymentController for top-up)
+        Route::prefix('wallet')->group(function () {
+            Route::get('/', [WalletController::class, 'index'])->name('wallet.index');
+            Route::get('/{currency}', [WalletController::class, 'show'])->name('wallet.show');
+            Route::get('/{currency}/top-up', [WalletController::class, 'topUpForm'])->name('wallet.topup');
+            Route::post('/{currency}/top-up', [WalletController::class, 'topUp'])->name('wallet.topup.submit');
+            Route::get('/{currency}/insufficient', [WalletController::class, 'insufficient'])->name('wallet.insufficient');
+        });
+
+        // Customer-friendly route to Livewire TopupWallet component
+        Route::get('/account/wallet/topup/{currency?}', \App\Livewire\TopupWallet::class)
+            ->where('currency', 'btc|eth|usdt|xmr|sol|bnb')
+            ->name('customer.wallet.topup');
+
+        // Transaction routes
+        Route::get('/transactions', \App\Livewire\Transactions::class)->name('transactions.index');
+        Route::get('/transactions/{transaction}', [WalletTransactionController::class, 'show'])->name('wallet.transactions.show');
+        Route::get('/transactions/{transaction}/download', [WalletTransactionController::class, 'download'])->name('wallet.transactions.download');
+
+        // Payment Method routes
+        Route::get('/payment-methods', [PaymentMethodController::class, 'index'])->name('payment.methods.index');
+        Route::put('/payment-methods/{method}', [PaymentMethodController::class, 'update'])->name('payment.methods.update');
+        Route::delete('/payment-methods/{method}', [PaymentMethodController::class, 'destroy'])->name('payment.methods.destroy');
     });
-
-    // Invoice routes
-    // Route::get('/invoice/{order}', [PaymentController::class, 'showInvoice'])->name('payment.invoice');
-    // Remove duplicate route name if present
-    // Route::post('/create-invoice/nowpayments/{order}', [PaymentController::class, 'createPayment'])->name('payment.create.invoice.nowpay');
-    // Route::post('/create-invoice/stripe/{order}', [PaymentController::class, 'createPayment'])->name('payment.create.invoice.stripe');
-
-
-    // Wallet routes (use PaymentController for top-up)
-    Route::prefix('wallet')->group(function () {
-        Route::get('/', [WalletController::class, 'index'])->name('wallet.index');
-        Route::get('/{currency}', [WalletController::class, 'show'])->name('wallet.show');
-        Route::get('/{currency}/top-up', [WalletController::class, 'topUpForm'])->name('wallet.topup');
-        Route::post('/{currency}/top-up', [WalletController::class, 'topUp'])->name('wallet.topup.submit');
-        Route::get('/{currency}/insufficient', [WalletController::class, 'insufficient'])->name('wallet.insufficient');
-    });
-
-    // Customer-friendly route to Livewire TopupWallet component
-    Route::get('/account/wallet/topup/{currency?}', \App\Livewire\TopupWallet::class)
-        ->where('currency', 'btc|eth|usdt|xmr|sol|bnb')
-        ->name('customer.wallet.topup');
-
-
-    // Transaction routes
-    Route::get('/transactions', \App\Livewire\Transactions::class)->name('transactions.index');
-    Route::get('/transactions/{transaction}', [WalletTransactionController::class, 'show'])->name('wallet.transactions.show');
-    Route::get('/transactions/{transaction}/download', [WalletTransactionController::class, 'download'])->name('wallet.transactions.download');
 
     // Webhook routes (outside auth middleware)
     Route::post('/webhook/stripe', [StripeWebhookController::class, '__invoke'])->name('webhook.stripe');
@@ -241,11 +267,6 @@ Route::middleware(['auth:customer'])->group(function () {
     Route::post('/webhook/btc', [DepositWebhookController::class, 'handleBtc']);
     Route::post('/webhook/xmr', [DepositWebhookController::class, 'handleXmr']);
     Route::post('/webhook/sol', [DepositWebhookController::class, 'handleSol']);
-
-    // Payment Method routes
-    Route::get('/payment-methods', [PaymentMethodController::class, 'index'])->name('payment.methods.index');
-    Route::put('/payment-methods/{method}', [PaymentMethodController::class, 'update'])->name('payment.methods.update');
-    Route::delete('/payment-methods/{method}', [PaymentMethodController::class, 'destroy'])->name('payment.methods.destroy');
 });
 
 // Customer panel compatibility routes expected by tests

@@ -26,7 +26,8 @@ class TelegramBotManagement extends Page
     public function getHeaderActions(): array
     {
         return [
-            Action::make('bot_info')
+            \Filament\Actions\ActionGroup::make([
+                Action::make('bot_info')
                 ->label('Bot Info')
                 ->icon('heroicon-o-sparkles')
                 ->action(function () {
@@ -333,7 +334,8 @@ class TelegramBotManagement extends Page
                     } catch (\Throwable $e) {
                         Notification::make()->title('Test failed')->body($e->getMessage())->danger()->send();
                     }
-                }),
+                })
+            ])->label('Telegram Bot')->icon('heroicon-o-adjustments-horizontal'),
         ];
     }
 }
