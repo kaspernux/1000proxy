@@ -88,6 +88,12 @@ class AdminDashboard extends BaseDashboard
     protected function getHeaderActions(): array
     {
         return [
+            Action::make('home')
+                ->label(__('Home'))
+                ->icon('heroicon-o-home')
+                ->color('gray')
+                ->url(fn (): string => url('/')),
+
             Action::make('refresh_dashboard')
                 ->label(__('Refresh Metrics'))
                 ->icon('heroicon-m-arrow-path')

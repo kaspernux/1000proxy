@@ -43,11 +43,6 @@ class ListActivityLogs extends ListRecords
     protected function getHeaderActions(): array
     {
         return [
-            \Filament\Actions\Action::make('home')
-                ->label('Home')
-                ->icon('heroicon-o-home')
-                ->url(fn () => url('/'))
-                ->color('gray'),
             \Filament\Actions\Action::make('refresh')
                 ->label('Refresh')
                 ->icon('heroicon-o-arrow-path')

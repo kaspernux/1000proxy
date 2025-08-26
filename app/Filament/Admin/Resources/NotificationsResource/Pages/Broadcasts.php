@@ -74,20 +74,16 @@ class Broadcasts extends Page implements Tables\Contracts\HasTable, \Filament\Fo
                     ->icon('heroicon-o-paper-airplane')
                     ->requiresConfirmation()
                     ->action(function (TelegramNotification $record) {
-                        $message = $record->message ?: '';
-                        if ($message === '') {
+                        if (empty($record->message)) {
                             Notification::make()->title('Message required')->danger()->send();
                             return;
                         }
-                        $svc = app(TelegramBotService::class);
-                        $sent = 0; $failed = 0;
-                        Customer::whereNotNull('telegram_chat_id')->chunk(500, function($chunk) use (&$sent, &$failed, $svc, $message) {
-                            foreach ($chunk as $c) {
-                                try { $svc->sendDirectMessage((int)$c->telegram_chat_id, $message); $sent++; usleep(75000); } catch (\Throwable $e) { $failed++; }
-                            }
-                        });
-                        $record->update(['status' => 'sent', 'sent_at' => now()]);
-                        Notification::make()->title("Sent: {$sent} • Failed: {$failed}")->success()->send();
+                        \Log::info('Queue broadcast send', [
+                            'notification_id' => $record->id,
+                            'actor' => Auth::id(),
+                        ]);
+                        dispatch(new \App\Jobs\SendBroadcastJob($record->id))->onQueue('telegram');
+                        Notification::make()->title('Broadcast queued for delivery').info()->send();
                     }),
                 \Filament\Actions\Action::make('edit')
                     ->label('Edit')

@@ -228,7 +228,19 @@ class TelegramBotManagement extends Page
             Action::make('manage_templates')
                 ->label('Manage Templates')
                 ->icon('heroicon-o-document-text')
-                ->url(fn() => route('filament.admin.resources.notification-templates.index'))
+                ->url(fn() => \App\Filament\Admin\Resources\NotificationsResource::getUrl('index'))
+                ->openUrlInNewTab(),
+
+            Action::make('manage_broadcasts')
+                ->label('Broadcasts')
+                ->icon('heroicon-o-megaphone')
+                ->url(fn() => \App\Filament\Admin\Resources\NotificationsResource::getUrl('broadcasts'))
+                ->openUrlInNewTab(),
+
+            Action::make('manage_telegram_templates')
+                ->label('Telegram Templates')
+                ->icon('heroicon-o-document-text')
+                ->url(fn() => \App\Filament\Admin\Resources\NotificationsResource::getUrl('telegram-templates'))
                 ->openUrlInNewTab(),
 
             Action::make('menu_button')
