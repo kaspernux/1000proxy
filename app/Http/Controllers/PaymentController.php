@@ -426,8 +426,9 @@ class PaymentController extends Controller
                 'type' => 'deposit',
                 'amount' => $amount,
                 'status' => 'pending',
-                'payment_method' => $gateway,
+                'gateway' => $gateway,
                 'currency' => $currency,
+                'customer_id' => $user->id,
                 'reference' => 'WalletTopup_' . strtoupper(uniqid()),
             ]);
             // Call gateway for payment URL

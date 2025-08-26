@@ -3,8 +3,8 @@
 namespace App\Filament\Clusters\ProxyShop\Resources\InvoiceResource\Pages;
 
 use App\Filament\Clusters\ProxyShop\Resources\InvoiceResource;
-use Filament\Actions;
-use Filament\Resources\Pages\EditRecord;
+ use Filament\Resources\Pages\EditRecord;
+ use Filament\Actions;
 
 class EditInvoice extends EditRecord
 {

@@ -164,7 +164,7 @@ Route::prefix('payment')->middleware(['throttle:60,1'])->group(function () {
     // Accept either sanctum (api/customer_api) or session customer guard
     Route::middleware(['auth:sanctum,customer,customer_api'])->group(function () {
         Route::post('/create', [\App\Http\Controllers\PaymentController::class, 'createPayment']);
-        Route::post('/topup', [\App\Http\Controllers\PaymentController::class, 'topUpWallet']);
+    Route::post('/topup', [\App\Http\Controllers\PaymentController::class, 'topUpWallet'])->name('payment.topup');
         Route::post('/refund', [\App\Http\Controllers\PaymentController::class, 'refundPayment']);
         Route::get('/status/{orderId}', [\App\Http\Controllers\PaymentController::class, 'getPaymentStatusByOrder']);
         Route::get('/status-by-id/{paymentId}', [\App\Http\Controllers\PaymentController::class, 'getPaymentStatus']);

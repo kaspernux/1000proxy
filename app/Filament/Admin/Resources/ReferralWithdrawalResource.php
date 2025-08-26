@@ -77,18 +77,18 @@ class ReferralWithdrawalResource extends Resource
                 Tables\Columns\TextColumn::make('created_at')->dateTime()->since()->sortable(),
             ])
             ->actions([
-                Tables\Actions\ViewAction::make(),
-                Tables\Actions\Action::make('approve')
+                \Filament\Actions\ViewAction::make(),
+                \Filament\Actions\Action::make('approve')
                     ->visible(fn(ReferralWithdrawal $r) => $r->status === 'pending')
                     ->requiresConfirmation()
                     ->color('info')
                     ->action(function (ReferralWithdrawal $r) { $r->update(['status' => 'approved']); }),
-                Tables\Actions\Action::make('reject')
+                \Filament\Actions\Action::make('reject')
                     ->visible(fn(ReferralWithdrawal $r) => in_array($r->status, ['pending','approved']))
                     ->requiresConfirmation()
                     ->color('danger')
                     ->action(function (ReferralWithdrawal $r) { $r->update(['status' => 'rejected']); }),
-                Tables\Actions\Action::make('markPaid')
+                \Filament\Actions\Action::make('markPaid')
                     ->visible(fn(ReferralWithdrawal $r) => in_array($r->status, ['approved']))
                     ->requiresConfirmation()
                     ->color('success')
@@ -122,8 +122,8 @@ class ReferralWithdrawalResource extends Resource
                     }),
             ])
             ->bulkActions([
-                Tables\Actions\BulkActionGroup::make([
-                    Tables\Actions\DeleteBulkAction::make(),
+                \Filament\Actions\BulkActionGroup::make([
+                    \Filament\Actions\DeleteBulkAction::make(),
                 ]),
             ]);
     }
