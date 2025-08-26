@@ -29,6 +29,8 @@ use Filament\Tables\Concerns\InteractsWithTable;
 use Filament\Forms\Concerns\InteractsWithForms;
 use Carbon\Carbon;
 use BackedEnum;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Mail;
 
 class AutomatedRenewals extends Page implements HasTable, HasForms
 {
@@ -71,21 +73,18 @@ class AutomatedRenewals extends Page implements HasTable, HasForms
                                 ->label('Renewal Buffer Days')
                                 ->options([
                                     1 => '1 day before',
+                                    2 => '2 days before',
                                     3 => '3 days before',
-                                    7 => '7 days before',
-                                    14 => '14 days before',
-                                    30 => '30 days before',
                                 ])
-                                ->helperText('When to attempt renewal before expiration'),
+                                ->helperText('Wallet-only: renewal will be attempted 1–3 days before expiration'),
 
                             Select::make('payment_method')
                                 ->label('Payment Method')
                                 ->options([
                                     'wallet' => 'Wallet Balance',
-                                    'crypto' => 'Cryptocurrency',
-                                    'card' => 'Credit Card',
                                 ])
-                                ->helperText('Preferred payment method for renewals'),
+                                ->helperText('Auto-renewals are supported only via Wallet balance')
+                                ->disabled(),
 
                             Select::make('notification_days')
                                 ->label('Notification Schedule')
@@ -104,12 +103,23 @@ class AutomatedRenewals extends Page implements HasTable, HasForms
         ];
     }
 
-    public function saveRenewalSettings(array $data): void
+    public function saveRenewalSettings(?array $data = null): void
     {
         $customer = Auth::guard('customer')->user();
 
-        // Save renewal settings (in real implementation, this would be stored in database)
-        $this->renewalSettings = array_merge($this->renewalSettings, $data);
+        $incoming = $data ?? [];
+        // Clamp to wallet-only and buffer 1-3 days
+        $buffer = (int) ($incoming['renewal_buffer_days'] ?? $this->renewalSettings['renewal_buffer_days'] ?? 3);
+        if (!in_array($buffer, [1,2,3], true)) { $buffer = 3; }
+
+        $auto = (bool) ($incoming['auto_renew_enabled'] ?? $this->renewalSettings['auto_renew_enabled'] ?? false);
+
+        $this->renewalSettings = array_merge($this->renewalSettings, [
+            'auto_renew_enabled' => $auto,
+            'renewal_buffer_days' => $buffer,
+            'payment_method' => 'wallet',
+            'notification_days' => $incoming['notification_days'] ?? $this->renewalSettings['notification_days'] ?? [3,2,1],
+        ]);
 
         Notification::make()
             ->title('Settings Saved')
@@ -135,43 +145,49 @@ class AutomatedRenewals extends Page implements HasTable, HasForms
     {
         return $table
             ->query(
-                Order::where('customer_id', Auth::guard('customer')->id())
-                    ->with(['items.serverPlan.server'])
+                OrderItem::query()
+                    ->whereHas('order', function ($q) {
+                        $q->where('customer_id', Auth::guard('customer')->id());
+                    })
+                    ->with(['serverPlan.server', 'order', 'serverClients.server', 'serverClients.inbound'])
             )
             ->columns([
-                TextColumn::make('id')
+                TextColumn::make('order_id')
                     ->label('Order #')
                     ->sortable()
                     ->searchable()
                     ->prefix('#'),
 
-                TextColumn::make('items.serverClient.server.name')
-                    ->label('Service')
+                TextColumn::make('serverPlan.name')
+                    ->label('Plan')
                     ->sortable()
                     ->searchable()
                     ->weight(FontWeight::Bold),
 
-                TextColumn::make('expires_at_display')
+                TextColumn::make('serverPlan.server.name')
+                    ->label('Server')
+                    ->sortable()
+                    ->searchable(),
+
+                TextColumn::make('expires_at')
                     ->label('Expires')
-                    ->sortable(query: function (Builder $query, string $direction) {
-                        $query->orderBy(
-                            OrderItem::query()->select('expires_at')
-                                ->whereColumn('order_items.order_id', 'orders.id')
-                                ->orderBy('expires_at', 'asc')
-                                ->limit(1),
-                            $direction
-                        );
-                    })
-                    ->getStateUsing(function ($record) {
-                        $expiresAt = $record->items->first()?->expires_at;
-                        return $expiresAt ? $expiresAt->format('M j, Y') : '—';
-                    })
-                    ->color(fn ($record) => $this->getExpirationColor($record)),
+                    ->date('M j, Y')
+                    ->sortable()
+                    ->color(function (OrderItem $record) {
+                        $expiresAt = $record->expires_at;
+                        if (!$expiresAt) return 'gray';
+                        $daysLeft = now()->diffInDays($expiresAt);
+                        return match (true) {
+                            $daysLeft <= 1 => 'danger',
+                            $daysLeft <= 7 => 'warning',
+                            default => 'success',
+                        };
+                    }),
 
                 TextColumn::make('days_until_expiry')
                     ->label('Days Left')
-                    ->getStateUsing(function ($record) {
-                        $expiresAt = $record->items->first()?->expires_at;
+                    ->getStateUsing(function (OrderItem $record) {
+                        $expiresAt = $record->expires_at;
                         return $expiresAt ? now()->diffInDays($expiresAt) : '—';
                     })
                     ->badge()
@@ -182,47 +198,75 @@ class AutomatedRenewals extends Page implements HasTable, HasForms
                         default => 'success',
                     }),
 
-                IconColumn::make('auto_renew_enabled')
+                \Filament\Tables\Columns\ToggleColumn::make('auto_renew')
                     ->label('Auto-Renew')
-                    ->getStateUsing(fn () => $this->renewalSettings['auto_renew_enabled'])
-                    ->boolean()
-                    ->trueIcon('heroicon-o-check-circle')
-                    ->falseIcon('heroicon-o-x-circle'),
+                    ->alignCenter()
+                    ->updateStateUsing(function (OrderItem $record, $state) {
+                        // Map to provisioning_summary safely and persist
+                        $sum = $record->provisioning_summary ?? [];
+                        $sum['auto_renew_enabled'] = (bool) $state;
+                        $buffer = (int) ($sum['renewal_buffer_days'] ?? ($this->renewalSettings['renewal_buffer_days'] ?? 3));
+                        if (! in_array($buffer, [1,2,3], true)) { $buffer = 3; }
+                        $sum['renewal_buffer_days'] = $buffer;
+                        $record->provisioning_summary = $sum;
+                        $record->save();
+                        // Return the computed state for UI
+                        return $sum['auto_renew_enabled'];
+                    }),
 
                 TextColumn::make('renewal_status')
                     ->label('Status')
-                    ->getStateUsing(function ($record) {
-                        $expiresAt = $record->items->first()?->expires_at;
+                    ->getStateUsing(function (OrderItem $record) {
+                        $expiresAt = $record->expires_at;
                         if (!$expiresAt) return 'No expiration';
 
-                        $daysLeft = now()->diffInDays($expiresAt);
-
-                        if ($this->renewalSettings['auto_renew_enabled']) {
-                            if ($daysLeft <= $this->renewalSettings['renewal_buffer_days']) {
-                                return 'Scheduled for renewal';
-                            }
-                            return 'Auto-renewal enabled';
+                        if (!$this->isEligibleOrderItem($record)) {
+                            return 'Ineligible (inactive service)';
                         }
 
-                        return 'Manual renewal required';
+                        $auto = (bool) ($record->provisioning_summary['auto_renew_enabled'] ?? false);
+                        $buffer = (int) ($record->provisioning_summary['renewal_buffer_days'] ?? $this->renewalSettings['renewal_buffer_days'] ?? 3);
+                        if (!in_array($buffer, [1,2,3], true)) { $buffer = 3; }
+
+                        $daysLeft = now()->diffInDays($expiresAt, false);
+                        $inWindow = $daysLeft >= 1 && $daysLeft <= 3 && $daysLeft <= $buffer;
+
+                        if (! $auto) {
+                            return 'Manual renewal required';
+                        }
+
+                        $customer = Auth::guard('customer')->user();
+                        $cost = $this->estimateRenewalCost($record);
+                        if ($inWindow) {
+                            if ($customer->hasSufficientWalletBalance($cost)) {
+                                return 'Scheduled for renewal';
+                            }
+                            $this->scheduleLowBalanceEmail($customer, $record, $cost);
+                            return 'Insufficient balance (email scheduled)';
+                        }
+
+                        return 'Auto-renewal enabled';
                     })
                     ->badge()
                     ->color(fn (string $state): string => match ($state) {
                         'Scheduled for renewal' => 'warning',
                         'Auto-renewal enabled' => 'success',
                         'Manual renewal required' => 'danger',
+                        'Ineligible (inactive service)' => 'gray',
+                        'Insufficient balance (email scheduled)' => 'warning',
                         default => 'gray',
                     }),
 
                 TextColumn::make('next_renewal_attempt')
                     ->label('Next Renewal')
-                    ->getStateUsing(function ($record) {
-                        if (!$this->renewalSettings['auto_renew_enabled']) {
-                            return '—';
-                        }
-                        $expiresAt = $record->items->first()?->expires_at;
+                    ->getStateUsing(function (OrderItem $record) {
+                        $auto = (bool) ($record->provisioning_summary['auto_renew_enabled'] ?? false);
+                        if (! $auto) return '—';
+                        $buffer = (int) ($record->provisioning_summary['renewal_buffer_days'] ?? $this->renewalSettings['renewal_buffer_days'] ?? 3);
+                        if (!in_array($buffer, [1,2,3], true)) { $buffer = 3; }
+                        $expiresAt = $record->expires_at;
                         if (!$expiresAt) return '—';
-                        $renewalDate = Carbon::parse($expiresAt)->subDays($this->renewalSettings['renewal_buffer_days']);
+                        $renewalDate = Carbon::parse($expiresAt)->subDays($buffer);
                         return $renewalDate->format('M j, Y');
                     }),
             ])
@@ -236,10 +280,10 @@ class AutomatedRenewals extends Page implements HasTable, HasForms
                     ])
                     ->query(function (Builder $query, array $data): Builder {
                         return match ($data['value'] ?? null) {
-                            'expired' => $query->whereHas('items', fn ($q) => $q->where('expires_at', '<', now())),
-                            'expiring_soon' => $query->whereHas('items', fn ($q) => $q->whereBetween('expires_at', [now(), now()->addWeek()])),
-                            'expiring_month' => $query->whereHas('items', fn ($q) => $q->whereBetween('expires_at', [now(), now()->addMonth()])),
-                            'active' => $query->whereHas('items', fn ($q) => $q->where('expires_at', '>', now())),
+                            'expired' => $query->where('expires_at', '<', now()),
+                            'expiring_soon' => $query->whereBetween('expires_at', [now(), now()->addWeek()]),
+                            'expiring_month' => $query->whereBetween('expires_at', [now(), now()->addMonth()]),
+                            'active' => $query->where('expires_at', '>', now()),
                             default => $query,
                         };
                     }),
@@ -259,35 +303,43 @@ class AutomatedRenewals extends Page implements HasTable, HasForms
                     ->label('Renew Now')
                     ->icon('heroicon-o-arrow-path')
                     ->color('success')
-                    ->action(function (Order $record) {
-                        // Implement immediate renewal logic
+                    ->action(function (OrderItem $record) {
+                        $item = $record;
+                        if (!$item || !$this->isEligibleOrderItem($item)) {
+                            Notification::make()->title('Service not eligible')->danger()->send();
+                            return;
+                        }
+                        $expiresAt = $item->expires_at;
+                        $daysLeft = $expiresAt ? now()->diffInDays($expiresAt, false) : null;
+                        if ($daysLeft === null || $daysLeft < 1 || $daysLeft > 3) {
+                            Notification::make()->title('Outside renewal window (1–3 days before)')->warning()->send();
+                            return;
+                        }
+                        $customer = Auth::guard('customer')->user();
+                        $cost = $this->estimateRenewalCost($item);
+                        if (! $customer->hasSufficientWalletBalance($cost)) {
+                            Notification::make()->title('Insufficient Wallet Balance')->danger()->body('Please top up your wallet to renew.')->send();
+                            return;
+                        }
+                        $customer->payFromWallet($cost, 'Service Auto-Renewal');
                         Notification::make()
                             ->title('Renewal Initiated')
-                            ->body('Your service renewal has been started.')
+                            ->body('Your service renewal has been charged from your wallet.')
                             ->success()
                             ->send();
                     })
-                    ->visible(fn (Order $record) => $this->canRenewNow($record)),
-
-                Action::make('toggle_auto_renew')
-                    ->label(fn (Order $record) => $this->renewalSettings['auto_renew_enabled'] ? 'Disable Auto-Renew' : 'Enable Auto-Renew')
-                    ->icon('heroicon-o-cog-6-tooth')
-                    ->color(fn (Order $record) => $this->renewalSettings['auto_renew_enabled'] ? 'danger' : 'success')
-                    ->action(function (Order $record) {
-                        $this->renewalSettings['auto_renew_enabled'] = !$this->renewalSettings['auto_renew_enabled'];
-
-                        Notification::make()
-                            ->title('Auto-Renewal ' . ($this->renewalSettings['auto_renew_enabled'] ? 'Enabled' : 'Disabled'))
-                            ->body('Auto-renewal settings have been updated for this service.')
-                            ->success()
-                            ->send();
-                    }),
+                    ->visible(fn (OrderItem $record) => $this->canRenewNowItem($record)),
 
                 Action::make('view_renewal_schedule')
                     ->label('View Schedule')
                     ->icon('heroicon-o-calendar')
                     ->modalHeading('Renewal Schedule')
-                    ->modalContent(view('filament.customer.components.renewal-schedule'))
+                    ->modalContent(function () {
+                        $upcoming = $this->getUpcomingRenewals();
+                        return view('filament.customer.components.renewal-schedule', [
+                            'upcomingRenewals' => $upcoming,
+                        ]);
+                    })
                     ->modalActions([
                         \Filament\Actions\Action::make('close')
                             ->label('Close')
@@ -300,11 +352,17 @@ class AutomatedRenewals extends Page implements HasTable, HasForms
                     ->icon('heroicon-o-check')
                     ->color('success')
                     ->action(function (Collection $records) {
-                        Notification::make()
-                            ->title('Auto-Renewal Enabled')
-                            ->body('Auto-renewal has been enabled for ' . $records->count() . ' services.')
-                            ->success()
-                            ->send();
+                        $count = 0;
+                        foreach ($records as $record) {
+                            if ($record instanceof OrderItem) {
+                                $sum = $record->provisioning_summary ?? [];
+                                $sum['auto_renew_enabled'] = true;
+                                $sum['renewal_buffer_days'] = in_array(($sum['renewal_buffer_days'] ?? 3), [1,2,3], true) ? $sum['renewal_buffer_days'] : 3;
+                                $record->update(['provisioning_summary' => $sum]);
+                                $count++;
+                            }
+                        }
+                        Notification::make()->title('Auto-Renewal Enabled')->body('Enabled for ' . $count . ' services.')->success()->send();
                     }),
 
                 \Filament\Actions\BulkAction::make('disable_auto_renew')
@@ -312,11 +370,16 @@ class AutomatedRenewals extends Page implements HasTable, HasForms
                     ->icon('heroicon-o-x-mark')
                     ->color('danger')
                     ->action(function (Collection $records) {
-                        Notification::make()
-                            ->title('Auto-Renewal Disabled')
-                            ->body('Auto-renewal has been disabled for ' . $records->count() . ' services.')
-                            ->warning()
-                            ->send();
+                        $count = 0;
+                        foreach ($records as $record) {
+                            if ($record instanceof OrderItem) {
+                                $sum = $record->provisioning_summary ?? [];
+                                $sum['auto_renew_enabled'] = false;
+                                $record->update(['provisioning_summary' => $sum]);
+                                $count++;
+                            }
+                        }
+                        Notification::make()->title('Auto-Renewal Disabled')->body('Disabled for ' . $count . ' services.')->warning()->send();
                     }),
             ])
             // Remove defaultSort on orderItems.expires_at, as this column does not exist on orders table
@@ -337,13 +400,17 @@ class AutomatedRenewals extends Page implements HasTable, HasForms
         };
     }
 
-    protected function canRenewNow(Order $record): bool
+    protected function canRenewNowItem(OrderItem $record): bool
     {
-        $expiresAt = $record->items->first()?->expires_at;
-        if (!$expiresAt) return false;
+    $item = $record;
+    if (! $this->isEligibleOrderItem($item)) return false;
 
-        $daysLeft = now()->diffInDays($expiresAt);
-        return $daysLeft <= 30; // Allow renewal within 30 days of expiration
+    $expiresAt = $item->expires_at;
+    if (!$expiresAt) return false;
+
+    $daysLeft = now()->diffInDays($expiresAt, false);
+    // Only allow renew now within 1–3 day window
+    return $daysLeft >= 1 && $daysLeft <= 3;
     }
 
     public function getRenewalSettings(): array
@@ -354,15 +421,57 @@ class AutomatedRenewals extends Page implements HasTable, HasForms
     public function getUpcomingRenewals(): Collection
     {
         $customer = Auth::guard('customer')->user();
+        $buffer = (int) ($this->renewalSettings['renewal_buffer_days'] ?? 3);
+        if (!in_array($buffer, [1,2,3], true)) { $buffer = 3; }
 
-        return Order::where('customer_id', $customer->id)
-            ->whereHas('items', function ($q) {
-                $q->whereBetween('expires_at', [
-                    now(),
-                    now()->addDays($this->renewalSettings['renewal_buffer_days'])
-                ]);
-            })
-            ->with(['items' => function ($q) { $q->whereBetween('expires_at', [now(), now()->addDays($this->renewalSettings['renewal_buffer_days'])]); }, 'items.serverPlan.server'])
+        return OrderItem::query()
+            ->whereHas('order', fn ($q) => $q->where('customer_id', $customer->id))
+            ->whereBetween('expires_at', [now(), now()->addDays($buffer)])
+            ->with(['serverPlan.server'])
+            ->orderBy('expires_at')
             ->get();
+    }
+
+    private function isEligibleOrderItem(OrderItem $item): bool
+    {
+        $client = $item->server_client; // virtual accessor to first client
+        if (! $client) return false;
+        if (($client->status ?? 'active') !== 'active') return false;
+        if (! $client->inbound || ! $client->server) return false;
+        if (($client->inbound->status ?? 'active') !== 'active') return false;
+        if (! ($client->enable ?? true)) return false;
+        return true;
+    }
+
+    private function estimateRenewalCost(OrderItem $item): float
+    {
+        $plan = $item->serverPlan;
+        return (float) ($plan->price ?? 0);
+    }
+
+    private function scheduleLowBalanceEmail(Customer $customer, OrderItem $item, float $cost): void
+    {
+        // throttle key per customer+item per day
+        $key = 'renewal_low_balance_notified:' . $customer->id . ':' . $item->id . ':' . now()->format('Y-m-d');
+        if (Cache::has($key)) {
+            return;
+        }
+        Cache::put($key, true, now()->addDay());
+
+        try {
+            $details = [
+                'subject' => 'Low Wallet Balance for Upcoming Renewal',
+                'greeting' => 'Hello ' . ($customer->name ?? 'Customer'),
+                'line1' => 'We attempted to schedule an automatic renewal, but your wallet balance is insufficient.',
+                'line2' => 'Service: ' . ($item->serverPlan->name ?? 'Plan') . ' • Cost: $' . number_format($cost, 2),
+                'actionText' => 'Top Up Wallet',
+                'actionUrl' => url('/account/wallet'),
+            ];
+            Mail::raw($details['greeting'] . "\n\n" . $details['line1'] . "\n" . $details['line2'] . "\n\n" . 'Top up here: ' . $details['actionUrl'], function ($m) use ($customer, $details) {
+                $m->to($customer->email)->subject($details['subject']);
+            });
+        } catch (\Throwable $e) {
+            // swallow
+        }
     }
 }

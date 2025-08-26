@@ -475,7 +475,8 @@ class PaymentController extends Controller
                         'currency' => $currency,
                         'order_id' => 'WTU-' . now()->format('YmdHis') . '-' . substr(md5(uniqid('', true)),0,6),
                         'description' => 'Wallet Top-up',
-                        'crypto_currency' => null,
+                        // Allow preselecting a coin when provided by client; service will validate min amount
+                        'crypto_currency' => $request->input('crypto_currency'),
                         'metadata' => [
                             'wallet_topup' => true,
                             'user_id' => $user->id,

@@ -36,7 +36,7 @@ use Filament\Actions\BulkAction;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Filters\TernaryFilter;
 use Filament\Infolists\Infolist;
-use Filament\Infolists\Components\Tabs;
+use Filament\Schemas\Components\Tabs;
 use Filament\Infolists\Components\TextEntry;
 use Filament\Infolists\Components\IconEntry;
 use Filament\Notifications\Notification;
@@ -480,11 +480,11 @@ class OrderItemResource extends Resource
     {
         return $schema
             ->schema([
-                \Filament\Infolists\Components\Tabs::make('Order Item Details')->tabs([
-                    \Filament\Infolists\Components\Tabs\Tab::make('Overview')
+                \Filament\Schemas\Components\Tabs::make('Order Item Details')->tabs([
+                    \Filament\Schemas\Components\Tabs\Tab::make('Overview')
                         ->icon('heroicon-o-document-text')
                         ->schema([
-                            \Filament\Infolists\Components\Section::make('Item Information')
+                            \Filament\Schemas\Components\Section::make('Item Information')
                                 ->columns(2)
                                 ->schema([
                                     \Filament\Infolists\Components\TextEntry::make('id')
@@ -523,10 +523,10 @@ class OrderItemResource extends Resource
                                 ]),
                         ]),
 
-                    \Filament\Infolists\Components\Tabs\Tab::make('Provisioning')
+                    \Filament\Schemas\Components\Tabs\Tab::make('Provisioning')
                         ->icon('heroicon-o-cog-6-tooth')
                         ->schema([
-                            \Filament\Infolists\Components\Section::make('Provisioning Status')
+                            \Filament\Schemas\Components\Section::make('Provisioning Status')
                                 ->columns(2)
                                 ->schema([
                                     \Filament\Infolists\Components\TextEntry::make('provisioning_summary')
@@ -558,10 +558,10 @@ class OrderItemResource extends Resource
                                 ]),
                         ]),
 
-                    \Filament\Infolists\Components\Tabs\Tab::make('QR Codes')
+                    \Filament\Schemas\Components\Tabs\Tab::make('QR Codes')
                         ->icon('heroicon-o-qr-code')
                         ->schema([
-                            \Filament\Infolists\Components\Section::make('Available QR Codes')
+                            \Filament\Schemas\Components\Section::make('Available QR Codes')
                                 ->columns(1)
                                 ->schema([
                                     \Filament\Infolists\Components\TextEntry::make('qr_codes_summary')

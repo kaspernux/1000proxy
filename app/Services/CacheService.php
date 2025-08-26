@@ -77,8 +77,18 @@ class CacheService
         $cacheKey = "user_server_clients_{$userId}";
 
         return Cache::remember($cacheKey, self::CACHE_DURATION_SHORT, function () use ($userId) {
-            return ServerClient::whereUserId($userId)
-                ->with(['server', 'serverPlan', 'order'])
+            return ServerClient::query()
+                ->with(['server.brand', 'inbound.server', 'plan', 'order.orderItems.serverPlan', 'orders'])
+                ->where(function ($q) use ($userId) {
+                    $q->where('customer_id', $userId)
+                      ->orWhere('email', 'LIKE', "%#ID {$userId}%")
+                      ->orWhereHas('order', function ($oq) use ($userId) {
+                          $oq->where('customer_id', $userId);
+                      })
+                      ->orWhereHas('orders', function ($oq) use ($userId) {
+                          $oq->where('customer_id', $userId);
+                      });
+                })
                 ->orderBy('created_at', 'desc')
                 ->get();
         });

@@ -1,5 +1,5 @@
 <x-filament-panels::page>
-    <div class="space-y-8 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    <div class="space-y-8 max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8">
         <!-- Auto-Renewal Status Card -->
         <div class="bg-gradient-to-r from-blue-500 to-purple-600 rounded-lg p-6 text-white my-16">
             <div class="flex items-center justify-between">
@@ -18,22 +18,7 @@
                             <x-heroicon-o-x-circle class="w-8 h-8" />
                         @endif
                     </div>
-                    <!-- Auto-Renewal Toggle Button -->
-                    <div class="mt-2">
-                        <label class="inline-flex items-center cursor-pointer group" title="Toggle Auto-Renewal">
-                            <input
-                                type="checkbox"
-                                class="sr-only peer"
-                                {{ $this->getRenewalSettings()['auto_renew_enabled'] ? 'checked' : '' }}
-                                wire:change="$set('renewalSettings.auto_renew_enabled', $event.target.checked)"
-                            >
-                            <div class="w-12 h-7 bg-white/30 rounded-full flex items-center transition-colors duration-300 peer-checked:bg-green-500 peer-focus:ring-2 peer-focus:ring-blue-300 dark:peer-focus:ring-blue-800 relative">
-                                <div class="absolute left-1 top-1 w-5 h-5 bg-white rounded-full shadow transition-transform duration-300 peer-checked:translate-x-5"></div>
-                                <span class="absolute left-2 text-xs text-gray-700 font-semibold">OFF</span>
-                                <span class="absolute right-2 text-xs text-green-700 font-semibold">ON</span>
-                            </div>
-                        </label>
-                    </div>
+                    <!-- Removed duplicate global toggle; use Configure action and per-service toggles in table -->
                 </div>
             </div>
         </div>
@@ -88,22 +73,22 @@
             <div class="bg-white dark:bg-gray-800 rounded-lg p-6 shadow my-16">
                 <h3 class="text-lg font-medium text-gray-900 dark:text-white mb-4">Upcoming Renewals</h3>
                 <div class="space-y-3">
-                    @foreach($this->getUpcomingRenewals() as $renewal)
+                    @foreach($this->getUpcomingRenewals() as $item)
                         <div class="flex items-center justify-between p-4 bg-yellow-50 dark:bg-yellow-900/20 rounded-lg border border-yellow-200 dark:border-yellow-800">
                             <div class="flex items-center">
                                 <x-heroicon-o-exclamation-triangle class="w-5 h-5 text-yellow-500 mr-3" />
                                 <div>
                                     <p class="font-medium text-gray-900 dark:text-white">
-                                        {{ $renewal->orderItems->first()?->serverClient?->server?->name ?? 'Unknown Server' }}
+                                        {{ $item->serverPlan?->server?->name ?? 'Unknown Server' }} • {{ $item->serverPlan?->name ?? 'Plan' }}
                                     </p>
                                     <p class="text-sm text-gray-600 dark:text-gray-400">
-                                        Expires: {{ $renewal->orderItems->first()?->expires_at?->format('M j, Y') ?? 'Unknown' }}
+                                        Expires: {{ $item->expires_at?->format('M j, Y') ?? 'Unknown' }}
                                     </p>
                                 </div>
                             </div>
                             <div class="text-right">
                                 <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200">
-                                    {{ $renewal->orderItems->first()?->expires_at?->diffInDays() ?? 0 }} days left
+                                    {{ $item->expires_at?->diffInDays() ?? 0 }} days left
                                 </span>
                             </div>
                         </div>
@@ -116,18 +101,7 @@
         <div class="bg-white dark:bg-gray-800 rounded-lg p-6 shadow my-16">
             <div class="flex items-center justify-between mb-4">
                 <h3 class="text-lg font-medium text-gray-900 dark:text-white">Renewal Preferences</h3>
-                <div class="flex items-center space-x-2">
-                    <span class="text-sm text-gray-600 dark:text-gray-400">Auto-Renewal</span>
-                    <label class="relative inline-flex items-center cursor-pointer">
-                        <input
-                            type="checkbox"
-                            class="sr-only peer"
-                            {{ $this->getRenewalSettings()['auto_renew_enabled'] ? 'checked' : '' }}
-                            wire:change="$set('renewalSettings.auto_renew_enabled', $event.target.checked)"
-                        >
-                        <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 dark:peer-focus:ring-blue-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-blue-600"></div>
-                    </label>
-                </div>
+                <div class="text-sm text-gray-600 dark:text-gray-400">Use the Configure button above to change defaults. Per-service toggles are in the table.</div>
             </div>
 
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -135,16 +109,12 @@
                     <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                         Renewal Buffer Period
                     </label>
-                    <select
-                        wire:model="renewalSettings.renewal_buffer_days"
-                        class="w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white focus:border-blue-500 focus:ring-blue-500"
-                    >
-                        <option value="1">1 day before</option>
-                        <option value="3">3 days before</option>
-                        <option value="7">7 days before</option>
-                        <option value="14">14 days before</option>
-                        <option value="30">30 days before</option>
-                    </select>
+                    <div class="flex items-center gap-3">
+                        <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200">
+                            {{ in_array($this->getRenewalSettings()['renewal_buffer_days'], [1,2,3]) ? $this->getRenewalSettings()['renewal_buffer_days'] : 3 }} days before
+                        </span>
+                        <span class="text-xs text-gray-500 dark:text-gray-400">(Wallet-only, enforced)</span>
+                    </div>
                     <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">
                         When to attempt renewal before expiration
                     </p>
@@ -154,29 +124,26 @@
                     <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                         Payment Method
                     </label>
-                    <select
-                        wire:model="renewalSettings.payment_method"
-                        class="w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white focus:border-blue-500 focus:ring-blue-500"
-                    >
-                        <option value="wallet">Wallet Balance</option>
-                        <option value="crypto">Cryptocurrency</option>
-                        <option value="card">Credit Card</option>
-                    </select>
+                    <div class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">Wallet Balance</div>
                     <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                        Preferred payment method for renewals
+                        Auto-renewals are supported only via wallet
                     </p>
                 </div>
             </div>
         </div>
 
         <!-- Services Table -->
-        <div class="bg-white dark:bg-gray-800 rounded-lg shadow overflow-x-auto my-16">
+        <div class="bg-white dark:bg-gray-800 rounded-lg shadow overflow-x-auto my-16 relative">
             <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700 flex items-center gap-2">
                 <x-heroicon-o-arrow-path class="w-5 h-5 text-green-500" />
                 <h3 class="text-lg font-medium text-gray-900 dark:text-white">Service Renewals</h3>
             </div>
             <div class="px-2 py-4">
                 {{ $this->table }}
+            </div>
+            <!-- Livewire loading overlay -->
+            <div wire:loading.delay.class.remove="hidden" wire:loading.delay class="hidden absolute inset-0 bg-white/60 dark:bg-gray-900/60 backdrop-blur-sm flex items-center justify-center z-10">
+                <div class="animate-spin h-8 w-8 border-2 border-blue-500 border-t-transparent rounded-full"></div>
             </div>
         </div>
 
@@ -204,14 +171,5 @@
         </div>
     </div>
 
-    @push('scripts')
-    <script>
-        document.addEventListener('livewire:init', () => {
-            // Real-time updates for renewal status
-            setInterval(() => {
-                @this.call('$refresh');
-            }, 60000); // Refresh every minute
-        });
-    </script>
-    @endpush
+    <!-- Table already polls every 60s via backend; no extra JS refresh needed -->
 </x-filament-panels::page>

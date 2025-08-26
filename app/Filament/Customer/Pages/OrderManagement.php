@@ -23,6 +23,7 @@ use Filament\Tables\Concerns\InteractsWithTable;
 use Filament\Forms;
 use Filament\Tables;
 use BackedEnum;
+use Illuminate\Support\Facades\Storage;
 
 class OrderManagement extends Page implements HasTable
 {
@@ -309,6 +310,14 @@ class OrderManagement extends Page implements HasTable
                             $this->downloadConfigurations($record);
                         }),
 
+                    Action::make('download_invoice')
+                        ->label('Download Invoice')
+                        ->icon('heroicon-o-document-text')
+                        ->color('primary')
+                        ->visible(fn (Order $record) => (bool) $record->ensureInvoice())
+                        ->url(fn (Order $record) => route('customer.invoice.download', ['order' => $record->id]))
+                        ->openUrlInNewTab(false),
+
                     Action::make('renew_service')
                         ->label('Renew Service')
                         ->icon('heroicon-o-arrow-path')
@@ -420,22 +429,42 @@ class OrderManagement extends Page implements HasTable
     public function downloadConfigurations(Order $order): void
     {
         try {
+            // Ensure we have all needed relations
+            $order->loadMissing([
+                'items.serverPlan.server',
+                'items.serverClients',
+                'items.serverClients.serverInbound',
+                'items.serverClients.server',
+            ]);
             // Generate configuration files for all server accesses in the order
             $configs = [];
 
             foreach ($order->items as $item) {
-                if ($item->server && $item->server_client) {
-                    $server = $item->server;
-                    $client = $item->server_client;
-
-                    // Generate configuration for each protocol
-                    $configs[] = [
-                        'server_name' => $server->name,
-                        'vless_config' => $this->generateVlessConfig($server, $client),
-                        'vmess_config' => $this->generateVmessConfig($server, $client),
-                        'qr_code' => $this->generateQRCode($server, $client),
-                    ];
+                $server = $item->server; // accessor => serverPlan->server
+                $client = $item->server_client; // first associated client
+                if (!$server || !$client) {
+                    continue;
                 }
+
+                // Normalize QR file paths from storage
+                $qrClient = $this->resolveStoragePublicPath($client->qr_code_client ?? null);
+                $qrSub    = $this->resolveStoragePublicPath($client->qr_code_sub ?? null);
+                $qrJson   = $this->resolveStoragePublicPath($client->qr_code_sub_json ?? null);
+
+        $configs[] = [
+                    'server_name' => (string) ($server->name ?? 'Server'),
+                    'client_link' => (string) ($client->client_link ?? ''),
+                    'subscription_link' => (string) ($client->remote_sub_link ?? ''),
+                    'json_link' => (string) ($client->remote_json_link ?? ''),
+                    'qr_client_file' => $qrClient,
+                    'qr_sub_file' => $qrSub,
+                    'qr_json_file' => $qrJson,
+                    'inbound' => [
+            'protocol' => (string) ($client->serverInbound?->protocol ?? ''),
+                        'host' => (string) ($server->ip ?? $server->host ?? ''),
+            'port' => (string) ($client->serverInbound?->port ?? ''),
+                    ],
+                ];
             }
 
             if (empty($configs)) {
@@ -452,19 +481,20 @@ class OrderManagement extends Page implements HasTable
 
             Notification::make()
                 ->title('Download Ready')
-                ->body('Configuration files are ready for download.')
+                ->body('Configuration files are ready. If your download does not start, use this link: ' . $zipPath)
                 ->success()
-                ->actions([
-                    \Filament\Notifications\Actions\Action::make('download')
-                        ->label('Download ZIP')
-                        ->url($zipPath)
-                ])
+                ->persistent()
                 ->send();
-
-        } catch (\Exception $e) {
+            // Attempt to start the download automatically
+            $this->js("window.open('{$zipPath}','_self')");
+        } catch (\Throwable $e) {
+            \Log::error('Order config ZIP generation failed', [
+                'order_id' => $order->id,
+                'error' => $e->getMessage(),
+            ]);
             Notification::make()
                 ->title('Download Failed')
-                ->body('Unable to generate configuration files. Please try again.')
+                ->body('Unable to generate configuration files. Reason: ' . ($e->getMessage() ?: 'unknown error'))
                 ->danger()
                 ->send();
         }
@@ -489,15 +519,12 @@ class OrderManagement extends Page implements HasTable
         });
 
         if ($wallet->balance < $totalRenewalCost) {
+            $walletUrl = route('filament.customer.my-wallet.resources.wallets.index');
             Notification::make()
                 ->title('Insufficient Balance')
-                ->body("You need \${$totalRenewalCost} to renew all services.")
+                ->body("You need \${$totalRenewalCost} to renew all services. Visit your wallet: {$walletUrl}")
                 ->warning()
-                ->actions([
-                    \Filament\Notifications\Actions\Action::make('topup')
-                        ->label('Top Up Wallet')
-                        ->url(route('filament.customer.my-wallet.resources.wallets.index'))
-                ])
+                ->persistent()
                 ->send();
             return;
         }
@@ -635,8 +662,216 @@ class OrderManagement extends Page implements HasTable
 
     private function createConfigurationZip(Order $order, array $configs): string
     {
-        // This would create a ZIP file with all configurations
-        return '/downloads/order-' . $order->id . '-configs.zip';
+        // Contract
+        // Input: order, configs
+        // Output: public URL to the generated zip
+        // Behavior: build into public/downloads first (web root is always accessible),
+        //           then copy a mirror to storage/app/public/downloads for backup.
+
+        if (!class_exists(\ZipArchive::class)) {
+            throw new \RuntimeException('ZIP extension is not installed/enabled on the server.');
+        }
+
+        $zipFilename = 'order-' . $order->id . '-configs.zip';
+
+        // Ensure directories
+        $publicDir = public_path('downloads');
+        $storageDir = storage_path('app/public/downloads');
+
+        foreach ([$publicDir, $storageDir] as $dir) {
+            if (!is_dir($dir)) {
+                @mkdir($dir, 0775, true);
+            }
+            if (is_dir($dir) && !is_writable($dir)) {
+                @chmod($dir, 0775);
+            }
+        }
+
+        $publicWritable = is_dir($publicDir) && is_writable($publicDir);
+        $storageWritable = is_dir($storageDir) && is_writable($storageDir);
+
+        if (!$publicWritable && !$storageWritable) {
+            throw new \RuntimeException('Neither public/downloads nor storage/app/public/downloads is writable.');
+        }
+
+        // Primary: build in public, since /storage may be blocked by CDN or symlink issues
+        $primaryDir = $publicWritable ? $publicDir : $storageDir;
+        $primaryUrl = $primaryDir === $publicDir
+            ? fn(string $f) => asset('downloads/' . $f)
+            : fn(string $f) => asset('storage/downloads/' . $f);
+
+        $primaryPath = rtrim($primaryDir, DIRECTORY_SEPARATOR) . DIRECTORY_SEPARATOR . $zipFilename;
+        $this->buildZipAt($primaryPath, $configs);
+
+        // Mirror copy to the other target, best-effort
+        $secondaryDir = $primaryDir === $publicDir ? $storageDir : $publicDir;
+        if (is_dir($secondaryDir) && is_writable($secondaryDir)) {
+            $secondaryPath = rtrim($secondaryDir, DIRECTORY_SEPARATOR) . DIRECTORY_SEPARATOR . $zipFilename;
+            // Copy or overwrite
+            @copy($primaryPath, $secondaryPath);
+        }
+
+        // Return the public URL if possible, otherwise storage URL
+        return $primaryUrl($zipFilename);
+    }
+
+    private function buildZipAt(string $zipPathFs, array $configs): void
+    {
+        $zip = new \ZipArchive();
+        if ($zip->open($zipPathFs, \ZipArchive::CREATE | \ZipArchive::OVERWRITE) !== true) {
+            throw new \RuntimeException('Unable to create ZIP archive at ' . $zipPathFs);
+        }
+
+        // Add a helpful README
+        $readme = "1000PROXY Configuration Package\n\n".
+                  "Each folder contains: \n".
+                  "- client.txt            (Primary client config URL)\n".
+                  "- subscription.txt      (Subscription link)\n".
+                  "- json.txt              (JSON subscription link)\n".
+                  "- inbound.txt           (Protocol/host/port summary)\n".
+                  "- client-qr.png         (QR for client.txt)\n".
+                  "- subscription-qr.png   (QR for subscription.txt, if available)\n".
+                  "- json-qr.png           (QR for json.txt, if available)\n\n".
+                  "How to use:\n1) Install your preferred client app.\n2) Scan client-qr.png or import client.txt.\n3) As alternatives, use subscription.txt or json.txt with their QRs.\n\n".
+                  "Security note: Keep these files private.\n";
+        $zip->addFromString('README.txt', $readme);
+
+        foreach ($configs as $index => $cfg) {
+            $serverName = $cfg['server_name'] ?? ('server-' . ($index + 1));
+            $folder = sprintf('%02d-%s', $index + 1, $this->sanitizeFilename($serverName));
+
+            // Client/Sub/JSON links
+            if (!empty($cfg['client_link'])) {
+                $zip->addFromString($folder . '/client.txt', (string) $cfg['client_link']);
+            }
+            if (!empty($cfg['subscription_link'])) {
+                $zip->addFromString($folder . '/subscription.txt', (string) $cfg['subscription_link']);
+            }
+            if (!empty($cfg['json_link'])) {
+                $zip->addFromString($folder . '/json.txt', (string) $cfg['json_link']);
+            }
+
+            // Inbound summary
+            if (!empty($cfg['inbound']) && is_array($cfg['inbound'])) {
+                $in = $cfg['inbound'];
+                $inboundSummary = "protocol: " . ($in['protocol'] ?? '') . "\n"
+                                . "host: " . ($in['host'] ?? '') . "\n"
+                                . "port: " . ($in['port'] ?? '') . "\n";
+                $zip->addFromString($folder . '/inbound.txt', $inboundSummary);
+            }
+
+            // Add real QR PNGs if they exist; otherwise, generate from links as fallback
+            $this->addQrToZip($zip, $folder . '/client-qr.png', $cfg['qr_client_file'] ?? null, $cfg['client_link'] ?? '');
+            $this->addQrToZip($zip, $folder . '/subscription-qr.png', $cfg['qr_sub_file'] ?? null, $cfg['subscription_link'] ?? '');
+            $this->addQrToZip($zip, $folder . '/json-qr.png', $cfg['qr_json_file'] ?? null, $cfg['json_link'] ?? '');
+        }
+
+        $zip->close();
+    }
+
+    /**
+     * Try to resolve various stored values (URLs like /storage/qr_codes/.. or relative paths)
+     * to an absolute filesystem path if the file exists.
+     */
+    private function resolveStoragePublicPath(?string $value): ?string
+    {
+        if (empty($value)) {
+            return null;
+        }
+
+        // If it's a data URI, there's no file path to resolve
+        if (str_starts_with($value, 'data:image/')) {
+            return null;
+        }
+
+        $candidates = [];
+
+        // If URL, extract the path
+        if (preg_match('#^https?://#i', $value)) {
+            $path = parse_url($value, PHP_URL_PATH) ?: '';
+        } else {
+            $path = $value;
+        }
+
+        $path = ltrim($path, '/');
+
+        // Map /storage/... to storage/app/public/...
+        if (str_starts_with($path, 'storage/')) {
+            $rel = substr($path, strlen('storage/'));
+            $candidates[] = storage_path('app/public/' . $rel);
+        }
+
+        // Raw relative like qr_codes/... or downloads/...
+        $candidates[] = storage_path('app/public/' . $path);
+        $candidates[] = public_path($path);
+
+        // Also check public/storage mapping
+        if (str_starts_with($path, 'qr_codes/')) {
+            $candidates[] = public_path('storage/' . substr($path, strlen('qr_codes/')));
+        }
+
+        foreach ($candidates as $fs) {
+            if (is_string($fs) && is_file($fs) && is_readable($fs)) {
+                return $fs;
+            }
+        }
+
+        return null;
+    }
+
+    private function addQrToZip(\ZipArchive $zip, string $zipInternalPath, ?string $localFilePath, string $fallbackLink): void
+    {
+        // Prefer existing PNG from disk
+        if ($localFilePath && is_file($localFilePath) && is_readable($localFilePath)) {
+            // Use addFile to avoid loading large files into memory
+            $zip->addFile($localFilePath, $zipInternalPath);
+            return;
+        }
+
+        // Fallback: generate QR from link
+        if (!empty($fallbackLink)) {
+            $bin = $this->makeQrPngBinaryForLink($fallbackLink);
+            if ($bin !== null) {
+                $zip->addFromString($zipInternalPath, $bin);
+            }
+        }
+    }
+
+    private function makeQrPngBinaryForLink(string $link): ?string
+    {
+        try {
+            /** @var QrCodeService $svc */
+            $svc = app(QrCodeService::class);
+            $data = $svc->generateClientQrCode($link, [
+                'colorScheme' => 'primary',
+                'size' => 512,
+            ]);
+
+            if (is_string($data)) {
+                // If service returns a data URI
+                if (str_starts_with($data, 'data:image/png;base64,')) {
+                    $b64 = substr($data, strlen('data:image/png;base64,'));
+                    $bin = base64_decode($b64, true);
+                    if ($bin !== false) {
+                        return $bin;
+                    }
+                }
+                // If it's already binary PNG (detect signature)
+                if (strlen($data) >= 8 && substr($data, 0, 8) === "\x89PNG\x0D\x0A\x1A\x0A") {
+                    return $data;
+                }
+            }
+        } catch (\Throwable $e) {
+            // ignore and return null below
+        }
+        return null;
+    }
+
+    private function sanitizeFilename(string $name): string
+    {
+        // Replace any non-safe characters with dashes and trim length
+        $safe = preg_replace('/[^A-Za-z0-9._-]+/', '-', $name) ?? 'file';
+        return trim($safe, '-_');
     }
 
     public function exportOrders(Collection $orders): void

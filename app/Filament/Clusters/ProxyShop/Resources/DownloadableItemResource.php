@@ -12,7 +12,7 @@ use Filament\Schemas\Schema;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
-use Filament\Infolists\Components\Section;
+use Filament\Schemas\Components\Section;
 
 use Filament\Schemas\Components\Group;
 use Illuminate\Database\Eloquent\Builder;
@@ -40,7 +40,7 @@ use Filament\Forms\Components\Split;
 use Filament\Actions\Action;
 use Filament\Forms\Components\DateTimePicker;
 use Filament\Infolists\Infolist;
-use Filament\Infolists\Components\Tabs;
+use Filament\Schemas\Components\Tabs;
 use Filament\Infolists\Components\TextEntry;
 use Filament\Infolists\Components\LinkEntry;
 use Filament\Actions\CreateAction;

@@ -18,8 +18,8 @@ use Illuminate\Database\Eloquent\SoftDeletingScope;
 use Illuminate\Http\Resources\Json\JsonResource;
 
 use Filament\Actions\Action;
-use Filament\Infolists\Components\Tabs;
-use Filament\Infolists\Components\Section;
+use Filament\Schemas\Components\Tabs;
+use Filament\Schemas\Components\Section;
 use Filament\Infolists\Components\TextEntry;
 use Filament\Infolists\Components\KeyValueEntry;
 use BackedEnum;

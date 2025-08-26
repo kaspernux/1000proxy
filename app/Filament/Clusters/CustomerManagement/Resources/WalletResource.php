@@ -15,10 +15,10 @@ use Filament\Actions\ViewAction;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Infolists\Components\TextEntry;
 use Filament\Infolists\Components\ImageEntry;
-use Filament\Infolists\Components\Card;
-use Filament\Infolists\Components\Tabs;
-use Filament\Infolists\Components\Section;
-use Filament\Infolists\Components\Split;
+use Filament\Schemas\Components\Tabs;
+use Filament\Schemas\Components\Section;
+use Filament\Schemas\Components\Grid;
+use Filament\Schemas\Components\Group;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Schemas\Schema;
@@ -97,7 +97,7 @@ class WalletResource extends Resource
     public static function infolist(Schema $schema): Schema
     {
         return $schema->schema([
-            Tabs::make('Wallet Details')->tabs([
+                Tabs::make('Wallet Details')->tabs([
                 Tabs\Tab::make('Overview')->schema([
                     Section::make('Wallet Info')->columns(2)->schema([
                         TextEntry::make('customer.name')->label('Customer')->color('primary'),
@@ -110,9 +110,11 @@ class WalletResource extends Resource
                     Section::make('📥 Deposit QR Codes & Addresses')
                         ->description('These addresses are used to receive crypto deposits.')
                         ->schema([
-                            Split::make([
-                                // Bitcoin Card
-                                Card::make([
+                            Grid::make([
+                                'default' => 1,
+                                'md' => 3,
+                            ])->schema([
+                                Group::make()->schema([
                                     ImageEntry::make('btc_qr')
                                         ->disk('public')
                                         ->label('')
@@ -141,8 +143,8 @@ class WalletResource extends Resource
                                 ])->extraAttributes([
                                     'class' => 'flex flex-col items-center justify-center p-6 rounded-2xl shadow-lg bg-gray-800 hover:bg-gray-700 transition-all',
                                 ]),
-                                // Monero Card
-                                Card::make([
+
+                                Group::make()->schema([
                                     ImageEntry::make('xmr_qr')
                                         ->disk('public')
                                         ->label('')
@@ -171,8 +173,8 @@ class WalletResource extends Resource
                                 ])->extraAttributes([
                                     'class' => 'flex flex-col items-center justify-center p-6 rounded-2xl shadow-lg bg-gray-800 hover:bg-gray-700 transition-all',
                                 ]),
-                                // Solana Card
-                                Card::make([
+
+                                Group::make()->schema([
                                     ImageEntry::make('sol_qr')
                                         ->disk('public')
                                         ->label('')
@@ -201,7 +203,7 @@ class WalletResource extends Resource
                                 ])->extraAttributes([
                                     'class' => 'flex flex-col items-center justify-center p-6 rounded-2xl shadow-lg bg-gray-800 hover:bg-gray-700 transition-all',
                                 ]),
-                            ])->from('md'),
+                            ]),
                         ]),
                 ]),
             ])->columnSpanFull(),

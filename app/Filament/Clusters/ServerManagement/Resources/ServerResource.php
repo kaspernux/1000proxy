@@ -1756,13 +1756,13 @@ class ServerResource extends Resource
     public static function infolist(\Filament\Schemas\Schema $schema): \Filament\Schemas\Schema
     {
         return $schema->schema([
-            \Filament\Infolists\Components\Tabs::make('Server Details')
+            \Filament\Schemas\Components\Tabs::make('Server Details')
                 ->persistTab()
                 ->tabs([
-                    \Filament\Infolists\Components\Tabs\Tab::make('Overview')
+                    \Filament\Schemas\Components\Tabs\Tab::make('Overview')
                         ->icon('heroicon-m-server')
                         ->schema([
-                            \Filament\Infolists\Components\Section::make('Summary')
+                            \Filament\Schemas\Components\Section::make('Summary')
                                 ->columns([
                                     'sm' => 1,
                                     'md' => 2,
@@ -1830,10 +1830,10 @@ class ServerResource extends Resource
                                 ]),
                         ]),
 
-                    \Filament\Infolists\Components\Tabs\Tab::make('Connectivity')
+                    \Filament\Schemas\Components\Tabs\Tab::make('Connectivity')
                         ->icon('heroicon-m-link')
                         ->schema([
-                            \Filament\Infolists\Components\Section::make('Connection & Access')
+                            \Filament\Schemas\Components\Section::make('Connection & Access')
                                 ->columns([
                                     'sm' => 1,
                                     'md' => 2,
@@ -1849,10 +1849,10 @@ class ServerResource extends Resource
                                 ]),
                         ]),
 
-                    \Filament\Infolists\Components\Tabs\Tab::make('Session')
+                    \Filament\Schemas\Components\Tabs\Tab::make('Session')
                         ->icon('heroicon-m-key')
                         ->schema([
-                            \Filament\Infolists\Components\Section::make('X-UI Session')
+                            \Filament\Schemas\Components\Section::make('X-UI Session')
                                 ->columns(3)
                                 ->schema([
                                     \Filament\Infolists\Components\TextEntry::make('session_cookie_name')->label('Cookie Name')->icon('heroicon-o-cookie'),
@@ -1862,10 +1862,10 @@ class ServerResource extends Resource
                                 ]),
                         ]),
 
-                    \Filament\Infolists\Components\Tabs\Tab::make('Performance')
+                    \Filament\Schemas\Components\Tabs\Tab::make('Performance')
                         ->icon('heroicon-m-chart-bar')
                         ->schema([
-                            \Filament\Infolists\Components\Section::make('Metrics')
+                            \Filament\Schemas\Components\Section::make('Metrics')
                                 ->columns([
                                     'sm' => 1,
                                     'md' => 2,
@@ -1880,7 +1880,7 @@ class ServerResource extends Resource
                                     \Filament\Infolists\Components\TextEntry::make('total_traffic_mb')->label('Total Traffic (MB)')->formatStateUsing(fn ($s) => number_format((float)($s ?? 0), 2))->badge()->color('secondary')->icon('heroicon-o-arrow-trending-up'),
                                 ]),
 
-                            \Filament\Infolists\Components\Section::make('Latest Health')
+                            \Filament\Schemas\Components\Section::make('Latest Health')
                                 ->columns(1)
                                 ->schema([
                                     \Filament\Infolists\Components\TextEntry::make('health_message')->label('Message')->icon('heroicon-o-information-circle')->default('—'),

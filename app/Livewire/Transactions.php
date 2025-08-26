@@ -179,7 +179,7 @@ class Transactions extends Component
 
             $this->selectedTransaction = WalletTransaction::where('id', $transactionId)
                                                         ->where('wallet_id', $customerWallet->id)
-                                                        ->with(['wallet', 'order'])
+                                                        ->with(['wallet'])
                                                         ->first();
 
             if ($this->selectedTransaction) {
@@ -503,8 +503,8 @@ class Transactions extends Component
 
         $customerWallet = $customer->wallet;
 
-        $query = WalletTransaction::where('wallet_id', $customerWallet->id)
-                                 ->with(['wallet', 'order']);
+    $query = WalletTransaction::where('wallet_id', $customerWallet->id)
+                 ->with(['wallet']);
 
         // Type filter
         if ($this->typeFilter !== 'all') {

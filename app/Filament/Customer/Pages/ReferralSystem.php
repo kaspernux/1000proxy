@@ -22,6 +22,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Str;
+use Illuminate\Support\Facades\Schema;
 use App\Models\Customer;
 use App\Models\Order;
 use Filament\Notifications\Notification;
@@ -96,8 +97,19 @@ class ReferralSystem extends Page implements HasTable, HasForms
     {
         $customer = Auth::guard('customer')->user();
 
-        // Load or generate referral code
-        $this->referralCode = $customer->referral_code ?? $this->generateReferralCode();
+        // Load or generate referral code and persist it if missing
+        if (Schema::hasColumn('customers', 'referral_code')) {
+            if (!$customer->referral_code) {
+                // Use forceFill + saveQuietly to avoid mass-assignment blocks and events
+                $customer->forceFill(['referral_code' => $this->generateReferralCode()])->saveQuietly();
+                // Refresh to see updated value
+                $customer->refresh();
+            }
+            $this->referralCode = $customer->referral_code;
+        } else {
+            // Fallback gracefully if migration hasn't run yet
+            $this->referralCode = $customer->refcode;
+        }
 
         // Load referral statistics
         $this->referralStats = [
@@ -107,6 +119,8 @@ class ReferralSystem extends Page implements HasTable, HasForms
             'available_earnings' => $this->getAvailableEarnings(),
             'pending_earnings' => $this->getPendingEarnings(),
             'conversion_rate' => $this->getConversionRate(),
+            'monthly_referrals' => $this->getMonthlyReferrals(),
+            'avg_commission' => $this->getAverageCommission(),
         ];
 
         // Generate shareable links
@@ -115,18 +129,20 @@ class ReferralSystem extends Page implements HasTable, HasForms
 
     protected function generateReferralCode(): string
     {
-        $customer = Auth::guard('customer')->user();
-        $code = strtoupper(Str::random(8));
-
-        // In real implementation, save to database
-        // $customer->update(['referral_code' => $code]);
-
-        return $code;
+    return strtoupper(Str::random(8));
     }
 
     public function generateNewReferralCode(): void
     {
-        $this->referralCode = $this->generateReferralCode();
+    $customer = Auth::guard('customer')->user();
+    $code = $this->generateReferralCode();
+        if (Schema::hasColumn('customers', 'referral_code')) {
+            $customer->forceFill(['referral_code' => $code])->saveQuietly();
+        } else {
+            // Fallback to legacy field if needed
+            $customer->forceFill(['refcode' => $code])->saveQuietly();
+        }
+    $this->referralCode = $code;
 
         Notification::make()
             ->title('New Referral Code Generated')
@@ -194,48 +210,69 @@ class ReferralSystem extends Page implements HasTable, HasForms
             return;
         }
 
-        // Process withdrawal request
+        // Create a pending withdrawal request (admin can process later)
+        $me = Auth::guard('customer')->user();
+        \App\Models\ReferralWithdrawal::create([
+            'customer_id' => $me->id,
+            'amount' => $availableEarnings,
+            'status' => 'pending',
+            'metadata' => [
+                'note' => 'Requested from Referral System page',
+            ],
+        ]);
+
         Notification::make()
             ->title('Withdrawal Requested')
-            ->body("Withdrawal of \${$availableEarnings} has been requested. It will be processed within 24 hours.")
+            ->body("Withdrawal of $" . number_format($availableEarnings, 2) . " has been requested. You'll be contacted for payout details.")
             ->success()
             ->send();
     }
 
     protected function getTotalReferrals(): int
     {
-        // In real implementation, count referred customers
-        return rand(5, 50);
+    $me = Auth::guard('customer')->user();
+    return Customer::query()->where('refered_by', $me->id)->count();
     }
 
     protected function getActiveReferrals(): int
     {
-        // Count active referred customers
-        return rand(3, 30);
+        $me = Auth::guard('customer')->user();
+        return \App\Models\Order::query()
+            ->whereIn('customer_id', function($q) use ($me) { $q->select('id')->from('customers')->where('refered_by', $me->id); })
+            ->where('payment_status', 'paid')
+            ->distinct('customer_id')
+            ->count('customer_id');
     }
 
     protected function getTotalEarnings(): float
     {
-        // Calculate total earnings from referrals
-        return rand(50, 500) + (rand(0, 99) / 100);
+        $me = Auth::guard('customer')->user();
+        // Sum wallet credits tagged as referral
+        $sum = \App\Models\WalletTransaction::query()
+            ->where('customer_id', $me->id)
+            ->where('type', 'credit')
+            ->where('metadata->referral', true)
+            ->sum('amount');
+        return (float) $sum;
     }
 
     protected function getAvailableEarnings(): float
     {
-        // Calculate available earnings (completed commissions)
-        return rand(20, 200) + (rand(0, 99) / 100);
+    // For now, available equals total credited referral amounts (no holds implemented)
+    return $this->getTotalEarnings();
     }
 
     protected function getPendingEarnings(): float
     {
-        // Calculate pending earnings (unconfirmed commissions)
-        return rand(10, 100) + (rand(0, 99) / 100);
+    // No pending tracking yet; could be implemented with holds after N days
+    return 0.0;
     }
 
     protected function getConversionRate(): float
     {
-        // Calculate conversion rate percentage
-        return rand(10, 80) + (rand(0, 99) / 100);
+    $total = $this->getTotalReferrals();
+    $active = $this->getActiveReferrals();
+    return $total > 0 ? round(($active / max(1,$total)) * 100, 1) : 0.0;
     }
 
     protected function generateShareableLinks(): array
@@ -250,6 +287,21 @@ class ReferralSystem extends Page implements HasTable, HasForms
         ];
     }
 
+    protected function getMonthlyReferrals(): int
+    {
+        $me = Auth::guard('customer')->user();
+        return Customer::query()
+            ->where('refered_by', $me->id)
+            ->where('created_at', '>=', now()->startOfMonth())
+            ->count();
+    }
+
+    protected function getAverageCommission(): float
+    {
+        $totalRef = max(1, $this->getTotalReferrals());
+        return round($this->getTotalEarnings() / $totalRef, 2);
+    }
+
     public function table(Table $table): Table
     {
         // Use Eloquent Builder for referred customers to avoid type error
@@ -258,7 +310,7 @@ class ReferralSystem extends Page implements HasTable, HasForms
             ->query(
                 Customer::query()
                     ->where('refered_by', $customer->id)
-                    ->with(['orders'])
+                    ->withCount(['orders as orders_count' => function($q){ $q->where('payment_status','paid'); }])
             )
             ->columns([
                 TextColumn::make('name')
@@ -272,7 +324,7 @@ class ReferralSystem extends Page implements HasTable, HasForms
                     ->sortable()
                     ->searchable(),
 
-                TextColumn::make('joined_at')
+                TextColumn::make('created_at')
                     ->label('Joined Date')
                     ->dateTime()
                     ->sortable()
@@ -281,15 +333,14 @@ class ReferralSystem extends Page implements HasTable, HasForms
                 TextColumn::make('status')
                     ->label('Status')
                     ->badge()
-                    ->color(fn (string $state): string => match ($state) {
-                        'Active' => 'success',
-                        'Inactive' => 'danger',
-                        'Pending' => 'warning',
-                        default => 'gray',
-                    }),
+                    ->getStateUsing(function ($record) {
+                        $hasPaid = \App\Models\Order::where('customer_id', $record->id)->where('payment_status','paid')->exists();
+                        return $hasPaid ? 'Active' : 'Pending';
+                    })
+                    ->color(fn ($state) => $state === 'Active' ? 'success' : 'warning'),
 
                 TextColumn::make('orders_count')
-                    ->label('Orders')
+                    ->label('Paid Orders')
                     ->sortable()
                     ->badge()
                     ->color('primary'),
@@ -297,24 +348,42 @@ class ReferralSystem extends Page implements HasTable, HasForms
                 TextColumn::make('total_spent')
                     ->label('Total Spent')
                     ->money('USD')
-                    ->sortable(),
+                    ->sortable()
+                    ->getStateUsing(function ($record) {
+                        return (float) \App\Models\Order::where('customer_id', $record->id)->where('payment_status','paid')->sum('total_amount');
+                    }),
 
                 TextColumn::make('commission_earned')
                     ->label('Your Commission')
                     ->money('USD')
                     ->sortable()
-                    ->weight(FontWeight::Bold),
+                    ->weight(FontWeight::Bold)
+                    ->getStateUsing(function ($record) use ($customer) {
+                        // Sum referrer's referral credits coming from this referred customer
+                        $me = $customer;
+                        return (float) \App\Models\WalletTransaction::query()
+                            ->where('customer_id', $me->id)
+                            ->where('type', 'credit')
+                            ->where('metadata->referral', true)
+                            ->where('metadata->referred_customer_id', $record->id)
+                            ->sum('amount');
+                    }),
 
                 TextColumn::make('commission_status')
                     ->label('Commission Status')
                     ->badge()
-                    ->color(fn (string $state): string => match ($state) {
-                        'Paid' => 'success',
-                        'Pending' => 'warning',
-                        'Processing' => 'info',
-                        'None' => 'gray',
-                        default => 'gray',
-                    }),
+                    ->getStateUsing(function ($record) use ($customer) {
+                        $sum = (float) \App\Models\WalletTransaction::query()
+                            ->where('customer_id', $customer->id)
+                            ->where('type', 'credit')
+                            ->where('metadata->referral', true)
+                            ->where('metadata->referred_customer_id', $record->id)
+                            ->sum('amount');
+                        if ($sum > 0) { return 'Paid'; }
+                        $hasPaid = \App\Models\Order::where('customer_id', $record->id)->where('payment_status','paid')->exists();
+                        return $hasPaid ? 'Pending' : 'None';
+                    })
+                    ->color(fn ($state) => match ($state) { 'Paid' => 'success', 'Pending' => 'warning', default => 'gray' }),
             ])
             ->filters([
                 SelectFilter::make('status')
@@ -356,7 +425,7 @@ class ReferralSystem extends Page implements HasTable, HasForms
                     })
                     ->visible(fn ($record) => $record->status === 'Inactive'),
             ])
-            ->defaultSort('joined_at', 'desc')
+            ->defaultSort('created_at', 'desc')
             ->emptyStateHeading('No Referrals Yet')
             ->emptyStateDescription('Start sharing your referral code to earn commissions!')
             ->emptyStateIcon('heroicon-o-user-group');

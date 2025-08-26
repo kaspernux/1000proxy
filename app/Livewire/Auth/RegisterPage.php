@@ -46,6 +46,11 @@ class RegisterPage extends Component
             $this->redirect('/servers', navigate: true);
             return;
         }
+        // Capture referral code from query if present
+        $ref = request()->query('ref');
+        if (is_string($ref) && strlen($ref) >= 4) {
+            session()->put('referral_code_used', strtoupper(trim($ref)));
+        }
         $this->checkRateLimit();
     }
 
@@ -90,6 +95,19 @@ class RegisterPage extends Component
                 'email_verified_at' => now(), // Auto-verify for now
                 'is_active' => true,
             ]);
+
+            // Attach referrer if a valid referral code was used
+            try {
+                $code = session()->pull('referral_code_used');
+                if ($code) {
+                    $referrer = Customer::where('referral_code', $code)->first();
+                    if ($referrer && $referrer->id !== $customer->id) {
+                        $customer->update(['refered_by' => $referrer->id]);
+                    }
+                }
+            } catch (\Throwable $e) {
+                \Log::warning('Failed attaching referrer on registration', ['email' => $this->email, 'error' => $e->getMessage()]);
+            }
 
             // Clear rate limiting on success
             RateLimiter::clear($key);

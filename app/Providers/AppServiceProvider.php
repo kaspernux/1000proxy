@@ -267,6 +267,7 @@ class AppServiceProvider extends ServiceProvider
 
     // Inline event listeners (no EventServiceProvider present)
     Event::listen(\App\Events\OrderPaid::class, \App\Listeners\DispatchProvisioningOnOrderPaid::class);
+    Event::listen(\App\Events\OrderPaid::class, \App\Listeners\CreditReferralCommission::class);
     Event::listen(\App\Events\OrderProvisioned::class, \App\Listeners\SendOrderProvisionedNotification::class);
 
     // Activity logging: auth events for User and Customer guards

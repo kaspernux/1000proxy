@@ -11,15 +11,20 @@ use Filament\Forms\Contracts\HasForms;
 use Filament\Tables\Table;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Forms\Concerns\InteractsWithForms;
+use Filament\Tables\Concerns\InteractsWithTable;
+use Filament\Tables\Contracts\HasTable;
 use Filament\Actions\Action as PageAction;
 use Filament\Notifications\Notification;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use App\Models\Wallet;
+use App\Models\WalletTransaction;
 use BackedEnum;
 
-class WalletManagement extends Page implements HasForms
+class WalletManagement extends Page implements HasForms, HasTable
 {
     use InteractsWithForms;
+    use InteractsWithTable;
 
     protected static string | BackedEnum | null $navigationIcon = 'heroicon-o-wallet';
     protected static ?string $navigationLabel = 'My Wallet';
@@ -33,22 +38,13 @@ class WalletManagement extends Page implements HasForms
     public function mount(): void
     {
         $customer = Auth::guard('customer')->user();
-        $wallet = DB::table('wallets')->where('customer_id', $customer->id)->first();
+        $wallet = Wallet::firstOrCreate(
+            ['customer_id' => $customer->id],
+            ['balance' => 0.00, 'currency' => 'USD']
+        );
 
-        if (!$wallet) {
-            // Create wallet if it doesn't exist
-            $this->walletId = DB::table('wallets')->insertGetId([
-                'customer_id' => $customer->id,
-                'balance' => 0.00,
-                'currency' => 'USD',
-                'created_at' => now(),
-                'updated_at' => now(),
-            ]);
-            $this->walletBalance = 0.00;
-        } else {
-            $this->walletId = $wallet->id;
-            $this->walletBalance = $wallet->balance;
-        }
+        $this->walletId = $wallet->id;
+        $this->walletBalance = (float) $wallet->balance;
 
         $this->form->fill();
     }
@@ -89,8 +85,14 @@ class WalletManagement extends Page implements HasForms
     public function table(Table $table): Table
     {
         return $table
-            ->heading('Transaction History')
-            ->description('Your wallet transaction history and payment records')
+            ->heading('Recent Transactions')
+            ->description('Your most recent wallet transactions. Use Full History to see all records.')
+            ->query(function () {
+                $customer = Auth::guard('customer')->user();
+                return WalletTransaction::query()
+                    ->where('customer_id', $customer->id)
+                    ->latest();
+            })
             ->columns([
                 TextColumn::make('id')
                     ->label('Transaction ID')
@@ -111,13 +113,11 @@ class WalletManagement extends Page implements HasForms
 
                 TextColumn::make('amount')
                     ->label('Amount')
-                    ->money('USD')
-                    ->color(fn (string $state, $record): string =>
-                        $record->type === 'deposit' || $record->type === 'refund' ? 'success' : 'danger'
-                    )
-                    ->prefix(fn ($record): string =>
-                        $record->type === 'deposit' || $record->type === 'refund' ? '+' : '-'
-                    )
+                    ->formatStateUsing(function ($state, $record) {
+                        $sign = in_array($record->type, ['deposit','refund']) ? '+' : '-';
+                        return $sign . '$' . number_format((float) $state, 2);
+                    })
+                    ->color(fn ($record): string => in_array($record->type, ['deposit','refund']) ? 'success' : 'danger')
                     ->sortable(),
 
                 TextColumn::make('description')
@@ -148,6 +148,7 @@ class WalletManagement extends Page implements HasForms
                     ->dateTime('M j, Y H:i')
                     ->sortable(),
             ])
+            ->defaultSort('created_at', 'desc')
             ->paginated([10, 25, 50]);
     }
 
@@ -158,132 +159,47 @@ class WalletManagement extends Page implements HasForms
                 ->label('Add Funds')
                 ->icon('heroicon-o-plus')
                 ->color('primary')
-                ->form([
-                    TextInput::make('amount')
-                        ->label('Top-up Amount')
-                        ->numeric()
-                        ->prefix('$')
-                        ->required()
-                        ->minValue(5)
-                        ->maxValue(10000)
-                        ->placeholder('50.00')
-                        ->extraAttributes([
-                            'class' => 'bg-slate-900 text-slate-100 placeholder-slate-500 dark:bg-slate-900 dark:text-slate-100 border-slate-600 focus:border-indigo-500 focus:ring-indigo-500 rounded-lg',
-                        ]),
-
-                    Select::make('payment_method')
-                        ->label('Payment Method')
-                        ->options(self::getAvailableGatewaysForForm())
-                        ->required()
-                        ->default('nowpayments')
-                        ->extraAttributes([
-                            'class' => 'bg-slate-900 text-slate-100 dark:bg-slate-900 dark:text-slate-100 border-slate-600 focus:border-indigo-500 focus:ring-indigo-500 rounded-lg',
-                        ]),
-                ])
-                ->action(function (array $data) {
-                    // Redirect to PaymentProcessor Livewire component with selected payment method and amount
-                    $query = http_build_query([
-                        'type' => 'wallet_topup',
-                        'amount' => $data['amount'],
-                        'currency' => 'USD', // or dynamic if needed
-                        'selectedGateway' => $data['payment_method'],
-                    ]);
-                    $url = route('payment.processor', [], false) . '?' . $query;
-                    return redirect()->to($url);
+                ->action(function () {
+                    // Redirect to Livewire TopupWallet page (default to BTC)
+                    return redirect()->to(route('customer.wallet.topup', ['currency' => 'btc']));
                 }),
 
             PageAction::make('request_withdrawal')
-                ->label('Withdraw Funds')
+                ->label('Request Refund')
                 ->icon('heroicon-o-arrow-up-tray')
                 ->color('warning')
-                ->visible(fn () => $this->walletBalance >= 10)
-                ->form([
-                    TextInput::make('amount')
-                        ->label('Withdrawal Amount')
-                        ->numeric()
-                        ->prefix('$')
-                        ->required()
-                        ->minValue(10)
-                        ->maxValue($this->walletBalance),
+                ->action(function () {
+                    $customer = Auth::guard('customer')->user();
+                    $mailto = 'mailto:support@1000proxy.io'
+                        . '?subject=' . rawurlencode('Refund Request - ' . ($customer->email ?? 'customer'))
+                        . '&body=' . rawurlencode("Hello 1000proxy support,%0D%0A%0D%0AI'd like to request a refund. I acknowledge refunds are processed via Monero (XMR) with a 30% commission.%0D%0A%0D%0AMy account email: " . ($customer->email ?? '') . "%0D%0AXMR address: %0D%0ATransaction reference(s): %0D%0AOrder ID (if any): %0D%0A%0D%0AThanks.");
 
-                    Select::make('withdrawal_method')
-                        ->label('Withdrawal Method')
-                        ->options([
-                            'bitcoin' => '₿ Bitcoin',
-                            'monero' => 'ⓧ Monero',
-                            'paypal' => 'PayPal',
-                            'bank_transfer' => 'Bank Transfer',
-                        ])
-                        ->required(),
+                    Notification::make()
+                        ->title('Refund policy')
+                        ->body('Refunds are handled by support and paid only via Monero (XMR) with a 30% commission. Your email app will open to contact support.')
+                        ->warning()
+                        ->persistent()
+                        ->send();
 
-                    TextInput::make('withdrawal_address')
-                        ->label('Address/Account')
-                        ->required()
-                        ->placeholder('Enter your wallet address or account details'),
-                ])
-                ->action('requestWithdrawal'),
+                    return redirect()->away($mailto);
+                }),
 
             PageAction::make('transaction_history')
                 ->label('Full History')
                 ->icon('heroicon-o-document-text')
                 ->color('info')
-                ->url(fn (): string => route('filament.customer.pages.wallet-management') . '?tab=transactions'),
+                ->url(fn (): string => route('transactions.index')),
         ];
     }
 
-    public function requestWithdrawal(array $data): void
+    public function requestWithdrawal(array $data = null): void
     {
-        try {
-            $customer = Auth::guard('customer')->user();
-
-            if ($data['amount'] > $this->walletBalance) {
-                Notification::make()
-                    ->title('Insufficient Balance')
-                    ->body('You do not have enough funds for this withdrawal.')
-                    ->warning()
-                    ->send();
-                return;
-            }
-
-            // Create withdrawal transaction
-            $transactionId = DB::table('wallet_transactions')->insertGetId([
-                'customer_id' => $customer->id,
-                'wallet_id' => $this->walletId,
-                'type' => 'withdrawal',
-                'amount' => $data['amount'],
-                'status' => 'pending',
-                'payment_method' => $data['withdrawal_method'],
-                'description' => "Withdrawal to " . ucfirst($data['withdrawal_method']),
-                'metadata' => json_encode([
-                    'withdrawal_address' => $data['withdrawal_address'],
-                    'withdrawal_method' => $data['withdrawal_method'],
-                ]),
-                'reference_id' => 'WTH-' . strtoupper(uniqid()),
-                'created_at' => now(),
-                'updated_at' => now(),
-            ]);
-
-            // Deduct from wallet (will be restored if withdrawal fails)
-            DB::table('wallets')
-                ->where('id', $this->walletId)
-                ->decrement('balance', $data['amount']);
-
-            Notification::make()
-                ->title('Withdrawal Requested')
-                ->body('Your withdrawal request has been submitted and will be processed within 24-48 hours.')
-                ->success()
-                ->send();
-
-            // Refresh balance
-            $this->mount();
-
-        } catch (\Exception $e) {
-            Notification::make()
-                ->title('Withdrawal Request Failed')
-                ->body('Unable to process withdrawal request. Please try again.')
-                ->danger()
-                ->send();
-        }
+        Notification::make()
+            ->title('Contact Support to Withdraw')
+            ->body('For security reasons, withdrawals are handled by our support team. Please contact support@1000proxy.io or use in-app chat to initiate your withdrawal.')
+            ->warning()
+            ->persistent()
+            ->send();
     }
 
     public function downloadReceipt($transaction): void

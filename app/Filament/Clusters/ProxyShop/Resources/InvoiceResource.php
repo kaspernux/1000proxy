@@ -51,7 +51,7 @@ use Filament\Actions\BulkAction;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Filters\TernaryFilter;
 use Filament\Tables\Filters\Filter;
-use Filament\Infolists\Components\Tabs;
+use Filament\Schemas\Components\Tabs;
 use Filament\Infolists\Components\TextEntry;
 use Filament\Infolists\Components\IconEntry;
 use Filament\Notifications\Notification;
@@ -650,11 +650,11 @@ class InvoiceResource extends Resource
     {
         return $schema
             ->schema([
-                \Filament\Infolists\Components\Tabs::make('Invoice Details')->tabs([
-                    \Filament\Infolists\Components\Tabs\Tab::make('Overview')
+                \Filament\Schemas\Components\Tabs::make('Invoice Details')->tabs([
+                    \Filament\Schemas\Components\Tabs\Tab::make('Overview')
                         ->icon('heroicon-o-document-text')
                         ->schema([
-                            \Filament\Infolists\Components\Section::make('Invoice Information')
+                            \Filament\Schemas\Components\Section::make('Invoice Information')
                                 ->columns(2)
                                 ->schema([
                                     \Filament\Infolists\Components\TextEntry::make('id')
@@ -693,10 +693,10 @@ class InvoiceResource extends Resource
                                 ]),
                         ]),
 
-                    \Filament\Infolists\Components\Tabs\Tab::make('Pricing')
+                    \Filament\Schemas\Components\Tabs\Tab::make('Pricing')
                         ->icon('heroicon-o-currency-dollar')
                         ->schema([
-                            \Filament\Infolists\Components\Section::make('Price & Payment Details')
+                            \Filament\Schemas\Components\Section::make('Price & Payment Details')
                                 ->columns(2)
                                 ->schema([
                                     \Filament\Infolists\Components\TextEntry::make('price_amount')
@@ -731,10 +731,10 @@ class InvoiceResource extends Resource
                                 ]),
                         ]),
 
-                    \Filament\Infolists\Components\Tabs\Tab::make('URLs & References')
+                    \Filament\Schemas\Components\Tabs\Tab::make('URLs & References')
                         ->icon('heroicon-o-link')
                         ->schema([
-                            \Filament\Infolists\Components\Section::make('Payment URLs')
+                            \Filament\Schemas\Components\Section::make('Payment URLs')
                                 ->columns(1)
                                 ->schema([
                                     \Filament\Infolists\Components\TextEntry::make('invoice_url')
@@ -757,7 +757,7 @@ class InvoiceResource extends Resource
                                         ->placeholder('Not set'),
                                 ]),
 
-                            \Filament\Infolists\Components\Section::make('References')
+                            \Filament\Schemas\Components\Section::make('References')
                                 ->columns(2)
                                 ->schema([
                                     \Filament\Infolists\Components\TextEntry::make('payment_id')

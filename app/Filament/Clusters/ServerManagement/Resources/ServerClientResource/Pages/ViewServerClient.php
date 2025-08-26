@@ -7,7 +7,7 @@ use Filament\Resources\Pages\ViewRecord;
 use App\Filament\Clusters\ServerManagement\Resources\ServerClientResource;
 use Filament\Infolists\Components\TextEntry;
 use Filament\Infolists\Components\ImageEntry;
-use Filament\Infolists\Components\Grid;
+use Filament\Schemas\Components\Grid;
 
 class ViewServerClient extends ViewRecord
 {

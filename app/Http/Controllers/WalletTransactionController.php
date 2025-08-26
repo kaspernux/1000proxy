@@ -18,22 +18,44 @@ class WalletTransactionController extends Controller
 {
     public function index()
     {
-        $customerId = Auth::guard('customer')->id();
-        abort_unless($customerId, 403);
-        $transactions = WalletTransaction::whereHas('wallet', function ($query) use ($customerId) {
-            $query->where('customer_id', $customerId);
-        })->latest()->paginate(20);
-
-        return view('wallets.transactions', compact('transactions'));
+    // Use the Livewire Transactions page as the canonical UI
+    return redirect()->route('transactions.index');
     }
 
     public function show($id)
     {
         $transaction = WalletTransaction::with('wallet.customer')->findOrFail($id);
 
-    abort_if($transaction->wallet->customer_id !== Auth::guard('customer')->id(), 403);
+        abort_if($transaction->wallet->customer_id !== Auth::guard('customer')->id(), 403);
 
-        return view('wallets.transaction-detail', compact('transaction'));
+        // Try to resolve the related order for invoice download
+        $orderId = null;
+        try {
+            // Prefer explicit invoice linkage
+            $invoice = \App\Models\Invoice::where('wallet_transaction_id', $transaction->id)->first();
+            if ($invoice && $invoice->order_id) {
+                $orderId = (int) $invoice->order_id;
+            }
+            // Fallback: metadata order_id if present
+            if (!$orderId && is_array($transaction->metadata ?? null)) {
+                $orderId = (int) ($transaction->metadata['order_id'] ?? 0) ?: null;
+            }
+            // Fallback: parse from reference like 'order_462' or 'order-462'
+            if (!$orderId && is_string($transaction->reference)) {
+                if (preg_match('/^order[_-](\d+)/i', $transaction->reference, $m)) {
+                    $orderId = (int) ($m[1] ?? 0) ?: null;
+                }
+            }
+        } catch (\Throwable $e) {
+            // ignore, will handle as not available
+        }
+
+        if ($orderId) {
+            return redirect()->route('customer.invoice.download', ['order' => $orderId]);
+        }
+
+        return redirect()->route('transactions.index')
+            ->with('error', 'Invoice not available for this transaction.');
     }
 
 

@@ -23,12 +23,19 @@ class ReferralSnapshotWidget extends BaseWidget
             return [];
         }
 
-        // Placeholder logic (replace with real referral stats service when available)
-        $totalReferrals = $customer->referrals()->count();
-        $activeReferrals = $customer->referrals()->where('is_active', true)->count();
-        $earnings = $totalReferrals * 2.5; // Assume $2.50 per referral (placeholder)
+        $totalReferrals = Customer::query()->where('refered_by', $customer->id)->count();
+        $activeReferrals = \App\Models\Order::query()
+            ->whereIn('customer_id', function($q) use ($customer) { $q->select('id')->from('customers')->where('refered_by', $customer->id); })
+            ->where('payment_status', 'paid')
+            ->distinct('customer_id')
+            ->count('customer_id');
+        $earnings = (float) \App\Models\WalletTransaction::query()
+            ->where('customer_id', $customer->id)
+            ->where('type', 'credit')
+            ->where('metadata->referral', true)
+            ->sum('amount');
 
-        $conversion = $totalReferrals > 0 ? round(($activeReferrals / $totalReferrals) * 100, 1) : 0;
+        $conversion = $totalReferrals > 0 ? round(($activeReferrals / max(1,$totalReferrals)) * 100, 1) : 0;
 
         return [
             Stat::make('Referrals', $totalReferrals)
@@ -42,9 +49,9 @@ class ReferralSnapshotWidget extends BaseWidget
                 ->description($conversion . '% active')
                 ->color($conversion >= 60 ? 'success' : ($conversion >= 30 ? 'warning' : 'danger')),
 
-            Stat::make('Est. Earnings', '$' . number_format($earnings, 2))
+            Stat::make('Referral Earnings', '$' . number_format($earnings, 2))
                 ->icon('heroicon-o-banknotes')
-                ->description('Pending rewards')
+                ->description('Wallet credits')
                 ->color($earnings > 0 ? 'success' : 'gray'),
         ];
     }

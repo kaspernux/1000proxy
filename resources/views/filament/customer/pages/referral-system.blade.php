@@ -114,10 +114,10 @@
                     <div class="p-3">
                         <div class="flex items-center justify-between mb-2">
                             <span class="text-sm text-gray-600 dark:text-gray-400">This Month</span>
-                            <x-filament::badge color="success" size="xs">+{{ rand(1,12) }}</x-filament::badge>
+                            <x-filament::badge color="success" size="xs">+{{ $stats['monthly_referrals'] ?? 0 }}</x-filament::badge>
                         </div>
-                        <div class="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
-                            <div class="bg-success-500 h-2 rounded-full" style="width: {{ rand(20,100) }}%"></div>
+                            <div class="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
+                            <div class="bg-success-500 h-2 rounded-full" style="width: {{ min(100, ($stats['monthly_referrals'] ?? 0) * 8) }}%"></div>
                         </div>
                         <p class="text-xs text-gray-500 mt-1">Recent referral activity</p>
                     </div>
@@ -132,10 +132,10 @@
                     <div class="p-3">
                         <div class="flex items-center justify-between mb-2">
                             <span class="text-sm text-gray-600 dark:text-gray-400">Active</span>
-                            <x-filament::badge color="primary" size="xs">{{ rand(40,95) }}%</x-filament::badge>
+                            <x-filament::badge color="primary" size="xs">{{ number_format($stats['conversion_rate'] ?? 0,1) }}%</x-filament::badge>
                         </div>
-                        <div class="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
-                            <div class="bg-primary-500 h-2 rounded-full" style="width: {{ rand(40,95) }}%"></div>
+                            <div class="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
+                            <div class="bg-primary-500 h-2 rounded-full" style="width: {{ number_format($stats['conversion_rate'] ?? 0,1) }}%"></div>
                         </div>
                         <p class="text-xs text-gray-500 mt-1">Users who became active</p>
                     </div>
@@ -150,10 +150,10 @@
                     <div class="p-3">
                         <div class="flex items-center justify-between mb-2">
                             <span class="text-sm text-gray-600 dark:text-gray-400">Per Referral</span>
-                            <x-filament::badge color="warning" size="xs">${{ number_format($stats['total_referrals'] ? $stats['total_earnings'] / max(1,$stats['total_referrals']) : 0, 2) }}</x-filament::badge>
+                            <x-filament::badge color="warning" size="xs">${{ number_format($stats['avg_commission'] ?? 0, 2) }}</x-filament::badge>
                         </div>
                         <div class="text-center">
-                            <p class="text-lg font-bold text-gray-900 dark:text-white">${{ number_format($stats['total_referrals'] ? $stats['total_earnings'] / max(1,$stats['total_referrals']) : 0, 2) }}</p>
+                            <p class="text-lg font-bold text-gray-900 dark:text-white">${{ number_format($stats['avg_commission'] ?? 0, 2) }}</p>
                             <p class="text-xs text-gray-500">Average earning</p>
                         </div>
                     </div>

@@ -546,6 +546,64 @@ class PaymentProcessor extends Component
             $explicitStatus = strtolower($result['status'] ?? $result['payment_status'] ?? '');
             $successfulStatuses = ['paid','finished','confirmed','succeeded','completed'];
 
+            // If wallet selected, ensure the wallet balance is debited exactly once.
+            if ($gateway === 'wallet') {
+                try {
+                    $customer = $this->customer ?? (Auth::guard('customer')->user());
+                    if ($customer && method_exists($customer, 'getWallet')) {
+                        $wallet = $customer->getWallet();
+                        $order = $this->order;
+                        // Idempotency: detect any existing debit/payment tx linked to this order
+                        $txExists = $wallet->transactions()
+                            ->whereIn('type', ['debit','withdrawal','payment'])
+                            ->where(function($q) use ($order) {
+                                $q->where('reference', 'like', 'order_' . $order->id . '%')
+                                  ->orWhere('reference', 'like', 'Order_' . $order->id . '%')
+                                  ->orWhere('description', 'like', '%Order #' . ($order->order_number ?? $order->id) . '%')
+                                  ->orWhere('metadata->order_id', $order->id);
+                            })
+                            // match by absolute amount to avoid sign inconsistencies across historical records
+                            ->where(function($q) use ($order) {
+                                $amount = (float) ($order->total_amount ?? $order->grand_amount ?? 0);
+                                $q->where('amount', -abs($amount))
+                                  ->orWhere('amount', abs($amount));
+                            })
+                            ->exists();
+                        if (!$txExists) {
+                            $amount = (float) ($order->total_amount ?? $order->grand_amount ?? 0);
+                            if ($amount > 0) {
+                                if ((float)$wallet->balance >= $amount) {
+                                    // Atomic decrement and transaction record
+                                    $wallet->decrement('balance', $amount);
+                                    $wallet->transactions()->create([
+                                        'wallet_id' => $wallet->id,
+                                        'customer_id' => $customer->id,
+                                        'type' => 'withdrawal',
+                                        'amount' => -abs($amount),
+                                        'status' => 'completed',
+                                        'reference' => 'order_' . $order->id,
+                                        'description' => 'Payment for Order #' . ($order->order_number ?? $order->id),
+                                        'metadata' => ['order_id' => $order->id, 'gateway' => 'wallet'],
+                                    ]);
+                                } else {
+                                    \Log::warning('Wallet debit skipped due to insufficient balance after payment success', [
+                                        'customer_id' => $customer->id,
+                                        'order_id' => $order->id,
+                                        'wallet_balance' => $wallet->balance,
+                                        'required' => $amount,
+                                    ]);
+                                }
+                            }
+                        }
+                    }
+                } catch (\Throwable $e) {
+                    \Log::error('Failed ensuring wallet debit on paymentCompleted', [
+                        'order_id' => $this->order->id ?? null,
+                        'error' => $e->getMessage(),
+                    ]);
+                }
+            }
+
             if ($gateway === 'nowpayments' && !in_array($explicitStatus, $successfulStatuses, true)) {
                 // For NowPayments we rely on webhook to flip payment_status to paid.
                 \Log::info('PaymentCompleted event received for NowPayments but status not final; skipping paid update', [

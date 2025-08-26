@@ -38,8 +38,8 @@ use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Gate;
 use BackedEnum;
 use Filament\Infolists\Infolist;
-use Filament\Infolists\Components\Section as InfolistSection;
-use Filament\Infolists\Components\Grid as InfolistGrid;
+use Filament\Schemas\Components\Section as InfolistSection;
+use Filament\Schemas\Components\Grid as InfolistGrid;
 use Filament\Infolists\Components\TextEntry;
 
 class OrderResource extends Resource

@@ -1,17 +1,17 @@
-<div class="space-y-6 text-white">
+<div class="space-y-6 text-gray-900 dark:text-gray-100">
     <!-- Enhanced Order Header -->
-    <div class="relative bg-gradient-to-r from-blue-900/50 to-purple-900/50 backdrop-blur-lg rounded-2xl p-6 border border-blue-500/20 overflow-hidden">
+    <div class="relative bg-gradient-to-r from-blue-900/50 to-purple-900/50 backdrop-blur-lg rounded-2xl p-6 border border-blue-500/20 overflow-hidden text-white">
         <div class="absolute inset-0 bg-gradient-to-r from-blue-600/5 to-purple-600/5"></div>
         <div class="relative z-10">
             <div class="flex items-center justify-between">
                 <div>
-                    <h3 class="text-2xl font-bold text-white flex items-center">
+                    <h3 class="text-2xl font-bold flex items-center">
                         <svg class="w-7 h-7 mr-3 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path>
                         </svg>
                         Order #{{ $order->id }}
                     </h3>
-                    <p class="mt-2 text-gray-300 flex items-center">
+                    <p class="mt-2 text-blue-100 flex items-center">
                         <svg class="w-5 h-5 mr-2 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3a4 4 0 118 0v4m-4 8a2 2 0 100-4 2 2 0 000 4zm6-10V7a6 6 0 10-12 0v4a2 2 0 002 2h8a2 2 0 002-2z"></path>
                         </svg>
@@ -83,11 +83,13 @@
                 </div>
                 <h4 class="text-lg font-semibold text-purple-300 mb-2">Next Expiry</h4>
                 @php
-                    $nextExpiry = $order->items
+                    // expiry_time is stored in milliseconds (int) per 3X-UI
+                    $nextExpiryMs = $order->items
                         ->map(fn($item) => $item->server_client?->expiry_time)
-                        ->filter()
+                        ->filter(fn($v) => !is_null($v) && (int) $v > 0)
                         ->sort()
                         ->first();
+                    $nextExpiry = $nextExpiryMs ? \Carbon\Carbon::createFromTimestampMs((int) $nextExpiryMs) : null;
                 @endphp
                 @if($nextExpiry)
                     <p class="text-3xl font-bold text-white">{{ $nextExpiry->format('M j') }}</p>
@@ -102,10 +104,10 @@
 
     <!-- Order Items -->
     <div>
-        <h4 class="text-lg font-medium text-gray-900 mb-4">Order Items</h4>
+        <h4 class="text-lg font-medium text-white mb-4">Order Items</h4>
         <div class="space-y-4">
             @foreach($order->items as $item)
-                <div class="border border-gray-200 rounded-lg p-4">
+                <div class="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg p-4">
                     <div class="flex items-center justify-between">
                         <div class="flex-1">
                             <h5 class="font-medium text-gray-900">
@@ -125,7 +127,13 @@
                                             {{ $item->server_client->enable ? 'Active' : 'Inactive' }}
                                         </span>
                                     </p>
-                                    <p>Expires: {{ $item->server_client->expiry_time?->format('M j, Y H:i') ?? 'N/A' }}</p>
+                                    <p>
+                                        @php
+                                            $ms = $item->server_client?->expiry_time;
+                                        @endphp
+                                        Expires:
+                                        {{ ($ms && (int) $ms > 0) ? \Carbon\Carbon::createFromTimestampMs((int) $ms)->format('M j, Y H:i') : 'Never' }}
+                                    </p>
                                 @endif
                             </div>
                         </div>
@@ -139,11 +147,11 @@
                         <div class="mt-4 pt-4 border-t border-gray-200">
                             <h6 class="text-sm font-medium text-gray-900 mb-2">Configuration</h6>
                             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <!-- VLESS Config -->
-                                <div class="bg-gray-50 rounded p-3">
+                <!-- VLESS Config -->
+                                <div class="bg-gray-50 dark:bg-gray-800/60 rounded p-3 border border-gray-200 dark:border-gray-700">
                                     <h7 class="text-xs font-medium text-gray-700 uppercase tracking-wide">VLESS</h7>
                                     <div class="mt-1 flex items-center space-x-2">
-                                        <code class="flex-1 text-xs bg-white border rounded px-2 py-1 truncate">
+                    <code data-config="vless-{{ $item->id }}" class="flex-1 text-xs bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-200 border border-gray-200 dark:border-gray-700 rounded px-2 py-1 truncate">
                                             vless://{{ $item->server_client->uuid }}@{{ $item->server->ip }}:{{ $item->server->port }}
                                         </code>
                                         <button onclick="copyToClipboard('vless-{{ $item->id }}')"
@@ -156,11 +164,11 @@
                                     </div>
                                 </div>
 
-                                <!-- VMess Config -->
-                                <div class="bg-gray-50 rounded p-3">
+                <!-- VMess Config -->
+                                <div class="bg-gray-50 dark:bg-gray-800/60 rounded p-3 border border-gray-200 dark:border-gray-700">
                                     <h7 class="text-xs font-medium text-gray-700 uppercase tracking-wide">VMess</h7>
                                     <div class="mt-1 flex items-center space-x-2">
-                                        <code class="flex-1 text-xs bg-white border rounded px-2 py-1 truncate">
+                    <code data-config="vmess-{{ $item->id }}" class="flex-1 text-xs bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-200 border border-gray-200 dark:border-gray-700 rounded px-2 py-1 truncate">
                                             vmess://{{ base64_encode(json_encode([
                                                 'v' => '2',
                                                 'ps' => $item->server->name,
@@ -182,16 +190,114 @@
                                 </div>
                             </div>
 
-                            <!-- QR Code Section -->
-                            <div class="mt-3 text-center">
-                                <button onclick="showQRCode('{{ $item->id }}')"
-                                        class="inline-flex items-center px-3 py-1 border border-gray-300 text-xs font-medium rounded text-gray-700 bg-white hover:bg-gray-50">
-                                    <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                              d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h2M4 4h4m12 0h2M4 20h4m12 0h2"></path>
-                                    </svg>
-                                    Show QR Code
-                                </button>
+                            <!-- Configuration Links (Client, Subscription, JSON) -->
+                            <div class="mt-3 bg-gray-50 rounded p-3">
+                                <h7 class="text-xs font-medium text-gray-700 uppercase tracking-wide">Configuration Links</h7>
+                                @php
+                                    $clientLink = $item->server_client?->client_link;
+                                    $subLink = $item->server_client?->remote_sub_link;
+                                    $jsonLink = $item->server_client?->remote_json_link;
+                                @endphp
+
+                                {{-- Client Link --}}
+                                <div class="mt-1 flex items-center gap-2">
+                                    <span class="text-[11px] font-medium text-gray-600 w-20">Client</span>
+                                    @if($clientLink)
+                                        <a href="{{ $clientLink }}" target="_blank" rel="noopener" class="text-blue-600 hover:text-blue-700 underline text-xs">Open</a>
+                                        <code data-config="client-{{ $item->id }}" class="flex-1 text-xs bg-white text-gray-800 border rounded px-2 py-1 break-all">{{ $clientLink }}</code>
+                                        <button onclick="copyToClipboard('client-{{ $item->id }}')"
+                                                class="flex-shrink-0 p-1 text-gray-400 hover:text-gray-600" title="Copy">
+                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path>
+                                            </svg>
+                                        </button>
+                                    @else
+                                        <span class="text-xs text-gray-500">Not available</span>
+                                    @endif
+                                </div>
+
+                                {{-- Subscription Link --}}
+                                <div class="mt-2 flex items-center gap-2">
+                                    <span class="text-[11px] font-medium text-gray-600 w-20">Subscription</span>
+                                    @if($subLink)
+                                        <a href="{{ $subLink }}" target="_blank" rel="noopener" class="text-blue-600 hover:text-blue-700 underline text-xs">Open</a>
+                                        <code data-config="sub-{{ $item->id }}" class="flex-1 text-xs bg-white text-gray-800 border rounded px-2 py-1 break-all">{{ $subLink }}</code>
+                                        <button onclick="copyToClipboard('sub-{{ $item->id }}')"
+                                                class="flex-shrink-0 p-1 text-gray-400 hover:text-gray-600" title="Copy">
+                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path>
+                                            </svg>
+                                        </button>
+                                    @else
+                                        <span class="text-xs text-gray-500">Not available</span>
+                                    @endif
+                                </div>
+
+                                {{-- JSON Subscription Link --}}
+                                <div class="mt-2 flex items-center gap-2">
+                                    <span class="text-[11px] font-medium text-gray-600 w-20">JSON</span>
+                                    @if($jsonLink)
+                                        <a href="{{ $jsonLink }}" target="_blank" rel="noopener" class="text-blue-600 hover:text-blue-700 underline text-xs">Open</a>
+                                        <code data-config="json-{{ $item->id }}" class="flex-1 text-xs bg-white text-gray-800 border rounded px-2 py-1 break-all">{{ $jsonLink }}</code>
+                                        <button onclick="copyToClipboard('json-{{ $item->id }}')"
+                                                class="flex-shrink-0 p-1 text-gray-400 hover:text-gray-600" title="Copy">
+                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path>
+                                            </svg>
+                                        </button>
+                                    @else
+                                        <span class="text-xs text-gray-500">Not available</span>
+                                    @endif
+                                </div>
+                            </div>
+
+                            <!-- QR Codes: Client, Subscription, JSON (if available) -->
+                            <div class="mt-3">
+                                @php
+                                    $clientQr = $item->server_client?->qr_code; // data URI accessor
+                                    // Build web URLs for stored QR images for sub/json if present
+                                    $subQrPath = $item->server_client?->qr_code_sub;
+                                    $jsonQrPath = $item->server_client?->qr_code_sub_json;
+                                    $subQr = null;
+                                    $jsonQr = null;
+                                    if (is_string($subQrPath) && str_starts_with($subQrPath, 'data:image')) {
+                                        $subQr = $subQrPath;
+                                    } elseif (!empty($subQrPath)) {
+                                        $norm = ltrim($subQrPath, '/');
+                                        if (str_starts_with($norm, 'public/')) $norm = substr($norm, 7);
+                                        $subQr = asset('storage/' . $norm);
+                                    }
+                                    if (is_string($jsonQrPath) && str_starts_with($jsonQrPath, 'data:image')) {
+                                        $jsonQr = $jsonQrPath;
+                                    } elseif (!empty($jsonQrPath)) {
+                                        $norm2 = ltrim($jsonQrPath, '/');
+                                        if (str_starts_with($norm2, 'public/')) $norm2 = substr($norm2, 7);
+                                        $jsonQr = asset('storage/' . $norm2);
+                                    }
+                                @endphp
+                                <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 text-center">
+                                    @if($clientQr)
+                                        <div class="bg-white rounded p-2 border">
+                                            <img src="{{ $clientQr }}" alt="Client QR" class="mx-auto w-80 h-80 object-contain" />
+                                            <p class="text-xs text-gray-600 mt-1">Client QR</p>
+                                        </div>
+                                    @endif
+                                    @if($subQr)
+                                        <div class="bg-white rounded p-2 border">
+                                            <img src="{{ $subQr }}" alt="Subscription QR" class="mx-auto w-80 h-80 object-contain" />
+                                            <p class="text-xs text-gray-600 mt-1">Subscription QR</p>
+                                        </div>
+                                    @endif
+                                    @if($jsonQr)
+                                        <div class="bg-white rounded p-2 border">
+                                            <img src="{{ $jsonQr }}" alt="JSON QR" class="mx-auto w-80 h-80 object-contain" />
+                                            <p class="text-xs text-gray-600 mt-1">JSON QR</p>
+                                        </div>
+                                    @endif
+                                </div>
+                                @if(!$clientQr && !$subQr && !$jsonQr)
+                                    <p class="text-sm text-gray-500 text-center">QR codes unavailable</p>
+                                @endif
                             </div>
                         </div>
                     @endif
@@ -202,7 +308,7 @@
 
     <!-- Order Timeline -->
     <div>
-        <h4 class="text-lg font-medium text-gray-900 mb-4">Order Timeline</h4>
+        <h4 class="text-lg font-medium text-white mb-4">Order Timeline</h4>
         <div class="flow-root">
             <ul class="-mb-8">
                 <li>

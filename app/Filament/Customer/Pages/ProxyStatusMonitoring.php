@@ -12,6 +12,7 @@ use App\Models\ServerClient;
 use App\Models\Order;
 use App\Models\Server;
 use App\Services\XUIService;
+use App\Services\CacheService;
 use Filament\Notifications\Notification;
 use Carbon\Carbon;
 use BackedEnum;
@@ -32,7 +33,11 @@ class ProxyStatusMonitoring extends Page
     public $selectedTimeRange = '24h';
     public $autoRefresh = true;
     public $showOfflineOnly = false;
+    public $includePending = false;
     public $selectedProxy = null;
+    public $searchTerm = '';
+    public $protocolFilter = 'all';
+    public $selectedQrImage = null;
 
     public function mount(): void
     {
@@ -40,6 +45,11 @@ class ProxyStatusMonitoring extends Page
         $this->calculateOverallMetrics();
         $this->checkAlertsAndIssues();
         $this->loadPerformanceHistory();
+    }
+
+    public function getPollingInterval(): ?string
+    {
+        return $this->autoRefresh ? $this->pollingInterval : null;
     }
 
     protected function getHeaderActions(): array
@@ -68,12 +78,29 @@ class ProxyStatusMonitoring extends Page
                 ->icon($this->autoRefresh ? 'heroicon-o-pause' : 'heroicon-o-play')
                 ->color($this->autoRefresh ? 'warning' : 'success')
                 ->action('toggleAutoRefresh'),
+
+            PageAction::make('toggle_pending')
+                ->label($this->includePending ? 'Hide Pending Purchases' : 'Show Pending Purchases')
+                ->icon($this->includePending ? 'heroicon-o-eye-slash' : 'heroicon-o-eye')
+                ->color($this->includePending ? 'warning' : 'gray')
+                ->action('togglePending'),
         ];
+    }
+
+    public function togglePending(): void
+    {
+        $this->includePending = !$this->includePending;
+        $this->loadProxyStatuses(true);
+        $this->calculateOverallMetrics();
+        $this->checkAlertsAndIssues();
     }
 
     public function refreshAllStatuses(): void
     {
-        $this->loadProxyStatuses(true); // Force refresh
+    $customer = Auth::guard('customer')->user();
+    // Invalidate cached user clients to ensure inbound/plan are reloaded
+    (new CacheService())->invalidateUserCaches((int) $customer->id);
+    $this->loadProxyStatuses(true); // Force refresh
         $this->calculateOverallMetrics();
         $this->checkAlertsAndIssues();
 
@@ -126,15 +153,12 @@ class ProxyStatusMonitoring extends Page
         $filename = "proxy_status_report_" . now()->format('Y-m-d_H-i-s') . ".json";
         \Storage::disk('public')->put("reports/{$filename}", json_encode($reportData, JSON_PRETTY_PRINT));
 
+        $url = \Storage::disk('public')->url("reports/{$filename}");
+        $this->js("window.open('{$url}', '_blank')");
+
         Notification::make()
             ->title('Report Generated')
-            ->body("Status report exported: {$filename}")
-            ->actions([
-                \Filament\Notifications\Actions\Action::make('download')
-                    ->button()
-                    ->url(\Storage::disk('public')->url("reports/{$filename}"))
-                    ->openUrlInNewTab(),
-            ])
+            ->body("Status report exported: {$filename}. Fallback link: {$url}")
             ->success()
             ->persistent()
             ->send();
@@ -225,6 +249,35 @@ class ProxyStatusMonitoring extends Page
         }
     }
 
+    public function copyLink(string $id): void
+    {
+        $proxy = collect($this->proxyStatuses)->firstWhere('id', $id);
+        $link = $proxy['links']['subscription'] ?? null;
+        if (!$link) {
+            Notification::make()->title('No subscription link available')->info()->send();
+            return;
+        }
+        $this->js("navigator.clipboard.writeText('" . addslashes($link) . "')");
+        Notification::make()->title('Subscription link copied')->success()->send();
+    }
+
+    public function openQr(string $id): void
+    {
+        $proxy = collect($this->proxyStatuses)->firstWhere('id', $id);
+        $qr = $proxy['links']['qr'] ?? null;
+        if (!$qr) {
+            Notification::make()->title('No QR code available')->info()->send();
+            return;
+        }
+        // Show QR in an in-page modal for better browser compatibility
+        $this->selectedQrImage = $qr;
+    }
+
+    public function closeQr(): void
+    {
+        $this->selectedQrImage = null;
+    }
+
     protected function loadProxyStatuses(bool $forceRefresh = false): void
     {
         $customer = Auth::guard('customer')->user();
@@ -232,56 +285,266 @@ class ProxyStatusMonitoring extends Page
 
         if ($forceRefresh) {
             Cache::forget($cacheKey);
+            // Also invalidate user client cache so relationships (plan/inbound) re-hydrate
+            (new CacheService())->invalidateUserCaches((int) $customer->id);
         }
 
         $this->proxyStatuses = Cache::remember($cacheKey, 300, function () use ($customer) {
-            return ServerClient::whereHas('order', function ($query) use ($customer) {
-                $query->where('customer_id', $customer->id);
-            })
-            ->with(['server.brand', 'server.category', 'order'])
-            ->where('status', 'active')
-            ->get()
-            ->map(function ($client) {
+            $clients = (new CacheService())->getUserServerClients((int) $customer->id);
+
+            $clientRows = $clients->map(function (ServerClient $client) {
+                // Ensure we have a Server model even when server_id isn't set by deriving from inbound
+                $server = $client->server ?: optional($client->inbound)->server;
+                $client->setRelation('server', $server);
                 $status = $this->determineProxyStatus($client);
+
+                // Prefer real-time fields if available
+                $latency = is_numeric(optional($client->server)->response_time_ms ?? null)
+                    ? (int) $client->server->response_time_ms
+                    : ($status['latency'] ?? ($server ? $this->measureLatency($server) : 0));
+
+                $uptime = is_numeric(optional($client->server)->uptime_percentage ?? null)
+                    ? (float) $client->server->uptime_percentage
+                    : ($status['uptime'] ?? $this->calculateUptime($client));
+
+                // Usage: attempt live fetch via XUI (cached), else prefer local computed
+                $liveTraffic = $this->retrieveClientTraffic($client, false);
+                $usedMb = $client->bandwidth_used_mb; // accessor
+                $usedBytes = (int) (($client->remote_up ?? 0) + ($client->remote_down ?? 0));
+                if (is_array($liveTraffic) && isset($liveTraffic['total']) && $liveTraffic['total'] > 0) {
+                    $usedBytes = (int) $liveTraffic['total'];
+                    $usedMb = round($usedBytes / 1048576, 2);
+                } elseif ($usedBytes === 0 && $usedMb > 0) {
+                    $usedBytes = (int) round($usedMb * 1048576);
+                }
+
+                // Determine limit (MB) from client or plan
+                $limitMb = null;
+                if (is_numeric($client->traffic_limit_mb ?? null)) {
+                    $limitMb = (float) $client->traffic_limit_mb;
+                } else {
+                    $planForLimit = $client->plan;
+                    if (!$planForLimit && $client->order && $client->order->relationLoaded('orderItems')) {
+                        $planForLimit = optional($client->order->orderItems->first())->serverPlan;
+                    }
+                    if ($planForLimit && is_numeric($planForLimit->data_limit_gb ?? null)) {
+                        $limitMb = ((float) $planForLimit->data_limit_gb) * 1024.0;
+                    }
+                }
+                $usagePct = null;
+                if ($limitMb && $limitMb > 0) {
+                    $usagePct = round(min(100, ($usedMb / $limitMb) * 100), 1);
+                } elseif (is_numeric($client->traffic_percentage_used ?? null)) {
+                    $usagePct = (float) $client->traffic_percentage_used;
+                }
+
+                // Resolve plan details with fallback from order items if direct relation is missing
+                $planModel = $client->plan;
+                if (!$planModel && $client->order && $client->order->relationLoaded('orderItems')) {
+                    $planModel = optional($client->order->orderItems->first())->serverPlan;
+                }
+
                 return [
                     'id' => $client->id,
-                    'name' => $client->server->name ?? "Proxy {$client->id}",
-                    'location' => $client->server->location ?? 'Unknown',
-                    'brand' => $client->server->brand->name ?? 'Generic',
-                    'protocol' => $client->inbound_name ?? 'vless',
+                    'name' => optional($client->server)->name ?? ("Proxy {$client->id}"),
+                    'location' => optional($client->server)->location ?? optional($client->server)->country ?? 'Unknown',
+                    'brand' => optional(optional($client->server)->brand)->name ?? 'Generic',
+                    'protocol' => $client->network_type ?? 'vless',
+                    'links' => [
+                        'subscription' => $client->subscription_link,
+                        'qr' => $client->qr_code,
+                    ],
+                    'plan' => [
+                        'id' => $planModel->id ?? null,
+                        'name' => $planModel->name ?? null,
+                        'days' => $planModel->days ?? null,
+                        'data_limit_gb' => $planModel->data_limit_gb ?? null,
+                        'protocol' => $planModel->protocol ?? null,
+                    ],
+                    'inbound' => [
+                        'id' => $client->server_inbound_id ?? optional($client->inbound)->id,
+                        'protocol' => optional($client->inbound)->protocol,
+                        'port' => optional($client->inbound)->port,
+                    ],
+                    'client' => [
+                        'email' => $client->email,
+                        'enable' => (bool) ($client->enable ?? true),
+                        'limit_ip' => $client->limit_ip ?? 0,
+                        'uuid' => $client->id,
+                    ],
                     'status' => $status['status'],
                     'status_text' => $status['text'],
                     'status_color' => $status['color'],
-                    'latency' => $status['latency'],
-                    'uptime' => $status['uptime'],
+                    'latency' => $latency,
+                    'uptime' => $uptime,
                     'last_check' => now(),
+                    'last_connection_at' => $client->last_connection_at,
                     'data_usage' => [
-                        'upload' => $client->up ?? 0,
-                        'download' => $client->down ?? 0,
-                        'total' => ($client->up ?? 0) + ($client->down ?? 0)
+                        'upload' => (int) ($client->remote_up ?? 0),
+                        'download' => (int) ($client->remote_down ?? 0),
+                        'total_bytes' => $usedBytes,
+                        'total' => $this->formatBytes($usedBytes),
+                        'used_mb' => $usedMb,
+                        'limit_mb' => $limitMb,
+                        'usage_percent' => $usagePct,
                     ],
                     'connection_details' => [
-                        'ip' => $client->server->ip,
-                        'port' => $client->server->api_port,
-                        'domain' => $client->server->domain,
-                        'uuid' => $client->uuid
+                        'ip' => optional($client->server)->ip ?? null,
+                        'port' => optional($client->server)->port ?? optional($client->server)->panel_port ?? null,
+                        'host' => optional($client->server)->host ?? null,
+                        'uuid' => $client->id,
                     ],
                     'order_info' => [
-                        'order_id' => $client->order->id ?? null,
-                        'expires_at' => $client->order->expires_at ?? null,
-                        'days_remaining' => $client->order && $client->order->expires_at
-                            ? Carbon::parse($client->order->expires_at)->diffInDays(now(), false)
-                            : null
-                    ]
+                        'order_id' => optional($client->order)->id,
+                        'expires_at' => optional($client->order)->expires_at,
+                        // Positive when in the future, negative when past
+                        'days_remaining' => ($client->order && $client->order->expires_at)
+                            ? now()->diffInDays(Carbon::parse($client->order->expires_at), false)
+                            : null,
+                    ],
                 ];
-            })
-            ->when($this->showOfflineOnly, function ($collection) {
-                return $collection->where('status', 'offline');
-            })
-            ->sortBy('name')
-            ->values()
-            ->all();
+            });
+
+            // Also include purchased plans (order items) even if a client record is missing
+            $orderItems = $this->includePending ? Order::query()
+                ->where('customer_id', $customer->id)
+                ->whereHas('items')
+                ->with(['items.serverPlan.server'])
+                ->get()
+                ->flatMap(function ($order) { return $order->items; }) : collect();
+
+            $orderRows = $orderItems->map(function ($item) {
+                $plan = $item->serverPlan;
+                $server = optional($plan)->server;
+                $name = $server->name ?? ($plan->name ?? 'Purchased Plan');
+                return [
+                    'id' => 'order_item_' . $item->id,
+                    'name' => $name,
+                    'location' => optional($server)->location ?? optional($server)->country ?? 'Unknown',
+                    'brand' => optional(optional($server)->brand)->name ?? 'Generic',
+                    'protocol' => $plan->protocol ?? 'vless',
+                    'plan' => [
+                        'id' => $plan->id ?? null,
+                        'name' => $plan->name ?? null,
+                        'days' => $plan->days ?? null,
+                        'data_limit_gb' => $plan->data_limit_gb ?? null,
+                        'protocol' => $plan->protocol ?? null,
+                    ],
+                    'inbound' => [ 'id' => null, 'protocol' => null, 'port' => null ],
+                    'client' => [ 'email' => null, 'enable' => false, 'limit_ip' => 0, 'uuid' => null ],
+                    'status' => 'pending',
+                    'status_text' => 'Awaiting provisioning',
+                    'status_color' => 'warning',
+                    'latency' => 0,
+                    'uptime' => 0,
+                    'last_check' => now(),
+                    'data_usage' => [
+                        'upload' => 0,
+                        'download' => 0,
+                        'total_bytes' => 0,
+                        'total' => $this->formatBytes(0),
+                        'used_mb' => 0,
+                        'limit_mb' => is_numeric($plan->data_limit_gb ?? null) ? ((float)$plan->data_limit_gb) * 1024.0 : null,
+                        'usage_percent' => null,
+                    ],
+                    'connection_details' => [
+                        'ip' => optional($server)->ip,
+                        'port' => optional($server)->port ?? optional($server)->panel_port,
+                        'host' => optional($server)->host,
+                        'uuid' => null,
+                    ],
+                    'order_info' => [
+                        'order_id' => $item->order_id,
+                        'expires_at' => $item->expires_at,
+                        'days_remaining' => ($item->expires_at) ? now()->diffInDays(Carbon::parse($item->expires_at), false) : null,
+                    ],
+                ];
+            });
+
+            // Merge client rows and order rows, avoiding duplicates by plan id or name+location
+            $all = collect();
+            foreach ($clientRows as $row) {
+                $all->put('client_'.$row['id'], $row);
+            }
+            foreach ($orderRows as $row) {
+                $dupKey = 'plan_'.($row['plan']['id'] ?? $row['name'].'_'.$row['location']);
+                if (!$all->has($dupKey)) {
+                    $all->put($dupKey, $row);
+                }
+            }
+
+            $result = $all->values();
+            if ($this->showOfflineOnly) {
+                $result = $result->where('status', 'offline');
+            }
+            return $result->sortBy('name')->values()->all();
         });
+    }
+
+    public function testSingle(string $id): void
+    {
+        $proxy = collect($this->proxyStatuses)->firstWhere('id', $id);
+        if (!$proxy || !is_string($proxy['id']) && !is_array($proxy)) {
+            return;
+        }
+        // Only handle real clients (skip pending order rows with id like 'order_item_*')
+        if (is_string($proxy['id']) && str_starts_with($proxy['id'], 'order_item_')) {
+            return;
+        }
+        $result = $this->testProxyConnection($proxy);
+        $this->refreshSilently();
+        Notification::make()
+            ->title('Test ' . ($result['success'] ? 'Succeeded' : 'Failed'))
+            ->body($result['success'] ? ("Latency: {$result['latency']}ms") : ($result['error'] ?? 'Unknown error'))
+            ->{($result['success'] ? 'success' : 'warning')}()
+            ->send();
+    }
+
+    public function refreshSilently(): void
+    {
+        $this->loadProxyStatuses(true);
+        $this->calculateOverallMetrics();
+        $this->checkAlertsAndIssues();
+        // No notifications; used for auto-polling
+    }
+
+    /**
+     * Retrieve live client traffic from XUI with short caching.
+     * Falls back to locally stored remote_* fields if API not reachable.
+     */
+    protected function retrieveClientTraffic(ServerClient $client, bool $force = false): ?array
+    {
+        try {
+            $cache = new CacheService();
+            if (!$force) {
+                $cached = $cache->getClientTraffic($client->id);
+                if (is_array($cached)) {
+                    return $cached;
+                }
+            }
+            if (!$client->server) {
+                return null;
+            }
+            $svc = new XUIService($client->server);
+            // Prefer UUID-based lookup; fall back to email
+            $remote = $svc->getClientByUuid($client->id) ?: ($client->email ? $svc->getClientByEmail($client->email) : null);
+            if (is_array($remote)) {
+                $up = (int) ($remote['up'] ?? 0);
+                $down = (int) ($remote['down'] ?? 0);
+                $total = (int) ($remote['total'] ?? ($up + $down));
+                $result = ['up' => $up, 'down' => $down, 'total' => $total];
+                $cache->cacheClientTraffic($client->id, $result);
+                return $result;
+            }
+        } catch (\Throwable $e) {
+            // ignore, fallback below
+        }
+        if (is_numeric($client->remote_up) || is_numeric($client->remote_down)) {
+            $up = (int) ($client->remote_up ?? 0);
+            $down = (int) ($client->remote_down ?? 0);
+            return ['up' => $up, 'down' => $down, 'total' => $up + $down];
+        }
+        return null;
     }
 
     protected function calculateOverallMetrics(): void
@@ -306,7 +569,7 @@ class ProxyStatusMonitoring extends Page
         $offlineProxies = $proxies->where('status', 'offline')->count();
         $uptimePercentage = round(($onlineProxies / $totalProxies) * 100, 1);
         $averageLatency = round($proxies->where('status', 'online')->avg('latency'), 1);
-        $totalDataUsage = $proxies->sum('data_usage.total');
+    $totalDataUsage = $proxies->sum('data_usage.total_bytes');
 
         // Calculate health score based on multiple factors
         $healthScore = $this->calculateHealthScore($proxies);
@@ -406,21 +669,41 @@ class ProxyStatusMonitoring extends Page
         $customer = Auth::guard('customer')->user();
         $cacheKey = "performance_history_{$customer->id}_{$this->selectedTimeRange}";
 
-        $this->performanceHistory = Cache::remember($cacheKey, 1800, function () {
+        $this->performanceHistory = Cache::remember($cacheKey, 300, function () use ($customer) {
             $timeRange = $this->getTimeRangeData();
+            $start = $timeRange['start'];
+            $end = $timeRange['end'];
+            $interval = $timeRange['interval'];
+            $points = $timeRange['points'];
+            $format = $timeRange['format'];
+
+            // Pull persisted metrics and aggregate into time buckets
+            $metrics = \App\Models\ClientMetric::query()
+                ->where('customer_id', $customer->id)
+                ->whereBetween('measured_at', [$start, $end])
+                ->orderBy('measured_at')
+                ->get(['is_online', 'latency_ms', 'total_bytes', 'measured_at']);
+
             $history = [];
+            for ($i = 0; $i < $points; $i++) {
+                $bucketStart = $start->copy()->addSeconds($i * $interval);
+                $bucketEnd = $bucketStart->copy()->addSeconds($interval);
+                $bucket = $metrics->filter(function ($m) use ($bucketStart, $bucketEnd) {
+                    return $m->measured_at >= $bucketStart && $m->measured_at < $bucketEnd;
+                });
 
-            for ($i = 0; $i < $timeRange['points']; $i++) {
-                $timestamp = $timeRange['start']->copy()->addSeconds($i * $timeRange['interval']);
+                $total = max(1, $bucket->count());
+                $online = $bucket->where('is_online', true)->count();
+                $avgLatency = (int) round($bucket->avg('latency_ms'));
+                $sumBytes = (int) $bucket->sum('total_bytes');
 
-                // Simulate historical data - in real implementation, this would come from stored metrics
                 $history[] = [
-                    'timestamp' => $timestamp->toISOString(),
-                    'formatted_time' => $timestamp->format($timeRange['format']),
-                    'uptime_percentage' => rand(85, 100),
-                    'average_latency' => rand(50, 150),
-                    'active_connections' => rand(1, 10),
-                    'data_transfer' => rand(100, 1000) * 1024 * 1024, // Random MB
+                    'timestamp' => $bucketStart->toISOString(),
+                    'formatted_time' => $bucketStart->format($format),
+                    'uptime_percentage' => round(($online / $total) * 100, 1),
+                    'average_latency' => $avgLatency > 0 ? $avgLatency : null,
+                    'active_connections' => $online,
+                    'data_transfer' => $sumBytes,
                 ];
             }
 
@@ -442,30 +725,29 @@ class ProxyStatusMonitoring extends Page
                 ];
             }
 
-            // Test XUI connection
+            // Prefer cached/live flags first to avoid excessive remote calls
+            if (!is_null($client->is_online)) {
+                $online = (bool) $client->is_online;
+                return [
+                    'status' => $online ? 'online' : 'offline',
+                    'text' => $online ? 'Connected' : 'Disconnected',
+                    'color' => $online ? 'success' : 'danger',
+                    'latency' => $online ? $this->measureLatency($client->server) : 0,
+                    'uptime' => $this->calculateUptime($client),
+                ];
+            }
+
+            // Fallback to a lightweight connectivity check via XUI
             $xuiService = new XUIService($client->server);
             $isOnline = $xuiService->testConnection();
 
-            if ($isOnline) {
-                $latency = $this->measureLatency($client->server);
-                $uptime = $this->calculateUptime($client);
-
-                return [
-                    'status' => 'online',
-                    'text' => 'Connected',
-                    'color' => 'success',
-                    'latency' => $latency,
-                    'uptime' => $uptime
-                ];
-            } else {
-                return [
-                    'status' => 'offline',
-                    'text' => 'Connection failed',
-                    'color' => 'danger',
-                    'latency' => 0,
-                    'uptime' => $this->calculateUptime($client)
-                ];
-            }
+            return [
+                'status' => $isOnline ? 'online' : 'offline',
+                'text' => $isOnline ? 'Connected' : 'Connection failed',
+                'color' => $isOnline ? 'success' : 'danger',
+                'latency' => $isOnline ? $this->measureLatency($client->server) : 0,
+                'uptime' => $this->calculateUptime($client),
+            ];
         } catch (\Exception $e) {
             return [
                 'status' => 'error',
@@ -479,14 +761,41 @@ class ProxyStatusMonitoring extends Page
 
     protected function measureLatency(Server $server): int
     {
-        // Simulate latency measurement - in real implementation, this would ping the server
-        return rand(30, 200);
+        // Quick TCP connect timing as an approximation to latency (no external ping dependency)
+        $host = $server->host ?: ($server->ip ?: '127.0.0.1');
+        $port = (int) ($server->port ?: ($server->panel_port ?: 443));
+        $timeout = 1.0; // seconds
+        $start = microtime(true);
+        try {
+            $errno = 0; $errstr = '';
+            $conn = @fsockopen($host, $port, $errno, $errstr, $timeout);
+            if ($conn) {
+                fclose($conn);
+                $ms = (int) round((microtime(true) - $start) * 1000);
+                return max(1, min($ms, 2000));
+            }
+        } catch (\Throwable $e) {
+            // ignore
+        }
+        return 0; // unreachable
     }
 
     protected function calculateUptime(ServerClient $client): float
     {
-        // Simulate uptime calculation - in real implementation, this would be based on historical data
-        return round(rand(95, 100), 1);
+        // Calculate uptime percentage over the last 24h using persisted metrics
+        $from = now()->subDay();
+        $to = now();
+        $metrics = \App\Models\ClientMetric::query()
+            ->where('server_client_id', $client->id)
+            ->whereBetween('measured_at', [$from, $to])
+            ->get(['is_online']);
+
+        $total = $metrics->count();
+        if ($total === 0) {
+            return 0.0; // no data yet
+        }
+        $online = $metrics->where('is_online', true)->count();
+        return round(($online / $total) * 100, 1);
     }
 
     protected function calculateHealthScore(Collection $proxies): int
@@ -510,11 +819,28 @@ class ProxyStatusMonitoring extends Page
 
     protected function calculatePerformanceTrend(): array
     {
-        // Simulate trend calculation - in real implementation, this would compare historical data
+        // Compare first half vs second half uptime averages in current history
+        $history = collect($this->performanceHistory);
+        if ($history->isEmpty()) {
+            return [
+                'direction' => 'stable',
+                'percentage_change' => 0,
+                'description' => 'No metrics collected yet',
+            ];
+        }
+        $mid = (int) floor($history->count() / 2);
+        $first = $history->take($mid)->avg('uptime_percentage') ?: 0;
+        $second = $history->slice($mid)->avg('uptime_percentage') ?: 0;
+        $change = $first == 0 ? 0 : round((($second - $first) / $first) * 100, 1);
+        $dir = $second > $first ? 'up' : ($second < $first ? 'down' : 'stable');
         return [
-            'direction' => 'stable', // up, down, stable
-            'percentage_change' => 0,
-            'description' => 'Performance stable over the selected period'
+            'direction' => $dir,
+            'percentage_change' => $change,
+            'description' => match ($dir) {
+                'up' => 'Performance improving',
+                'down' => 'Performance declining',
+                default => 'Performance stable',
+            },
         ];
     }
 
@@ -582,13 +908,35 @@ class ProxyStatusMonitoring extends Page
 
     public function getFilteredProxies(): array
     {
+        $data = collect($this->proxyStatuses);
+
         if ($this->showOfflineOnly) {
-            return array_filter($this->proxyStatuses, function ($proxy) {
-                return $proxy['status'] === 'offline';
+            $data = $data->where('status', 'offline');
+        }
+
+        if ($this->protocolFilter !== 'all') {
+            $data = $data->filter(function ($p) {
+                return strtolower($p['protocol'] ?? '') === strtolower($this->protocolFilter);
             });
         }
 
-        return $this->proxyStatuses;
+        $term = trim((string) $this->searchTerm);
+        if ($term !== '') {
+            $low = mb_strtolower($term);
+            $data = $data->filter(function ($p) use ($low) {
+                $hay = [
+                    $p['name'] ?? '',
+                    $p['location'] ?? '',
+                    $p['plan']['name'] ?? '',
+                    $p['client']['email'] ?? '',
+                ];
+                return collect($hay)->contains(function ($v) use ($low) {
+                    return str_contains(mb_strtolower((string) $v), $low);
+                });
+            });
+        }
+
+        return $data->values()->all();
     }
 
     public function getTimeRangeOptions(): array
@@ -598,6 +946,16 @@ class ProxyStatusMonitoring extends Page
             '24h' => 'Last 24 Hours',
             '7d' => 'Last 7 Days',
             '30d' => 'Last 30 Days'
+        ];
+    }
+
+    public function getProtocolOptions(): array
+    {
+        return [
+            'all' => 'All',
+            'vless' => 'VLESS',
+            'vmess' => 'VMESS',
+            'trojan' => 'TROJAN',
         ];
     }
 }

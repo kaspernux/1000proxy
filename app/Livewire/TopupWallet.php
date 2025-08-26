@@ -20,11 +20,14 @@ class TopupWallet extends Component
     use WithFileUploads, LivewireAlertV4;
 
     // Wallet topup properties
-    public $currency;
+    public $currency; // legacy crypto symbol for backwards compat
     public $amount;
     public $reference;
     public $wallet;
-    public $selectedMethod = 'crypto';
+    // New unified payment API (align with checkout)
+    public $payment_method = 'crypto'; // crypto|stripe|paypal|mir (no wallet for topup)
+    public $crypto_currency = 'btc';
+    public $fiat_currency = 'USD';
 
     // Loading states
     public $is_loading = false;
@@ -68,8 +71,15 @@ class TopupWallet extends Component
             'notes' => 'nullable|string|max:500',
         ];
 
-        if ($this->selectedMethod === 'crypto' && $this->currentStep >= 3) {
+        if ($this->payment_method === 'crypto' && $this->currentStep >= 3) {
             $rules['paymentProof'] = 'nullable|image|max:5120'; // 5MB max
+        }
+
+        // Validate selected currency depending on method
+        if ($this->payment_method === 'crypto') {
+            $rules['crypto_currency'] = 'required|in:btc,eth,xmr,ltc,doge,ada,dot,sol,usdt,usdc,bnb';
+        } else {
+            $rules['fiat_currency'] = 'required|in:USD,EUR,GBP,RUB';
         }
 
         if ($this->recurringTopup) {
@@ -93,6 +103,14 @@ class TopupWallet extends Component
             $currency = 'btc'; // Default fallback
         }
         $this->currency = $currency;
+        $this->crypto_currency = $currency;
+        // Prefer crypto when available (NowPayments)
+        $available = $this->getAvailablePaymentMethods();
+        if (in_array('crypto', $available, true)) {
+            $this->payment_method = 'crypto';
+        } elseif (!empty($available)) {
+            $this->payment_method = $available[0];
+        }
         // Get customer's wallet (only customers have wallets)
         $customer = \Illuminate\Support\Facades\Auth::guard('customer')->user();
         $this->wallet = $customer->wallet ?? $customer->getWallet();
@@ -178,7 +196,7 @@ class TopupWallet extends Component
             // Rate limiting
             $key = 'promo_apply.' . Auth::guard('customer')->id();
             if (RateLimiter::tooManyAttempts($key, 5)) {
-                $seconds = RateLimiter::availableAt($key) - time();
+                $seconds = RateLimiter::availableIn($key);
                 throw ValidationException::withMessages([
                     'promoCode' => ["Too many promo code attempts. Please try again in {$seconds} seconds."],
                 ]);
@@ -280,15 +298,14 @@ class TopupWallet extends Component
     // Generate payment details based on selected method
     public function generatePaymentDetails()
     {
-        switch ($this->selectedMethod) {
+        switch ($this->payment_method) {
             case 'crypto':
                 $this->generateCryptoAddress();
                 break;
-            case 'bank':
-                $this->generateBankDetails();
-                break;
+            case 'stripe':
             case 'paypal':
-                $this->generatePayPalDetails();
+            case 'mir':
+                // details are generated on gateway side
                 break;
         }
     }
@@ -305,7 +322,7 @@ class TopupWallet extends Component
             'bnb' => 'bnb1abcdefghijklmnopqrstuvwxyz1234567890',
         ];
 
-        $this->cryptoAddress = $addresses[$this->currency] ?? $addresses['btc'];
+    $this->cryptoAddress = $addresses[$this->crypto_currency] ?? $addresses['btc'];
     }
 
     private function generateBankDetails()
@@ -326,7 +343,7 @@ class TopupWallet extends Component
         try {
             $key = 'topup_submit.' . Auth::guard('customer')->id();
             if (RateLimiter::tooManyAttempts($key, 3)) {
-                $seconds = RateLimiter::availableAt($key) - time();
+                $seconds = RateLimiter::availableIn($key);
                 throw ValidationException::withMessages([
                     'amount' => ["Too many topup attempts. Please try again in {$seconds} seconds."],
                 ]);
@@ -349,11 +366,25 @@ class TopupWallet extends Component
             if ($this->paymentProof) {
                 $proofPath = $this->paymentProof->store('payment-proofs', 'private');
             }
+            // Map generic method to concrete gateway key
+            $gateway = $this->payment_method;
+            if ($this->payment_method === 'crypto') {
+                $keys = array_keys(config('payment_gateways.gateways', []));
+                if (in_array('nowpayments', $keys, true)) {
+                    $gateway = 'nowpayments';
+                } elseif (in_array('coinbase', $keys, true)) {
+                    $gateway = 'coinbase';
+                } else {
+                    $gateway = 'nowpayments';
+                }
+            }
+
             // Prepare payload for PaymentController
             $payload = [
                 'amount' => $this->amount,
-                'currency' => $this->currency,
-                'gateway' => $this->selectedMethod,
+                // Always send fiat price currency; pay coin is provided via crypto_currency for crypto payments
+                'currency' => strtoupper($this->fiat_currency),
+                'gateway' => $gateway,
                 'reference' => $this->reference,
                 'bonus_amount' => $bonus,
                 'final_amount' => $finalAmount,
@@ -362,15 +393,23 @@ class TopupWallet extends Component
                 'payment_proof_path' => $proofPath,
                 'promotion_applied' => $this->selectedPromotion,
                 'notify_on_completion' => $this->notifyOnCompletion,
+                'payment_method' => $this->payment_method,
+                'crypto_currency' => $this->payment_method === 'crypto' ? $this->crypto_currency : null,
+                'fiat_currency' => $this->payment_method !== 'crypto' ? $this->fiat_currency : null,
             ];
-            // Call PaymentController API
-            $response = \Http::withToken(Auth::user()->api_token ?? session('api_token'))
-                ->post(url('/api/payment/top-up-wallet'), $payload);
-            $result = $response->json();
-            if ($response->successful() && isset($result['success']) && $result['success']) {
-                // If redirect_url, go to gateway
-                if (isset($result['redirect_url'])) {
-                    return redirect()->away($result['redirect_url']);
+                // Call PaymentController directly to preserve session auth
+                $controller = app(\App\Http\Controllers\PaymentController::class);
+                $request = new \Illuminate\Http\Request();
+                $request->replace($payload);
+                $jsonResponse = $controller->topUpWallet($request);
+                $result = method_exists($jsonResponse, 'getData') ? (array) $jsonResponse->getData(true) : [];
+                if (($result['success'] ?? false) === true) {
+                // Redirect to gateway invoice URL when available (NowPayments)
+                    $paymentPayload = $result['data']['payment'] ?? [];
+                    $paymentUrl = $paymentPayload['payment_url']
+                        ?? ($result['data']['payment_url'] ?? ($result['redirect_url'] ?? null));
+                if ($paymentUrl) {
+                    return redirect()->away($paymentUrl);
                 }
                 $this->currentStep = 4;
                 $this->loadTransactionHistory();
@@ -384,7 +423,7 @@ class TopupWallet extends Component
                     'customer_id' => Auth::guard('customer')->id(),
                     'amount' => $this->amount,
                     'promo_code' => $this->promoCode,
-                    'gateway' => $this->selectedMethod,
+                    'gateway' => $gateway,
                     'ip' => request()->ip(),
                 ]);
                 $this->dispatch('submitEnded');
@@ -401,7 +440,7 @@ class TopupWallet extends Component
                     'error' => $errorMsg,
                     'customer_id' => Auth::guard('customer')->id(),
                     'amount' => $this->amount,
-                    'gateway' => $this->selectedMethod,
+                    'gateway' => $gateway,
                     'ip' => request()->ip()
                 ]);
             }
@@ -414,7 +453,7 @@ class TopupWallet extends Component
                 'error' => $e->getMessage(),
                 'customer_id' => Auth::guard('customer')->id(),
                 'amount' => $this->amount,
-                'gateway' => $this->selectedMethod,
+                'gateway' => $gateway ?? $this->payment_method,
                 'ip' => request()->ip()
             ]);
             $this->alert('error', 'An error occurred while submitting your topup request. Please try again.', [
@@ -464,29 +503,24 @@ class TopupWallet extends Component
         ];
     }
 
-    // Get payment methods
-    public function getPaymentMethods()
+    // Available methods based on configured gateways (exclude wallet for top-ups)
+    public function getAvailablePaymentMethods()
     {
-        return [
-            'crypto' => [
-                'name' => 'Cryptocurrency',
-                'description' => 'Pay with Bitcoin, Ethereum, and other cryptocurrencies',
-                'processing_time' => '1-6 hours',
-                'fees' => 'Network fees apply',
-            ],
-            'bank' => [
-                'name' => 'Bank Transfer',
-                'description' => 'Direct bank wire transfer',
-                'processing_time' => '1-3 business days',
-                'fees' => 'No additional fees',
-            ],
-            'paypal' => [
-                'name' => 'PayPal',
-                'description' => 'Pay with your PayPal account',
-                'processing_time' => '5-15 minutes',
-                'fees' => '3.5% + $0.30',
-            ],
-        ];
+        $keys = array_keys(config('payment_gateways.gateways', []));
+        $methods = [];
+        if (in_array('nowpayments', $keys, true) || in_array('coinbase', $keys, true)) {
+            $methods[] = 'crypto';
+        }
+        if (in_array('stripe', $keys, true)) {
+            $methods[] = 'stripe';
+        }
+        if (in_array('paypal', $keys, true)) {
+            $methods[] = 'paypal';
+        }
+        if (in_array('mir', $keys, true)) {
+            $methods[] = 'mir';
+        }
+        return $methods;
     }
 
     public function render()
@@ -498,10 +532,10 @@ class TopupWallet extends Component
 
         $this->wallet = $customer->wallet ?? $customer->getWallet();
 
-        return view('livewire.topup-wallet', [
+    return view('livewire.topup', [
             'wallet' => $this->wallet,
             'supportedCurrencies' => $this->getSupportedCurrencies(),
-            'paymentMethods' => $this->getPaymentMethods(),
+            'availableMethods' => $this->getAvailablePaymentMethods(),
             'calculatedBonus' => $this->calculateBonus(),
         ]);
     }

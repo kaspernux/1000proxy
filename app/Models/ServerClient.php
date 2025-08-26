@@ -153,7 +153,10 @@ class ServerClient extends Model
      */
     public function scopeWhereUserId($query, $userId)
     {
-        return $query->where('customer_id', $userId);
+                return $query->where(function ($q) use ($userId) {
+                        $q->where('customer_id', $userId)
+                            ->orWhere('user_id', $userId);
+                });
     }
 
     /**

@@ -108,6 +108,7 @@ use App\Http\Controllers\Webhook\StripeWebhookController;
 use Laravel\Horizon\Horizon;
 use Barryvdh\DomPDF\Facade\Pdf;
 use App\Http\Controllers\DepositWebhookController;
+use App\Http\Controllers\InvoiceController;
 
 use App\Livewire\Components\PaymentProcessor;
 
@@ -188,6 +189,11 @@ Route::middleware(['auth:customer'])->group(function () {
     // Removed explicit /account route so Filament customer panel root can serve the dashboard
     Route::get('/telegram-link', \App\Livewire\Auth\TelegramLink::class)->name('telegram.link');
 
+    // Invoice PDF download (customer-only)
+    Route::get('/account/invoices/{order}/download', [InvoiceController::class, 'download'])
+        ->name('customer.invoice.download')
+        ->where('order', '[0-9]+');
+
     // Payment routes for web UI (session/customer only)
     Route::prefix('payment')->group(function () {
         // Use Livewire component for payment processor UI
@@ -213,10 +219,16 @@ Route::middleware(['auth:customer'])->group(function () {
         Route::get('/{currency}/insufficient', [WalletController::class, 'insufficient'])->name('wallet.insufficient');
     });
 
+    // Customer-friendly route to Livewire TopupWallet component
+    Route::get('/account/wallet/topup/{currency?}', \App\Livewire\TopupWallet::class)
+        ->where('currency', 'btc|eth|usdt|xmr|sol|bnb')
+        ->name('customer.wallet.topup');
+
 
     // Transaction routes
     Route::get('/transactions', \App\Livewire\Transactions::class)->name('transactions.index');
     Route::get('/transactions/{transaction}', [WalletTransactionController::class, 'show'])->name('wallet.transactions.show');
+    Route::get('/transactions/{transaction}/download', [WalletTransactionController::class, 'download'])->name('wallet.transactions.download');
 
     // Webhook routes (outside auth middleware)
     Route::post('/webhook/stripe', [StripeWebhookController::class, '__invoke'])->name('webhook.stripe');

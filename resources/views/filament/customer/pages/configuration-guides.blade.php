@@ -105,110 +105,38 @@
             </x-filament::section>
         </div>
 
-        <!-- Configuration Builder (Platform / Client / Protocol) -->
-        <div class="my-16">
-            <x-filament::section class="shadow-xl">
-                <x-slot name="heading">
-                    <div class="flex items-center justify-between w-full">
-                        <div class="flex items-center gap-3">
-                            <div class="p-2 bg-primary-100 dark:bg-primary-900/30 rounded-xl">
-                                <x-heroicon-s-adjustments-horizontal class="h-6 w-6 text-primary-600 dark:text-primary-400" />
-                            </div>
-                            <div>
-                                <h2 class="text-xl font-bold text-gray-900 dark:text-white">Interactive Configuration Builder</h2>
-                                <p class="text-sm text-gray-600 dark:text-gray-400">Select your target platform, client and protocol to tailor setup guidance</p>
-                            </div>
-                        </div>
-                        <x-filament::badge color="primary" size="sm">
-                            <div class="flex items-center gap-1">
-                                <x-heroicon-o-sparkles class="h-3 w-3" /> Smart Wizard
-                            </div>
-                        </x-filament::badge>
+        <!-- Setup Steps -->
+        <x-filament::section>
+            <x-slot name="heading">
+                <div class="flex items-center gap-3">
+                    <div class="p-2 bg-primary-100 dark:bg-primary-900/30 rounded-xl">
+                        <x-heroicon-s-list-bullet class="h-6 w-6 text-primary-600 dark:text-primary-400" />
                     </div>
-                </x-slot>
-                <div class="p-6">
-                    <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                        <!-- Platform Selection -->
-                        <div class="space-y-4">
-                            <h3 class="text-sm font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400 flex items-center gap-2">
-                                <x-heroicon-o-computer-desktop class="h-4 w-4 text-primary-500" /> Platform
-                            </h3>
-                            <div class="space-y-2">
-                                @foreach($this->getAvailableConfigurations()['platforms'] as $platform => $info)
-                                    <button wire:click="updatePlatform('{{ $platform }}')" class="group w-full text-left p-4 rounded-xl border relative overflow-hidden transition-all duration-300 {{ $selectedPlatform === $platform ? 'border-primary-500 bg-primary-50 dark:bg-primary-950 shadow-md' : 'border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700' }}">
-                                        <div class="flex items-center gap-3">
-                                            @switch($platform)
-                                                @case('windows') <x-heroicon-o-computer-desktop class="h-5 w-5 text-primary-500" /> @break
-                                                @case('android') <x-heroicon-o-device-phone-mobile class="h-5 w-5 text-primary-500" /> @break
-                                                @case('ios') <x-heroicon-o-device-tablet class="h-5 w-5 text-primary-500" /> @break
-                                                @case('macos') <x-heroicon-o-computer-desktop class="h-5 w-5 text-primary-500" /> @break
-                                                @default <x-heroicon-o-device-phone-mobile class="h-5 w-5 text-primary-500" />
-                                            @endswitch
-                                            <div class="flex-1 min-w-0">
-                                                <div class="font-medium text-gray-900 dark:text-white">{{ $info['name'] }}</div>
-                                                <div class="text-xs text-gray-500 dark:text-gray-400">{{ count($info['recommended_clients']) }} clients</div>
-                                            </div>
-                                            @if($selectedPlatform === $platform)
-                                                <x-heroicon-s-check class="h-5 w-5 text-primary-500" />
-                                            @endif
-                                        </div>
-                                        <div class="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none bg-gradient-to-r from-primary-500/5 to-primary-600/5 rounded-xl"></div>
-                                    </button>
-                                @endforeach
-                            </div>
-                        </div>
-                        <!-- Client Selection -->
-                        <div class="space-y-4">
-                            <h3 class="text-sm font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400 flex items-center gap-2">
-                                <x-heroicon-o-arrow-down-tray class="h-4 w-4 text-success-500" /> Client
-                            </h3>
-                            <div class="space-y-2">
-                                @foreach($this->getAvailableConfigurations()['platforms'][$selectedPlatform]['recommended_clients'] as $client)
-                                    <button wire:click="updateClient('{{ $client }}')" class="group w-full text-left p-4 rounded-xl border relative overflow-hidden transition-all duration-300 {{ $selectedClient === $client ? 'border-success-500 bg-success-50 dark:bg-success-950 shadow-md' : 'border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700' }}">
-                                        <div class="flex items-center gap-3">
-                                            <x-heroicon-o-cpu-chip class="h-5 w-5 text-success-500" />
-                                            <div class="flex-1 min-w-0">
-                                                <div class="font-medium text-gray-900 dark:text-white">{{ $client }}</div>
-                                                @if($selectedClient === $client)
-                                                    <div class="text-xs text-success-600 dark:text-success-400">Selected</div>
-                                                @endif
-                                            </div>
-                                            @if($selectedClient === $client)
-                                                <x-heroicon-s-check class="h-5 w-5 text-success-500" />
-                                            @endif
-                                        </div>
-                                        <div class="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none bg-gradient-to-r from-success-500/5 to-emerald-500/5 rounded-xl"></div>
-                                    </button>
-                                @endforeach
-                            </div>
-                        </div>
-                        <!-- Protocol Selection -->
-                        <div class="space-y-4">
-                            <h3 class="text-sm font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400 flex items-center gap-2">
-                                <x-heroicon-o-shield-check class="h-4 w-4 text-warning-500" /> Protocol
-                            </h3>
-                            <div class="space-y-2">
-                                @foreach($this->getAvailableConfigurations()['protocols'] as $protocol => $info)
-                                    <button wire:click="updateProtocol('{{ $protocol }}')" class="group w-full text-left p-4 rounded-xl border relative overflow-hidden transition-all duration-300 {{ $selectedProtocol === $protocol ? 'border-warning-500 bg-warning-50 dark:bg-warning-950 shadow-md' : 'border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700' }}">
-                                        <div class="flex items-center gap-3">
-                                            <x-heroicon-o-lock-closed class="h-5 w-5 text-warning-500" />
-                                            <div class="flex-1 min-w-0">
-                                                <div class="font-medium text-gray-900 dark:text-white">{{ $info['name'] }}</div>
-                                                <div class="text-xs text-gray-500 dark:text-gray-400">{{ $info['description'] }}</div>
-                                            </div>
-                                            @if($selectedProtocol === $protocol)
-                                                <x-heroicon-s-check class="h-5 w-5 text-warning-500" />
-                                            @endif
-                                        </div>
-                                        <div class="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none bg-gradient-to-r from-warning-500/5 to-orange-500/5 rounded-xl"></div>
-                                    </button>
-                                @endforeach
-                            </div>
-                        </div>
+                    <div>
+                        <h2 class="text-xl font-bold text-gray-900 dark:text-white">Guided Setup Steps</h2>
+                        <p class="text-sm text-gray-600 dark:text-gray-400">Follow each step for a flawless configuration</p>
                     </div>
                 </div>
-            </x-filament::section>
-        </div>
+            </x-slot>
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                @foreach($this->getSetupSteps() as $step)
+                    <div class="group bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6 hover:shadow-lg hover:border-primary-300 dark:hover:border-primary-600 transition-all duration-300">
+                        <div class="flex flex-col items-center text-center space-y-4">
+                            <div class="relative">
+                                <div class="w-12 h-12 bg-primary-100 dark:bg-primary-900 rounded-full flex items-center justify-center">
+                                    @if($step['icon'])
+                                        <x-filament::icon :icon="$step['icon']" class="h-6 w-6 text-primary-600 dark:text-primary-400" />
+                                    @endif
+                                </div>
+                                <div class="absolute -bottom-2 -right-2 inline-flex items-center justify-center w-6 h-6 bg-primary-600 text-white rounded-full text-sm font-bold shadow">{{ $step['step'] }}</div>
+                            </div>
+                            <h4 class="font-semibold text-gray-900 dark:text-white">{{ $step['title'] }}</h4>
+                            <p class="text-sm text-gray-600 dark:text-gray-400">{{ $step['description'] }}</p>
+                        </div>
+                    </div>
+                @endforeach
+            </div>
+        </x-filament::section>
 
         <!-- Recommended Clients -->
         <div class="my-16">
@@ -380,39 +308,6 @@
             </x-filament::section>
         </div>
 
-        <!-- Setup Steps -->
-        <x-filament::section>
-            <x-slot name="heading">
-                <div class="flex items-center gap-3">
-                    <div class="p-2 bg-primary-100 dark:bg-primary-900/30 rounded-xl">
-                        <x-heroicon-s-list-bullet class="h-6 w-6 text-primary-600 dark:text-primary-400" />
-                    </div>
-                    <div>
-                        <h2 class="text-xl font-bold text-gray-900 dark:text-white">Guided Setup Steps</h2>
-                        <p class="text-sm text-gray-600 dark:text-gray-400">Follow each step for a flawless configuration</p>
-                    </div>
-                </div>
-            </x-slot>
-            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                @foreach($this->getSetupSteps() as $step)
-                    <div class="group bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6 hover:shadow-lg hover:border-primary-300 dark:hover:border-primary-600 transition-all duration-300">
-                        <div class="flex flex-col items-center text-center space-y-4">
-                            <div class="relative">
-                                <div class="w-12 h-12 bg-primary-100 dark:bg-primary-900 rounded-full flex items-center justify-center">
-                                    @if($step['icon'])
-                                        <x-filament::icon :icon="$step['icon']" class="h-6 w-6 text-primary-600 dark:text-primary-400" />
-                                    @endif
-                                </div>
-                                <div class="absolute -bottom-2 -right-2 inline-flex items-center justify-center w-6 h-6 bg-primary-600 text-white rounded-full text-sm font-bold shadow">{{ $step['step'] }}</div>
-                            </div>
-                            <h4 class="font-semibold text-gray-900 dark:text-white">{{ $step['title'] }}</h4>
-                            <p class="text-sm text-gray-600 dark:text-gray-400">{{ $step['description'] }}</p>
-                        </div>
-                    </div>
-                @endforeach
-            </div>
-        </x-filament::section>
-
         <!-- Your Configurations (unchanged block styling updated) -->
         @if(count($this->getUserConfigurations()) > 0)
             <x-filament::section class="mt-16">
@@ -574,6 +469,285 @@
                 </div>
             </x-filament::section>
         @endif
+
+        <!-- Configuration Builder (Platform / Client / Protocol) -->
+        <div class="my-16">
+            <x-filament::section class="shadow-xl">
+                <x-slot name="heading">
+                    <div class="flex items-center justify-between w-full">
+                        <div class="flex items-center gap-3">
+                            <div class="p-2 bg-primary-100 dark:bg-primary-900/30 rounded-xl">
+                                <x-heroicon-s-adjustments-horizontal class="h-6 w-6 text-primary-600 dark:text-primary-400" />
+                            </div>
+                            <div>
+                                <h2 class="text-xl font-bold text-gray-900 dark:text-white">Interactive Configuration Builder</h2>
+                                <p class="text-sm text-gray-600 dark:text-gray-400">Select your target platform, client and protocol to tailor setup guidance</p>
+                            </div>
+                        </div>
+                        <x-filament::badge color="primary" size="sm">
+                            <div class="flex items-center gap-1">
+                                <x-heroicon-o-sparkles class="h-3 w-3" /> Smart Wizard
+                            </div>
+                        </x-filament::badge>
+                    </div>
+                </x-slot>
+                <div class="p-6">
+                    <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                        <!-- Platform Selection -->
+                        <div class="space-y-4">
+                            <h3 class="text-sm font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400 flex items-center gap-2">
+                                <x-heroicon-o-computer-desktop class="h-4 w-4 text-primary-500" /> Platform
+                            </h3>
+                            <div class="space-y-2">
+                                @foreach($this->getAvailableConfigurations()['platforms'] as $platform => $info)
+                                    <button wire:click="updatePlatform('{{ $platform }}')" class="group w-full text-left p-4 rounded-xl border relative overflow-hidden transition-all duration-300 {{ $selectedPlatform === $platform ? 'border-primary-500 bg-primary-50 dark:bg-primary-950 shadow-md' : 'border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700' }}">
+                                        <div class="flex items-center gap-3">
+                                            @switch($platform)
+                                                @case('windows') <x-heroicon-o-computer-desktop class="h-5 w-5 text-primary-500" /> @break
+                                                @case('android') <x-heroicon-o-device-phone-mobile class="h-5 w-5 text-primary-500" /> @break
+                                                @case('ios') <x-heroicon-o-device-tablet class="h-5 w-5 text-primary-500" /> @break
+                                                @case('macos') <x-heroicon-o-computer-desktop class="h-5 w-5 text-primary-500" /> @break
+                                                @default <x-heroicon-o-device-phone-mobile class="h-5 w-5 text-primary-500" />
+                                            @endswitch
+                                            <div class="flex-1 min-w-0">
+                                                <div class="font-medium text-gray-900 dark:text-white">{{ $info['name'] }}</div>
+                                                <div class="text-xs text-gray-500 dark:text-gray-400">{{ count($info['recommended_clients']) }} clients</div>
+                                            </div>
+                                            @if($selectedPlatform === $platform)
+                                                <x-heroicon-s-check class="h-5 w-5 text-primary-500" />
+                                            @endif
+                                        </div>
+                                        <div class="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none bg-gradient-to-r from-primary-500/5 to-primary-600/5 rounded-xl"></div>
+                                    </button>
+                                @endforeach
+                            </div>
+                        </div>
+                        <!-- Client Selection -->
+                        <div class="space-y-4">
+                            <h3 class="text-sm font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400 flex items-center gap-2">
+                                <x-heroicon-o-arrow-down-tray class="h-4 w-4 text-success-500" /> Client
+                            </h3>
+                            <div class="space-y-2">
+                                @foreach($this->getAvailableConfigurations()['platforms'][$selectedPlatform]['recommended_clients'] as $client)
+                                    <button wire:click="updateClient('{{ $client }}')" class="group w-full text-left p-4 rounded-xl border relative overflow-hidden transition-all duration-300 {{ $selectedClient === $client ? 'border-success-500 bg-success-50 dark:bg-success-950 shadow-md' : 'border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700' }}">
+                                        <div class="flex items-center gap-3">
+                                            <x-heroicon-o-cpu-chip class="h-5 w-5 text-success-500" />
+                                            <div class="flex-1 min-w-0">
+                                                <div class="font-medium text-gray-900 dark:text-white">{{ $client }}</div>
+                                                @if($selectedClient === $client)
+                                                    <div class="text-xs text-success-600 dark:text-success-400">Selected</div>
+                                                @endif
+                                            </div>
+                                            @if($selectedClient === $client)
+                                                <x-heroicon-s-check class="h-5 w-5 text-success-500" />
+                                            @endif
+                                        </div>
+                                        <div class="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none bg-gradient-to-r from-success-500/5 to-emerald-500/5 rounded-xl"></div>
+                                    </button>
+                                @endforeach
+                            </div>
+                        </div>
+                        <!-- Protocol Selection -->
+                        <div class="space-y-4">
+                            <h3 class="text-sm font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400 flex items-center gap-2">
+                                <x-heroicon-o-shield-check class="h-4 w-4 text-warning-500" /> Protocol
+                            </h3>
+                            <div class="space-y-2">
+                                @foreach($this->getAvailableConfigurations()['protocols'] as $protocol => $info)
+                                    <button wire:click="updateProtocol('{{ $protocol }}')" class="group w-full text-left p-4 rounded-xl border relative overflow-hidden transition-all duration-300 {{ $selectedProtocol === $protocol ? 'border-warning-500 bg-warning-50 dark:bg-warning-950 shadow-md' : 'border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700' }}">
+                                        <div class="flex items-center gap-3">
+                                            <x-heroicon-o-lock-closed class="h-5 w-5 text-warning-500" />
+                                            <div class="flex-1 min-w-0">
+                                                <div class="font-medium text-gray-900 dark:text-white">{{ $info['name'] }}</div>
+                                                <div class="text-xs text-gray-500 dark:text-gray-400">{{ $info['description'] }}</div>
+                                            </div>
+                                            @if($selectedProtocol === $protocol)
+                                                <x-heroicon-s-check class="h-5 w-5 text-warning-500" />
+                                            @endif
+                                        </div>
+                                        <div class="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none bg-gradient-to-r from-warning-500/5 to-orange-500/5 rounded-xl"></div>
+                                    </button>
+                                @endforeach
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Builder Summary & Guided Actions -->
+                    @php
+                        $configs = $this->getUserConfigurations();
+                        $selectedCfg = null;
+                        if (!empty($configs)) {
+                            // Prefer selectedConfiguration if set, otherwise first
+                            $selectedCfg = collect($configs)->firstWhere('id', $selectedConfiguration) ?? $configs[0];
+                        }
+                        // Convenience vars
+                        $platform = $selectedPlatform;
+                        $client = $selectedClient;
+                        $protocol = $selectedProtocol;
+                    @endphp
+
+                    <div class="mt-8 grid grid-cols-1 xl:grid-cols-3 gap-6">
+                        <!-- Selection & quick actions -->
+                        <div class="xl:col-span-1">
+                            <div class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-5">
+                                <h4 class="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3 flex items-center gap-2">
+                                    <x-heroicon-o-cog-6-tooth class="h-4 w-4 text-primary-500" /> Configure
+                                </h4>
+
+                                @if(empty($configs))
+                                    <div class="text-sm text-gray-600 dark:text-gray-400">
+                                        You don't have any active configurations yet.
+                                    </div>
+                                    <a href="/servers" class="mt-4 inline-flex items-center px-3 py-2 rounded-lg bg-primary-600 hover:bg-primary-700 text-white text-sm">
+                                        <x-heroicon-o-shopping-cart class="h-4 w-4 mr-2" /> Browse Plans
+                                    </a>
+                                @else
+                                    <label class="block text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400 mb-1">Your configuration</label>
+                                    <select wire:model="selectedConfiguration" class="w-full rounded-lg border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 text-sm">
+                                        @foreach($configs as $cfg)
+                                            <option value="{{ $cfg['id'] }}">{{ $cfg['server_name'] }} — {{ strtoupper($cfg['protocol']) }} — {{ $cfg['location'] }}</option>
+                                        @endforeach
+                                    </select>
+
+                                    @if($selectedCfg)
+                                        <div class="mt-4 grid grid-cols-2 gap-2">
+                                            <button onclick="showQRCode(`{{ $selectedCfg['qr_code'] }}`)" class="inline-flex items-center justify-center px-3 py-2 rounded-lg bg-primary-50 dark:bg-primary-900/20 text-primary-700 dark:text-primary-300 text-sm border border-primary-200 dark:border-primary-800">
+                                                <x-heroicon-o-qr-code class="h-4 w-4 mr-2" /> QR
+                                            </button>
+                                            <button onclick="copyToClipboard(`{{ $selectedCfg['config_url'] }}`)" class="inline-flex items-center justify-center px-3 py-2 rounded-lg bg-success-50 dark:bg-success-900/20 text-success-700 dark:text-success-300 text-sm border border-success-200 dark:border-success-800">
+                                                <x-heroicon-o-link class="h-4 w-4 mr-2" /> Copy Link
+                                            </button>
+                                            <button onclick="copyToClipboard(`{{ $selectedCfg['subscription_url'] }}`)" class="inline-flex items-center justify-center px-3 py-2 rounded-lg bg-info-50 dark:bg-info-900/20 text-info-700 dark:text-info-300 text-sm border border-info-200 dark:border-info-800 col-span-2">
+                                                <x-heroicon-o-rss class="h-4 w-4 mr-2" /> Copy Subscription URL
+                                            </button>
+                                        </div>
+                                    @endif
+                                @endif
+
+                                <div class="mt-6 flex flex-wrap gap-2">
+                                    <button wire:click="downloadClientApp" class="inline-flex items-center px-3 py-2 rounded-lg bg-primary-600 hover:bg-primary-700 text-white text-sm">
+                                        <x-heroicon-o-arrow-down-tray class="h-4 w-4 mr-2" /> Download {{ $client }}
+                                    </button>
+                                    <button wire:click="autoConfigureClient" class="inline-flex items-center px-3 py-2 rounded-lg bg-warning-600 hover:bg-warning-700 text-white text-sm" @if(empty($selectedCfg)) disabled @endif>
+                                        <x-heroicon-o-cog-6-tooth class="h-4 w-4 mr-2" /> Generate Config File
+                                    </button>
+                                    <button wire:click="testConnection" class="inline-flex items-center px-3 py-2 rounded-lg bg-info-600 hover:bg-info-700 text-white text-sm" @if(empty($selectedCfg)) disabled @endif>
+                                        <x-heroicon-o-signal class="h-4 w-4 mr-2" /> Test Connection
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Guided Steps based on platform/client -->
+                        <div class="xl:col-span-2">
+                            <div class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-5">
+                                <h4 class="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-4 flex items-center gap-2">
+                                    <x-heroicon-o-list-bullet class="h-4 w-4 text-gray-500" /> Steps for {{ ucfirst($platform) }} — {{ $client }} — {{ strtoupper($protocol) }}
+                                </h4>
+
+                                <ol class="space-y-3 text-sm text-gray-700 dark:text-gray-300">
+                                    <li class="flex items-start gap-3">
+                                        <div class="mt-0.5 h-5 w-5 flex items-center justify-center rounded-full bg-primary-600 text-white text-xs">1</div>
+                                        <div>
+                                            <span class="font-medium">Install the client</span> — use the button above.
+                                            @php
+                                                $apps = method_exists($this, 'getClientApplications') ? $this->getClientApplications() : [];
+                                                $appMeta = $apps[$platform][$client] ?? null;
+                                            @endphp
+                                            @if(!$appMeta)
+                                                <div class="text-xs text-gray-500 mt-1">No direct link found for {{ $client }} on {{ ucfirst($platform) }}. We’ll open a store/search page.</div>
+                                            @endif
+                                        </div>
+                                    </li>
+                                    <li class="flex items-start gap-3">
+                                        <div class="mt-0.5 h-5 w-5 flex items-center justify-center rounded-full bg-primary-600 text-white text-xs">2</div>
+                                        <div>
+                                            <span class="font-medium">Import configuration</span> —
+                                            @if($selectedCfg)
+                                                
+                                                @if($platform === 'ios' && in_array($client, ['ShadowRocket','Shadowrocket','shadowrocket']))
+                                                    <a href="{{ 'shadowrocket://add/subscription?url=' . urlencode($selectedCfg['subscription_url']) }}" class="text-primary-600 hover:underline" target="_blank">Add to Shadowrocket</a>
+                                                    <span class="text-xs text-gray-500">(opens the app)</span>
+                                                @elseif($platform === 'android' && in_array(strtolower($client), ['v2rayng']))
+                                                    <span>Copy the subscription URL and in v2rayNG: three-dots → Update subscription</span>
+                                                @elseif($platform === 'windows' && strtolower($client) === 'v2rayn')
+                                                    <span>In v2rayN: Subscriptions → Subscription Settings → Add → Paste URL → Update</span>
+                                                @else
+                                                    <span>Use QR code or configuration link.</span>
+                                                @endif
+                                                <div class="mt-2 flex flex-wrap gap-2">
+                                                    <button onclick="showQRCode(`{{ $selectedCfg['qr_code'] }}`)" class="inline-flex items-center px-2.5 py-1.5 rounded bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200">
+                                                        <x-heroicon-o-qr-code class="h-4 w-4 mr-1" /> Show QR
+                                                    </button>
+                                                    <button onclick="copyToClipboard(`{{ $selectedCfg['config_url'] }}`)" class="inline-flex items-center px-2.5 py-1.5 rounded bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200">
+                                                        <x-heroicon-o-link class="h-4 w-4 mr-1" /> Copy Link
+                                                    </button>
+                                                    <button onclick="copyToClipboard(`{{ $selectedCfg['subscription_url'] }}`)" class="inline-flex items-center px-2.5 py-1.5 rounded bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200">
+                                                        <x-heroicon-o-rss class="h-4 w-4 mr-1" /> Copy Subscription
+                                                    </button>
+                                                </div>
+                                            @else
+                                                <span>Select a configuration above to see import options.</span>
+                                            @endif
+                                        </div>
+                                    </li>
+                                    <li class="flex items-start gap-3">
+                                        <div class="mt-0.5 h-5 w-5 flex items-center justify-center rounded-full bg-primary-600 text-white text-xs">3</div>
+                                        <div>
+                                            <span class="font-medium">Enable and test</span> — turn on the proxy and run a latency test.
+                                            <div class="mt-2">
+                                                <button wire:click="testConnection" class="inline-flex items-center px-2.5 py-1.5 rounded bg-info-600 hover:bg-info-700 text-white">
+                                                    <x-heroicon-o-signal class="h-4 w-4 mr-1" /> Test Connection
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </li>
+                                </ol>
+
+                                <div class="mt-6">
+                                    <button wire:click="$toggle('showAdvancedOptions')" class="text-xs text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200">
+                                        <x-heroicon-o-adjustments-horizontal class="h-4 w-4 inline mr-1" />
+                                        {{ $showAdvancedOptions ? 'Hide' : 'Show' }} advanced options
+                                    </button>
+
+                                    @if($showAdvancedOptions && $selectedCfg)
+                                        <div class="mt-4 p-4 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900">
+                                            <div class="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400 mb-2">Manual setup</div>
+                                            <button onclick='showManualConfig(@json($selectedCfg["manual_config"]))' class="inline-flex items-center px-3 py-2 rounded-lg bg-gray-800 text-white text-sm">
+                                                <x-heroicon-o-code-bracket class="h-4 w-4 mr-2" /> View manual config
+                                            </button>
+                                        </div>
+                                    @endif
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Video Tutorial -->
+                    @php
+                        $videoUrl = method_exists($this, 'getTutorialVideoUrl') ? $this->getTutorialVideoUrl($selectedPlatform, $selectedClient) : null;
+                    @endphp
+                    @if($videoUrl)
+                        <div class="mt-6">
+                            <div class="bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl p-5">
+                                <div class="flex items-center justify-between mb-3">
+                                    <h4 class="text-sm font-semibold text-gray-700 dark:text-gray-300 flex items-center gap-2">
+                                        <x-heroicon-o-play-circle class="h-5 w-5 text-danger-500" /> Video tutorial
+                                    </h4>
+                                    <a href="{{ $videoUrl }}" target="_blank" class="text-primary-600 text-sm hover:underline">Open on YouTube</a>
+                                </div>
+                                <p class="text-xs text-gray-500 dark:text-gray-400 mb-3">We’ll open a curated video or search results for {{ $selectedClient }} on {{ ucfirst($selectedPlatform) }}.</p>
+                                <div class="aspect-video w-full rounded-lg overflow-hidden bg-black/50 flex items-center justify-center">
+                                    <a href="{{ $videoUrl }}" target="_blank" class="inline-flex items-center px-4 py-2 bg-danger-600 hover:bg-danger-700 text-white text-sm rounded-lg">
+                                        <x-heroicon-o-play class="h-4 w-4 mr-2" /> Watch on YouTube
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                    @endif
+                </div>
+            </x-filament::section>
+        </div>
 
         <!-- Troubleshooting Tips -->
         <x-filament::section class="mt-16">

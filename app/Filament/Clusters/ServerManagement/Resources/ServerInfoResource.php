@@ -25,8 +25,8 @@ use Filament\Schemas\Components\Wizard;
 use Filament\Schemas\Components\Wizard\Step;
 use Filament\Schemas\Components\Grid;
 use Filament\Infolists\Infolist;
-use Filament\Infolists\Components\Tabs;
-use Filament\Infolists\Components\Section as InfolistSection;
+use Filament\Schemas\Components\Tabs;
+use Filament\Schemas\Components\Section as InfolistSection;
 use Filament\Infolists\Components\TextEntry;
 use Filament\Infolists\Components\IconEntry;
 

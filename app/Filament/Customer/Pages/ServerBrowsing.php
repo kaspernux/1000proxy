@@ -14,6 +14,7 @@ use Illuminate\Support\Facades\Auth;
 use Filament\Notifications\Notification;
 use Illuminate\Database\Eloquent\Builder;
 use BackedEnum;
+use App\Helpers\CartManagement;
 
 class ServerBrowsing extends Page implements HasForms
 {
@@ -32,7 +33,7 @@ class ServerBrowsing extends Page implements HasForms
         'search' => null,
         'sort' => 'price_asc',
         'favorites_only' => false,
-    'plan_days' => null,
+        'plan_days' => null,
     ];
 
     public $showFilters = false;
@@ -44,12 +45,127 @@ class ServerBrowsing extends Page implements HasForms
     public $page = 1;
     public $hasMore = true;
     public bool $compactView = false;
+    public $selectedPlans = [];
+    // Stats for header cards
+    public int $statTotalServers = 0;
+    public int $statActiveNow = 0;
+    public int $statCountries = 0;
+    public float $statStartingPrice = 0.0;
+
+    // Keep filters in the URL so links are shareable/bookmarkable
+    protected $queryString = [
+        'filters.country' => ['except' => null],
+        'filters.type' => ['except' => null],
+        'filters.status' => ['except' => null],
+        'filters.price_min' => ['except' => null],
+        'filters.price_max' => ['except' => null],
+        'filters.search' => ['except' => null],
+        'filters.sort' => ['except' => 'price_asc'],
+        'filters.favorites_only' => ['except' => false],
+        'filters.plan_days' => ['except' => null],
+        'compactView' => ['except' => false],
+        'page' => ['except' => 1],
+    ];
 
     public function mount()
     {
         $this->loadCountries();
     $this->loadTopCountries();
         $this->loadServers();
+        $this->computeStats();
+        // If initial load yields no results, reset filters to defaults and show all available servers with active plans
+        if (empty($this->servers)) {
+            $this->resetFilters();
+        }
+    }
+
+    /**
+     * Compute global stats shown in header cards using the same availability rules as listings.
+     */
+    protected function computeStats(): void
+    {
+        // Use the same filters as the listing to avoid mismatches in counts
+        $q = $this->buildFilteredServerQuery();
+
+        $this->statTotalServers = (clone $q)->count();
+        $this->statActiveNow    = (clone $q)->whereIn('servers.status', ['active', 'up'])->count();
+        $this->statCountries    = (clone $q)->distinct('servers.country')->count('servers.country');
+
+        // Compute min price among active plans for the filtered servers
+        $serverIds = (clone $q)->pluck('servers.id');
+        if ($serverIds->isEmpty()) {
+            $this->statStartingPrice = 0.0;
+        } else {
+            $this->statStartingPrice = (float) \App\Models\ServerPlan::query()
+                ->where('server_plans.is_active', true)
+                ->whereIn('server_id', $serverIds)
+                ->min('price') ?? 0.0;
+        }
+    }
+
+    /**
+     * Build the base server query with the same availability and filters as the listing, but without sorting/pagination.
+     */
+    protected function buildFilteredServerQuery(): Builder
+    {
+        $query = Server::query()
+            ->withAvg('serverRatings', 'rating')
+            ->where(function($q) {
+                $q->where('servers.status','active')
+                  ->orWhere('servers.status','up')
+                  ->orWhere('servers.is_active', true)
+                  ->orWhereNull('servers.status');
+            })
+            ->whereHas('plans', function($q) {
+                $q->where('is_active', true);
+            });
+
+        // Apply filters (mirror of loadServers, excluding sorting)
+        if ($this->filters['country']) {
+            $query->where('servers.country', $this->filters['country']);
+        }
+        if ($this->filters['type']) {
+            $query->where('servers.type', $this->filters['type']);
+        }
+        if ($this->filters['status']) {
+            $query->where('servers.status', $this->filters['status']);
+        }
+        if ($this->filters['price_min']) {
+            $query->whereHas('plans', function($q) {
+                $q->where('price', '>=', $this->filters['price_min'])
+                  ->where('is_active', true);
+            });
+        }
+        if ($this->filters['price_max']) {
+            $query->whereHas('plans', function($q) {
+                $q->where('price', '<=', $this->filters['price_max'])
+                  ->where('is_active', true);
+            });
+        }
+        if ($this->filters['plan_days']) {
+            $days = (int) $this->filters['plan_days'];
+            $query->whereHas('plans', function ($q) use ($days) {
+                $q->where('days', $days)->where('is_active', true);
+            });
+        }
+        if ($this->filters['search']) {
+            $query->where(function (Builder $q) {
+                $q->where('servers.name', 'like', '%' . $this->filters['search'] . '%')
+                  ->orWhere('servers.description', 'like', '%' . $this->filters['search'] . '%')
+                  ->orWhere('servers.country', 'like', '%' . $this->filters['search'] . '%');
+            });
+        }
+        if ($this->filters['favorites_only']) {
+            $customerId = Auth::guard('customer')->id();
+            $favorites = (array) (session()->get("favorites.customer_{$customerId}") ?? []);
+            if (!empty($favorites)) {
+                $query->whereIn('servers.id', $favorites);
+            } else {
+                $query->whereRaw('1=0');
+            }
+        }
+
+        return $query;
     }
 
     public function form($form)
@@ -128,20 +244,30 @@ class ServerBrowsing extends Page implements HasForms
     public function loadCountries()
     {
         $this->countries = Server::query()
-            ->where('status', 'active')
-            ->whereNotNull('country')
-            ->distinct()
-            ->pluck('country', 'country')
+            ->where(function($q){
+                                $q->where('servers.status','active')
+                                    ->orWhere('servers.status','up')
+                                    ->orWhere('servers.is_active', true)
+                                    ->orWhereNull('servers.status');
+            })
+                        ->whereNotNull('servers.country')
+                        ->distinct()
+                        ->pluck('country', 'country')
             ->toArray();
     }
 
     public function loadTopCountries(): void
     {
         $this->topCountries = Server::query()
-            ->select('country', \DB::raw('COUNT(*) as total'))
-            ->where('status', 'active')
-            ->whereNotNull('country')
-            ->groupBy('country')
+                        ->select('country', \DB::raw('COUNT(*) as total'))
+            ->where(function($q){
+                                $q->where('servers.status','active')
+                                    ->orWhere('servers.status','up')
+                                    ->orWhere('servers.is_active', true)
+                                    ->orWhereNull('servers.status');
+            })
+                        ->whereNotNull('servers.country')
+                        ->groupBy('country')
             ->orderByDesc('total')
             ->limit(6)
             ->pluck('country')
@@ -150,27 +276,34 @@ class ServerBrowsing extends Page implements HasForms
 
     public function loadServers($append = false)
     {
-        $query = Server::query()
-            ->with(['reviews', 'plans' => function($q) {
+                $query = Server::query()
+                        ->with(['reviews', 'plans' => function($q) {
                 $q->where('is_active', true)->orderBy('price', 'asc');
             }])
-            ->withAvg('reviews', 'rating')
-            ->where('status', 'active')
+            ->withAvg('serverRatings', 'rating')
+                        // Consider servers usable if status is 'active' or 'up' or explicitly is_active=true (legacy),
+                        // and always require at least one active plan via whereHas below.
+                        ->where(function($q) {
+                                $q->where('servers.status', 'active')
+                                    ->orWhere('servers.status', 'up')
+                                    ->orWhere('servers.is_active', true)
+                                    ->orWhereNull('servers.status');
+                        })
             ->whereHas('plans', function($q) {
                 $q->where('is_active', true);
             });
 
         // Apply filters
         if ($this->filters['country']) {
-            $query->where('country', $this->filters['country']);
+            $query->where('servers.country', $this->filters['country']);
         }
 
         if ($this->filters['type']) {
-            $query->where('type', $this->filters['type']);
+            $query->where('servers.type', $this->filters['type']);
         }
 
         if ($this->filters['status']) {
-            $query->where('server_status', $this->filters['status']);
+            $query->where('servers.status', $this->filters['status']);
         }
 
         if ($this->filters['price_min']) {
@@ -187,11 +320,18 @@ class ServerBrowsing extends Page implements HasForms
             });
         }
 
-        if ($this->filters['search']) {
-            $query->where(function (Builder $q) {
-                $q->where('name', 'like', '%' . $this->filters['search'] . '%')
-                  ->orWhere('description', 'like', '%' . $this->filters['search'] . '%')
-                  ->orWhere('country', 'like', '%' . $this->filters['search'] . '%');
+        if ($this->filters['plan_days']) {
+            $days = (int) $this->filters['plan_days'];
+            $query->whereHas('plans', function ($q) use ($days) {
+                $q->where('days', $days)->where('is_active', true);
+            });
+        }
+
+                if ($this->filters['search']) {
+                        $query->where(function (Builder $q) {
+                                $q->where('servers.name', 'like', '%' . $this->filters['search'] . '%')
+                                    ->orWhere('servers.description', 'like', '%' . $this->filters['search'] . '%')
+                                    ->orWhere('servers.country', 'like', '%' . $this->filters['search'] . '%');
             });
         }
 
@@ -225,16 +365,16 @@ class ServerBrowsing extends Page implements HasForms
                 ->orderBy('server_plans.price', 'desc');
                 break;
             case 'name_asc':
-                $query->orderBy('name', 'asc');
+                $query->orderBy('servers.name', 'asc');
                 break;
             case 'name_desc':
-                $query->orderBy('name', 'desc');
+                $query->orderBy('servers.name', 'desc');
                 break;
             case 'country_asc':
-                $query->orderBy('country', 'asc');
+                $query->orderBy('servers.country', 'asc');
                 break;
             case 'rating_desc':
-                $query->orderBy('reviews_avg_rating', 'desc');
+                $query->orderBy('server_ratings_avg_rating', 'desc');
                 break;
         }
 
@@ -247,12 +387,21 @@ class ServerBrowsing extends Page implements HasForms
         }
 
         $this->hasMore = $servers->hasMorePages();
+
+        // Initialize default selected plan for each loaded server (cheapest active)
+        foreach ($servers->items() as $srv) {
+            $plan = $srv->plans->first();
+            if ($plan && empty($this->selectedPlans[$srv->id])) {
+                $this->selectedPlans[$srv->id] = $plan->id;
+            }
+        }
     }
 
     public function updatedFilters()
     {
         $this->page = 1;
         $this->loadServers();
+    $this->computeStats();
     }
 
     public function loadMore()
@@ -273,6 +422,22 @@ class ServerBrowsing extends Page implements HasForms
         $this->showAdvancedFilters = !$this->showAdvancedFilters;
     }
 
+    public function toggleCompactView(): void
+    {
+        $this->compactView = ! $this->compactView;
+    }
+
+    /**
+     * Clear a single filter key to null and refresh results.
+     */
+    public function clearFilter(string $key): void
+    {
+        if (array_key_exists($key, $this->filters)) {
+            $this->filters[$key] = null;
+            $this->updatedFilters();
+        }
+    }
+
     public function resetFilters()
     {
         $this->filters = [
@@ -284,9 +449,11 @@ class ServerBrowsing extends Page implements HasForms
             'search' => null,
             'sort' => 'price_asc',
             'favorites_only' => false,
+            'plan_days' => null,
         ];
         $this->page = 1;
-        $this->loadServers();
+    $this->loadServers();
+    $this->computeStats();
     }
 
     public function toggleFavorite($serverId)
@@ -356,6 +523,56 @@ class ServerBrowsing extends Page implements HasForms
     return redirect()->route('checkout');
     }
 
+    /**
+     * Add the cheapest active plan for a server to cart and go to checkout.
+     */
+    public function orderServer($serverId)
+    {
+        $server = Server::with(['plans' => function ($q) {
+            $q->where('is_active', true)->orderBy('price', 'asc');
+        }])->find($serverId);
+
+        if (!$server) {
+            Notification::make()
+                ->title('Server not found')
+                ->danger()
+                ->send();
+            return;
+        }
+
+    // Use selected plan if provided, else fallback to cheapest
+    $selectedPlanId = isset($this->selectedPlans[$server->id]) ? (int) $this->selectedPlans[$server->id] : 0;
+    $plan = $server->plans->firstWhere('id', $selectedPlanId) ?? $server->plans->first();
+        if (!$plan) {
+            Notification::make()
+                ->title('No active plans')
+                ->body('This server has no purchasable plans at the moment.')
+                ->warning()
+                ->send();
+            return;
+        }
+
+        // Add to cart using existing cart helper
+        try {
+            CartManagement::addItemToCart($plan->id);
+        } catch (\Throwable $e) {
+            Notification::make()
+                ->title('Add to cart failed')
+                ->body($e->getMessage())
+                ->danger()
+                ->send();
+            return;
+        }
+
+        Notification::make()
+            ->title('Plan added to cart')
+            ->body("{$plan->name} added. Redirecting to checkout…")
+            ->success()
+            ->send();
+
+        return redirect()->route('checkout');
+    }
+
     public function viewServerDetails($serverId)
     {
         $server = Server::with(['reviews.user'])->find($serverId);
@@ -370,8 +587,8 @@ class ServerBrowsing extends Page implements HasForms
 
     public function getServerRating($serverId)
     {
-        $server = collect($this->servers)->firstWhere('id', $serverId);
-        return $server ? $server->reviews_avg_rating ?? 0 : 0;
+    $server = collect($this->servers)->firstWhere('id', $serverId);
+    return $server ? ($server->server_ratings_avg_rating ?? 0) : 0;
     }
 
     public function filterByCountry($country)
@@ -392,6 +609,7 @@ class ServerBrowsing extends Page implements HasForms
         $this->filters['favorites_only'] = !$this->filters['favorites_only'];
         $this->page = 1;
         $this->loadServers();
+    $this->computeStats();
 
         if ($this->filters['favorites_only']) {
             Notification::make()
@@ -412,8 +630,10 @@ class ServerBrowsing extends Page implements HasForms
             ->with(['plans' => function($q) {
                 $q->where('is_active', true)->orderBy('price', 'asc');
             }])
-            ->withAvg('reviews', 'rating')
-            ->where('status', 'active')
+            ->withAvg('serverRatings', 'rating')
+            ->where(function($q){
+                $q->where('status','active')->orWhere('status','up')->orWhere('servers.is_active', true)->orWhereNull('status');
+            })
             ->whereHas('plans', function($q) {
                 $q->where('is_active', true);
             })
@@ -421,9 +641,19 @@ class ServerBrowsing extends Page implements HasForms
             ->limit(6)
             ->get();
 
-        $this->servers = $recommendedServers->toArray();
+        // Keep Eloquent models for Blade relation access
+        $this->servers = $recommendedServers->all();
+        // Preselect first/cheapest plan per server
+        foreach ($recommendedServers as $srv) {
+            $plan = $srv->plans->first();
+            if ($plan && empty($this->selectedPlans[$srv->id])) {
+                $this->selectedPlans[$srv->id] = $plan->id;
+            }
+        }
         $this->hasMore = false;
         $this->page = 1;
+    // Keep stats aligned with current filters/view
+    $this->computeStats();
 
         Notification::make()
             ->title('Recommendations Updated')
@@ -437,7 +667,7 @@ class ServerBrowsing extends Page implements HasForms
      */
     public function formatRating($server): string
     {
-        $rating = $server->reviews_avg_rating ?? 0;
+    $rating = $server->server_ratings_avg_rating ?? 0;
         return number_format($rating, 1);
     }
 
@@ -446,7 +676,7 @@ class ServerBrowsing extends Page implements HasForms
      */
     public function starArray($server): array
     {
-        $rating = (float) ($server->reviews_avg_rating ?? 0);
+    $rating = (float) ($server->server_ratings_avg_rating ?? 0);
         $filled = floor($rating);
         return array_map(function($i) use ($filled) { return $i <= $filled; }, range(1,5));
     }

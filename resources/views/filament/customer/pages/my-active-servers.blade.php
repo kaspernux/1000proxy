@@ -157,16 +157,17 @@
         @endif
 
 
-        <!-- Main Table & Form Section -->
-        <div class="grid grid-cols-1 xl:grid-cols-2 gap-8">
-            <!-- Table Section -->
-            <div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
+        <!-- Main Table (Full Width) -->
+        <div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
+            <div class="overflow-x-auto w-full">
                 {{ $this->table }}
             </div>
+        </div>
 
-            <!-- Server Actions Form Section -->
-            <div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
-                <div class="px-6 py-4 bg-gradient-to-r from-primary-50 to-blue-50 dark:from-primary-900/20 dark:to-blue-900/20 border-b border-gray-200 dark:border-gray-700">
+        <!-- Server Actions (Reorganized Layout) -->
+        <div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
+            <div class="px-6 py-4 bg-gradient-to-r from-primary-50 to-blue-50 dark:from-primary-900/20 dark:to-blue-900/20 border-b border-gray-200 dark:border-gray-700">
+                <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                     <div class="flex items-center gap-3">
                         <div class="p-2 bg-primary-100 dark:bg-primary-900/30 rounded-xl">
                             <x-heroicon-o-cog-6-tooth class="w-6 h-6 text-primary-600 dark:text-primary-400" />
@@ -176,9 +177,28 @@
                             <p class="text-sm text-gray-600 dark:text-gray-400">Manage, export, and refresh your server configurations</p>
                         </div>
                     </div>
+                    <div class="flex flex-wrap gap-2">
+                        <button type="button" onclick="window.scrollTo({top: 0, behavior: 'smooth'})" class="inline-flex items-center px-3 py-2 border border-primary-300 dark:border-primary-700 text-xs font-semibold rounded-lg shadow-sm text-primary-800 dark:text-primary-200 bg-white dark:bg-gray-900 hover:bg-primary-50 dark:hover:bg-primary-900 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500">
+                            <x-heroicon-o-arrow-up class="w-4 h-4 mr-1 text-primary-600 dark:text-primary-400" />
+                            Go to Quick Actions
+                        </button>
+                    </div>
                 </div>
-                <div class="p-6">
-                    {{ $this->form }}
+
+            <div class="p-6">
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    <div class="lg:col-span-2">
+                        {{ $this->form }}
+                    </div>
+                    <div class="space-y-3">
+                        <div class="rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/30 p-4">
+                            <h4 class="text-sm font-semibold text-gray-800 dark:text-gray-200 mb-2">Tips</h4>
+                            <ul class="text-xs text-gray-600 dark:text-gray-400 list-disc pl-4 space-y-1">
+                                <li>Use Quick Actions above to refresh or export.</li>
+                                <li>Form changes apply to the selected servers.</li>
+                            </ul>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>

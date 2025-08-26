@@ -35,6 +35,23 @@ class OrderItem extends Model
         'server',
     ];
 
+    /**
+     * Virtual attribute to map ToggleColumn 'auto_renew' to provisioning_summary[auto_renew_enabled].
+     * This prevents Eloquent from trying to persist a non-existent 'auto_renew' column.
+     */
+    public function getAutoRenewAttribute(): bool
+    {
+        $sum = $this->provisioning_summary ?? [];
+        return (bool) ($sum['auto_renew_enabled'] ?? false);
+    }
+
+    public function setAutoRenewAttribute($value): void
+    {
+    $sum = $this->provisioning_summary ?? [];
+    $sum['auto_renew_enabled'] = (bool) $value;
+    $this->provisioning_summary = $sum; // casted to array/json by Eloquent
+    }
+
     public function order(): BelongsTo
     {
         return $this->belongsTo(Order::class);

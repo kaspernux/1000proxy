@@ -100,41 +100,6 @@ class MyActiveServers extends Page implements HasTable
                     ->color('primary')
                     ->extraAttributes(['class' => 'font-bold text-primary-600 dark:text-primary-400 sm:text-base text-xs']),
 
-                TextColumn::make('email')
-                    ->label('Email')
-                    ->searchable()
-                    ->sortable()
-                    ->toggleable()
-                    ->copyable()
-                    ->icon('heroicon-o-envelope')
-                    ->iconColor('primary')
-                    ->tooltip('Client Email')
-                    ->extraAttributes(['class' => 'font-semibold text-gray-800 dark:text-gray-200 sm:text-base text-xs']),
-
-                TextColumn::make('inbound.server.name')
-                    ->label('Server')
-                    ->searchable()
-                    ->sortable()
-                    ->toggleable()
-                    ->icon('heroicon-o-server-stack')
-                    ->color('info')
-                    ->extraAttributes(['class' => 'font-bold text-blue-700 dark:text-blue-300 sm:text-base text-xs']),
-
-                TextColumn::make('inbound.server.country')
-                    ->label('Location')
-                    ->searchable()
-                    ->toggleable()
-                    ->icon('heroicon-o-map-pin')
-                    ->color('info')
-                    ->extraAttributes(['class' => 'text-blue-600 dark:text-blue-400 sm:text-base text-xs']),
-
-                TextColumn::make('inbound.protocol')
-                    ->label('Protocol')
-                    ->toggleable()
-                    ->icon('heroicon-o-arrow-path')
-                    ->color('warning')
-                    ->extraAttributes(['class' => 'text-yellow-600 dark:text-yellow-400 sm:text-base text-xs']),
-
                 TextColumn::make('status')
                     ->label('Status')
                     ->toggleable()
@@ -180,16 +145,6 @@ class MyActiveServers extends Page implements HasTable
                     ->alignment('right')
                     ->extraAttributes(['class' => 'text-green-600 dark:text-green-400 sm:text-base text-xs']),
 
-                TextColumn::make('created_at')
-                    ->label('Created')
-                    ->dateTime('M j, Y H:i')
-                    ->sortable()
-                    ->toggleable()
-                    ->description(fn (ServerClient $record): string => $record->created_at->diffForHumans())
-                    ->color('gray')
-                    ->icon('heroicon-o-calendar-days')
-                    ->extraAttributes(['class' => 'text-xs text-gray-500 dark:text-gray-400']),
-
                 TextColumn::make('expiry_time')
                     ->label('Expires')
                     ->toggleable()
@@ -215,6 +170,72 @@ class MyActiveServers extends Page implements HasTable
                     })
                     ->icon('heroicon-o-calendar-days')
                     ->extraAttributes(['class' => 'text-xs font-medium sm:text-base']),
+
+                TextColumn::make('email')
+                    ->label('Email')
+                    ->searchable()
+                    ->sortable()
+                    ->toggleable()
+                    ->copyable()
+                    ->icon('heroicon-o-envelope')
+                    ->iconColor('primary')
+                    ->tooltip('Client Email')
+                    ->extraAttributes(['class' => 'font-semibold text-gray-800 dark:text-gray-200 sm:text-base text-xs']),
+
+                TextColumn::make('serverInbound.server.name')
+                    ->label('Server')
+                    ->searchable()
+                    ->sortable()
+                    ->toggleable()
+                    ->icon('heroicon-o-server-stack')
+                    ->color('info')
+                    ->extraAttributes(['class' => 'font-bold text-blue-700 dark:text-blue-300 sm:text-base text-xs']),
+
+                TextColumn::make('serverInbound.server.country')
+                    ->label('Location')
+                    ->searchable()
+                    ->toggleable()
+                    ->icon('heroicon-o-map-pin')
+                    ->color('info')
+                    ->extraAttributes(['class' => 'text-blue-600 dark:text-blue-400 sm:text-base text-xs']),
+
+                TextColumn::make('serverInbound.protocol')
+                    ->label('Protocol')
+                    ->toggleable()
+                    ->icon('heroicon-o-arrow-path')
+                    ->color('warning')
+                    ->extraAttributes(['class' => 'text-yellow-600 dark:text-yellow-400 sm:text-base text-xs']),
+
+                // Inbound details
+                TextColumn::make('serverInbound.server.ip')
+                    ->label('IP')
+                    ->searchable()
+                    ->toggleable()
+                    ->copyable()
+                    ->icon('heroicon-o-globe-alt')
+                    ->color('info')
+                    ->extraAttributes(['class' => 'text-blue-700 dark:text-blue-300 sm:text-base text-xs']),
+
+                TextColumn::make('serverInbound.port')
+                    ->label('Port')
+                    ->sortable()
+                    ->toggleable()
+                    ->icon('heroicon-o-link')
+                    ->color('info')
+                    ->alignment('right')
+                    ->extraAttributes(['class' => 'text-blue-700 dark:text-blue-300 sm:text-base text-xs']),
+
+                TextColumn::make('created_at')
+                    ->label('Created')
+                    ->dateTime('M j, Y H:i')
+                    ->sortable()
+                    ->toggleable()
+                    ->description(fn (ServerClient $record): string => $record->created_at->diffForHumans())
+                    ->color('gray')
+                    ->icon('heroicon-o-calendar-days')
+                    ->extraAttributes(['class' => 'text-xs text-gray-500 dark:text-gray-400']),
+
+                
             ])
             ->filters([
                 SelectFilter::make('status')
@@ -225,6 +246,7 @@ class MyActiveServers extends Page implements HasTable
                         'suspended' => 'Suspended',
                         'pending' => 'Pending',
                     ])
+                    ->default('active')
                     ->indicator('Status'),
 
                 SelectFilter::make('server_inbound_id')
@@ -262,26 +284,30 @@ class MyActiveServers extends Page implements HasTable
                         ->label('View Config')
                         ->icon('heroicon-o-eye')
                         ->color('primary')
-                        ->modalContent(fn (ServerClient $record) => view('filament.customer.modals.server-config-details', [
-                            'client' => $record,
-                            'qrCode' => $this->generateQRCode($record),
-                        ]))
+                        ->modalContent(function (?ServerClient $record) {
+                            if (!$record) return '';
+                            return view('filament.customer.modals.server-config-details', [
+                                'client' => $record,
+                                'qrCode' => $this->generateQRCode($record),
+                            ]);
+                        })
                         ->modalWidth('4xl')
-                        ->modalHeading(fn (ServerClient $record) => "Configuration: {$record->email}"),
+                        ->modalHeading(fn (?ServerClient $record) => $record ? "Configuration: {$record->email}" : 'Configuration'),
 
                     Action::make('download_config')
                         ->label('Download Config')
                         ->icon('heroicon-o-arrow-down-tray')
                         ->color('success')
-                        ->visible(fn (ServerClient $record) => $record->status === 'active')
-                        ->action(fn (ServerClient $record) => $this->downloadConfiguration($record)),
+                        ->visible(fn (?ServerClient $record) => $record && $record->status === 'active')
+                        ->action(function (?ServerClient $record) { if ($record) $this->downloadConfiguration($record); }),
 
                     Action::make('copy_link')
                         ->label('Copy Link')
                         ->icon('heroicon-o-clipboard')
                         ->color('info')
-                        ->visible(fn (ServerClient $record) => $record->client_link)
-                        ->action(function (ServerClient $record) {
+                        ->visible(fn (?ServerClient $record) => $record && $record->client_link)
+                        ->action(function (?ServerClient $record) {
+                            if (!$record || !$record->client_link) return;
                             $this->js("navigator.clipboard.writeText('{$record->client_link}')");
                             Notification::make()
                                 ->title('Configuration Link Copied!')
@@ -295,22 +321,22 @@ class MyActiveServers extends Page implements HasTable
                         ->requiresConfirmation()
                         ->modalHeading('Regenerate Configuration')
                         ->modalDescription('This will generate a new configuration. The old configuration will stop working.')
-                        ->action(fn (ServerClient $record) => $this->regenerateConfig($record)),
+                        ->action(function (?ServerClient $record) { if ($record) $this->regenerateConfig($record); }),
 
                     Action::make('suspend')
                         ->label('Suspend')
                         ->icon('heroicon-o-pause-circle')
                         ->color('danger')
-                        ->visible(fn (ServerClient $record) => $record->status === 'active')
+                        ->visible(fn (?ServerClient $record) => $record && $record->status === 'active')
                         ->requiresConfirmation()
-                        ->action(fn (ServerClient $record) => $this->suspendClient($record)),
+                        ->action(function (?ServerClient $record) { if ($record) $this->suspendClient($record); }),
 
                     Action::make('activate')
                         ->label('Activate')
                         ->icon('heroicon-o-play-circle')
                         ->color('success')
-                        ->visible(fn (ServerClient $record) => in_array($record->status, ['suspended', 'inactive']))
-                        ->action(fn (ServerClient $record) => $this->activateClient($record)),
+                        ->visible(fn (?ServerClient $record) => $record && in_array($record->status, ['suspended', 'inactive']))
+                        ->action(function (?ServerClient $record) { if ($record) $this->activateClient($record); }),
                 ])
                     ->label('Actions')
                     ->icon('heroicon-m-ellipsis-vertical')

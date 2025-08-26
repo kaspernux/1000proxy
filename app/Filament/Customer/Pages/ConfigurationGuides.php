@@ -166,19 +166,19 @@ class ConfigurationGuides extends Page
                 ],
                 'macos' => [
                     'name' => 'macOS',
-                    'recommended_clients' => ['V2RayU', 'Qv2ray', 'V2RayX'],
+                    'recommended_clients' => ['V2Box', 'V2RayU', 'Qv2ray', 'V2RayX'],
                 ],
                 'linux' => [
                     'name' => 'Linux',
-                    'recommended_clients' => ['Qv2ray', 'v2ray-core', 'V2RayA'],
+                    'recommended_clients' => ['V2RayA', 'Qv2ray', 'v2ray-core'],
                 ],
                 'android' => [
                     'name' => 'Android',
-                    'recommended_clients' => ['v2rayNG', 'V2Box', 'SagerNet'],
+                    'recommended_clients' => ['V2Box', 'v2rayNG', 'SagerNet'],
                 ],
                 'ios' => [
                     'name' => 'iOS',
-                    'recommended_clients' => ['ShadowRocket', 'Quantumult X', 'V2Box'],
+                    'recommended_clients' => ['V2Box', 'ShadowRocket', 'Quantumult X'],
                 ],
             ],
         ];
@@ -489,13 +489,13 @@ class ConfigurationGuides extends Page
             'platform' => $this->selectedPlatform
         ]);
 
+        $url = Storage::disk('public')->url("configs/{$filename}");
+        // Trigger download in new tab and show persistent notification with fallback link
+        $this->js("window.open('{$url}', '_blank')");
+
         Notification::make()
             ->title('Configuration Generated')
-            ->body("Auto-configuration file created: {$filename}")
-            ->actions([
-                \Filament\Notifications\Actions\Action::make('download')
-                    ->openUrlInNewTab(),
-            ])
+            ->body("Auto-configuration file created: {$filename}. If it didn't download automatically, open: {$url}")
             ->success()
             ->persistent()
             ->send();
@@ -583,13 +583,12 @@ class ConfigurationGuides extends Page
             'filename' => $filename
         ]);
 
+        $url = Storage::disk('public')->url("exports/{$filename}");
+        $this->js("window.open('{$url}', '_blank')");
+
         Notification::make()
             ->title('Export Complete')
-            ->body("All configurations exported to {$filename}")
-            ->actions([
-                \Filament\Notifications\Actions\Action::make('download')
-                    ->openUrlInNewTab(),
-            ])
+            ->body("All configurations exported to {$filename}. Fallback link: {$url}")
             ->success()
             ->persistent()
             ->send();
@@ -636,15 +635,35 @@ class ConfigurationGuides extends Page
                     'download_url' => 'https://github.com/2dust/v2rayN/releases',
                     'features' => ['GUI interface', 'Multiple protocols', 'Routing rules']
                 ],
+                'Qv2ray' => [
+                    'name' => 'Qv2ray',
+                    'download_url' => 'https://github.com/Qv2ray/Qv2ray/releases',
+                    'features' => ['Cross-platform', 'Plugin support']
+                ],
             ],
             'macos' => [
+                'V2Box' => [
+                    'name' => 'V2Box',
+                    'download_url' => 'https://apps.apple.com/app/v2box/id6451244957',
+                    'features' => ['Universal (macOS/iOS)', 'Modern UI']
+                ],
                 'V2RayU' => [
                     'name' => 'V2RayU',
                     'download_url' => 'https://github.com/yanue/V2rayU/releases',
                     'features' => ['Simple UI', 'V2Ray core']
                 ],
+                'Qv2ray' => [
+                    'name' => 'Qv2ray',
+                    'download_url' => 'https://github.com/Qv2ray/Qv2ray/releases',
+                    'features' => ['Cross-platform', 'Plugin support']
+                ],
             ],
             'android' => [
+                'V2Box' => [
+                    'name' => 'V2Box',
+                    'download_url' => 'https://play.google.com/store/apps/details?id=dev.hexasoftware.v2box',
+                    'features' => ['Modern UI', 'Optimized for Android']
+                ],
                 'v2rayNG' => [
                     'name' => 'v2rayNG',
                     'download_url' => 'https://github.com/2dust/v2rayNG/releases',
@@ -652,13 +671,62 @@ class ConfigurationGuides extends Page
                 ],
             ],
             'ios' => [
+                'V2Box' => [
+                    'name' => 'V2Box',
+                    'download_url' => 'https://apps.apple.com/app/v2box/id6451244957',
+                    'features' => ['Universal (iOS/macOS)', 'Modern UI']
+                ],
                 'ShadowRocket' => [
                     'name' => 'ShadowRocket',
                     'download_url' => 'https://apps.apple.com/app/shadowrocket/id932747118',
                     'features' => ['iOS', 'Multiple protocols']
                 ],
             ],
+            'linux' => [
+                'V2RayA' => [
+                    'name' => 'v2rayA',
+                    'download_url' => 'https://github.com/v2rayA/v2rayA/releases',
+                    'features' => ['Linux GUI', 'Easy management']
+                ],
+                'Qv2ray' => [
+                    'name' => 'Qv2ray',
+                    'download_url' => 'https://github.com/Qv2ray/Qv2ray/releases',
+                    'features' => ['Cross-platform', 'Plugin support']
+                ],
+                'v2ray-core' => [
+                    'name' => 'v2ray-core',
+                    'download_url' => 'https://github.com/v2fly/v2ray-core/releases',
+                    'features' => ['CLI', 'Core only']
+                ],
+            ],
         ];
+    }
+
+    public function getTutorialVideoUrl(string $platform, string $client): ?string
+    {
+        $map = [
+            'windows' => [
+                'v2rayN' => 'https://www.youtube.com/results?search_query=v2rayN+setup+windows',
+            ],
+            'android' => [
+                'V2Box' => 'https://www.youtube.com/results?search_query=V2Box+android+setup',
+                'v2rayNG' => 'https://www.youtube.com/results?search_query=v2rayNG+setup',
+            ],
+            'ios' => [
+                'V2Box' => 'https://www.youtube.com/results?search_query=V2Box+ios+setup',
+                'ShadowRocket' => 'https://www.youtube.com/results?search_query=Shadowrocket+setup',
+            ],
+            'macos' => [
+                'V2Box' => 'https://www.youtube.com/results?search_query=V2Box+macOS+setup',
+                'V2RayU' => 'https://www.youtube.com/results?search_query=V2RayU+setup',
+            ],
+            'linux' => [
+                'V2RayA' => 'https://www.youtube.com/results?search_query=v2rayA+setup+linux',
+                'Qv2ray' => 'https://www.youtube.com/results?search_query=Qv2ray+setup+linux',
+            ],
+        ];
+
+        return $map[$platform][$client] ?? null;
     }
 
     protected function generateClientConfiguration(?int $configurationId = null): array
@@ -699,7 +767,7 @@ class ConfigurationGuides extends Page
             ],
         ];
     }
-
+    
     protected function performConnectionTest(ServerClient $serverClient): array
     {
         $latency = rand(50, 200);
@@ -713,7 +781,7 @@ class ConfigurationGuides extends Page
             'error_message' => $success ? null : 'Connection timeout - server may be overloaded'
         ];
     }
-
+    
     protected function loadTutorialSteps(): void
     {
         $this->tutorialSteps = [

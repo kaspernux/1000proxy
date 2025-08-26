@@ -33,7 +33,8 @@ class Customer extends Authenticatable implements MustVerifyEmail
         'telegram_username',
         'telegram_first_name',
         'telegram_last_name',
-        'refcode',
+    'refcode',
+    'referral_code',
         'date',
         'phone',
         'refered_by',
@@ -114,6 +115,16 @@ class Customer extends Authenticatable implements MustVerifyEmail
             ]);
 
             $wallet->generateDepositAddresses();
+
+            // Ensure the customer has a persistent referral code
+            if (empty($customer->referral_code)) {
+                try {
+                    $customer->referral_code = strtoupper(\Illuminate\Support\Str::random(8));
+                    $customer->saveQuietly();
+                } catch (\Throwable $e) {
+                    \Log::warning('Failed generating referral code for customer', ['id' => $customer->id, 'error' => $e->getMessage()]);
+                }
+            }
         });
     }
 
@@ -226,6 +237,23 @@ class Customer extends Authenticatable implements MustVerifyEmail
     public function walletTransactions()
     {
         return $this->hasMany(WalletTransaction::class);
+    }
+
+    public function referralWithdrawals()
+    {
+        return $this->hasMany(\App\Models\ReferralWithdrawal::class);
+    }
+
+    /**
+     * Helper: number of active referrals (referred customers with at least one paid order).
+     */
+    public function activeReferralsCount(): int
+    {
+        return \App\Models\Order::query()
+            ->whereIn('customer_id', function ($q) { $q->select('id')->from('customers')->where('refered_by', $this->id); })
+            ->where('payment_status', 'paid')
+            ->distinct('customer_id')
+            ->count('customer_id');
     }
 
     public function hasclients()

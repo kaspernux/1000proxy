@@ -8,6 +8,8 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Support\Str;
 use App\Models\Customer;
 use App\Models\Wallet;
+use App\Models\Invoice;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class WalletTransaction extends Model {
     use HasFactory;
@@ -75,6 +77,14 @@ class WalletTransaction extends Model {
     public function customer(): BelongsTo
     {
         return $this->belongsTo(Customer::class);
+    }
+
+    /**
+     * Related invoice for this transaction, if any.
+     */
+    public function invoice(): HasOne
+    {
+        return $this->hasOne(Invoice::class, 'wallet_transaction_id');
     }
 
     /**

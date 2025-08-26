@@ -24,6 +24,7 @@ use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use App\Models\Server;
 use App\Models\ServerClient;
+use App\Models\ClientMetric;
 use BackedEnum;
 use App\Models\Order;
 use App\Models\OrderItem;
@@ -46,6 +47,11 @@ class ServerMetrics extends Page implements HasTable, HasForms
     public $selectedTimeRange = '7d';
     public $selectedServer = null;
     public $metricsData = [];
+    /**
+     * Per-client computed stats for current time range.
+     * [client_id => [uptime_pct, avg_latency, total_bytes, is_online, last_seen]]
+     */
+    protected array $clientStats = [];
 
     public function mount(): void
     {
@@ -92,16 +98,16 @@ class ServerMetrics extends Page implements HasTable, HasForms
         $customer = Auth::guard('customer')->user();
         $timeRange = $this->getTimeRange();
 
-        // Get user's active server clients with enhanced metrics
-        $clients = ServerClient::whereHas('order', function (Builder $query) use ($customer) {
+        // Get user's purchased server clients (do not filter by created_at; time range applies to metrics)
+    $clients = ServerClient::whereHas('order', function (Builder $query) use ($customer) {
             $query->where('customer_id', $customer->id);
         })
-        ->with(['server.brand', 'server.category', 'order'])
-        ->where('created_at', '>=', $timeRange['start'])
-        ->where('created_at', '<=', $timeRange['end'])
+    ->with(['server.brand', 'server.category', 'order', 'plan', 'inbound'])
         ->get();
 
-        // Enhanced metrics calculation
+        $this->computeClientStats($clients, $timeRange);
+
+        // Enhanced metrics calculation (live from ClientMetric where possible)
         $this->metricsData = [
             'overview' => $this->calculateOverviewMetrics($clients),
             'performance' => $this->calculatePerformanceMetrics($clients),
@@ -111,24 +117,135 @@ class ServerMetrics extends Page implements HasTable, HasForms
             'trends' => $this->calculateTrendMetrics($clients, $timeRange),
             'alerts' => $this->calculateAlerts($clients),
             'recommendations' => $this->generateRecommendations($clients),
+            'plans' => $this->calculatePlansOverview($clients),
         ];
+
+        // Ensure all strings in the public payload are valid UTF-8 for Livewire JSON serialization
+        $this->metricsData = $this->sanitizeUtf8Array($this->metricsData);
+    }
+
+    private function calculatePlansOverview(Collection $clients): array
+    {
+        // Totals
+        $totalClients = $clients->count();
+        $totalServers = $clients->unique('server_id')->count();
+        $totalInbounds = $clients->unique('server_inbound_id')->count();
+
+        // By protocol (from inbound or plan)
+        $byProtocol = $clients->groupBy(function ($c) {
+            $p = $c->inbound->protocol ?? $c->plan->protocol ?? 'unknown';
+            return strtolower((string) $p);
+        })->map->count()->sortDesc()->all();
+
+        // By plan name
+        $byPlan = $clients->groupBy(function ($c) {
+            return $c->plan->name ?? 'Unassigned Plan';
+        })->map->count()->sortDesc()->all();
+
+        // By server (name)
+        $byServer = $clients->groupBy(function ($c) {
+            return $c->server->name ?? ('Server '.$c->server_id);
+        })->map->count()->sortDesc()->all();
+
+        // By inbound port/tag
+        $byInbound = $clients->groupBy(function ($c) {
+            $tag = $c->inbound->tag ?? null;
+            $port = $c->inbound->port ?? null;
+            $proto = $c->inbound->protocol ?? null;
+            return trim(collect([$proto, $tag, $port ? ("#{$port}") : null])->filter()->implode(' '));
+        })->map->count()->sortDesc()->all();
+
+        return [
+            'totals' => [
+                'clients' => $totalClients,
+                'servers' => $totalServers,
+                'inbounds' => $totalInbounds,
+            ],
+            'by_protocol' => $byProtocol,
+            'by_plan' => $byPlan,
+            'by_server' => $byServer,
+            'by_inbound' => $byInbound,
+        ];
+    }
+
+    private function sanitizeUtf8Array($value)
+    {
+        if (is_array($value)) {
+            $out = [];
+            foreach ($value as $k => $v) {
+                $out[$k] = $this->sanitizeUtf8Array($v);
+            }
+            return $out;
+        }
+        if (is_string($value)) {
+            return $this->sanitizeUtf8String($value);
+        }
+        // Leave objects (e.g., Carbon) and scalars unchanged
+        return $value;
+    }
+
+    private function sanitizeUtf8String(string $s): string
+    {
+        if (function_exists('mb_check_encoding') && !mb_check_encoding($s, 'UTF-8')) {
+            $converted = @iconv('UTF-8', 'UTF-8//IGNORE', $s);
+            if ($converted !== false) {
+                return $converted;
+            }
+            return utf8_encode($s);
+        }
+        return $s;
+    }
+
+    private function computeClientStats(Collection $clients, array $timeRange): void
+    {
+        $this->clientStats = [];
+        if ($clients->isEmpty()) {
+            return;
+        }
+
+        $clientIds = $clients->pluck('id')->all();
+        $metrics = ClientMetric::query()
+            ->whereIn('server_client_id', $clientIds)
+            ->whereBetween('measured_at', [$timeRange['start'], $timeRange['end']])
+            ->orderBy('server_client_id')
+            ->orderBy('measured_at')
+            ->get(['server_client_id', 'is_online', 'latency_ms', 'total_bytes', 'measured_at']);
+
+        $grouped = $metrics->groupBy('server_client_id');
+        foreach ($clients as $client) {
+            $cid = $client->id;
+            $rows = $grouped->get($cid, collect());
+            $total = max(1, $rows->count());
+            $online = $rows->where('is_online', true)->count();
+            $avgLatency = (float) $rows->where('is_online', true)->avg('latency_ms');
+            $sumBytes = (int) $rows->sum('total_bytes');
+            $last = $rows->last();
+
+            $this->clientStats[$cid] = [
+                'uptime_pct' => round(($online / $total) * 100, 2),
+                'avg_latency' => $avgLatency > 0 ? round($avgLatency, 1) : 0.0,
+                'total_bytes' => $sumBytes,
+                'is_online' => $last?->is_online ?? null,
+                'last_seen' => $last?->measured_at,
+            ];
+        }
     }
 
     private function calculateOverviewMetrics(Collection $serverClients): array
     {
         $totalServers = $serverClients->unique('server_id')->count();
-        $activeConnections = $serverClients->where('status', 'active')->count();
-        $totalDataTransfer = $serverClients->sum(function ($client) {
-            return ($client->up ?? 0) + ($client->down ?? 0);
-        });
-        $averageLatency = $serverClients->avg('latency') ?? 0;
+        $activeConnections = collect($this->clientStats)
+            ->filter(fn ($s) => $s['is_online'] === true)
+            ->count();
+        $totalDataTransfer = array_sum(array_map(fn ($s) => $s['total_bytes'] ?? 0, $this->clientStats));
+        $averageLatency = collect($this->clientStats)->pluck('avg_latency')->filter()->avg() ?? 0.0;
 
         return [
             'total_servers' => $totalServers,
             'active_connections' => $activeConnections,
             'connection_rate' => $totalServers > 0 ? round(($activeConnections / $totalServers) * 100, 1) : 0,
             'total_data_transfer' => $this->formatBytes($totalDataTransfer),
-            'average_latency' => round($averageLatency, 2) . 'ms',
+            'average_latency' => round($averageLatency, 1) . 'ms',
             'uptime_percentage' => $this->calculateUptimePercentage($serverClients),
         ];
     }
@@ -138,16 +255,22 @@ class ServerMetrics extends Page implements HasTable, HasForms
         $performanceData = [];
 
         foreach ($serverClients->groupBy('server.location') as $location => $clients) {
-            $avgSpeed = $clients->avg('connection_speed') ?? 0;
-            $avgLatency = $clients->avg('latency') ?? 0;
-            $reliability = $clients->where('status', 'active')->count() / $clients->count() * 100;
+            $avgLatency = collect($clients)->avg(function ($c) {
+                return $this->clientStats[$c->id]['avg_latency'] ?? null;
+            }) ?? 0;
+            $reliability = collect($clients)->avg(function ($c) {
+                return $this->clientStats[$c->id]['uptime_pct'] ?? 0;
+            });
 
             $performanceData[$location] = [
-                'average_speed' => round($avgSpeed, 2),
-                'average_latency' => round($avgLatency, 2),
+                'average_speed' => 0.0,
+                'average_latency' => round($avgLatency, 1),
+                // Aliases expected by Blade
+                'avg_latency' => round($avgLatency, 1),
+                'uptime' => round($reliability ?? 0, 1),
                 'reliability_score' => round($reliability, 1),
                 'client_count' => $clients->count(),
-                'performance_score' => $this->calculatePerformanceScore($avgSpeed, $avgLatency, $reliability),
+                'performance_score' => $this->calculatePerformanceScore(0.0, $avgLatency, $reliability),
             ];
         }
 
@@ -156,57 +279,78 @@ class ServerMetrics extends Page implements HasTable, HasForms
 
     private function calculateUsageMetrics(Collection $serverClients, array $timeRange): array
     {
-        $dailyUsage = [];
-        $currentDate = Carbon::parse($timeRange['start']);
+        // Build daily usage buckets from ClientMetric across all clients in range
+        $start = Carbon::parse($timeRange['start'])->startOfDay();
+        $end = Carbon::parse($timeRange['end'])->endOfDay();
+        $clientIds = $serverClients->pluck('id')->all();
+        $metrics = ClientMetric::query()
+            ->whereIn('server_client_id', $clientIds)
+            ->whereBetween('measured_at', [$start, $end])
+            ->get(['total_bytes', 'measured_at']);
 
-        while ($currentDate <= Carbon::parse($timeRange['end'])) {
-            $dayClients = $serverClients->filter(function ($client) use ($currentDate) {
-                return Carbon::parse($client->created_at)->isSameDay($currentDate);
-            });
-
-            $dailyUp = $dayClients->sum('up') ?? 0;
-            $dailyDown = $dayClients->sum('down') ?? 0;
-            $dailyTotal = $dailyUp + $dailyDown;
-
-            $dailyUsage[] = [
-                'date' => $currentDate->format('Y-m-d'),
-                'upload' => $dailyUp,
-                'download' => $dailyDown,
-                'total' => $dailyTotal,
-                'formatted_total' => $this->formatBytes($dailyTotal),
+        $grouped = $metrics->groupBy(fn ($m) => Carbon::parse($m->measured_at)->format('Y-m-d'));
+        $days = [];
+        $cursor = $start->copy();
+        while ($cursor->lessThanOrEqualTo($end)) {
+            $key = $cursor->format('Y-m-d');
+            $sum = (int) ($grouped->get($key, collect())->sum('total_bytes'));
+            $days[] = [
+                'date' => $key,
+                'upload' => 0,
+                'download' => 0,
+                'total' => $sum,
+                'formatted_total' => $this->formatBytes($sum),
             ];
-
-            $currentDate->addDay();
+            $cursor->addDay();
         }
 
+        // Totals expected by Blade (in MB)
+        $totalBytes = (int) collect($days)->sum('total');
+        $totalMb = (int) round($totalBytes / 1048576);
+
+        // Last 24 hours transfer (in MB)
+        $last24Start = Carbon::now()->subDay();
+        $last24Bytes = (int) ClientMetric::query()
+            ->whereIn('server_client_id', $clientIds)
+            ->whereBetween('measured_at', [$last24Start, Carbon::now()])
+            ->sum('total_bytes');
+        $last24Mb = (int) round($last24Bytes / 1048576);
+
         return [
-            'daily_usage' => $dailyUsage,
-            'peak_usage_day' => collect($dailyUsage)->sortByDesc('total')->first(),
-            'average_daily_usage' => $this->formatBytes(collect($dailyUsage)->avg('total')),
-            'total_period_usage' => $this->formatBytes(collect($dailyUsage)->sum('total')),
+            'daily_usage' => $days,
+            'peak_usage_day' => collect($days)->sortByDesc('total')->first(),
+            'average_daily_usage' => $this->formatBytes((int) (collect($days)->avg('total') ?? 0)),
+            'total_period_usage' => $this->formatBytes((int) collect($days)->sum('total')),
+            // Additional numeric fields consumed by Blade cards
+            'total_bandwidth_used' => $totalMb,
+            'last_24h_transfer' => $last24Mb,
+            'data_transfer' => [
+                'upload' => 0,
+                'download' => $totalMb,
+            ],
         ];
     }
 
     private function calculateReliabilityMetrics(Collection $serverClients): array
     {
-        $totalClients = $serverClients->count();
-        $activeClients = $serverClients->where('status', 'active')->count();
-        $connectionSuccessRate = $totalClients > 0 ? ($activeClients / $totalClients) * 100 : 0;
+    $totalClients = $serverClients->count();
+    $activeClients = collect($this->clientStats)->filter(fn ($s) => $s['is_online'] === true)->count();
+    $connectionSuccessRate = $totalClients > 0 ? ($activeClients / $totalClients) * 100 : 0;
 
         // Calculate uptime by server
         $serverUptime = [];
         foreach ($serverClients->groupBy('server_id') as $serverId => $clients) {
             $server = $clients->first()->server;
-            $activeCount = $clients->where('status', 'active')->count();
-            $totalCount = $clients->count();
-            $uptime = $totalCount > 0 ? ($activeCount / $totalCount) * 100 : 0;
+            $uptime = collect($clients)->avg(function ($c) {
+                return $this->clientStats[$c->id]['uptime_pct'] ?? 0;
+            }) ?? 0;
 
             $serverUptime[] = [
                 'server_name' => $server->name ?? "Server {$serverId}",
                 'location' => $server->location ?? 'Unknown',
                 'uptime_percentage' => round($uptime, 2),
-                'active_connections' => $activeCount,
-                'total_connections' => $totalCount,
+                'active_connections' => collect($clients)->filter(fn ($c) => ($this->clientStats[$c->id]['is_online'] ?? false) === true)->count(),
+                'total_connections' => $clients->count(),
             ];
         }
 
@@ -224,20 +368,22 @@ class ServerMetrics extends Page implements HasTable, HasForms
         $locationData = [];
 
         foreach ($serverClients->groupBy('server.location') as $location => $clients) {
-            $totalTransfer = $clients->sum(function ($client) {
-                return ($client->up ?? 0) + ($client->down ?? 0);
+            $totalTransfer = collect($clients)->sum(function ($c) {
+                return (int) ($this->clientStats[$c->id]['total_bytes'] ?? 0);
             });
 
-            $activeConnections = $clients->where('status', 'active')->count();
-            $avgLatency = $clients->avg('latency') ?? 0;
+            $activeConnections = collect($clients)->filter(fn ($c) => ($this->clientStats[$c->id]['is_online'] ?? false) === true)->count();
+            $avgLatency = collect($clients)->avg(function ($c) {
+                return $this->clientStats[$c->id]['avg_latency'] ?? null;
+            }) ?? 0;
 
             $locationData[] = [
                 'location' => $location ?? 'Unknown',
                 'client_count' => $clients->count(),
                 'active_connections' => $activeConnections,
                 'total_transfer' => $totalTransfer,
-                'formatted_transfer' => $this->formatBytes($totalTransfer),
-                'average_latency' => round($avgLatency, 2),
+                'formatted_transfer' => $this->formatBytes((int) $totalTransfer),
+                'average_latency' => round((float) $avgLatency, 1),
                 'usage_percentage' => 0, // Will be calculated after all locations are processed
             ];
         }
@@ -505,7 +651,11 @@ class ServerMetrics extends Page implements HasTable, HasForms
 
                 TextColumn::make('uptime')
                     ->label('Uptime')
-                    ->getStateUsing(fn () => rand(95, 100) . '%')
+                    ->getStateUsing(function (ServerClient $record) {
+                        $s = $this->clientStats[$record->id] ?? null;
+                        $v = $s['uptime_pct'] ?? null;
+                        return $v !== null ? number_format((float) $v, 1) . '%' : '—';
+                    })
                     ->badge()
                     ->color(fn (string $state): string => match (true) {
                         floatval($state) >= 99 => 'success',
@@ -515,7 +665,11 @@ class ServerMetrics extends Page implements HasTable, HasForms
 
                 TextColumn::make('latency')
                     ->label('Latency')
-                    ->getStateUsing(fn () => rand(10, 150) . 'ms')
+                    ->getStateUsing(function (ServerClient $record) {
+                        $s = $this->clientStats[$record->id] ?? null;
+                        $v = $s['avg_latency'] ?? null;
+                        return $v !== null && $v > 0 ? number_format((float) $v, 0) . 'ms' : '—';
+                    })
                     ->badge()
                     ->color(fn (string $state): string => match (true) {
                         floatval($state) <= 50 => 'success',
@@ -524,25 +678,42 @@ class ServerMetrics extends Page implements HasTable, HasForms
                     }),
 
                 TextColumn::make('bandwidth_used_mb')
-                    ->label('Bandwidth Used (MB)')
-                    ->getStateUsing(fn (ServerClient $record) => number_format($record->bandwidth_used_mb, 2) . ' MB')
+                    ->label('Data (Period)')
+                    ->getStateUsing(function (ServerClient $record) {
+                        $bytes = (int) ($this->clientStats[$record->id]['total_bytes'] ?? 0);
+                        return $this->formatBytes($bytes);
+                    })
                     ->sortable(),
 
                 TextColumn::make('status')
                     ->label('Status')
-                    ->getStateUsing(fn () => collect(['Online', 'Maintenance', 'Slow'])->random())
+                    ->getStateUsing(function (ServerClient $record) {
+                        $online = $this->clientStats[$record->id]['is_online'] ?? null;
+                        return $online === null ? 'Unknown' : ($online ? 'Online' : 'Offline');
+                    })
                     ->badge()
                     ->color(fn (string $state): string => match ($state) {
                         'Online' => 'success',
-                        'Maintenance' => 'warning',
-                        'Slow' => 'danger',
+                        'Unknown' => 'warning',
+                        'Offline' => 'danger',
                         default => 'gray',
                     }),
 
                 TextColumn::make('last_check')
                     ->label('Last Check')
-                    ->getStateUsing(fn () => now()->subMinutes(rand(1, 60))->diffForHumans())
-                    ->since(),
+                    ->getStateUsing(function (ServerClient $record) {
+                        $t = $this->clientStats[$record->id]['last_seen'] ?? null;
+                        if (! $t) {
+                            return null; // Let placeholder render
+                        }
+                        try {
+                            return Carbon::parse($t)->diffForHumans();
+                        } catch (\Throwable $e) {
+                            return null;
+                        }
+                    })
+                    // Avoid automatic Carbon parsing on already formatted strings
+                    ->placeholder('—'),
             ])
             ->filters([
                 SelectFilter::make('server')

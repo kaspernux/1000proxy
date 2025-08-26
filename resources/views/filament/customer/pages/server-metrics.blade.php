@@ -6,6 +6,7 @@
     @php($download = ($usage['data_transfer']['download'] ?? 0))
     @php($totalTransfer = max(1, $upload + $download))
     @php($peakHours = collect($usage['peak_hours'] ?? []))
+    @php($plans = $metrics['plans'] ?? ['totals'=>['clients'=>0,'servers'=>0,'inbounds'=>0],'by_protocol'=>[],'by_plan'=>[],'by_server'=>[],'by_inbound'=>[]])
     <div class="fi-section-content-ctn space-y-24 py-12" wire:poll.360s="refreshMetrics">
         <div class="max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 space-y-24">
         <!-- Hero Header -->
@@ -255,23 +256,45 @@
                     </div>
                     <div class="flex flex-col md:flex-row gap-6 h-full">
                         <div class="flex-1 flex flex-col">
-                            <!-- Aspect placeholder area (replace with real chart component) -->
-                            <div class="relative flex-1 aspect-[16/9] md:aspect-auto md:h-72 rounded-xl bg-gradient-to-b from-gray-100 to-gray-200 dark:from-gray-700 dark:to-gray-800 border border-dashed border-gray-300 dark:border-gray-600 overflow-hidden">
-                                <div class="absolute inset-0 flex items-center justify-center">
-                                    <div class="text-center space-y-1">
-                                        <p class="text-gray-600 dark:text-gray-300 font-medium flex items-center justify-center gap-2">
-                                            <x-heroicon-o-chart-bar class="w-5 h-5 text-blue-500" /> Data Visualization
-                                        </p>
-                                        <p class="text-xs text-gray-400 dark:text-gray-500">Real-time server performance</p>
-                                        <p class="text-[10px] text-gray-400 dark:text-gray-500">(Chart component placeholder)</p>
-                                    </div>
-                                </div>
-                                <!-- Simulated animated series (decorative) -->
-                                <div class="absolute inset-x-0 bottom-0 flex items-end gap-1 px-3 pb-2 h-full">
-                                    @for($i=0;$i<42;$i++)
-                                        @php($h = rand(10,95))
-                                        <span class="flex-1 relative bg-gradient-to-t from-blue-500/40 to-blue-400/60 dark:from-blue-600/30 dark:to-blue-400/50 rounded-sm origin-bottom scale-y-0 animate-[grow_1.2s_ease-out_forwards] [animation-delay:{{ $i * 40 }}ms]" style="--tw-scale-y: {{ $h/100 }}"></span>
-                                    @endfor
+                            <!-- Real chart: Daily usage (GB) -->
+                            <div class="relative flex-1 aspect-[16/9] md:aspect-auto md:h-72 rounded-xl bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 overflow-hidden">
+                                <div class="absolute inset-0" x-data x-init="
+                                    const daily = JSON.parse($el.dataset.daily || '[]');
+                                    const ensureChartJs = () => window.Chart ? Promise.resolve() : new Promise((res, rej) => { const s=document.createElement('script'); s.src='https://cdn.jsdelivr.net/npm/chart.js'; s.onload=res; s.onerror=rej; document.head.appendChild(s); });
+                                    ensureChartJs().then(() => {
+                                        const ctx = $refs.usage.getContext('2d');
+                                        if (window._usageChart) { try { window._usageChart.destroy(); } catch(e) {} }
+                                        const labels = daily.map(d => d.date);
+                                        const data = daily.map(d => Math.round(((d.total||0)/1048576)/1024 * 100) / 100); // GB
+                                        window._usageChart = new Chart(ctx, {
+                                            type: 'line',
+                                            data: {
+                                                labels,
+                                                datasets: [{
+                                                    label: 'Total (GB)',
+                                                    data,
+                                                    borderColor: '#3b82f6',
+                                                    backgroundColor: 'rgba(59,130,246,0.2)',
+                                                    borderWidth: 2,
+                                                    tension: 0.35,
+                                                    pointRadius: 0,
+                                                    fill: true,
+                                                }]
+                                            },
+                                            options: {
+                                                responsive: true,
+                                                maintainAspectRatio: false,
+                                                interaction: { mode: 'index', intersect: false },
+                                                plugins: { legend: { display: true } },
+                                                scales: {
+                                                    x: { display: true, grid: { display: false } },
+                                                    y: { beginAtZero: true, ticks: { callback: v => v + ' GB' } }
+                                                }
+                                            }
+                                        });
+                                    }).catch(() => {});
+                                " data-daily='@json($usage['daily_usage'] ?? [])'>
+                                    <canvas x-ref="usage" class="w-full h-full"></canvas>
                                 </div>
                             </div>
                         </div>
@@ -298,6 +321,123 @@
                     <div class="flex items-center gap-1 text-gray-600 dark:text-gray-300"><span class="h-2.5 w-2.5 rounded-sm bg-amber-500 shadow-sm"></span> Latency</div>
                     <div class="flex items-center gap-1 text-gray-600 dark:text-gray-300"><span class="h-2.5 w-2.5 rounded-sm bg-blue-500 shadow-sm"></span> Transfer</div>
                     <div class="flex items-center gap-1 text-gray-500 dark:text-gray-400"><span class="h-2.5 w-2.5 rounded-sm bg-purple-500 shadow-sm"></span> Derived</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Purchased Plans Overview & Breakdown -->
+        <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-700 p-8 md:p-10">
+            <div class="flex items-start justify-between mb-6">
+                <div class="flex items-center gap-3">
+                    <span class="inline-flex h-9 w-9 items-center justify-center rounded-lg bg-cyan-50 dark:bg-cyan-900/30">
+                        <x-heroicon-o-squares-2x2 class="w-5 h-5 text-cyan-600 dark:text-cyan-400" />
+                    </span>
+                    <h3 class="text-lg font-semibold text-gray-900 dark:text-white">Purchased Plans Overview</h3>
+                </div>
+                <div class="flex items-center gap-3 text-xs text-gray-600 dark:text-gray-300">
+                    <span class="px-2 py-1 rounded-full bg-gray-100 dark:bg-gray-700">Servers: {{ $plans['totals']['servers'] ?? 0 }}</span>
+                    <span class="px-2 py-1 rounded-full bg-gray-100 dark:bg-gray-700">Inbounds: {{ $plans['totals']['inbounds'] ?? 0 }}</span>
+                    <span class="px-2 py-1 rounded-full bg-gray-100 dark:bg-gray-700">Clients: {{ $plans['totals']['clients'] ?? 0 }}</span>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-10">
+                <!-- Protocol Distribution -->
+                <div>
+                    <h4 class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">By Protocol</h4>
+                    @php($items = collect($plans['by_protocol'] ?? []))
+                    @if($items->isNotEmpty())
+                        @php($max = max(1,$items->max()))
+                        <div class="space-y-2">
+                            @foreach($items as $label => $count)
+                                <div>
+                                    <div class="flex justify-between text-xs text-gray-600 dark:text-gray-400">
+                                        <span class="uppercase">{{ $label }}</span>
+                                        <span class="font-medium text-gray-900 dark:text-white">{{ $count }}</span>
+                                    </div>
+                                    <div class="h-2 rounded-full bg-gray-200 dark:bg-gray-700 overflow-hidden">
+                                        <div class="h-2 bg-cyan-500" style="width: {{ ($count/$max)*100 }}%"></div>
+                                    </div>
+                                </div>
+                            @endforeach
+                        </div>
+                    @else
+                        <p class="text-xs text-gray-500 dark:text-gray-400">No data</p>
+                    @endif
+                </div>
+
+                <!-- Plans by Name -->
+                <div>
+                    <h4 class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">By Plan</h4>
+                    @php($items = collect($plans['by_plan'] ?? []))
+                    @if($items->isNotEmpty())
+                        @php($max = max(1,$items->max()))
+                        <div class="space-y-2">
+                            @foreach($items->take(8) as $label => $count)
+                                <div>
+                                    <div class="flex justify-between text-xs text-gray-600 dark:text-gray-400">
+                                        <span class="truncate" title="{{ $label }}">{{ $label }}</span>
+                                        <span class="font-medium text-gray-900 dark:text-white">{{ $count }}</span>
+                                    </div>
+                                    <div class="h-2 rounded-full bg-gray-200 dark:bg-gray-700 overflow-hidden">
+                                        <div class="h-2 bg-fuchsia-500" style="width: {{ ($count/$max)*100 }}%"></div>
+                                    </div>
+                                </div>
+                            @endforeach
+                        </div>
+                    @else
+                        <p class="text-xs text-gray-500 dark:text-gray-400">No data</p>
+                    @endif
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-10 mt-10">
+                <!-- Servers -->
+                <div>
+                    <h4 class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">By Server</h4>
+                    @php($items = collect($plans['by_server'] ?? []))
+                    @if($items->isNotEmpty())
+                        @php($max = max(1,$items->max()))
+                        <div class="space-y-2">
+                            @foreach($items->take(8) as $label => $count)
+                                <div>
+                                    <div class="flex justify-between text-xs text-gray-600 dark:text-gray-400">
+                                        <span class="truncate" title="{{ $label }}">{{ $label }}</span>
+                                        <span class="font-medium text-gray-900 dark:text-white">{{ $count }}</span>
+                                    </div>
+                                    <div class="h-2 rounded-full bg-gray-200 dark:bg-gray-700 overflow-hidden">
+                                        <div class="h-2 bg-indigo-500" style="width: {{ ($count/$max)*100 }}%"></div>
+                                    </div>
+                                </div>
+                            @endforeach
+                        </div>
+                    @else
+                        <p class="text-xs text-gray-500 dark:text-gray-400">No data</p>
+                    @endif
+                </div>
+
+                <!-- Inbounds -->
+                <div>
+                    <h4 class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">By Inbound</h4>
+                    @php($items = collect($plans['by_inbound'] ?? []))
+                    @if($items->isNotEmpty())
+                        @php($max = max(1,$items->max()))
+                        <div class="space-y-2">
+                            @foreach($items->take(8) as $label => $count)
+                                <div>
+                                    <div class="flex justify-between text-xs text-gray-600 dark:text-gray-400">
+                                        <span class="truncate" title="{{ $label }}">{{ $label }}</span>
+                                        <span class="font-medium text-gray-900 dark:text-white">{{ $count }}</span>
+                                    </div>
+                                    <div class="h-2 rounded-full bg-gray-200 dark:bg-gray-700 overflow-hidden">
+                                        <div class="h-2 bg-emerald-500" style="width: {{ ($count/$max)*100 }}%"></div>
+                                    </div>
+                                </div>
+                            @endforeach
+                        </div>
+                    @else
+                        <p class="text-xs text-gray-500 dark:text-gray-400">No data</p>
+                    @endif
                 </div>
             </div>
         </div>

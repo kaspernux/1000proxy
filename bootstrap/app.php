@@ -41,6 +41,8 @@ use App\Console\Commands\SyncThirdPartyData;
 use App\Console\Commands\SystemHealthCheck;
 use App\Console\Commands\TelegramSetWebhook;
 use App\Console\Commands\TelegramSetCommands;
+use App\Console\Commands\CreateProgrammaticOrder;
+use App\Console\Commands\LiveCatalogResetAndProvision;
 use App\Console\Commands\TelegramSetBranding;
 use App\Console\Commands\TelegramPublishBrandingQueued;
 use App\Console\Commands\TelegramTestBot;
@@ -56,6 +58,9 @@ use App\Console\Commands\TestUserAuthentication;
 use App\Console\Commands\TestXUIService;
 use App\Console\Commands\TestXuiEnhancements;
 use App\Console\Commands\VerifyQueueWorkers;
+use App\Console\Commands\CollectProxyMetrics;
+use App\Console\Commands\MonitorSmoke;
+use App\Console\Commands\MonitorDebug;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
 
@@ -106,19 +111,26 @@ $app = Application::configure(basePath: dirname(__DIR__))
         // Telegram
         TelegramSetWebhook::class,
         TelegramSetCommands::class,
-    TelegramSetBranding::class,
-    TelegramPublishBrandingQueued::class,
+        TelegramSetBranding::class,
+        TelegramPublishBrandingQueued::class,
         TelegramTestBot::class,
         TelegramWebhookInfo::class,
-    TelegramSmokeProfile::class,
+        TelegramSmokeProfile::class,
         // Analytics / reports
         GenerateAnalyticsReport::class,
         HealthCheckCommand::class,
+        CollectProxyMetrics::class,
+        MonitorSmoke::class,
+    MonitorDebug::class,
+        LiveCatalogResetAndProvision::class,
+        CreateProgrammaticOrder::class,
     ])
     ->withSchedule(function (Schedule $schedule) {
         $schedule->job(new PruneOldExportsJob())->dailyAt('02:15');
     // Ensure Horizon collects metrics snapshots (Laravel 12 app.php replaces Console Kernel)
     $schedule->command('horizon:snapshot')->everyFiveMinutes();
+    // Persist client metrics for uptime/history used by Proxy Status Monitoring
+    $schedule->command('metrics:collect')->everyFiveMinutes()->withoutOverlapping();
     })
     ->withMiddleware(function (Middleware $middleware) {
     // Global & security middleware
