@@ -224,7 +224,7 @@ class AdvancedProxyService
     public function setupProxyHealthMonitoring($userId): array
     {
         try {
-            $userProxies = $this->getUserActiveProxies(User::find($userId));
+            $userProxies = $this->getUserActiveProxies($userId);
 
             $monitoringConfig = [
                 'user_id' => $userId,
@@ -325,7 +325,7 @@ class AdvancedProxyService
 
             // Apply configurations to user's proxies
             $configResults = [];
-            $userProxies = $this->getUserActiveProxies(User::find($userId));
+            $userProxies = $this->getUserActiveProxies($userId);
 
             foreach ($userProxies as $proxy) {
                 $configResults[] = $this->applyAdvancedConfig($proxy, $advancedConfig);
@@ -358,7 +358,7 @@ class AdvancedProxyService
     {
         try {
             $period = $this->parseTimeRange($timeRange);
-            $userProxies = $this->getUserActiveProxies(User::find($userId));
+            $userProxies = $this->getUserActiveProxies($userId);
 
             $analytics = [
                 'overview' => $this->getPerformanceOverview($userProxies, $period),
@@ -425,6 +425,21 @@ class AdvancedProxyService
 
     private function getUserActiveProxies($customer): Collection
     {
+        // Accepts: Customer model, numeric customer_id, or a User-like object with id
+        if (is_null($customer)) {
+            return collect();
+        }
+        if (is_numeric($customer)) {
+            $customer = \App\Models\Customer::find((int)$customer);
+        } elseif ($customer instanceof \App\Models\User) {
+            // Domain note: orders belong to Customer, not User. Try to map by same id if applicable.
+            $customer = \App\Models\Customer::find((int)($customer->id ?? 0));
+        }
+
+        if (!$customer instanceof \App\Models\Customer) {
+            return collect();
+        }
+
         return collect($customer->orders()
             ->where('payment_status', 'paid')
             ->where('status', 'active')

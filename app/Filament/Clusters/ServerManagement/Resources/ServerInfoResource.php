@@ -286,6 +286,44 @@ class ServerInfoResource extends Resource
                     \Filament\Actions\EditAction::make()
                         ->color('warning'),
 
+                    \Filament\Actions\Action::make('refresh_live')
+                        ->label('Refresh from X-UI')
+                        ->icon('heroicon-o-arrow-path')
+                        ->color('success')
+                        ->requiresConfirmation()
+                        ->action(function ($record) {
+                            try {
+                                $server = $record->server;
+                                if (!$server) {
+                                    throw new \RuntimeException('No server linked to this record.');
+                                }
+                                // Build a server-scoped XUI service and fetch online clients + health
+                                $xui = new \App\Services\XUIService($server);
+                                $onlines = $xui->getOnlineClients();
+                                $health = $xui->getHealthStatus();
+                                $ucount = is_array($onlines) ? count($onlines) : 0;
+                                $state = (($health['server_accessible'] ?? false) && ($health['api_responsive'] ?? false)) ? 'up' : 'down';
+
+                                $record->update([
+                                    'ucount' => $ucount,
+                                    'state' => $state,
+                                    'active' => true,
+                                ]);
+
+                                \Filament\Notifications\Notification::make()
+                                    ->title('Live data refreshed')
+                                    ->body("Online users: {$ucount}; State: {$state}")
+                                    ->success()
+                                    ->send();
+                            } catch (\Throwable $e) {
+                                \Filament\Notifications\Notification::make()
+                                    ->title('Refresh failed')
+                                    ->body($e->getMessage())
+                                    ->danger()
+                                    ->send();
+                            }
+                        }),
+
                     \Filament\Actions\Action::make('toggle_state')
                         ->label('Toggle State')
                         ->icon('heroicon-o-arrow-path')

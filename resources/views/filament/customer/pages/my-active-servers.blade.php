@@ -13,6 +13,45 @@
             
             <!-- Quick Stats -->
             <div class="flex flex-wrap gap-6">
+                @php
+                    $customer = auth()->guard('customer')->user();
+                    // Load active clients (normalize legacy 'up' to active for counts)
+                    $activeClients = \DB::table('server_clients as sc')
+                        ->where('sc.customer_id', $customer->id)
+                        ->whereIn('sc.status', ['active', 'up'])
+                        ->whereNull('sc.deleted_at')
+                        ->select(['sc.id','sc.server_inbound_id','sc.remote_up','sc.remote_down','sc.traffic_used_mb'])
+                        ->get();
+                    $activeCount = $activeClients->count();
+                    // Sum live traffic when cached; fallback to remote bytes; else stored MB
+                    $cacheService = app(\App\Services\CacheService::class);
+                    $totalBytes = 0;
+                    foreach ($activeClients as $c) {
+                        try {
+                            $live = $cacheService->getClientTraffic($c->id);
+                            if (is_array($live) && isset($live['total'])) {
+                                $totalBytes += (int) $live['total'];
+                                continue;
+                            }
+                        } catch (\Throwable $e) { /* ignore */ }
+                        $bytes = (int) (($c->remote_up ?? 0) + ($c->remote_down ?? 0));
+                        if ($bytes > 0) {
+                            $totalBytes += $bytes;
+                        } elseif (is_numeric($c->traffic_used_mb)) {
+                            $totalBytes += (int) round(((float) $c->traffic_used_mb) * 1048576);
+                        }
+                    }
+                    $totalGb = $totalBytes / 1073741824; // bytes -> GB
+                    // Distinct location count for active clients only
+                    $activeLocationCount = \DB::table('server_clients as sc')
+                        ->join('server_inbounds as si', 'sc.server_inbound_id', '=', 'si.id')
+                        ->join('servers as s', 'si.server_id', '=', 's.id')
+                        ->where('sc.customer_id', $customer->id)
+                        ->whereIn('sc.status', ['active','up'])
+                        ->whereNull('sc.deleted_at')
+                        ->distinct('s.country')
+                        ->count('s.country');
+                @endphp
                 <div class="bg-white dark:bg-gray-800 rounded-lg p-6 shadow-sm border border-gray-200 dark:border-gray-700 mb-2 flex-1 min-w-[220px]">
                     <div class="flex items-center">
                         <div class="p-3 bg-green-100 dark:bg-green-900 rounded-full">
@@ -21,7 +60,7 @@
                         <div class="ml-4">
                             <p class="text-sm font-medium text-gray-600 dark:text-gray-400">Active Servers</p>
                             <p class="text-2xl font-bold text-gray-900 dark:text-white">
-                                {{ auth()->guard('customer')->user()->clients()->where('status', 'active')->count() }}
+                                {{ $activeCount }}
                             </p>
                         </div>
                     </div>
@@ -35,7 +74,7 @@
                         <div class="ml-4">
                             <p class="text-sm font-medium text-gray-600 dark:text-gray-400">Total Traffic</p>
                             <p class="text-2xl font-bold text-gray-900 dark:text-white">
-                                {{ number_format(auth()->guard('customer')->user()->clients()->sum('traffic_used_mb') / 1024, 1) }}GB
+                                {{ number_format($totalGb, 1) }}GB
                             </p>
                         </div>
                     </div>
@@ -49,7 +88,7 @@
                         <div class="ml-4">
                             <p class="text-sm font-medium text-gray-600 dark:text-gray-400">Locations</p>
                             <p class="text-2xl font-bold text-gray-900 dark:text-white">
-                                {{ auth()->guard('customer')->user()->clients()->join('server_inbounds', 'server_clients.server_inbound_id', '=', 'server_inbounds.id')->join('servers', 'server_inbounds.server_id', '=', 'servers.id')->distinct('servers.country')->count('servers.country') }}
+                                {{ $activeLocationCount }}
                             </p>
                         </div>
                     </div>

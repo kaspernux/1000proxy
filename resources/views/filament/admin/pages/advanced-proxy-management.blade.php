@@ -230,10 +230,10 @@
                                                     <div class="flex justify-between items-start">
                                                         <div>
                                                             <h4 class="font-medium text-gray-900 dark:text-white">
-                                                                {{ $proxy->serverPlan->name }}
+                                                                {{ optional($proxy->orderItems->first()?->serverPlan)->name ?? 'Plan' }}
                                                             </h4>
                                                             <p class="text-sm text-gray-500 dark:text-gray-400">
-                                                                Server: {{ $proxy->serverPlan->server->location }}
+                                                                Server: {{ optional($proxy->orderItems->first()?->serverPlan?->server)->location ?? 'N/A' }}
                                                             </p>
                                                             <p class="text-sm text-gray-500 dark:text-gray-400">
                                                                 Status: <span class="text-green-600">{{ ucfirst($proxy->status) }}</span>

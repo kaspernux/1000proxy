@@ -30,7 +30,13 @@ class MyOrderDetailPage extends Component
     {
         try {
             // Eager-load valid relations; 'invoice' is singular and 'paymentMethod' exists
-            $this->order = Order::with(['items.serverPlan.server', 'invoice', 'paymentMethod'])
+            $this->order = Order::with([
+                    'items.serverPlan.server',
+                    // Eager-load clients for QR rendering without N+1 queries
+                    'items.serverClients',
+                    'invoice',
+                    'paymentMethod'
+                ])
                 ->where('id', $order_id)
                 ->where('customer_id', Auth::guard('customer')->id())
                 ->firstOrFail();

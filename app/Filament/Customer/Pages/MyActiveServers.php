@@ -15,6 +15,8 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\Auth;
 use App\Models\ServerClient;
+use App\Services\CacheService;
+use App\Services\XUIService;
 use App\Models\Subscription;
 use App\Models\Server;
 use App\Services\QrCodeService;
@@ -121,11 +123,34 @@ class MyActiveServers extends Page implements HasTable
                     ->formatStateUsing(fn (string $state): string => ucfirst($state))
                     ->extraAttributes(['class' => 'font-bold sm:text-base text-xs']),
 
+                // Quick online indicator when known
+                IconColumn::make('is_online')
+                    ->label('Online')
+                    ->boolean()
+                    ->trueIcon('heroicon-o-signal')
+                    ->falseIcon('heroicon-o-no-symbol')
+                    ->color(fn ($state) => $state ? 'success' : 'danger')
+                    ->tooltip('Online status as last known')
+                    ->toggleable(),
+
                 TextColumn::make('traffic_used_mb')
                     ->label('Traffic Used')
-                    ->formatStateUsing(fn ($state): string => 
-                        $state ? number_format($state / 1024, 2) . ' GB' : '0 GB'
-                    )
+                    ->formatStateUsing(function ($state, ServerClient $record): string {
+                        // Prefer short-cached live stats when available
+                        try {
+                            $live = app(CacheService::class)->getClientTraffic($record->id);
+                            if (is_array($live) && isset($live['total'])) {
+                                $gb = $live['total'] / 1073741824; // bytes -> GB
+                                return number_format($gb, 2) . ' GB';
+                            }
+                        } catch (\Throwable $e) { /* ignore */ }
+                        // Fallbacks: use remote_up+remote_down if available, else stored MB
+                        $bytes = (int) (($record->remote_up ?? 0) + ($record->remote_down ?? 0));
+                        if ($bytes > 0) {
+                            return number_format($bytes / 1073741824, 2) . ' GB';
+                        }
+                        return is_numeric($state) ? number_format(((float)$state) / 1024, 2) . ' GB' : '0 GB';
+                    })
                     ->sortable()
                     ->toggleable()
                     ->icon('heroicon-o-signal')
@@ -191,6 +216,22 @@ class MyActiveServers extends Page implements HasTable
                     ->color('info')
                     ->extraAttributes(['class' => 'font-bold text-blue-700 dark:text-blue-300 sm:text-base text-xs']),
 
+                // Connected server details (from eager-loaded relation)
+                TextColumn::make('server.name')
+                    ->label('Connected Server')
+                    ->toggleable()
+                    ->icon('heroicon-o-computer-desktop')
+                    ->color('info')
+                    ->extraAttributes(['class' => 'sm:text-base text-xs text-blue-700 dark:text-blue-300'])
+                    ->visible(fn ($record) => $record && (bool) $record->server),
+                TextColumn::make('server.country')
+                    ->label('Connected Location')
+                    ->toggleable()
+                    ->icon('heroicon-o-map-pin')
+                    ->color('info')
+                    ->extraAttributes(['class' => 'sm:text-base text-xs text-blue-700 dark:text-blue-300'])
+                    ->visible(fn ($record) => $record && (bool) $record->server),
+
                 TextColumn::make('serverInbound.server.country')
                     ->label('Location')
                     ->searchable()
@@ -247,6 +288,15 @@ class MyActiveServers extends Page implements HasTable
                         'pending' => 'Pending',
                     ])
                     ->default('active')
+                    ->query(function (Builder $query, array $data): Builder {
+                        $value = $data['value'] ?? null;
+                        if ($value === null) return $query;
+                        return match ($value) {
+                            'active' => $query->whereIn('status', ['active', 'up']),
+                            'inactive' => $query->whereIn('status', ['inactive', 'down']),
+                            default => $query->where('status', $value),
+                        };
+                    })
                     ->indicator('Status'),
 
                 SelectFilter::make('server_inbound_id')
@@ -450,7 +500,8 @@ class MyActiveServers extends Page implements HasTable
         $customer = Auth::guard('customer')->user();
 
         return ServerClient::query()
-            ->with(['serverInbound.server'])
+            // Ensure server relation is hydrated so XUI traffic/status can be fetched elsewhere
+            ->with(['serverInbound.server', 'server'])
             ->where('customer_id', $customer->id)
             ->latest();
     }
@@ -728,10 +779,74 @@ class MyActiveServers extends Page implements HasTable
 
     protected function refreshAllStatuses(): void
     {
-        // This would typically sync with your backend
+        try {
+            $customer = Auth::guard('customer')->user();
+            app(CacheService::class)->invalidateUserCaches((int) $customer->id);
+            // Also clear Proxy Status Monitoring aggregate cache so both pages reflect new data
+            \Cache::forget('proxy_statuses_' . (int) $customer->id);
+            // Also clear any per-client live traffic cache for this user to force fresh values
+            $clients = ServerClient::where('customer_id', $customer->id)
+                ->with(['serverInbound.server', 'server'])
+                ->get();
+            foreach ($clients->pluck('id') as $cid) {
+                \Cache::forget("client_traffic_{$cid}");
+            }
+
+            // Group by server and fetch online lists once per server
+            $byServer = $clients->groupBy(function (ServerClient $c) {
+                return $c->server_id ?: optional($c->serverInbound)->server_id;
+            });
+            foreach ($byServer as $serverId => $group) {
+                if (!$serverId) continue;
+                $server = optional($group->first())->server ?: optional($group->first()->serverInbound)->server;
+                if (!$server) continue;
+                try {
+                    $xui = app()->makeWith(XUIService::class, ['server' => $server]);
+                    $onlines = $xui->getOnlineClients();
+                    $onlineEmails = collect(is_array($onlines) ? ($onlines['obj'] ?? $onlines['online'] ?? $onlines) : [])->filter()->values();
+                } catch (\Throwable $e) {
+                    $onlineEmails = collect();
+                }
+
+                foreach ($group as $client) {
+                    // Prime live traffic cache
+                    try {
+                        $remote = null;
+                        try { $remote = $xui->getClientByUuid($client->id); } catch (\Throwable $e) { $remote = null; }
+                        if (!$remote && $client->email) {
+                            try { $remote = $xui->getClientByEmail($client->email); } catch (\Throwable $e) { $remote = null; }
+                        }
+                        if (is_array($remote)) {
+                            $up = (int) ($remote['up'] ?? 0);
+                            $down = (int) ($remote['down'] ?? 0);
+                            $total = (int) ($remote['total'] ?? ($up + $down));
+                            app(CacheService::class)->cacheClientTraffic($client->id, ['up' => $up, 'down' => $down, 'total' => $total]);
+                        }
+                    } catch (\Throwable $e) { /* ignore */ }
+
+                    // Update online flag when we can infer it
+                    try {
+                        if ($onlineEmails->isNotEmpty()) {
+                            $isOnline = $onlineEmails->contains($client->email);
+                            if (!is_null($client->is_online) && (bool)$client->is_online === $isOnline) {
+                                // unchanged
+                            } else {
+                                $client->is_online = $isOnline;
+                                $client->saveQuietly();
+                            }
+                        }
+                    } catch (\Throwable $e) { /* ignore */ }
+                }
+            }
+        } catch (\Throwable $e) {
+            // ignore errors but still notify
+        }
+
+        $this->js('window.dispatchEvent(new Event("refresh-table"))');
+
         Notification::make()
             ->title('Status Refreshed')
-            ->body('All server statuses have been updated.')
+            ->body('Latest clients, traffic, and online status updated.')
             ->success()
             ->send();
     }

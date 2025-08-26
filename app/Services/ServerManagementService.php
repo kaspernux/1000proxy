@@ -61,12 +61,16 @@ class ServerManagementService
                 }
 
                 // Update server status in database (align column names)
-                $server->update([
-                    'status' => $healthStatus['status'],
-                    'last_health_check_at' => now(),
-                    'response_time_ms' => $healthStatus['response_time'],
-                    'uptime_percentage' => $healthStatus['uptime_percentage']
-                ]);
+                    $server->update([
+                        'status' => $healthStatus['status'],
+                        'health_status' => $healthStatus['status'],
+                        'last_health_check_at' => now(),
+                        'response_time_ms' => $healthStatus['response_time'],
+                        'uptime_percentage' => $healthStatus['uptime_percentage'],
+                        // Keep quick aggregates in sync
+                        'active_clients' => $healthStatus['active_clients'] ?? $server->active_clients,
+                        'total_traffic_mb' => isset($healthStatus['bandwidth_usage']) ? (int) round(($healthStatus['bandwidth_usage'] ?? 0) * 1024) : $server->total_traffic_mb,
+                    ]);
 
             } catch (\Exception $e) {
                 $results['unhealthy_servers']++;
@@ -96,30 +100,36 @@ class ServerManagementService
         $startTime = microtime(true);
 
         try {
-            // Test basic connectivity
-            $response = Http::timeout(10)->get($server->panel_url . '/panel/');
+            // Test basic connectivity using helper that respects host/panel_port/web_base_path
+            $baseUrl = method_exists($server, 'getApiBaseUrl') ? rtrim($server->getApiBaseUrl(), '/') : rtrim((string)$server->panel_url, '/');
+            $probeUrl = $baseUrl . '/';
+            $response = Http::timeout(10)->get($probeUrl);
             $responseTime = round((microtime(true) - $startTime) * 1000, 2);
 
             if ($response->successful()) {
-                // Get detailed server metrics from X-UI API
+                // Gather live metrics: online clients via X-UI; bandwidth from local aggregates
+                $mockStats = [
+                    'active_clients' => 0,
+                    'bandwidth_usage' => 0.0,
+                    'cpu_usage' => 0,
+                    'memory_usage' => 0,
+                    'disk_usage' => 0,
+                ];
                 try {
-                    // Note: Using mock data since XUIService doesn't have getServerStats method yet
-                    $mockStats = [
-                        'active_clients' => rand(10, 100),
-                        'bandwidth_usage' => rand(50, 500) / 10, // GB
-                        'cpu_usage' => rand(5, 25),
-                        'memory_usage' => rand(20, 60),
-                        'disk_usage' => rand(10, 40)
-                    ];
-                } catch (\Exception $e) {
-                    $mockStats = [
-                        'active_clients' => 0,
-                        'bandwidth_usage' => 0,
-                        'cpu_usage' => 0,
-                        'memory_usage' => 0,
-                        'disk_usage' => 0
-                    ];
+                    // Online clients from panel onlines endpoint
+                    $xui = new XUIService($server);
+                    $onlines = $xui->getOnlineClients();
+                    $mockStats['active_clients'] = is_array($onlines) ? count($onlines) : 0;
+                } catch (\Throwable $e) {
+                    // keep zero and continue
                 }
+                try {
+                    // Aggregate bandwidth usage (MB -> GB) from server clients
+                    $totalMb = \App\Models\ServerClient::whereHas('inbound', function ($q) use ($server) {
+                        $q->where('server_id', $server->id);
+                    })->sum('traffic_used_mb');
+                    $mockStats['bandwidth_usage'] = round(((float) $totalMb) / 1024, 2);
+                } catch (\Throwable $e) { /* ignore */ }
 
                 return [
                     'status' => $this->determineHealthStatus($server, $mockStats, $responseTime),
@@ -220,18 +230,19 @@ class ServerManagementService
         \DB::beginTransaction();
         try {
             // Create server record
-            $server = Server::create([
-                'name' => $provisioningData['name'],
-                'country' => $provisioningData['country'],
-                'ip_address' => $provisioningData['ip_address'],
-                'panel_url' => $provisioningData['panel_url'],
-                'panel_username' => $provisioningData['panel_username'],
-                'panel_password' => $provisioningData['panel_password'],
-                'max_clients' => $provisioningData['max_clients'] ?? 1000,
-                'bandwidth_limit_gb' => $provisioningData['bandwidth_limit_gb'] ?? 1000,
-                'is_active' => false, // Initially inactive until configured
-                'status' => 'provisioning'
-            ]);
+                $server = Server::create([
+                    'name' => $provisioningData['name'],
+                    'country' => $provisioningData['country'],
+                    // Map to real columns
+                    'ip' => $provisioningData['ip_address'] ?? null,
+                    'panel_url' => $provisioningData['panel_url'],
+                    'username' => $provisioningData['panel_username'],
+                    'password' => $provisioningData['panel_password'],
+                    'max_clients' => max((int)($provisioningData['max_clients'] ?? 1000), 1),
+                    'bandwidth_limit_gb' => max((int)($provisioningData['bandwidth_limit_gb'] ?? 1000), 1),
+                    'is_active' => false, // Initially inactive until configured
+                    'status' => 'provisioning'
+                ]);
 
             // Run configuration wizard
             $configResult = $this->runServerConfigurationWizard(array_merge(
@@ -281,20 +292,45 @@ class ServerManagementService
     /**
      * Monitor server performance continuously
      */
-    public function monitorServerPerformance(Server $server): array
+    public function monitorServerPerformance(Server $server, bool $force = false): array
     {
         $metrics = [];
         $alerts = [];
 
         try {
-            // Get current metrics - using mock data since XUIService methods need to be implemented
+            // Build current metrics from available live sources
             $xuiStats = [
-                'cpu_usage' => rand(5, 30),
+                'cpu_usage' => rand(5, 30), // Placeholder; will be overridden if telemetry available
                 'memory_usage' => rand(20, 70),
                 'disk_usage' => rand(10, 50),
-                'bandwidth_usage_gb' => rand(100, 1000) / 10,
-                'active_clients' => rand(10, 200)
+                'bandwidth_usage_gb' => 0.0,
+                'active_clients' => 0,
             ];
+            try {
+                $xui = new XUIService($server);
+                // Telemetry first (if panel/sidecar exposes it)
+                $telemetry = $xui->getSystemTelemetry();
+                if (is_array($telemetry)) {
+                    $xuiStats['cpu_usage'] = (float) ($telemetry['cpu_usage'] ?? $xuiStats['cpu_usage']);
+                    $xuiStats['memory_usage'] = (float) ($telemetry['memory_usage'] ?? $xuiStats['memory_usage']);
+                    $xuiStats['disk_usage'] = (float) ($telemetry['disk_usage'] ?? $xuiStats['disk_usage']);
+                }
+                // Cache onlines briefly to reduce API pressure unless force-refreshing
+                $onlinesCacheKey = "server_onlines_{$server->id}";
+                if ($force) {
+                    Cache::forget($onlinesCacheKey);
+                }
+                $onlines = Cache::remember($onlinesCacheKey, now()->addSeconds(60), function () use ($xui) {
+                    return $xui->getOnlineClients();
+                });
+                $xuiStats['active_clients'] = is_array($onlines) ? count($onlines) : 0;
+            } catch (\Throwable $e) { /* ignore */ }
+            try {
+                $totalMb = \App\Models\ServerClient::whereHas('inbound', function ($q) use ($server) {
+                    $q->where('server_id', $server->id);
+                })->sum('traffic_used_mb');
+                $xuiStats['bandwidth_usage_gb'] = round(((float) $totalMb) / 1024, 2);
+            } catch (\Throwable $e) { /* ignore */ }
             $currentTime = now();
 
             // CPU Usage Monitoring
@@ -319,10 +355,12 @@ class ServerManagementService
                 ];
             }
 
-            // Bandwidth Monitoring
-            $bandwidthUsage = $xuiStats['bandwidth_usage_gb'] ?? 0;
-            $bandwidthLimit = $server->bandwidth_limit_gb;
-            $bandwidthPercentage = ($bandwidthUsage / $bandwidthLimit) * 100;
+            // Bandwidth Monitoring (guard division by zero)
+            $bandwidthUsage = (float) ($xuiStats['bandwidth_usage_gb'] ?? 0);
+            $bandwidthLimit = (float) ($server->bandwidth_limit_gb ?? 0);
+            $bandwidthPercentage = $bandwidthLimit > 0
+                ? round(($bandwidthUsage / $bandwidthLimit) * 100, 2)
+                : 0.0;
 
             if ($bandwidthPercentage > 80) {
                 $alerts[] = [
@@ -333,10 +371,12 @@ class ServerManagementService
                 ];
             }
 
-            // Client Count Monitoring
-            $activeClients = $xuiStats['active_clients'] ?? 0;
-            $maxClients = $server->max_clients;
-            $clientPercentage = ($activeClients / $maxClients) * 100;
+            // Client Count Monitoring (guard division by zero)
+            $activeClients = (int) ($xuiStats['active_clients'] ?? 0);
+            $maxClients = (int) ($server->max_clients ?? 0);
+            $clientPercentage = $maxClients > 0
+                ? round(($activeClients / $maxClients) * 100, 2)
+                : 0.0;
 
             if ($clientPercentage > 90) {
                 $alerts[] = [
@@ -374,8 +414,24 @@ class ServerManagementService
                 'status' => count($alerts) > 0 ? 'warning' : 'healthy'
             ];
 
-            // Store metrics in cache for real-time monitoring
-            Cache::put("server_metrics_{$server->id}", $metrics, now()->addMinutes(5));
+            // Persist quick aggregates on the server for dashboard summaries
+            try {
+                $server->update([
+                    'active_clients' => $activeClients,
+                    'total_traffic_mb' => (int) round($bandwidthUsage * 1024),
+                    'response_time_ms' => $responseTime,
+                    'uptime_percentage' => $metrics['uptime_percentage'],
+                    'status' => $metrics['status'],
+                    'health_status' => $metrics['status'],
+                ]);
+            } catch (\Throwable $e) { /* ignore persist errors */ }
+
+            // Store metrics in cache for real-time monitoring (short TTL)
+            $metricsCacheKey = "server_metrics_{$server->id}";
+            if ($force) {
+                Cache::forget($metricsCacheKey);
+            }
+            Cache::put($metricsCacheKey, $metrics, now()->addMinutes(2));
 
             // Store historical data
             $this->storePerformanceMetrics($server, $metrics);
@@ -657,9 +713,11 @@ class ServerManagementService
 
     protected function updateServerLimits(Server $server, array $configData): array
     {
+        $nextMax = (int) ($configData['max_clients'] ?? $server->max_clients ?? 0);
+        $nextBw = (int) ($configData['bandwidth_limit_gb'] ?? $server->bandwidth_limit_gb ?? 0);
         $server->update([
-            'max_clients' => $configData['max_clients'] ?? $server->max_clients,
-            'bandwidth_limit_gb' => $configData['bandwidth_limit_gb'] ?? $server->bandwidth_limit_gb
+            'max_clients' => max($nextMax, 1),
+            'bandwidth_limit_gb' => max($nextBw, 1),
         ]);
 
         return ['success' => true, 'message' => 'Server limits updated'];
@@ -690,14 +748,14 @@ class ServerManagementService
 
     protected function getTotalActiveClients(): int
     {
-        return Cache::remember('total_active_clients', now()->addMinutes(5), function() {
+        return Cache::remember('total_active_clients', now()->addMinutes(2), function() {
             return Server::where('is_active', true)->sum('active_clients') ?? 0;
         });
     }
 
     protected function getTotalBandwidthUsage(): float
     {
-        return Cache::remember('total_bandwidth_usage', now()->addMinutes(5), function() {
+        return Cache::remember('total_bandwidth_usage', now()->addMinutes(2), function() {
             // Convert total_traffic_mb (aggregate MB) to GB
             $totalMb = Server::where('is_active', true)->sum('total_traffic_mb') ?? 0;
             return round($totalMb / 1024, 2);
@@ -706,16 +764,38 @@ class ServerManagementService
 
     protected function getAverageResponseTime(): float
     {
-        return Cache::remember('average_response_time', now()->addMinutes(5), function() {
+        return Cache::remember('average_response_time', now()->addMinutes(3), function() {
             return Server::where('is_active', true)->avg('response_time_ms') ?? 0;
         });
     }
 
     protected function getOverallUptimePercentage(): float
     {
-        return Cache::remember('overall_uptime', now()->addMinutes(10), function() {
+        return Cache::remember('overall_uptime', now()->addMinutes(3), function() {
             return Server::where('is_active', true)->avg('uptime_percentage') ?? 0;
         });
+    }
+
+    /**
+     * Force refresh caches for dashboard aggregates and per-server metrics
+     */
+    public function forceRefreshDashboardCaches(): void
+    {
+        // Invalidate aggregate caches
+        Cache::forget('total_active_clients');
+        Cache::forget('total_bandwidth_usage');
+        Cache::forget('average_response_time');
+        Cache::forget('overall_uptime');
+        Cache::forget('bulk_health_check_results');
+
+        // Invalidate and repopulate per-server caches
+        $servers = Server::where('is_active', true)->get();
+        foreach ($servers as $server) {
+            Cache::forget("server_onlines_{$server->id}");
+            Cache::forget("server_metrics_{$server->id}");
+            // Recompute and warm caches
+            try { $this->monitorServerPerformance($server, true); } catch (\Throwable $e) { /* continue */ }
+        }
     }
 
     protected function getGeographicDistribution(Collection $servers): array

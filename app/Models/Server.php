@@ -52,6 +52,9 @@ class Server extends Model
         'flag',
         'description',
         'status',
+    // capacity & quotas
+    'max_clients',
+    'bandwidth_limit_gb',
         'host',
         'panel_port',
         'web_base_path',

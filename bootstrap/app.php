@@ -31,6 +31,7 @@ use App\Console\Commands\PruneExports;
 use App\Console\Commands\QueueMaintenance;
 use App\Console\Commands\CacheWarmupCommand;
 use App\Console\Commands\RefreshFxRates;
+use App\Console\Commands\RefreshServerMetrics;
 use App\Console\Commands\RepairXuiSniffing;
 use App\Console\Commands\RunCustomerSuccessAutomation;
 use App\Console\Commands\SecurityCommand;
@@ -61,6 +62,7 @@ use App\Console\Commands\VerifyQueueWorkers;
 use App\Console\Commands\CollectProxyMetrics;
 use App\Console\Commands\MonitorSmoke;
 use App\Console\Commands\MonitorDebug;
+use App\Console\Commands\RefreshClientStatus;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
 
@@ -124,6 +126,8 @@ $app = Application::configure(basePath: dirname(__DIR__))
     MonitorDebug::class,
         LiveCatalogResetAndProvision::class,
         CreateProgrammaticOrder::class,
+        RefreshClientStatus::class,
+        RefreshServerMetrics::class,
     ])
     ->withSchedule(function (Schedule $schedule) {
         $schedule->job(new PruneOldExportsJob())->dailyAt('02:15');
@@ -131,6 +135,11 @@ $app = Application::configure(basePath: dirname(__DIR__))
     $schedule->command('horizon:snapshot')->everyFiveMinutes();
     // Persist client metrics for uptime/history used by Proxy Status Monitoring
     $schedule->command('metrics:collect')->everyFiveMinutes()->withoutOverlapping();
+    // Refresh client online flags and live traffic cache periodically
+    $schedule->command('clients:refresh-status --limit=800')->everyFiveMinutes()->withoutOverlapping();
+    // Warm dashboard/server metrics every 5 minutes; force once hourly.
+    $schedule->command('metrics:refresh')->everyFiveMinutes()->withoutOverlapping();
+    $schedule->command('metrics:refresh --force')->hourly()->withoutOverlapping();
     })
     ->withMiddleware(function (Middleware $middleware) {
     // Global & security middleware

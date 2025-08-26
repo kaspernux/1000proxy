@@ -44,6 +44,10 @@ use Filament\Schemas\Components\Tabs;
 use Filament\Schemas\Components\Section as InfolistSection;
 use Filament\Infolists\Components\TextEntry;
 use Filament\Infolists\Components\IconEntry;
+use App\Models\ServerClient;
+use App\Models\Server;
+use App\Services\XUIService;
+use App\Services\CacheService;
 
 class ClientTrafficResource extends Resource
 {
@@ -331,6 +335,80 @@ class ClientTrafficResource extends Resource
                     EditAction::make()
                         ->tooltip('Edit traffic record'),
 
+                    Action::make('refresh_live')
+                        ->label('Refresh Live')
+                        ->icon('heroicon-o-arrow-path')
+                        ->color('info')
+                        ->tooltip('Fetch live traffic from 3X-UI and cache it')
+                        ->action(function ($record) {
+                            // Try to locate matching ServerClient to resolve server context
+                            $serverClient = ServerClient::query()
+                                ->where('email', $record->email)
+                                ->when($record->server_inbound_id, fn($q) => $q->where('server_inbound_id', $record->server_inbound_id))
+                                ->first();
+
+                            if (!$serverClient) {
+                                \Filament\Notifications\Notification::make()
+                                    ->title('No matching client found')
+                                    ->body('Unable to resolve server context for live refresh.')
+                                    ->warning()
+                                    ->send();
+                                return;
+                            }
+
+                            $server = $serverClient->server ?? $serverClient->inbound?->server;
+                            if (!$server instanceof Server) {
+                                \Filament\Notifications\Notification::make()
+                                    ->title('Server not found')
+                                    ->body('Cannot determine server for this client.')
+                                    ->danger()
+                                    ->send();
+                                return;
+                            }
+
+                            $xui = new XUIService($server);
+                            $cache = app(CacheService::class);
+
+                            // Prefer UUID if present; fallback to email
+                            $live = null;
+                            if (!empty($serverClient->id)) {
+                                $live = $xui->getClientByUuid((string)$serverClient->id);
+                            }
+                            if (!$live) {
+                                $live = $xui->getClientByEmail($record->email);
+                            }
+
+                            if ($live) {
+                                $cacheKeyUuid = $serverClient->uuid ?: (string) $serverClient->id;
+                                if ($cacheKeyUuid) {
+                                    $cache->cacheClientTraffic($cacheKeyUuid, [
+                                        'up' => (int)($live['up'] ?? 0),
+                                        'down' => (int)($live['down'] ?? 0),
+                                        'total' => (int)($live['total'] ?? 0),
+                                        'fetched_at' => now()->toISOString(),
+                                    ]);
+                                }
+
+                                // Update local record as a convenience snapshot
+                                $record->update([
+                                    'up' => (int)($live['up'] ?? 0),
+                                    'down' => (int)($live['down'] ?? 0),
+                                    'total' => (int)($live['total'] ?? (($live['up'] ?? 0) + ($live['down'] ?? 0))),
+                                ]);
+
+                                \Filament\Notifications\Notification::make()
+                                    ->title('Live traffic refreshed')
+                                    ->success()
+                                    ->send();
+                            } else {
+                                \Filament\Notifications\Notification::make()
+                                    ->title('No live data')
+                                    ->body('3X-UI did not return traffic for this client.')
+                                    ->warning()
+                                    ->send();
+                            }
+                        }),
+
                     Action::make('reset_traffic')
                         ->label('Reset Traffic')
                         ->icon('heroicon-o-arrow-path')
@@ -339,6 +417,24 @@ class ClientTrafficResource extends Resource
                         ->modalHeading('Reset Traffic Statistics')
                         ->modalDescription('Are you sure you want to reset traffic statistics for this client?')
                         ->action(function ($record) {
+                            // Attempt remote reset if we can resolve server/inbound context
+                            $serverClient = ServerClient::query()->where('email', $record->email)->first();
+                            $remoteResetOk = false;
+                            try {
+                                if ($serverClient && ($server = $serverClient->server ?? $serverClient->inbound?->server)) {
+                                    $xui = new XUIService($server);
+                                    // Derive inbound id: prefer remote_inbound_id on client, else serverInbound.remote_id
+                                    $inboundId = $serverClient->remote_inbound_id
+                                        ?: optional($serverClient->serverInbound)->remote_id
+                                        ?: null;
+                                    if ($inboundId) {
+                                        $remoteResetOk = $xui->resetClientTraffic((int)$inboundId, $record->email);
+                                    }
+                                }
+                            } catch (\Throwable $e) {
+                                // Continue with local reset if remote fails
+                            }
+
                             $record->update([
                                 'up' => 0,
                                 'down' => 0,
@@ -347,7 +443,7 @@ class ClientTrafficResource extends Resource
                             ]);
 
                             \Filament\Notifications\Notification::make()
-                                ->title('Traffic reset successfully')
+                                ->title($remoteResetOk ? 'Traffic reset (remote + local)' : 'Traffic reset (local)')
                                 ->success()
                                 ->send();
                         })

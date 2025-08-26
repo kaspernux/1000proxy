@@ -83,6 +83,34 @@
             </div>
         </div>
 
+        <!-- Quick setup tips and dashboard link -->
+        <div class="mb-8">
+            <div class="bg-white/10 backdrop-blur-md border border-white/20 rounded-2xl p-5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                <div class="flex items-start gap-3">
+                    <div class="flex items-center justify-center w-10 h-10 rounded-lg bg-gradient-to-br from-blue-500/30 to-purple-600/30 border border-blue-400/30">
+                        <svg class="w-6 h-6 text-blue-300" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                    </div>
+                    <div>
+                        <p class="text-white font-semibold mb-1">Setup tips</p>
+                        <ul class="text-sm text-blue-100 space-y-1 list-disc list-inside">
+                            <li>iOS/Android: V2Box is preferred.</li>
+                            <li>Windows: v2rayN is preferred.</li>
+                        </ul>
+                        <p class="text-xs text-gray-300 mt-2">Scan the QR code to import, or use “Download QR code” to save the image and import it in your app.</p>
+                    </div>
+                </div>
+                @php
+                    $dashboardUrl = \Illuminate\Support\Facades\Route::has('filament.customer.pages.dashboard')
+                        ? route('filament.customer.pages.dashboard')
+                        : url('/account');
+                @endphp
+                <a href="{{$dashboardUrl}}" class="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-gradient-to-r from-green-500/20 to-blue-500/20 text-green-300 border border-green-400/30 hover:from-green-500/30 hover:to-blue-500/30 transition-colors">
+                    <svg class="w-5 h-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0h6"/></svg>
+                    <span>Go to Customer Dashboard</span>
+                </a>
+            </div>
+        </div>
+
         <!-- Product Table & Summary -->
         <div class="flex flex-col md:flex-row gap-8 mt-6">
             <div class="md:w-3/4 w-full">
@@ -100,13 +128,44 @@
                             @foreach ($order_items as $item)
                                 <tr wire:key="{{$item->id}}" class="border-b border-white/10 last:border-0 hover:bg-white/5 transition-all duration-300 group">
                                     <td class="py-6 flex items-center gap-4">
+                                        @php
+                                            // Prefer the first associated client for QR rendering
+                                            $client = $item->serverClients->first();
+                                            $qrDataUrl = $client?->qr_code; // data:image/png;base64,... generated accessor
+                                        @endphp
                                         <div class="relative">
-                                            <img class="h-16 w-16 rounded-xl object-cover border border-white/20 group-hover:scale-110 transition-transform duration-300" src="{{ url('storage/' .$item->serverPlan->product_image) }}" alt="Product image">
+                                            @if($qrDataUrl)
+                                                <img
+                                                    class="h-56 w-56 sm:h-64 sm:w-64 rounded-xl object-contain bg-white p-3 border border-white/30 shadow-md group-hover:scale-105 transition-transform duration-300"
+                                                    src="{{ $qrDataUrl }}"
+                                                    alt="Connection QR code for {{ $item->name }}"
+                                                >
+                                            @else
+                                                <img
+                                                    class="h-24 w-24 rounded-xl object-cover border border-white/20 group-hover:scale-110 transition-transform duration-300"
+                                                    src="{{ url('storage/' . $item->serverPlan->product_image) }}"
+                                                    alt="Product image"
+                                                >
+                                            @endif
                                             <div class="absolute -top-2 -right-2 w-6 h-6 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center border-2 border-white/20">
                                                 <span class="text-xs font-bold text-white">{{$item->quantity}}</span>
                                             </div>
                                         </div>
-                                        <span class="font-semibold text-white group-hover:text-blue-300 transition-colors duration-300">{{$item->name}}</span>
+                                        <div class="flex flex-col">
+                                            <span class="font-semibold text-white group-hover:text-blue-300 transition-colors duration-300">{{$item->name}}</span>
+                                            @if($client && $qrDataUrl)
+                                                <a href="{{$qrDataUrl}}" download="client-qr-{{$client->id}}.png" class="text-xs text-blue-300 hover:text-blue-200 underline mt-1">Download QR code</a>
+                                            @elseif($client && $client->qr_code_client)
+                                                @php
+                                                    $qrPath = $client->qr_code_client;
+                                                    if (is_string($qrPath) && str_starts_with($qrPath, 'public/')) {
+                                                        $qrPath = substr($qrPath, 7);
+                                                    }
+                                                    $qrUrl = url('storage/' . ltrim($qrPath, '/'));
+                                                @endphp
+                                                <a href="{{$qrUrl}}" download="client-qr-{{$client->id}}.png" class="text-xs text-blue-300 hover:text-blue-200 underline mt-1">Download QR code</a>
+                                            @endif
+                                        </div>
                                     </td>
                                     <td class="py-6 text-blue-300 font-medium">{{Number::currency($item->unit_amount)}}</td>
                                     <td class="py-6 text-center">

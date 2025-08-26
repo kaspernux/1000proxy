@@ -39,6 +39,9 @@ use Filament\Schemas\Components\Tabs;
 use Filament\Schemas\Components\Section as InfolistSection;
 use Filament\Infolists\Components\TextEntry;
 use Filament\Infolists\Components\IconEntry;
+use App\Models\ServerClient;
+use App\Models\Server;
+use App\Services\XUIService;
 
 class InboundClientIPResource extends Resource
 {
@@ -246,6 +249,72 @@ class InboundClientIPResource extends Resource
 
                     EditAction::make()
                         ->tooltip('Edit IP addresses'),
+
+                    Action::make('refresh_from_xui')
+                        ->label('Refresh from X-UI')
+                        ->icon('heroicon-o-arrow-path')
+                        ->color('info')
+                        ->tooltip('Pull latest client IPs from 3X-UI')
+                        ->action(function ($record) {
+                            $serverClient = ServerClient::query()->where('email', $record->client_email)->first();
+                            if (!$serverClient) {
+                                \Filament\Notifications\Notification::make()
+                                    ->title('No matching client')
+                                    ->body('Could not resolve server for this email.')
+                                    ->warning()
+                                    ->send();
+                                return;
+                            }
+                            $server = $serverClient->server ?? $serverClient->inbound?->server;
+                            if (!$server instanceof Server) {
+                                \Filament\Notifications\Notification::make()
+                                    ->title('Server not found')
+                                    ->danger()
+                                    ->send();
+                                return;
+                            }
+                            $xui = new XUIService($server);
+                            $ipsList = $xui->getClientIps($record->client_email);
+                            if (empty($ipsList)) {
+                                \Filament\Notifications\Notification::make()
+                                    ->title('No IP records')
+                                    ->body('3X-UI returned no IPs for this client.')
+                                    ->warning()
+                                    ->send();
+                                return;
+                            }
+                            $ipsText = implode("\n", array_map('strval', $ipsList));
+                            $record->update(['ips' => $ipsText]);
+                            \Filament\Notifications\Notification::make()
+                                ->title('IPs refreshed')
+                                ->success()
+                                ->send();
+                        }),
+
+                    Action::make('clear_ips_remote')
+                        ->label('Clear IPs (X-UI)')
+                        ->icon('heroicon-o-trash')
+                        ->color('warning')
+                        ->requiresConfirmation()
+                        ->modalHeading('Clear IP logs in X-UI?')
+                        ->modalDescription('This will clear the client IP log on the remote panel and locally.')
+                        ->action(function ($record) {
+                            $serverClient = ServerClient::query()->where('email', $record->client_email)->first();
+                            $remoteOk = false;
+                            try {
+                                if ($serverClient && ($server = $serverClient->server ?? $serverClient->inbound?->server)) {
+                                    $xui = new XUIService($server);
+                                    $remoteOk = $xui->clearClientIps($record->client_email);
+                                }
+                            } catch (\Throwable $e) {
+                                // continue
+                            }
+                            $record->update(['ips' => '']);
+                            \Filament\Notifications\Notification::make()
+                                ->title($remoteOk ? 'IPs cleared (remote + local)' : 'IPs cleared (local)')
+                                ->success()
+                                ->send();
+                        }),
 
                     Action::make('validate_ips')
                         ->label('Validate IPs')

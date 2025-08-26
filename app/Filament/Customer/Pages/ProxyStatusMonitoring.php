@@ -522,13 +522,16 @@ class ProxyStatusMonitoring extends Page
                     return $cached;
                 }
             }
-            if (!$client->server) {
+            // Ensure a Server model is present (fallback from inbound)
+            $server = $client->server ?: optional($client->inbound)->server;
+            if (!$server) {
                 return null;
             }
-            $svc = new XUIService($client->server);
-            // Prefer UUID-based lookup; fall back to email
+            $svc = new XUIService($server);
+            // Prefer UUID-based lookup; fall back to email (emoji/long labels are supported by XUIService encoding)
             $remote = $svc->getClientByUuid($client->id) ?: ($client->email ? $svc->getClientByEmail($client->email) : null);
             if (is_array($remote)) {
+                // The service normalizes to have up/down/total, but guard regardless
                 $up = (int) ($remote['up'] ?? 0);
                 $down = (int) ($remote['down'] ?? 0);
                 $total = (int) ($remote['total'] ?? ($up + $down));
@@ -714,8 +717,9 @@ class ProxyStatusMonitoring extends Page
     protected function determineProxyStatus(ServerClient $client): array
     {
         try {
-            // Check if server exists and is accessible
-            if (!$client->server) {
+        // Check if server exists and is accessible (fallback to inbound->server)
+        $server = $client->server ?: optional($client->inbound)->server;
+        if (!$server) {
                 return [
                     'status' => 'error',
                     'text' => 'Server configuration missing',
@@ -732,20 +736,20 @@ class ProxyStatusMonitoring extends Page
                     'status' => $online ? 'online' : 'offline',
                     'text' => $online ? 'Connected' : 'Disconnected',
                     'color' => $online ? 'success' : 'danger',
-                    'latency' => $online ? $this->measureLatency($client->server) : 0,
+            'latency' => $online ? $this->measureLatency($server) : 0,
                     'uptime' => $this->calculateUptime($client),
                 ];
             }
 
             // Fallback to a lightweight connectivity check via XUI
-            $xuiService = new XUIService($client->server);
+        $xuiService = new XUIService($server);
             $isOnline = $xuiService->testConnection();
 
             return [
                 'status' => $isOnline ? 'online' : 'offline',
                 'text' => $isOnline ? 'Connected' : 'Connection failed',
                 'color' => $isOnline ? 'success' : 'danger',
-                'latency' => $isOnline ? $this->measureLatency($client->server) : 0,
+        'latency' => $isOnline ? $this->measureLatency($server) : 0,
                 'uptime' => $this->calculateUptime($client),
             ];
         } catch (\Exception $e) {
@@ -889,10 +893,10 @@ class ProxyStatusMonitoring extends Page
     {
         $customer = Auth::guard('customer')->user();
 
-        return ServerClient::whereHas('order', function ($query) use ($customer) {
+    return ServerClient::whereHas('order', function ($query) use ($customer) {
             $query->where('customer_id', $customer->id);
         })
-        ->with(['server'])
+    ->with(['server', 'inbound.server'])
         ->where('status', 'active')
         ->get();
     }

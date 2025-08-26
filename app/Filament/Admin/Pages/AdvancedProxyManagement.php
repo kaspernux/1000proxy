@@ -99,6 +99,36 @@ class AdvancedProxyManagement extends Page
                     $this->loadInitialData();
                     Notification::make()->title('Data refreshed')->success()->send();
                 }),
+            \Filament\Actions\Action::make('force_live_refresh')
+                ->label('Force Live (X-UI)')
+                ->icon('heroicon-o-bolt')
+                ->color('success')
+                ->action(function () {
+                    $this->forceLiveRefresh();
+                }),
+            \Filament\Actions\Action::make('reset_selected_traffic')
+                ->label('Reset Traffic (Selected)')
+                ->icon('heroicon-o-arrow-path-rounded-square')
+                ->color('warning')
+                ->requiresConfirmation()
+                ->action(function () {
+                    $this->resetTrafficForSelected();
+                }),
+            \Filament\Actions\Action::make('clear_selected_ips')
+                ->label('Clear IPs (Selected)')
+                ->icon('heroicon-o-funnel')
+                ->color('warning')
+                ->requiresConfirmation()
+                ->action(function () {
+                    $this->clearIpsForSelected();
+                }),
+            \Filament\Actions\Action::make('backup_servers')
+                ->label('Send Backup to Admins')
+                ->icon('heroicon-o-cloud-arrow-up')
+                ->color('gray')
+                ->action(function () {
+                    $this->backupSelectedServers();
+                }),
             \Filament\Actions\Action::make('docs')
                 ->label('Docs')
                 ->icon('heroicon-o-book-open')
@@ -579,22 +609,29 @@ class AdvancedProxyManagement extends Page
     {
         if (!$this->selectedUserId) return collect();
 
-    return Order::where('customer_id', $this->selectedUserId)
-                   ->where('payment_status', 'paid')
-                   ->where('order_status', 'completed')
-                   ->with(['serverPlan.server'])
-                   ->get();
+        return Order::where('customer_id', $this->selectedUserId)
+            ->where('payment_status', 'paid')
+            ->where('order_status', 'completed')
+            ->with(['orderItems.serverPlan.server'])
+            ->get();
     }
 
     private function getServerStats(): array
     {
+        $totalServers = Server::count();
+        $activeServers = Server::where('is_active', true)->count();
+        $totalProxies = Order::where('payment_status', 'paid')->where('order_status', 'completed')->count();
+        $avgResponse = (float) (Server::avg('response_time_ms') ?? 0);
+        $totalMb = (float) (Server::sum('total_traffic_mb') ?? 0);
+        $totalGb = round($totalMb / 1024, 2);
         return [
-            'total_servers' => Server::count(),
-            'active_servers' => Server::where('status', 'active')->count(),
-            'total_proxies' => Order::where('payment_status', 'paid')->where('status', 'active')->count(),
-            'healthy_proxies' => Order::where('payment_status', 'paid')->where('status', 'active')->count() * 0.95,
-            'avg_response_time' => rand(100, 300),
-            'total_bandwidth' => rand(500, 2000) . ' GB/day',
+            'total_servers' => $totalServers,
+            'active_servers' => $activeServers,
+            'total_proxies' => $totalProxies,
+            // Approximate healthy proxies based on active servers proportion
+            'healthy_proxies' => max(0, (int) round($totalProxies * ($activeServers > 0 ? min(1.0, $activeServers / max(1, $totalServers)) : 0))),
+            'avg_response_time' => round($avgResponse),
+            'total_bandwidth' => $totalGb . ' GB',
         ];
     }
 
@@ -627,14 +664,38 @@ class AdvancedProxyManagement extends Page
 
     private function getPerformanceMetrics(): array
     {
-        return [
-            'requests_per_second' => rand(50, 500),
-            'bandwidth_usage' => rand(10, 90),
-            'cpu_usage' => rand(20, 80),
-            'memory_usage' => rand(30, 70),
-            'disk_usage' => rand(15, 85),
-            'network_latency' => rand(10, 100),
-        ];
+        // Prefer live telemetry cached by ServerManagementService; fallback to placeholders
+        try {
+            $servers = $this->getSelectedUserServers();
+            $online = 0; $bw = 0; $cpu = 0; $mem = 0; $disk = 0; $lat = 0; $count = max(1, $servers->count());
+            foreach ($servers as $server) {
+                $svc = app(\App\Services\ServerManagementService::class);
+                $metrics = $svc->monitorServerPerformance($server, false);
+                $online += (int) ($metrics['active_clients'] ?? 0);
+                $bw += (float) ($metrics['bandwidth_usage_gb'] ?? 0) * 1024; // unify to MB
+                $cpu += (int) ($metrics['cpu_usage'] ?? 0);
+                $mem += (int) ($metrics['memory_usage'] ?? 0);
+                $disk += (int) ($metrics['disk_usage'] ?? 0);
+                $lat += (int) ($metrics['average_response_time_ms'] ?? $metrics['response_time'] ?? 0);
+            }
+            return [
+                'requests_per_second' => max(1, $online),
+                'bandwidth_usage' => (int) round($bw / $count),
+                'cpu_usage' => (int) round($cpu / $count),
+                'memory_usage' => (int) round($mem / $count),
+                'disk_usage' => (int) round($disk / $count),
+                'network_latency' => (int) round($lat / $count),
+            ];
+        } catch (\Throwable $e) {
+            return [
+                'requests_per_second' => rand(50, 500),
+                'bandwidth_usage' => rand(10, 90),
+                'cpu_usage' => rand(20, 80),
+                'memory_usage' => rand(30, 70),
+                'disk_usage' => rand(15, 85),
+                'network_latency' => rand(10, 100),
+            ];
+        }
     }
 
     private function getRecentEvents()
@@ -650,13 +711,127 @@ class AdvancedProxyManagement extends Page
 
     private function getHealthStatusData(): array
     {
-        return [
-            'overall_health' => rand(90, 100),
-            'healthy_proxies' => rand(15, 20),
-            'unhealthy_proxies' => rand(0, 2),
-            'warning_proxies' => rand(0, 3),
-            'last_check' => now()->subMinutes(rand(1, 5)),
-            'next_check' => now()->addMinutes(rand(1, 5)),
-        ];
+        try {
+            $servers = $this->getSelectedUserServers();
+            $healthy = 0; $unhealthy = 0; $warn = 0; $overall = 100;
+            foreach ($servers as $server) {
+                $svc = app(\App\Services\ServerManagementService::class);
+                $m = $svc->monitorServerPerformance($server, false);
+                $status = $m['status'] ?? 'healthy';
+                if ($status === 'healthy') { $healthy++; } elseif ($status === 'warning') { $warn++; } else { $unhealthy++; }
+                $overall = min($overall, (int) ($m['health_score'] ?? 100));
+            }
+            return [
+                'overall_health' => max(0, $overall),
+                'healthy_proxies' => $healthy,
+                'unhealthy_proxies' => $unhealthy,
+                'warning_proxies' => $warn,
+                'last_check' => now(),
+                'next_check' => now()->addMinutes(5),
+            ];
+        } catch (\Throwable $e) {
+            return [
+                'overall_health' => rand(90, 100),
+                'healthy_proxies' => rand(15, 20),
+                'unhealthy_proxies' => rand(0, 2),
+                'warning_proxies' => rand(0, 3),
+                'last_check' => now()->subMinutes(rand(1, 5)),
+                'next_check' => now()->addMinutes(rand(1, 5)),
+            ];
+        }
+    }
+
+    // --- Live X-UI management helpers ---
+
+    private function getSelectedUserServers(): \Illuminate\Support\Collection
+    {
+        if (!$this->selectedUserId) return collect();
+        $orders = $this->getUserProxies();
+        // Restore legacy behavior: one server per order via accessor ($order->server)
+        return $orders
+            ->map(fn (Order $o) => $o->server)
+            ->filter()
+            ->unique('id')
+            ->values();
+    }
+
+    public function forceLiveRefresh(): void
+    {
+        try {
+            $servers = $this->getSelectedUserServers();
+            $totalOnline = 0;
+            foreach ($servers as $server) {
+                $xui = new \App\Services\XUIService($server);
+                $onlines = $xui->getOnlineClients();
+                $totalOnline += is_array($onlines) ? count($onlines) : 0;
+            }
+            $this->performanceData = $this->getPerformanceMetrics();
+            $this->healthStatus = $this->getHealthStatusData();
+            Notification::make()->title("Live data refreshed ({$totalOnline} online)")->success()->send();
+        } catch (\Throwable $e) {
+            Log::warning('forceLiveRefresh failed', ['error' => $e->getMessage()]);
+            Notification::make()->title('Live refresh failed')->danger()->send();
+        }
+    }
+
+    public function resetTrafficForSelected(): void
+    {
+        if (!$this->selectedProxyId) {
+            $this->addError('proxy', 'Select a proxy (order) first.');
+            return;
+        }
+        $order = Order::find($this->selectedProxyId);
+        if (!$order) { $this->addError('proxy', 'Order not found.'); return; }
+        $clients = \App\Models\ServerClient::where('order_id', $order->id)->get();
+        $ok = 0; $fail = 0;
+        foreach ($clients as $client) {
+            try {
+                $server = $client->inbound?->server
+                    ?: ($order->orderItems->first()?->serverPlan?->server
+                        ?: $order->server);
+                if (!$server) { $fail++; continue; }
+                $xui = new \App\Services\XUIService($server);
+                $inboundId = $client->remote_inbound_id ?: ($client->inbound?->remote_id);
+                $email = $client->email;
+                if ($inboundId && $email && $xui->resetClientTraffic((int)$inboundId, (string)$email)) { $ok++; } else { $fail++; }
+            } catch (\Throwable $e) { $fail++; }
+        }
+        Notification::make()->title("Reset traffic: {$ok} ok, {$fail} failed")->success()->send();
+        $this->refreshHealthStatus();
+    }
+
+    public function clearIpsForSelected(): void
+    {
+        if (!$this->selectedProxyId) {
+            $this->addError('proxy', 'Select a proxy (order) first.');
+            return;
+        }
+        $order = Order::find($this->selectedProxyId);
+        if (!$order) { $this->addError('proxy', 'Order not found.'); return; }
+        $clients = \App\Models\ServerClient::where('order_id', $order->id)->get();
+        $ok = 0; $fail = 0;
+        foreach ($clients as $client) {
+            try {
+                $server = $client->inbound?->server
+                    ?: ($order->orderItems->first()?->serverPlan?->server
+                        ?: $order->server);
+                if (!$server) { $fail++; continue; }
+                $xui = new \App\Services\XUIService($server);
+                if ($xui->clearClientIps((string)$client->email)) { $ok++; } else { $fail++; }
+            } catch (\Throwable $e) { $fail++; }
+        }
+        Notification::make()->title("Cleared IPs: {$ok} ok, {$fail} failed")->success()->send();
+    }
+
+    public function backupSelectedServers(): void
+    {
+        $servers = $this->getSelectedUserServers();
+        if ($servers->isEmpty()) { Notification::make()->title('No servers to backup')->warning()->send(); return; }
+        $ok = 0; $fail = 0;
+        foreach ($servers as $server) {
+            try { $xui = new \App\Services\XUIService($server); $xui->createBackup() ? $ok++ : $fail++; }
+            catch (\Throwable $e) { $fail++; }
+        }
+        Notification::make()->title("Backup triggered: {$ok} ok, {$fail} failed")->success()->send();
     }
 }

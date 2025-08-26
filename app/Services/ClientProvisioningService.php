@@ -638,7 +638,7 @@ class ClientProvisioningService
      */
     protected function createLocalClient(ServerInbound $inbound, array $remoteClient, ServerPlan $plan, Order $order): ServerClient
     {
-        $serverClient = ServerClient::fromRemoteClient($remoteClient, $inbound->id, $remoteClient['link']);
+    $serverClient = ServerClient::fromRemoteClient($remoteClient, $inbound->id, $remoteClient['link']);
 
         // Update with order and customer associations
         $serverClient->update([
@@ -650,7 +650,8 @@ class ClientProvisioningService
             'server_id' => $inbound->server_id,
             'customer_id' => $order->customer_id,
             'is_active' => true,
-            'status' => 'up',
+            // Normalize lifecycle status to application vocabulary so UI filters match
+            'status' => 'active',
             'provisioned_at' => now(),
             'activated_at' => now(),
             'traffic_limit_mb' => ($plan->data_limit_gb ?? $plan->volume) * 1024,
@@ -658,6 +659,15 @@ class ClientProvisioningService
             'renewal_price' => $plan->price,
             'next_billing_at' => now()->addDays($plan->days)->subDays(7), // 7 days before expiry
         ]);
+
+        // Invalidate customer caches so new client appears immediately in customer pages
+        try {
+            app(\App\Services\CacheService::class)->invalidateUserCaches((int) $order->customer_id);
+            // Also clear ProxyStatusMonitoring aggregated cache key
+            \Cache::forget('proxy_statuses_' . (int) $order->customer_id);
+        } catch (\Throwable $e) {
+            // best-effort; do not block provisioning on cache issues
+        }
 
         return $serverClient;
     }

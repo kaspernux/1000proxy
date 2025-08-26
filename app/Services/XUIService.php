@@ -442,6 +442,51 @@ class XUIService
     // === INBOUND MANAGEMENT METHODS ===
 
     /**
+     * Attempt to fetch system telemetry (CPU/Memory/Disk) from panel or sidecar.
+     * Returns an array with keys: cpu_usage, memory_usage, disk_usage.
+     * If not available, returns null to signal fallback.
+     */
+    public function getSystemTelemetry(): ?array
+    {
+        // Try known or custom endpoints; tolerate absence.
+        $endpoints = [
+            'panel/api/system/metrics',
+            'panel/api/system/telemetry',
+            'panel/api/health/metrics',
+        ];
+        foreach ($endpoints as $ep) {
+            try {
+                if (!$this->ensureValidSession()) { continue; }
+                $req = \Illuminate\Support\Facades\Http::timeout($this->timeout)
+                    ->withHeaders($this->server->getSessionHeader());
+                if (app()->bound('xui.insecure') && app('xui.insecure') === true) {
+                    $req = $req->withoutVerifying();
+                }
+                $resp = $req->get($this->server->getApiEndpoint($ep));
+                if (!$resp->successful()) { continue; }
+                $json = $resp->json();
+                if (is_array($json)) {
+                    // Accept either flat or nested under 'obj'
+                    $data = $json['obj'] ?? $json;
+                    $cpu = (float)($data['cpu_usage'] ?? $data['cpu'] ?? -1);
+                    $mem = (float)($data['memory_usage'] ?? $data['memory'] ?? -1);
+                    $disk = (float)($data['disk_usage'] ?? $data['disk'] ?? -1);
+                    if ($cpu >= 0 && $mem >= 0 && $disk >= 0) {
+                        return [
+                            'cpu_usage' => min(100, max(0, $cpu)),
+                            'memory_usage' => min(100, max(0, $mem)),
+                            'disk_usage' => min(100, max(0, $disk)),
+                        ];
+                    }
+                }
+            } catch (\Throwable $e) {
+                // Ignore and continue to next endpoint
+            }
+        }
+        return null;
+    }
+
+    /**
      * Get all inbounds with client statistics
      */
     public function listInbounds(): array
@@ -713,8 +758,24 @@ class XUIService
     public function getClientByEmail(string $email): ?array
     {
         try {
-            $result = $this->makeAuthenticatedRequest('GET', "panel/api/inbounds/getClientTraffics/{$email}");
-            return $result['obj'] ?? null;
+            // Email may contain spaces/emojis/special chars; must be URL-encoded
+            $encoded = rawurlencode($email);
+            $result = $this->makeAuthenticatedRequest('GET', "panel/api/inbounds/getClientTraffics/{$encoded}");
+            $obj = $result['obj'] ?? null;
+            // API returns a single object for email; normalize to associative array with up/down/total
+            if (is_array($obj)) {
+                // If it's an indexed array for some panels, take the first element
+                if (array_is_list($obj)) {
+                    $obj = $obj[0] ?? null;
+                }
+                if (is_array($obj)) {
+                    $up = (int) ($obj['up'] ?? 0);
+                    $down = (int) ($obj['down'] ?? 0);
+                    $total = (int) ($obj['total'] ?? ($up + $down));
+                    return ['up' => $up, 'down' => $down, 'total' => $total] + $obj;
+                }
+            }
+            return null;
         } catch (Exception $e) {
             Log::error("Failed to get client by email {$email}: " . $e->getMessage());
             return null;
@@ -727,8 +788,24 @@ class XUIService
     public function getClientByUuid(string $uuid): ?array
     {
         try {
-            $result = $this->makeAuthenticatedRequest('GET', "panel/api/inbounds/getClientTrafficsById/{$uuid}");
-            return $result['obj'] ?? null;
+            // UUID is generally safe, but still encode to be robust
+            $encoded = rawurlencode($uuid);
+            $result = $this->makeAuthenticatedRequest('GET', "panel/api/inbounds/getClientTrafficsById/{$encoded}");
+            $obj = $result['obj'] ?? null;
+            // Postman indicates this endpoint returns an array of client objects
+            if (is_array($obj)) {
+                // If it's an indexed array, select the first element
+                if (array_is_list($obj)) {
+                    $obj = $obj[0] ?? null;
+                }
+                if (is_array($obj)) {
+                    $up = (int) ($obj['up'] ?? 0);
+                    $down = (int) ($obj['down'] ?? 0);
+                    $total = (int) ($obj['total'] ?? ($up + $down));
+                    return ['up' => $up, 'down' => $down, 'total' => $total] + $obj;
+                }
+            }
+            return null;
         } catch (Exception $e) {
             Log::error("Failed to get client by UUID {$uuid}: " . $e->getMessage());
             return null;
@@ -743,7 +820,9 @@ class XUIService
     public function getClientIps(string $email): array
     {
         try {
-            $result = $this->makeAuthenticatedRequest('POST', "panel/api/inbounds/clientIps/{$email}");
+            // Email may include spaces/emojis; encode for URL safety
+            $encoded = rawurlencode($email);
+            $result = $this->makeAuthenticatedRequest('POST', "panel/api/inbounds/clientIps/{$encoded}");
             $ips = $result['obj'] ?? [];
             return is_array($ips) ? $ips : [];
         } catch (Exception $e) {
@@ -758,7 +837,8 @@ class XUIService
     public function clearClientIps(string $email): bool
     {
         try {
-            $result = $this->makeAuthenticatedRequest('POST', "panel/api/inbounds/clearClientIps/{$email}");
+            $encoded = rawurlencode($email);
+            $result = $this->makeAuthenticatedRequest('POST', "panel/api/inbounds/clearClientIps/{$encoded}");
             return $result['success'] ?? false;
         } catch (Exception $e) {
             Log::error("Failed to clear client IPs for {$email}: " . $e->getMessage());
@@ -883,8 +963,28 @@ class XUIService
     public function getOnlineClients(): array
     {
         try {
+            // First try documented POST
             $result = $this->makeAuthenticatedRequest('POST', 'panel/api/inbounds/onlines');
-            return $result['obj'] ?? [];
+            $obj = $result['obj'] ?? null;
+            if (is_array($obj)) {
+                return $obj;
+            }
+            // Some panels return list directly or under different key
+            if (isset($result['data']) && is_array($result['data'])) {
+                return $result['data'];
+            }
+            if (isset($result['online']) && is_array($result['online'])) {
+                return $result['online'];
+            }
+            // Fallback: attempt GET method
+            try {
+                $alt = $this->makeAuthenticatedRequest('GET', 'panel/api/inbounds/onlines');
+                $obj2 = $alt['obj'] ?? ($alt['data'] ?? ($alt['online'] ?? []));
+                return is_array($obj2) ? $obj2 : [];
+            } catch (\Throwable $t) {
+                // ignore and fallthrough
+            }
+            return [];
         } catch (Exception $e) {
             Log::error("Failed to get online clients: " . $e->getMessage());
             return [];
