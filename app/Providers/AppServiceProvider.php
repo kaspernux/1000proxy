@@ -74,6 +74,10 @@ class AppServiceProvider extends ServiceProvider
         // Ensure Livewire component aliases used by Filament widgets are globally registered
         // so that POST /livewire/update requests can resolve components even outside panel routes.
         try {
+            // Chat component
+            if (class_exists(\App\Livewire\Chat\ChatPanel::class)) {
+                try { \Livewire\Livewire::component('chat.chat-panel', \App\Livewire\Chat\ChatPanel::class); } catch (\Throwable $e) { /* ignore duplicate registrations */ }
+            }
             Livewire::component('app.filament.widgets.admin-stats-overview', \App\Filament\Widgets\AdminDashboardStatsWidget::class);
             Livewire::component('app.filament.admin.widgets.order-metrics-widget', \App\Filament\Admin\Widgets\OrderMetricsWidget::class);
             Livewire::component('app.filament.admin.widgets.user-growth-widget', \App\Filament\Admin\Widgets\UserGrowthWidget::class);

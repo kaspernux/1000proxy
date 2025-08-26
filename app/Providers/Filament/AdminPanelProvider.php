@@ -228,6 +228,16 @@ class AdminPanelProvider extends PanelProvider
                         \Filament\View\PanelsRenderHook::HEAD_END,
                         fn () => new \Illuminate\Support\HtmlString('<!-- class="responsive" viewport mobile -->'),
                     );
+
+                // Add an unread notifications badge next to the bell in the topbar
+                \Filament\Support\Facades\FilamentView::registerRenderHook(
+                    \Filament\View\PanelsRenderHook::TOPBAR_END,
+                    function () {
+                        $count = optional(auth()->user())->unreadNotifications()->count() ?? 0;
+                        if ($count < 1) return '';
+                        return new HtmlString('<div class="mr-2"><span class="inline-flex items-center justify-center h-5 min-w-5 text-[10px] font-semibold px-1 rounded-full bg-rose-500 text-white">' . $count . '</span></div>');
+                    }
+                );
                 
                     // Inject shared Filament custom CSS (scoped) used by both panels
                     \Filament\Support\Facades\FilamentView::registerRenderHook(

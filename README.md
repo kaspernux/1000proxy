@@ -1162,6 +1162,20 @@ TELEGRAM_WEBHOOK_URL=https://your-domain.com/telegram/webhook
 
 ## 💬 Support & Community
 
+### 🗨️ Team & Support Chat (Built-in)
+
+Modern chat system for staff and customers:
+
+- Direct messages (User ↔ User, Customer ↔ User) — Customers cannot chat Customer ↔ Customer.
+- Groups with privacy (private, public, internal), reactions, attachments, edit messages, read receipts.
+- Filament Admin: Communication → Team & Support Chat.
+- Filament Customer: Support → Support Chat.
+- Website widget (Blade):
+
+```blade
+@include('components.chat.widget')
+```
+
 <div align="center">
   
   ### 🤝 **Get Help & Contribute**

@@ -239,7 +239,7 @@
                     <div class="mt-8 text-center">
                         <div class="text-sm text-gray-400">
                             Need help?
-                            <a href="/support" wire:navigate class="text-blue-400 hover:text-blue-300 transition duration-200 hover:underline ml-1">
+                            <a href="#" @click.prevent="window.dispatchEvent(new CustomEvent('open-chat'))" title="Or email support@1000proxy.io" class="text-blue-400 hover:text-blue-300 transition duration-200 hover:underline ml-1">
                                 Contact Support
                             </a>
                         </div>

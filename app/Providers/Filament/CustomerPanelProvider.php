@@ -210,6 +210,16 @@ class CustomerPanelProvider extends PanelProvider
                         HTML;
                     }
                 );
+
+                // Add an unread notifications badge next to the bell in the topbar (customer)
+                \Filament\Support\Facades\FilamentView::registerRenderHook(
+                    \Filament\View\PanelsRenderHook::TOPBAR_END,
+                    function () {
+                        $count = optional(auth('customer')->user())->unreadNotifications()->count() ?? 0;
+                        if ($count < 1) return '';
+                        return new \Illuminate\Support\HtmlString('<div class="mr-2"><span class="inline-flex items-center justify-center h-5 min-w-5 text-[10px] font-semibold px-1 rounded-full bg-rose-500 text-white">' . $count . '</span></div>');
+                    }
+                );
             });
     }
 }

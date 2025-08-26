@@ -178,6 +178,9 @@
             @livewire('partials.footer')
         </div>
 
+    {{-- Team & Support Chat widget (public) --}}
+    @include('components.chat.widget')
+
         <!-- Livewire Scripts -->
         @livewireScripts
         

@@ -121,6 +121,11 @@ Route::get('/products', ProductsPage::class)->name('products');
 Route::get('/cart', CartPage::class);
 Route::get('/servers/{slug}', ProductDetailPage::class);
 
+// Lightweight route to preview/use the public chat widget outside panels
+Route::middleware(['web'])->get('/chat/widget', function () {
+    return view('components.chat.widget');
+})->name('chat.widget');
+
 // Public GET login route (canonical) for CUSTOMER login (admins use Filament /admin/login)
 // Treat both customer and web guards as authenticated for guest checks to avoid showing login to logged-in users
 Route::middleware('guest:customer,web')->group(function () {

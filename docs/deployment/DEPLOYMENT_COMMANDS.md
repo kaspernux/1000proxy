@@ -46,7 +46,7 @@ sudo -u proxy1000 npm ci --no-audit --no-fund
 
 ## 6. Build assets
 ```
-sudo -u proxy1000 npm run build
+sudo -u proxy1000 npm run build --force
 ```
 
 ## 7. Cache & optimize
