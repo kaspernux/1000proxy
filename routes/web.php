@@ -357,8 +357,8 @@ Route::get('/horizon', function () {
 })->middleware(['auth:sanctum', 'can:viewHorizon']);
 
 // Horizon Jobs
-Horizon::routeMailNotificationsTo('you@example.com');
-Horizon::routeSlackNotificationsTo('your-slack-webhook');
+Horizon::routeMailNotificationsTo('admin@1000proxy.io');
+Horizon::routeSlackNotificationsTo('https://hooks.slack.com/services/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');
 Horizon::auth(function ($request) {
     return true; // 🔒 you can secure with Gate, e.g., auth()->user()->isAdmin()
 });

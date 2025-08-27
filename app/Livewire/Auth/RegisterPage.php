@@ -97,12 +97,12 @@ class RegisterPage extends Component
                 'is_active' => true,
             ]);
 
-            // Send email verification immediately (do not rely on default event listener)
+            // Send email verification via built-in MustVerifyEmail method (guard-safe)
             try {
-                Notification::sendNow($customer, new VerifyEmail());
-                \Log::info('Verification email dispatched (sendNow)', ['customer_id' => $customer->id, 'email' => $customer->email]);
+                $customer->sendEmailVerificationNotification();
+                \Log::info('Verification email dispatched (livewire)', ['customer_id' => $customer->id, 'email' => $customer->email]);
             } catch (\Throwable $e) {
-                \Log::error('Verification email dispatch failed', ['email' => $this->email, 'error' => $e->getMessage()]);
+                \Log::error('Verification email dispatch failed (livewire)', ['email' => $this->email, 'error' => $e->getMessage()]);
             }
 
             // Attach referrer if a valid referral code was used

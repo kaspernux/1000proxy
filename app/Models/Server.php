@@ -430,13 +430,25 @@ class Server extends Model
 
     public function getPanelPort(): ?int
     {
-        return parse_url($this->panel_url, PHP_URL_PORT) ?? 443;
+        // Prefer explicit attribute when set; fallback to URL; default to 443
+        if (!empty($this->panel_port)) {
+            return (int) $this->panel_port;
+        }
+        $fromUrl = parse_url($this->panel_url ?? '', PHP_URL_PORT);
+        if (!empty($fromUrl)) {
+            return (int) $fromUrl;
+        }
+        return 443;
     }
 
     public function getPanelWebPath(): string
     {
-        $path = parse_url($this->panel_url, PHP_URL_PATH) ?? '';
-        return rtrim($path, '/'); // strip trailing slash
+        // Prefer explicit web_base_path attribute; fallback to panel_url path
+        $path = trim((string) ($this->web_base_path ?? ''), '/');
+        if ($path === '') {
+            $path = trim((string) (parse_url($this->panel_url ?? '', PHP_URL_PATH) ?? ''), '/');
+        }
+        return $path ? '/' . $path : '';
     }
 
     public function getPanelBase(): string
@@ -444,9 +456,9 @@ class Server extends Model
         $scheme = parse_url($this->panel_url, PHP_URL_SCHEME) ?? 'http';
         $host = $this->getPanelHost();
         $port = $this->getPanelPort();
-        $web = $this->getPanelWebPath();
+    $web = $this->getPanelWebPath();
 
-        return "{$scheme}://{$host}:{$port}{$web}";
+    return "{$scheme}://{$host}:{$port}{$web}";
     }
 
     public function getSubscriptionPort(): int

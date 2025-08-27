@@ -27,6 +27,8 @@ use Illuminate\Support\Str;
 use Illuminate\Auth\Events\Login;
 use Illuminate\Auth\Events\Logout;
 use Illuminate\Auth\Events\PasswordReset;
+use Illuminate\Notifications\Events\NotificationSending;
+use Illuminate\Mail\Events\MessageSending;
 
 
 class AppServiceProvider extends ServiceProvider
@@ -273,6 +275,11 @@ class AppServiceProvider extends ServiceProvider
     Event::listen(\App\Events\OrderPaid::class, \App\Listeners\DispatchProvisioningOnOrderPaid::class);
     Event::listen(\App\Events\OrderPaid::class, \App\Listeners\CreditReferralCommission::class);
     Event::listen(\App\Events\OrderProvisioned::class, \App\Listeners\SendOrderProvisionedNotification::class);
+
+    // System mail quota gate (throttle daily system emails like verification/password reset)
+    Event::listen(NotificationSending::class, [\App\Listeners\SystemMailQuotaGate::class, 'handle']);
+    // Optional: log each mail send attempt (to security channel)
+    Event::listen(MessageSending::class, [\App\Listeners\LogMailSend::class, 'handle']);
 
     // Activity logging: auth events for User and Customer guards
     Event::listen(Login::class, function (Login $event) {

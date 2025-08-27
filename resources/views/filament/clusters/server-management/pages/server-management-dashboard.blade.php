@@ -259,6 +259,16 @@
                                                 @else bg-red-100 text-red-800 dark:bg-red-800 dark:text-red-100 @endif">
                                                 {{ ucfirst($m['status'] ?? 'healthy') }}
                                             </span>
+                                            @if(!empty($m['is_login_locked']))
+                                                <span class="inline-flex items-center px-2 py-0.5 rounded-full bg-rose-600 text-white dark:bg-rose-500 dark:text-white">Locked</span>
+                                            @endif
+                                            @if(array_key_exists('has_valid_session', $m))
+                                                @if($m['has_valid_session'])
+                                                    <span class="inline-flex items-center px-2 py-0.5 rounded-full bg-emerald-600 text-white dark:bg-emerald-500 dark:text-white">Session OK</span>
+                                                @else
+                                                    <span class="inline-flex items-center px-2 py-0.5 rounded-full bg-amber-600 text-white dark:bg-amber-500 dark:text-white">No Session</span>
+                                                @endif
+                                            @endif
                                             @if(!empty($m['panel_url']))
                                                 <a href="{{ $m['panel_url'] }}" target="_blank" class="text-blue-600 dark:text-blue-400 hover:underline">Panel</a>
                                             @endif
@@ -300,6 +310,9 @@
                                         <button class="ml-auto text-blue-600 dark:text-blue-400 hover:underline" wire:click="monitorServerPerformance({{ $m['id'] }})">Monitor</button>
                                         <button class="text-purple-600 dark:text-purple-400 hover:underline" wire:click="syncInbounds({{ $m['id'] }})">Sync Inbounds</button>
                                         <button class="text-rose-600 dark:text-rose-400 hover:underline" wire:click="resetAllTraffics({{ $m['id'] }})">Reset Traffics</button>
+                                        @if(!empty($m['is_login_locked']))
+                                            <button class="text-red-600 dark:text-red-400 hover:underline" wire:click="unlockXuiServer({{ $m['id'] }})">Unlock</button>
+                                        @endif
                                     </div>
                                 </div>
                             @endforeach

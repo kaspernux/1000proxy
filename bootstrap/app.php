@@ -63,6 +63,9 @@ use App\Console\Commands\CollectProxyMetrics;
 use App\Console\Commands\MonitorSmoke;
 use App\Console\Commands\MonitorDebug;
 use App\Console\Commands\RefreshClientStatus;
+use App\Console\Commands\XuiDiagnoseCommand;
+use App\Console\Commands\XuiUnlockCommand;
+use App\Console\Commands\XuiConfigurePanel;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
 
@@ -123,11 +126,14 @@ $app = Application::configure(basePath: dirname(__DIR__))
         HealthCheckCommand::class,
         CollectProxyMetrics::class,
         MonitorSmoke::class,
-    MonitorDebug::class,
+        MonitorDebug::class,
         LiveCatalogResetAndProvision::class,
         CreateProgrammaticOrder::class,
         RefreshClientStatus::class,
         RefreshServerMetrics::class,
+        XuiDiagnoseCommand::class,
+    XuiUnlockCommand::class,
+        XuiConfigurePanel::class,
     ])
     ->withSchedule(function (Schedule $schedule) {
         $schedule->job(new PruneOldExportsJob())->dailyAt('02:15');

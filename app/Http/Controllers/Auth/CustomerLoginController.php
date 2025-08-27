@@ -70,6 +70,12 @@ class CustomerLoginController extends Controller
         RateLimiter::clear($rateKey);
         $request->session()->regenerate();
 
+        // If the customer hasn't verified their email, send them to the verification notice first
+        $customer = Auth::guard('customer')->user();
+        if (method_exists($customer, 'hasVerifiedEmail') && !$customer->hasVerifiedEmail()) {
+            return redirect()->to('/email/verify');
+        }
+
         $intended = $request->session()->pull('url.intended');
         $target = $this->sanitizeRedirectTarget($intended);
         Log::info('Redirecting after fallback login', [

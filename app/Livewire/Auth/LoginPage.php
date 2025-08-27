@@ -278,6 +278,13 @@ class LoginPage extends Component
             // Dispatch success event
             $this->dispatch('login-success', ['customer_id' => $customer->id]);
             
+            // If unverified, redirect to verification notice to avoid confusing access denials
+            if (method_exists($customer, 'hasVerifiedEmail') && !$customer->hasVerifiedEmail()) {
+                $this->processing = false;
+                $this->is_loading = false;
+                return redirect()->to('/email/verify');
+            }
+
             // Use Livewire v3 navigation-aware redirect for SPA reliability
             $this->processing = false;
             $this->is_loading = false;

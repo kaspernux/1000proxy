@@ -16,10 +16,7 @@ class LatestOrdersWidget extends BaseWidget
     protected static ?string $heading = '🆕 Latest Orders';
     protected static ?string $description = 'The five most recent orders placed by customers.';
     protected static ?int $sort = 3;
-    protected int|string|array $columnSpan = [
-        'md' => 2,
-        'xl' => 3,
-    ];
+    protected int|string|array $columnSpan = 'full';
     protected static bool $isLazy = false; // show immediately (paired with CSS skeleton)
 
     protected function getTableQuery(): Builder

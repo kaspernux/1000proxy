@@ -16,6 +16,7 @@ use Filament\Notifications\Notification;
 use Filament\Actions\ActionGroup;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Str;
 use Carbon\Carbon;
 use App\Models\ServerInbound;
 use App\Models\ServerClient;
@@ -219,6 +220,59 @@ class ServerManagementDashboard extends Page
                             ->color($fail > 0 ? 'warning' : 'success')
                             ->send();
                     }),
+
+                // New: Normalize X-UI URLs for all active servers
+                Action::make('normalizeXuiUrls')
+                    ->label('Normalize X-UI URLs (All)')
+                    ->icon('heroicon-o-link')
+                    ->color('gray')
+                    ->requiresConfirmation()
+                    ->modalHeading('Normalize panel URLs for all active servers?')
+                    ->modalDescription('Parses each server\'s panel_url and populates host/port/path, then rewrites a normalized panel_url. Safe, idempotent operation.')
+                    ->action(function () {
+                        $updated = 0; $skipped = 0; $errors = 0;
+                        $servers = Server::where('is_active', true)->get(['id','name','panel_url','host','panel_port','web_base_path']);
+                        foreach ($servers as $server) {
+                            try {
+                                $changed = $this->normalizeServerPanelConnection($server);
+                                if ($changed) { $updated++; } else { $skipped++; }
+                            } catch (\Throwable $e) {
+                                $errors++;
+                            }
+                        }
+                        $this->loadDashboardData();
+                        Notification::make()
+                            ->title('X-UI URLs Normalized')
+                            ->body("Updated: {$updated}, Skipped: {$skipped}" . ($errors ? ", Errors: {$errors}" : ''))
+                            ->success()
+                            ->send();
+                    }),
+
+                // New: Unlock X-UI login locks (clear login attempts and sessions)
+                Action::make('unlockXuiLogins')
+                    ->label('Unlock X-UI Logins (All)')
+                    ->icon('heroicon-o-lock-open')
+                    ->color('gray')
+                    ->requiresConfirmation()
+                    ->modalHeading('Clear login locks for all active servers?')
+                    ->modalDescription('Resets login_attempts and clears session cookies; use if panels are rejecting due to previous failed attempts.')
+                    ->action(function () {
+                        $count = 0;
+                        foreach (Server::where('is_active', true)->get(['id']) as $server) {
+                            $server->update([
+                                'login_attempts' => 0,
+                                'last_login_attempt_at' => null,
+                                'session_cookie' => null,
+                                'session_expires_at' => null,
+                            ]);
+                            $count++;
+                        }
+                        Notification::make()
+                            ->title('X-UI Login Locks Cleared')
+                            ->body("Servers updated: {$count}")
+                            ->success()
+                            ->send();
+                    }),
             ])->label('More')
               ->icon('heroicon-o-adjustments-horizontal')
               ->color('gray'),
@@ -415,7 +469,7 @@ class ServerManagementDashboard extends Page
     protected function getServerMetrics(): array
     {
         $data = [];
-    // Include host/panel_port/web_base_path so getPanelAccessUrl can construct correct URL with port/base path
+    // Include host/panel_port/web_base_path to build correct URLs
     $select = ['id','name','country','max_clients','panel_url','host','panel_port','web_base_path'];
         if (Schema::hasColumn('servers', 'bandwidth_limit_gb')) {
             $select[] = 'bandwidth_limit_gb';
@@ -434,6 +488,12 @@ class ServerManagementDashboard extends Page
                     $metrics = [];
                 }
             }
+            // Compute Base URL (scheme + host) and full Panel URL (scheme://host:port/path)
+            $panelFull = (string) ($server->getPanelBase());
+            $parsed = parse_url($panelFull) ?: [];
+            $scheme = $parsed['scheme'] ?? 'http';
+            $hostOnly = $server->getPanelHost() ?: ($parsed['host'] ?? '');
+
             $data[] = [
                 'id' => $server->id,
                 'name' => $server->name,
@@ -441,8 +501,13 @@ class ServerManagementDashboard extends Page
                 'inbounds_count' => (int) ($server->inbounds_count ?? 0),
                 'max_clients' => (int) ($server->max_clients ?? 0),
                 'bandwidth_limit_gb' => (int) (data_get($server, 'bandwidth_limit_gb', 0) ?? 0),
-                // Build full panel base URL including scheme, port, and base path when available
-                'panel_url' => (string) ($server->getApiBaseUrl()),
+                // New: expose both base and full panel URLs
+                'base_url' => $hostOnly ? $scheme . '://' . $hostOnly : null,
+                'panel_url' => $panelFull,
+                // Session / lock indicators
+                'login_attempts' => (int) ($server->login_attempts ?? 0),
+                'is_login_locked' => (bool) ($server->isLoginLocked()),
+                'has_valid_session' => (bool) ($server->hasValidSession()),
                 'cpu_usage' => (int)($metrics['cpu_usage'] ?? 0),
                 'memory_usage' => (int)($metrics['memory_usage'] ?? 0),
                 'disk_usage' => (int)($metrics['disk_usage'] ?? 0),
@@ -452,6 +517,90 @@ class ServerManagementDashboard extends Page
             ];
         }
         return $data;
+    }
+
+    /** Normalize a server's X-UI connection details from its panel_url/host/port/path; returns true if changed */
+    protected function normalizeServerPanelConnection(Server $server): bool
+    {
+        $original = [$server->host, $server->panel_port, $server->web_base_path, $server->panel_url];
+
+        // Parse from panel_url as source of truth when present
+        $parsed = $server->panel_url ? parse_url($server->panel_url) : [];
+        $scheme = $parsed['scheme'] ?? 'https';
+        $host = $server->host ?: ($parsed['host'] ?? null);
+        $port = $server->panel_port ?: ($parsed['port'] ?? 443);
+        $path = $server->web_base_path ?: (isset($parsed['path']) ? trim($parsed['path'], '/') : '');
+
+        if (!$host && isset($parsed['host'])) {
+            $host = $parsed['host'];
+        }
+
+        // Assign normalized fields
+        $server->host = $host ? preg_replace('#^https?://#i', '', $host) : $server->host;
+        $server->panel_port = (int) $port;
+        $server->web_base_path = $path;
+
+        // Recompose normalized panel_url: scheme://host:port/path
+        if ($server->host) {
+            $newUrl = $scheme . '://' . $server->host . ':' . $server->panel_port . ($server->web_base_path ? '/' . $server->web_base_path : '');
+            $server->panel_url = $newUrl;
+        }
+
+        $changed = $original !== [$server->host, $server->panel_port, $server->web_base_path, $server->panel_url];
+        if ($changed) {
+            $server->save();
+        }
+        return $changed;
+    }
+
+    /** Livewire action: normalize a single server's X-UI URL fields */
+    public function normalizeServer(int $serverId): void
+    {
+        try {
+            $server = Server::findOrFail($serverId);
+            $before = $server->panel_url;
+            $changed = $this->normalizeServerPanelConnection($server);
+            $this->loadDashboardData();
+
+            Notification::make()
+                ->title($changed ? 'Server URL Normalized' : 'No Changes Needed')
+                ->body($changed ? ("New URL: " . $server->panel_url) : ("Server '{$server->name}' already normalized"))
+                ->color($changed ? 'success' : 'info')
+                ->send();
+        } catch (\Throwable $e) {
+            Notification::make()
+                ->title('Normalize Failed')
+                ->body($e->getMessage())
+                ->danger()
+                ->send();
+        }
+    }
+
+    /** Livewire action: unlock a single server's X-UI login/session */
+    public function unlockXuiServer(int $serverId): void
+    {
+        try {
+            $server = Server::findOrFail($serverId);
+            $server->update([
+                'login_attempts' => 0,
+                'last_login_attempt_at' => null,
+                'session_cookie' => null,
+                'session_expires_at' => null,
+            ]);
+            $this->loadDashboardData();
+
+            Notification::make()
+                ->title('X-UI Login Unlocked')
+                ->body("Server '{$server->name}' cleared")
+                ->success()
+                ->send();
+        } catch (\Throwable $e) {
+            Notification::make()
+                ->title('Unlock Failed')
+                ->body($e->getMessage())
+                ->danger()
+                ->send();
+        }
     }
 
     /**

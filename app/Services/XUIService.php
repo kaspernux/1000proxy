@@ -35,7 +35,7 @@ class XUIService
     {
         try {
             if ($this->server->isLoginLocked()) {
-                Log::warning("Login locked for server {$this->server->name} due to too many failed attempts");
+                logger()->channel('xui')->warning("Login locked for server {$this->server->name} due to too many failed attempts");
                 return false;
             }
             $base = rtrim($this->server->getApiBaseUrl(), '/');
@@ -252,6 +252,15 @@ class XUIService
      */
     private function makeAuthenticatedRequest(string $method, string $endpoint, array $data = []): array
     {
+        // Circuit breaker: if login is locked, avoid hammering panel and spamming logs
+        if ($this->server->isLoginLocked()) {
+            logger()->channel('xui')->notice('Skipping XUI API call due to login lock', [
+                'server_id' => $this->server->id,
+                'server' => $this->server->name,
+                'endpoint' => $endpoint,
+            ]);
+            throw new Exception('XUI_LOGIN_LOCKED');
+        }
         $attempt = 0;
         $lastException = null;
 
@@ -272,7 +281,7 @@ class XUIService
 
                 $bodySnippet = substr($response->body(), 0, app()->bound('xui.debug_body') ? 4000 : 400);
                 if (!$response->successful()) {
-                    Log::warning('3X-UI API HTTP failure', [
+                    logger()->channel('xui')->warning('3X-UI API HTTP failure', [
                         'server_id' => $this->server->id,
                         'endpoint' => $endpoint,
                         'method' => $method,
@@ -285,7 +294,7 @@ class XUIService
 
                 $result = [];
                 try { $result = $response->json(); } catch (\Throwable $t) {
-                    Log::warning('3X-UI API non-JSON response', [
+                    logger()->channel('xui')->warning('3X-UI API non-JSON response', [
                         'endpoint' => $endpoint,
                         'method' => $method,
                         'status' => $response->status(),
@@ -297,7 +306,7 @@ class XUIService
                 }
 
                 if (!($result['success'] ?? false)) {
-                    Log::warning('3X-UI API logical failure', [
+                    logger()->channel('xui')->warning('3X-UI API logical failure', [
                         'server_id' => $this->server->id,
                         'endpoint' => $endpoint,
                         'method' => $method,
@@ -314,8 +323,16 @@ class XUIService
             } catch (Exception $e) {
                 $lastException = $e;
                 $attempt++;
+                // Do not spam retries when login is locked
+                if ($e->getMessage() === 'XUI_LOGIN_LOCKED') {
+                    logger()->channel('xui')->notice('Aborting retries due to login lock', [
+                        'endpoint' => $endpoint,
+                        'method' => $method,
+                    ]);
+                    break;
+                }
                 if ($attempt < $this->retryCount) {
-                    Log::warning('3X-UI API request retrying', [
+                    logger()->channel('xui')->warning('3X-UI API request retrying', [
                         'endpoint' => $endpoint,
                         'method' => $method,
                         'next_attempt' => $attempt + 1,
@@ -324,7 +341,7 @@ class XUIService
                     ]);
                     usleep(300000); // 300ms backoff
                 } else {
-                    Log::error('3X-UI API request exhausted retries', [
+                    logger()->channel('xui')->error('3X-UI API request exhausted retries', [
                         'endpoint' => $endpoint,
                         'method' => $method,
                         'attempts' => $attempt,
@@ -510,21 +527,21 @@ class XUIService
     public function createInbound(array $inboundData): array
     {
         try {
-            Log::debug('createInbound request payload', [
+            logger()->channel('xui')->debug('createInbound request payload', [
                 'server_id' => $this->server->id,
                 'keys' => array_keys($inboundData),
                 'port' => $inboundData['port'] ?? null,
                 'protocol' => $inboundData['protocol'] ?? null,
             ]);
             $result = $this->makeAuthenticatedRequest('POST', 'panel/api/inbounds/add', $inboundData);
-            Log::debug('createInbound raw API result keys', [
+            logger()->channel('xui')->debug('createInbound raw API result keys', [
                 'success' => $result['success'] ?? null,
                 'msg' => $result['msg'] ?? null,
                 'obj_keys' => isset($result['obj']) && is_array($result['obj']) ? array_keys($result['obj']) : null,
             ]);
             return $result['obj'] ?? [];
         } catch (\Throwable $e) {
-            Log::error('createInbound exception', [
+            logger()->channel('xui')->error('createInbound exception', [
                 'server_id' => $this->server->id,
                 'error' => $e->getMessage(),
             ]);
@@ -550,7 +567,7 @@ class XUIService
             $result = $this->makeAuthenticatedRequest('POST', "panel/api/inbounds/del/{$inboundId}");
             return $result['success'] ?? false;
         } catch (Exception $e) {
-            Log::error("Failed to delete inbound {$inboundId}: " . $e->getMessage());
+            logger()->channel('xui')->error("Failed to delete inbound {$inboundId}: " . $e->getMessage());
             return false;
         }
     }
@@ -653,7 +670,7 @@ class XUIService
             }
             return ['success' => false];
         } catch (Exception $e) {
-            Log::error("Failed to add client to inbound {$inboundId}: " . $e->getMessage());
+            logger()->channel('xui')->error("Failed to add client to inbound {$inboundId}: " . $e->getMessage());
             return ['success' => false, 'error' => $e->getMessage()];
         }
     }
@@ -706,7 +723,7 @@ class XUIService
             }
             return false;
         } catch (Exception $e) {
-            Log::error("Failed to update client {$clientUuid}: " . $e->getMessage());
+            logger()->channel('xui')->error("Failed to update client {$clientUuid}: " . $e->getMessage());
             return false;
         }
     }
@@ -747,7 +764,7 @@ class XUIService
             }
             return false;
         } catch (Exception $e) {
-            Log::error("Failed to delete client {$clientUuid} from inbound {$inboundId}: " . $e->getMessage());
+            logger()->channel('xui')->error("Failed to delete client {$clientUuid} from inbound {$inboundId}: " . $e->getMessage());
             return false;
         }
     }
@@ -777,7 +794,7 @@ class XUIService
             }
             return null;
         } catch (Exception $e) {
-            Log::error("Failed to get client by email {$email}: " . $e->getMessage());
+            logger()->channel('xui')->error("Failed to get client by email {$email}: " . $e->getMessage());
             return null;
         }
     }
@@ -807,7 +824,7 @@ class XUIService
             }
             return null;
         } catch (Exception $e) {
-            Log::error("Failed to get client by UUID {$uuid}: " . $e->getMessage());
+            logger()->channel('xui')->error("Failed to get client by UUID {$uuid}: " . $e->getMessage());
             return null;
         }
     }
@@ -826,7 +843,7 @@ class XUIService
             $ips = $result['obj'] ?? [];
             return is_array($ips) ? $ips : [];
         } catch (Exception $e) {
-            Log::error("Failed to get client IPs for {$email}: " . $e->getMessage());
+            logger()->channel('xui')->error("Failed to get client IPs for {$email}: " . $e->getMessage());
             return [];
         }
     }
@@ -841,7 +858,7 @@ class XUIService
             $result = $this->makeAuthenticatedRequest('POST', "panel/api/inbounds/clearClientIps/{$encoded}");
             return $result['success'] ?? false;
         } catch (Exception $e) {
-            Log::error("Failed to clear client IPs for {$email}: " . $e->getMessage());
+            logger()->channel('xui')->error("Failed to clear client IPs for {$email}: " . $e->getMessage());
             return false;
         }
     }
@@ -857,7 +874,7 @@ class XUIService
             $result = $this->makeAuthenticatedRequest('POST', "panel/api/inbounds/{$inboundId}/resetClientTraffic/{$email}");
             return $result['success'] ?? false;
         } catch (Exception $e) {
-            Log::error("Failed to reset client traffic for {$email}: " . $e->getMessage());
+            logger()->channel('xui')->error("Failed to reset client traffic for {$email}: " . $e->getMessage());
             return false;
         }
     }
@@ -919,7 +936,7 @@ class XUIService
             }
 
         } catch (Exception $e) {
-            Log::error("Failed to reset client {$serverClient->email}: " . $e->getMessage());
+            logger()->channel('xui')->error("Failed to reset client {$serverClient->email}: " . $e->getMessage());
             return [
                 'success' => false,
                 'message' => 'Reset failed: ' . $e->getMessage()
@@ -936,7 +953,7 @@ class XUIService
             $result = $this->makeAuthenticatedRequest('POST', "panel/api/inbounds/resetAllClientTraffics/{$inboundId}");
             return $result['success'] ?? false;
         } catch (Exception $e) {
-            Log::error("Failed to reset all client traffic for inbound {$inboundId}: " . $e->getMessage());
+            logger()->channel('xui')->error("Failed to reset all client traffic for inbound {$inboundId}: " . $e->getMessage());
             return false;
         }
     }
@@ -950,7 +967,7 @@ class XUIService
             $result = $this->makeAuthenticatedRequest('POST', 'panel/api/inbounds/resetAllTraffics');
             return $result['success'] ?? false;
         } catch (Exception $e) {
-            Log::error("Failed to reset all traffic: " . $e->getMessage());
+            logger()->channel('xui')->error("Failed to reset all traffic: " . $e->getMessage());
             return false;
         }
     }
@@ -986,7 +1003,7 @@ class XUIService
             }
             return [];
         } catch (Exception $e) {
-            Log::error("Failed to get online clients: " . $e->getMessage());
+            logger()->channel('xui')->error("Failed to get online clients: " . $e->getMessage());
             return [];
         }
     }
@@ -1000,7 +1017,7 @@ class XUIService
             $result = $this->makeAuthenticatedRequest('POST', "panel/api/inbounds/delDepletedClients/{$inboundId}");
             return $result['success'] ?? false;
         } catch (Exception $e) {
-            Log::error("Failed to delete depleted clients from inbound {$inboundId}: " . $e->getMessage());
+            logger()->channel('xui')->error("Failed to delete depleted clients from inbound {$inboundId}: " . $e->getMessage());
             return false;
         }
     }
@@ -1050,7 +1067,7 @@ class XUIService
             $result = $this->makeAuthenticatedRequest('GET', 'panel/api/inbounds/createbackup');
             return $result['success'] ?? false;
         } catch (Exception $e) {
-            Log::error("Failed to create backup: " . $e->getMessage());
+            logger()->channel('xui')->error("Failed to create backup: " . $e->getMessage());
             return false;
         }
     }
@@ -1078,10 +1095,10 @@ class XUIService
                 'last_global_sync_at' => now(),
             ]);
 
-            Log::info("Synced {$syncedCount} inbounds for server {$this->server->name}");
+            logger()->channel('xui')->info("Synced {$syncedCount} inbounds for server {$this->server->name}");
             return $syncedCount;
         } catch (Exception $e) {
-            Log::error("Failed to sync all inbounds: " . $e->getMessage());
+            logger()->channel('xui')->error("Failed to sync all inbounds: " . $e->getMessage());
             return 0;
         }
     }
@@ -1107,10 +1124,10 @@ class XUIService
             $inbound->updateFromXuiApiData($inboundData);
             $inbound->save();
 
-            Log::info("Synced inbound {$inbound->id} (remote: {$inboundData['id']}) from 3X-UI");
+            logger()->channel('xui')->info("Synced inbound {$inbound->id} (remote: {$inboundData['id']}) from 3X-UI");
             return $inbound;
         } catch (Exception $e) {
-            Log::error("Failed to sync inbound: " . $e->getMessage());
+            logger()->channel('xui')->error("Failed to sync inbound: " . $e->getMessage());
             return null;
         }
     }
@@ -1133,10 +1150,10 @@ class XUIService
                 }
             }
 
-            Log::info("Synced {$syncedCount} clients for server {$this->server->name}");
+            logger()->channel('xui')->info("Synced {$syncedCount} clients for server {$this->server->name}");
             return $syncedCount;
         } catch (Exception $e) {
-            Log::error("Failed to sync all clients: " . $e->getMessage());
+            logger()->channel('xui')->error("Failed to sync all clients: " . $e->getMessage());
             return 0;
         }
     }
@@ -1157,14 +1174,14 @@ class XUIService
             if ($client) {
                 $client->updateFromXuiApiClientStats($clientStats);
                 $client->save();
-                Log::info("Synced client {$client->id} ({$clientStats['email']}) from 3X-UI");
+                logger()->channel('xui')->info("Synced client {$client->id} ({$clientStats['email']}) from 3X-UI");
             } else {
-                Log::warning("Could not find local client for 3X-UI email: {$clientStats['email']}");
+                logger()->channel('xui')->warning("Could not find local client for 3X-UI email: {$clientStats['email']}");
             }
 
             return $client;
         } catch (Exception $e) {
-            Log::error("Failed to sync client: " . $e->getMessage());
+            logger()->channel('xui')->error("Failed to sync client: " . $e->getMessage());
             return null;
         }
     }
@@ -1195,10 +1212,10 @@ class XUIService
                 'total_online_clients' => count($onlineEmails),
             ]);
 
-            Log::info("Updated online status for {$updatedCount} clients");
+            logger()->channel('xui')->info("Updated online status for {$updatedCount} clients");
             return $updatedCount;
         } catch (Exception $e) {
-            Log::error("Failed to update online status: " . $e->getMessage());
+            logger()->channel('xui')->error("Failed to update online status: " . $e->getMessage());
             return 0;
         }
     }
@@ -1216,10 +1233,10 @@ class XUIService
                 'timestamp' => now()->toISOString(),
             ];
 
-            Log::info("Full sync completed for server {$this->server->name}", $results);
+            logger()->channel('xui')->info("Full sync completed for server {$this->server->name}", $results);
             return $results;
         } catch (Exception $e) {
-            Log::error("Full sync failed for server {$this->server->name}: " . $e->getMessage());
+            logger()->channel('xui')->error("Full sync failed for server {$this->server->name}: " . $e->getMessage());
             return ['error' => $e->getMessage()];
         }
     }
@@ -1242,7 +1259,7 @@ class XUIService
         try {
             return $this->login();
         } catch (Exception $e) {
-            Log::error("Connection test failed for server {$this->server->name}: " . $e->getMessage());
+            logger()->channel('xui')->error("Connection test failed for server {$this->server->name}: " . $e->getMessage());
             return false;
         }
     }
@@ -1271,7 +1288,7 @@ class XUIService
                 $status['api_responsive'] = true;
             }
         } catch (Exception $e) {
-            Log::error("Health check failed for server {$this->server->name}: " . $e->getMessage());
+            logger()->channel('xui')->error("Health check failed for server {$this->server->name}: " . $e->getMessage());
         }
 
         return $status;

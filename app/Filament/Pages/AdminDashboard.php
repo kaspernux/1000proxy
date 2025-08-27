@@ -17,7 +17,7 @@ class AdminDashboard extends BaseDashboard
 
     public function getTitle(): string
     {
-        return __('Admin Overview');
+    return __('Admin Dashboard');
     }
 
     /**
@@ -34,21 +34,14 @@ class AdminDashboard extends BaseDashboard
     public function getWidgets(): array
     {
         return [
-            // 1. Primary KPIs (at-a-glance business & platform summary)
-            \App\Filament\Widgets\AdminDashboardStatsWidget::class,
-            // 2. Unified Revenue & Growth charts (merges former RevenueAnalytics)
-            \App\Filament\Widgets\AdminChartsWidget::class,
-            // 3. Latest orders: immediate operational recency after analytics
-            \App\Filament\Widgets\LatestOrdersWidget::class,
-            // 4. System & order activity stream
-            \App\Filament\Widgets\AdminMonitoringWidget::class,
-            // 5. Infrastructure health (platform stability)
-            \App\Filament\Widgets\InfrastructureHealthWidget::class,
-            // 6. Performance deep metrics (latency, throughput, etc.)
-            \App\Filament\Widgets\EnhancedPerformanceStatsWidget::class,
-            // 7. User activity & auditing (behavioral signals)
-            \App\Filament\Widgets\UserActivityMonitoringWidget::class,
-            // (Charts already placed earlier)
+            // Hero flow: KPIs → Trends → Operations → Infra → Performance → Users
+            \App\Filament\Widgets\UnifiedOpsOverviewWidget::class,           // Unified KPIs (business + infra)
+            \App\Filament\Widgets\LatestOrdersWidget::class,                 // Ops recency
+            \App\Filament\Widgets\LiveServerMetricsWidget::class,            // Infra live
+            \App\Filament\Widgets\AdminChartsWidget::class,                  // Trends
+            \App\Filament\Widgets\AdminMonitoringWidget::class,              // Activity stream
+            \App\Filament\Widgets\EnhancedPerformanceStatsWidget::class,     // Deep perf
+            //\App\Filament\Widgets\UserActivityMonitoringWidget::class,       // Users
         ];
     }
 
@@ -60,8 +53,8 @@ class AdminDashboard extends BaseDashboard
      */
     public function getColumns(): array|int
     {
-        // Enforce single-column layout across all breakpoints so every widget spans full width.
-        return [ 'default' => 1, 'sm' => 1, 'md' => 1, 'xl' => 1 ];
+    // Use a responsive 6-col grid; widgets can span via own $columnSpan
+    return [ 'default' => 1, 'sm' => 2, 'md' => 6, 'xl' => 6 ];
     }
 
     /**
