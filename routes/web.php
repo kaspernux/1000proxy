@@ -139,6 +139,9 @@ Route::middleware('guest:customer,web')->group(function () {
 
     // Register (customer accounts)
     Route::get('/register', RegisterPage::class)->name('register');
+    // Non-Livewire POST fallback for production and no-JS clients
+    Route::post('/register', [\App\Http\Controllers\Auth\CustomerRegistrationController::class, 'store'])
+        ->name('register.store');
     // Provide a clean alias without duplicating the route
     Route::redirect('/auth/register', '/register', 301)->name('auth.register');
 
