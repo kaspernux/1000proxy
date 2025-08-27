@@ -34,7 +34,9 @@
 
 ```bash
 # Run these commands to assess code quality
-php artisan route:list --columns=method,name,action
+php artisan route:list
+# For programmatic use or tooling, prefer JSON output
+php artisan route:list --json
 php artisan config:show
 composer show --outdated
 php artisan queue:monitor

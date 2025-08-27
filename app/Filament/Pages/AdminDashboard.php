@@ -36,9 +36,9 @@ class AdminDashboard extends BaseDashboard
         return [
             // Hero flow: KPIs → Trends → Operations → Infra → Performance → Users
             \App\Filament\Widgets\UnifiedOpsOverviewWidget::class,           // Unified KPIs (business + infra)
+            \App\Filament\Widgets\AdminChartsWidget::class,                  // Trends
             \App\Filament\Widgets\LatestOrdersWidget::class,                 // Ops recency
             \App\Filament\Widgets\LiveServerMetricsWidget::class,            // Infra live
-            \App\Filament\Widgets\AdminChartsWidget::class,                  // Trends
             \App\Filament\Widgets\AdminMonitoringWidget::class,              // Activity stream
             \App\Filament\Widgets\EnhancedPerformanceStatsWidget::class,     // Deep perf
             //\App\Filament\Widgets\UserActivityMonitoringWidget::class,       // Users

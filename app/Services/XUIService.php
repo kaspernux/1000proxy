@@ -45,9 +45,11 @@ class XUIService
             // Fetch login page for potential CSRF token
             $csrfToken = null;
             try {
-                $loginPageReq = Http::timeout($this->timeout)->withHeaders([
+                $loginPageReq = Http::timeout($this->timeout)->withOptions(['version' => '1.1'])->withHeaders([
                     'User-Agent' => '1000Proxy/1.0 (+https://1000proxy.me)',
-                    'Accept' => 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8'
+                    'Accept' => 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+                    // Help some panels that misbehave with HTTP/2 by forcing 1.1 style semantics
+                    'Connection' => 'close'
                 ]);
                 if (app()->bound('xui.insecure') && app('xui.insecure') === true) {
                     $loginPageReq = $loginPageReq->withoutVerifying();
@@ -71,13 +73,14 @@ class XUIService
 
             // Primary JSON login attempt
             try {
-                $jsonLoginReq = Http::timeout($this->timeout)
+    $jsonLoginReq = Http::timeout($this->timeout)->withOptions(['version' => '1.1'])
                     ->withHeaders([
                         'User-Agent' => '1000Proxy/1.0 (+https://1000proxy.me)',
                         'Accept' => 'application/json, text/plain, */*',
                         'X-Requested-With' => 'XMLHttpRequest',
                         'Referer' => $base . '/',
-                        'Origin' => preg_replace('#/[^/]*$#','', $base . '/'),
+            'Origin' => preg_replace('#/[^/]*$#','', $base . '/'),
+            'Connection' => 'close'
                     ])
                     ->asJson();
                 if (app()->bound('xui.insecure') && app('xui.insecure') === true) {
@@ -150,9 +153,10 @@ class XUIService
                     'timeout' => $this->timeout,
                 ]);
 
-                $request = Http::timeout($this->timeout)
+    $request = Http::timeout($this->timeout)->withOptions(['version' => '1.1'])
                     ->withHeaders([
-                        'User-Agent' => '1000Proxy/1.0 (+https://1000proxy.me)'
+            'User-Agent' => '1000Proxy/1.0 (+https://1000proxy.me)',
+            'Connection' => 'close'
                     ])
                     ->asForm();
                 if (app()->bound('xui.insecure') && app('xui.insecure') === true) {
@@ -160,15 +164,23 @@ class XUIService
                 }
 
                 // For list endpoint (GET) vs login (POST)
-                if (str_contains($loginUrl, '/inbounds/list')) {
-                    $response = $request->get($loginUrl);
-                } else {
-                    $response = $request->post($loginUrl, [
-                        'username' => $this->server->username,
-                        'password' => $this->server->password,
-                        'remember' => 'true', // some panels expect remember
-                        'twoFactorCode' => '', // supply blank code if 2FA disabled
+                try {
+                    if (str_contains($loginUrl, '/inbounds/list')) {
+                        $response = $request->get($loginUrl);
+                    } else {
+                        $response = $request->post($loginUrl, [
+                            'username' => $this->server->username,
+                            'password' => $this->server->password,
+                            'remember' => 'true', // some panels expect remember
+                            'twoFactorCode' => '', // supply blank code if 2FA disabled
+                        ]);
+                    }
+                } catch (\Throwable $t) {
+                    $logger->debug('Login request exception for candidate', [
+                        'login_url' => $loginUrl,
+                        'error' => $t->getMessage(),
                     ]);
+                    continue; // try next candidate
                 }
 
                 $bodySnippet = substr($response->body(), 0, $bodyLen);
@@ -270,8 +282,8 @@ class XUIService
                     throw new Exception("Failed to authenticate with 3X-UI server");
                 }
 
-                $request = Http::timeout($this->timeout)
-                    ->withHeaders($this->server->getSessionHeader());
+                $request = Http::timeout($this->timeout)->withOptions(['version' => '1.1'])
+                    ->withHeaders($this->server->getSessionHeader() + ['Connection' => 'close']);
 
                 if ($method === 'POST') {
                     $response = $request->asJson()->post($this->server->getApiEndpoint($endpoint), $data);
@@ -332,14 +344,20 @@ class XUIService
                     break;
                 }
                 if ($attempt < $this->retryCount) {
+                    // Exponential backoff with jitter (base 300ms)
+                    $baseMs = 300;
+                    $sleepMs = (int) min(5000, $baseMs * pow(2, $attempt - 1));
+                    $jitter = random_int(0, 150);
+                    $sleepMs += $jitter;
                     logger()->channel('xui')->warning('3X-UI API request retrying', [
                         'endpoint' => $endpoint,
                         'method' => $method,
                         'next_attempt' => $attempt + 1,
                         'retry_limit' => $this->retryCount,
+                        'sleep_ms' => $sleepMs,
                         'error' => $e->getMessage(),
                     ]);
-                    usleep(300000); // 300ms backoff
+                    usleep($sleepMs * 1000);
                 } else {
                     logger()->channel('xui')->error('3X-UI API request exhausted retries', [
                         'endpoint' => $endpoint,
@@ -399,7 +417,7 @@ class XUIService
                 'X-Requested-With' => 'XMLHttpRequest',
                 'Referer' => rtrim($this->server->getApiBaseUrl(), '/') . '/',
             ];
-            $request = Http::timeout($this->timeout)->withHeaders($headers);
+            $request = Http::timeout($this->timeout)->withOptions(['version' => '1.1'])->withHeaders($headers + ['Connection' => 'close']);
             if (app()->bound('xui.insecure') && app('xui.insecure') === true) {
                 $request = $request->withoutVerifying();
             }
@@ -432,10 +450,11 @@ class XUIService
     private function verifySessionWithoutCookie(): bool
     {
         try {
-            $request = Http::timeout($this->timeout)
+    $request = Http::timeout($this->timeout)->withOptions(['version' => '1.1'])
                 ->withHeaders([
                     'Accept' => 'application/json',
-                    'User-Agent' => '1000Proxy/1.0 (+https://1000proxy.me)'
+            'User-Agent' => '1000Proxy/1.0 (+https://1000proxy.me)',
+            'Connection' => 'close'
                 ]);
             if (app()->bound('xui.insecure') && app('xui.insecure') === true) {
                 $request = $request->withoutVerifying();
@@ -474,8 +493,8 @@ class XUIService
         foreach ($endpoints as $ep) {
             try {
                 if (!$this->ensureValidSession()) { continue; }
-                $req = \Illuminate\Support\Facades\Http::timeout($this->timeout)
-                    ->withHeaders($this->server->getSessionHeader());
+                $req = \Illuminate\Support\Facades\Http::timeout($this->timeout)->withOptions(['version' => '1.1'])
+                    ->withHeaders($this->server->getSessionHeader() + ['Connection' => 'close']);
                 if (app()->bound('xui.insecure') && app('xui.insecure') === true) {
                     $req = $req->withoutVerifying();
                 }
