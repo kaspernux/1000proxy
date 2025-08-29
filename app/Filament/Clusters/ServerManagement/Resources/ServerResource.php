@@ -1,7 +1,15 @@
 <?php
-
 namespace App\Filament\Clusters\ServerManagement\Resources;
 
+use Filament\Actions\Action;
+use Filament\Actions\ViewAction;
+use Filament\Actions\EditAction;
+use Filament\Actions\DeleteBulkAction;
+use Filament\Actions\BulkActionGroup;
+use Filament\Actions\ActionGroup;
+use Filament\Schemas\Components\Wizard;
+use Filament\Schemas\Components\Wizard\Step;
+use Filament\Schemas\Components\Grid;
 use App\Filament\Clusters\ServerManagement\Resources\ServerResource\Pages;
 use App\Filament\Clusters\ServerManagement;
 use App\Filament\Concerns\HasPerformanceOptimizations;
@@ -30,19 +38,7 @@ use Filament\Tables\Columns\BadgeColumn;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Filters\Filter;
-use Filament\Schemas\Components\Grid;
-use Filament\Actions\Action;
-use Filament\Actions\EditAction;
-use Filament\Actions\ViewAction;
-use Filament\Actions\BulkActionGroup;
-use Filament\Actions\DeleteBulkAction;
-use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Database\Eloquent\Collection;
-use Filament\Notifications\Notification;
-use Illuminate\Support\Str;
-use Illuminate\Support\Carbon;
-use Filament\Schemas\Components\Wizard;
-use Filament\Schemas\Components\Wizard\Step;
+
 
 class ServerResource extends Resource
 {
@@ -61,14 +57,16 @@ class ServerResource extends Resource
     protected static string | BackedEnum | null $navigationIcon = 'heroicon-o-server-stack';
 
     protected static ?int $navigationSort = 1;
+    protected static array $searchableAttributes = ['name', 'host', 'ip_address', 'country', 'description'];
+
 
     protected static ?string $recordTitleAttribute = 'name';
 
-    protected static ?string $navigationLabel = '🖥️ XUI Servers';
+    protected static ?string $navigationLabel = 'Servers';
 
-    protected static ?string $pluralModelLabel = 'XUI Servers';
+    protected static ?string $pluralModelLabel = 'Servers';
 
-    protected static ?string $modelLabel = 'XUI Server';
+    protected static ?string $modelLabel = 'Server';
 
     public static function getLabel(): string
     {
@@ -77,404 +75,126 @@ class ServerResource extends Resource
 
     public static function form(Schema $schema): Schema
     {
-        return $schema
-            ->schema([
-                // Create-only guided wizard for better onboarding UX
-                Wizard::make()->label('Setup Server')
-                    ->columnSpanFull()
-                    ->extraAttributes(['class' => 'w-full'])
-                    ->visibleOn('create')
-                    ->steps([
-                        Step::make('Basics')
-                            ->icon('heroicon-o-server')
-                            ->schema([
-                                Grid::make(2)->schema([
-                                    TextInput::make('name')
-                                        ->required()
-                                        ->maxLength(255)
-                                        ->placeholder('My EU Proxy 01')
-                                        ->helperText('A friendly name for this server'),
-
-                                    Forms\Components\Select::make('server_category_id')
-                                        ->label('Category')
-                                        ->relationship('category', 'name')
-                                        ->searchable()
-                                        ->preload()
-                                        ->placeholder('General'),
-                                ]),
-
-                                Grid::make(2)->schema([
-                                    Forms\Components\Select::make('server_brand_id')
-                                        ->label('Brand')
-                                        ->relationship('brand', 'name')
-                                        ->searchable()
-                                        ->preload()
-                                        ->placeholder('Select provider'),
-
-                                    TextInput::make('country')
-                                        ->label('Country')
-                                        ->maxLength(255)
-                                        ->placeholder('Germany'),
-                                ]),
-
-                                Textarea::make('description')
-                                    ->rows(3)
-                                    ->placeholder('Short description or notes (optional)'),
-                            ])->columns(1),
-
-                        Step::make('Connection')
-                            ->icon('heroicon-o-link')
-                            ->schema([
-                                Grid::make(3)->schema([
-                                    TextInput::make('panel_url')
-                                        ->label('Panel URL')
-                                        ->url()
-                                        ->placeholder('https://panel.example.com')
-                                        ->helperText('If set, host/port may be auto-derived'),
-
-                                    TextInput::make('host')
-                                        ->label('Host/Hostname')
-                                        ->maxLength(255)
-                                        ->placeholder('panel.example.com'),
-
-                                    TextInput::make('panel_port')
-                                        ->label('Panel Port')
-                                        ->numeric()
-                                        ->minValue(1)
-                                        ->maxValue(65535)
-                                        ->default(2053)
-                                        ->placeholder('2053'),
-                                ]),
-
-                                Grid::make(3)->schema([
-                                    TextInput::make('ip_address')
-                                        ->label('IP Address')
-                                        ->required()
-                                        ->rules(['ip'])
-                                        ->afterStateUpdated(fn($state, callable $set) => $set('ip', $state))
-                                        ->placeholder('192.0.2.10'),
-
-                                    TextInput::make('web_base_path')
-                                        ->label('Web Base Path')
-                                        ->default('/')
-                                        ->placeholder('/')
-                                        ->helperText('e.g. / or /proxy')
-                                        ->dehydrateStateUsing(function($state){
-                                            if (!$state) return '/';
-                                            $state = '/' . trim($state, '/');
-                                            return $state === '//' ? '/' : $state;
-                                        }),
-
-                                    Forms\Components\Select::make('port_type')
-                                        ->label('Port Type')
-                                        ->options([
-                                            'https' => 'HTTPS',
-                                            'http' => 'HTTP',
-                                            'tcp' => 'TCP',
-                                            'udp' => 'UDP',
-                                        ])
-                                        ->default('https'),
-                                ]),
-
-                                Grid::make(2)->schema([
-                                    TextInput::make('username')
-                                        ->label('Panel Username')
-                                        ->required()
-                                        ->placeholder('admin'),
-
-                                    TextInput::make('password')
-                                        ->label('Panel Password')
-                                        ->password()
-                                        ->required()
-                                        ->placeholder('••••••••'),
-                                ]),
-                            ])->columns(1),
-
-                        Step::make('Security & Protocol')
-                            ->icon('heroicon-o-shield-check')
-                            ->schema([
-                                Grid::make(3)->schema([
-                                    Forms\Components\Select::make('type')
-                                        ->label('Panel Type')
-                                        ->options([
-                                            'sanaei' => '3X-UI (Sanaei)',
-                                            'alireza' => 'Alireza',
-                                            'marzban' => 'Marzban',
-                                            'other' => 'Other',
-                                        ])
-                                        ->default('sanaei')
-                                        ->required(),
-
-                                    Forms\Components\Select::make('security')
-                                        ->label('Security')
-                                        ->options([
-                                            'tls' => 'TLS',
-                                            'reality' => 'Reality',
-                                            'none' => 'None',
-                                        ])
-                                        ->default('tls'),
-
-                                    Forms\Components\Select::make('header_type')
-                                        ->label('Header Type')
-                                        ->options([
-                                            'none' => 'None',
-                                            'http' => 'HTTP',
-                                            'ws' => 'WebSocket',
-                                            'grpc' => 'gRPC',
-                                        ])
-                                        ->default('none'),
-                                ]),
-
-                                Grid::make(3)->schema([
-                                    TextInput::make('sni')->label('SNI')->placeholder('example.com'),
-                                    TextInput::make('port')->label('Main Port')->numeric()->minValue(1)->maxValue(65535)->placeholder('443'),
-                                    TextInput::make('flag')->label('Flag (ISO code)')->maxLength(10)->placeholder('DE'),
-                                ]),
-                            ])->columns(1),
-
-                        Step::make('Automation')
-                            ->icon('heroicon-o-cog-8-tooth')
-                            ->schema([
-                                Grid::make(3)->schema([
-                                    Toggle::make('auto_sync_enabled')->label('Auto Sync')->default(true),
-                                    Toggle::make('auto_provisioning')->label('Auto Provisioning')->default(false),
-                                    TextInput::make('sync_interval_minutes')->label('Sync Interval (min)')->numeric()->minValue(1)->maxValue(1440)->default(30),
-                                ]),
-                            ])->columns(1),
-                    ]),
-                Group::make()->schema([
-                    Section::make('🔧 Basic Information')
-                        ->description('Core server identification and categorization')
+    return $schema->schema([
+            // Guided wizard for both create and edit contexts
+            Wizard::make()->label('Server Setup & Edit')
+                ->columnSpanFull()
+                ->extraAttributes(['class' => 'w-full'])
+                ->steps([
+                    Step::make('Basics')
                         ->icon('heroicon-o-server')
                         ->schema([
                             Grid::make(2)->schema([
                                 TextInput::make('name')
                                     ->required()
                                     ->maxLength(255)
-                                    ->live(onBlur: true)
-                                    ->prefixIcon('heroicon-o-identification')
-                                    ->placeholder('Enter server name')
-                                    ->helperText('Server display name for identification'),
-
-                                TextInput::make('country')
-                                    ->maxLength(255)
-                                    ->prefixIcon('heroicon-o-map-pin')
-                                    ->datalist([
-                                        'United States', 'Germany', 'Netherlands', 'United Kingdom',
-                                        'France', 'Canada', 'Japan', 'Singapore', 'Australia', 'Brazil'
-                                    ])
-                                    ->placeholder('Select or enter country')
-                                    ->helperText('Server physical location'),
-                            ]),
-
-                            Grid::make(2)->schema([
+                                    ->placeholder('My EU Proxy 01')
+                                    ->helperText('A friendly name for this server'),
                                 Forms\Components\Select::make('server_category_id')
                                     ->label('Category')
                                     ->relationship('category', 'name')
                                     ->searchable()
                                     ->preload()
-                                    ->prefixIcon('heroicon-o-tag')
-                                    ->placeholder('Select category')
-                                    ->helperText('Server purpose category'),
-
+                                    ->placeholder('General'),
+                            ]),
+                            Grid::make(2)->schema([
                                 Forms\Components\Select::make('server_brand_id')
                                     ->label('Brand')
                                     ->relationship('brand', 'name')
                                     ->searchable()
                                     ->preload()
-                                    ->prefixIcon('heroicon-o-building-office')
-                                    ->placeholder('Select brand')
-                                    ->helperText('Server provider brand'),
+                                    ->placeholder('Select provider'),
+                                TextInput::make('country')
+                                    ->label('Country')
+                                    ->maxLength(255)
+                                    ->placeholder('Germany'),
                             ]),
-
                             Textarea::make('description')
-                                ->maxLength(1000)
                                 ->rows(3)
-                                ->placeholder('Enter server description and features')
-                                ->helperText('Detailed server description and key features'),
-
-                            Grid::make(2)->schema([
-                                TextInput::make('flag')
-                                    ->maxLength(10)
-                                    ->prefixIcon('heroicon-o-flag')
-                                    ->placeholder('US, DE, UK')
-                                    ->helperText('Country flag code (e.g., US, DE, UK)'),
-
-                                Forms\Components\Select::make('status')
-                                    ->options([
-                                        'up' => '🟢 Up',
-                                        'down' => ' Down',
-                                        'paused' => '⏸️ Paused',
-                                    ])
-                                    ->default('up')
-                                    ->prefixIcon('heroicon-o-heart')
-                                    ->helperText('Current server operational status'),
-                            ]),
+                                ->placeholder('Short description or notes (optional)'),
                         ])->columns(1),
-
-                    Section::make('🌐 Connection Settings')
-                        ->description('Panel access and connectivity configuration')
+                    Step::make('Connection')
                         ->icon('heroicon-o-link')
                         ->schema([
                             Grid::make(3)->schema([
-                                TextInput::make('host')
-                                    ->label('Host/Hostname')
-                                    ->maxLength(255)
-                                    ->prefixIcon('heroicon-o-server')
-                                    ->placeholder('panel.example.com')
-                                    ->helperText('Server hostname or domain'),
-
-                                TextInput::make('ip')
-                                    ->label('IP Address')
-                                    ->maxLength(45)
-                                    ->prefixIcon('heroicon-o-globe-alt')
-                                    ->placeholder('192.168.1.100')
-                                    ->rules(['ip'])
-                                    ->helperText('Server IP address'),
-
-                                // Legacy alias field expected by tests. Keep visible so validation errors surface under `data.ip_address`.
-                                TextInput::make('ip_address')
-                                    ->label('IP Address (alias)')
-                                    ->required()
-                                    ->rules(['ip'])
-                                    ->afterStateUpdated(fn($state, callable $set) => $set('ip', $state))
-                                    ->dehydrated(true),
-
-                                TextInput::make('location')
-                                    ->label('Country (alias)')
-                                    ->afterStateUpdated(fn($state, callable $set) => $set('country', $state))
-                                    ->hidden(),
-
-                                TextInput::make('panel_username')
-                                    ->label('Panel Username (alias)')
-                                    ->afterStateUpdated(fn($state, callable $set) => $set('username', $state))
-                                    ->hidden(),
-
-                                TextInput::make('panel_password')
-                                    ->label('Panel Password (alias)')
-                                    ->afterStateUpdated(fn($state, callable $set) => $set('password', $state))
-                                    ->password()
-                                    ->hidden(),
-
                                 TextInput::make('panel_url')
                                     ->label('Panel URL')
                                     ->url()
-                                    ->prefixIcon('heroicon-o-link')
                                     ->placeholder('https://panel.example.com')
-                                    ->helperText('Full URL to access the X-UI panel'),
-                            ]),
-
-                            Grid::make(3)->schema([
-                                TextInput::make('port')
-                                    ->label('Main Port')
-                                    ->numeric()
-                                    ->minValue(1)
-                                    ->maxValue(65535)
-                                    ->default(443)
-                                    ->prefixIcon('heroicon-o-bolt')
-                                    ->placeholder('443')
-                                    ->helperText('Primary connection port'),
-
+                                    ->helperText('If set, host/port may be auto-derived'),
+                                TextInput::make('host')
+                                    ->label('Host/Hostname')
+                                    ->maxLength(255)
+                                    ->placeholder('panel.example.com'),
                                 TextInput::make('panel_port')
                                     ->label('Panel Port')
                                     ->numeric()
                                     ->minValue(1)
                                     ->maxValue(65535)
-                                    ->default(54321)
-                                    ->prefixIcon('heroicon-o-cog-6-tooth')
-                                    ->placeholder('54321')
-                                    ->helperText('X-UI panel access port'),
-
+                                    ->default(2053)
+                                    ->placeholder('2053'),
+                            ]),
+                            Grid::make(3)->schema([
+                                TextInput::make('ip_address')
+                                    ->label('IP Address')
+                                    ->required()
+                                    ->rules(['ip'])
+                                    ->afterStateUpdated(fn($state, callable $set) => $set('ip', $state))
+                                    ->default(request()->server('SERVER_ADDR') ?? gethostbyname(gethostname()))
+                                    ->placeholder(request()->server('SERVER_ADDR') ?? gethostbyname(gethostname())),
+                                TextInput::make('web_base_path')
+                                    ->label('Web Base Path')
+                                    ->default('/')
+                                    ->placeholder('/')
+                                    ->helperText('e.g. / or /proxy')
+                                    ->dehydrateStateUsing(function($state){
+                                        if (!$state) return '/';
+                                        $state = '/' . trim($state, '/');
+                                        return $state === '//' ? '/' : $state;
+                                    }),
                                 Forms\Components\Select::make('port_type')
                                     ->label('Port Type')
                                     ->options([
-                                        'http' => '🌐 HTTP',
-                                        'https' => '🔒 HTTPS',
-                                        'tcp' => '📡 TCP',
-                                        'udp' => '📊 UDP',
-                                    ])
-                                    ->default('https')
-                                    ->prefixIcon('heroicon-o-shield-check'),
+                                        'https' => 'HTTPS',
+                                        'http' => 'HTTP',
+                                        'tcp' => 'TCP',
+                                        'udp' => 'UDP',
+                                    ]),
                             ]),
-
                             Grid::make(2)->schema([
                                 TextInput::make('username')
                                     ->label('Panel Username')
-                                    ->maxLength(255)
-                                    ->prefixIcon('heroicon-o-user')
-                                    ->placeholder('admin')
-                                    ->helperText('X-UI panel login username'),
-
+                                    ->required()
+                                    ->placeholder('admin'),
                                 TextInput::make('password')
                                     ->label('Panel Password')
                                     ->password()
-                                    ->maxLength(255)
-                                    ->prefixIcon('heroicon-o-lock-closed')
-                                    ->placeholder('Enter secure password')
-                                    ->helperText('X-UI panel login password'),
+                                    ->required()
+                                    ->placeholder('••••••••'),
                             ]),
-
-                            TextInput::make('web_base_path')
-                                ->label('Web Base Path')
-                                ->maxLength(255)
-                                ->default('/')
-                                ->prefixIcon('heroicon-o-folder')
-                                ->placeholder('/proxy or /')
-                                ->helperText('Panel base path, include without trailing slash (e.g. /proxy or /). If you set panel_url including /proxy this field will auto-derive when saving.')
-                                ->afterStateHydrated(function($component, $state, $record){
-                                    if ($record && !$state && $record->panel_url) {
-                                        $path = parse_url($record->panel_url, PHP_URL_PATH);
-                                        if ($path && $path !== '/') {
-                                            $component->state(rtrim($path, '/'));
-                                        }
-                                    }
-                                })
-                                ->dehydrateStateUsing(function($state){
-                                    if (!$state) return '/';
-                                    $state = '/' . trim($state, '/');
-                                    return $state === '//' ? '/' : $state;
-                                }),
                         ])->columns(1),
-
-                    Section::make('🛡️ Advanced Configuration')
-                        ->description('Protocol and security settings')
+                    Step::make('Security & Protocol')
                         ->icon('heroicon-o-shield-check')
-                        ->collapsible()
                         ->schema([
-                            Grid::make(2)->schema([
+                            Grid::make(3)->schema([
                                 Forms\Components\Select::make('type')
                                     ->label('Panel Type')
                                     ->options([
-                                        'sanaei' => '⚡ X-RAY (3X-UI Sanaei)',
-                                        'alireza' => '🔧 Alireza Panel',
-                                        'marzban' => '🏗️ Marzban Panel',
-                                        'other' => '🔗 Other Panel Type',
+                                        'sanaei' => '3X-UI (Sanaei)',
+                                        'alireza' => 'Alireza',
+                                        'marzban' => 'Marzban',
+                                        'other' => 'Other',
                                     ])
                                     ->default('sanaei')
-                                    ->required()
-                                    ->prefixIcon('heroicon-o-cog-6-tooth')
-                                    ->helperText('Panel type determines API integration'),
-
+                                    ->required(),
                                 Forms\Components\Select::make('security')
-                                    ->label('Security Protocol')
+                                    ->label('Security')
                                     ->options([
-                                        'tls' => '🔒 TLS',
-                                        'reality' => '🛡️ Reality',
-                                        'none' => '🔓 None',
+                                        'tls' => 'TLS',
+                                        'reality' => 'Reality',
+                                        'none' => 'None',
                                     ])
-                                    ->default('tls')
-                                    ->prefixIcon('heroicon-o-shield-exclamation')
-                                    ->helperText('Choose the transport security protocol used by clients.'),
-                            ]),
-
-                            Grid::make(2)->schema([
-                                TextInput::make('sni')
-                                    ->label('SNI (Server Name Indication)')
-                                    ->maxLength(255)
-                                    ->prefixIcon('heroicon-o-identification')
-                                    ->placeholder('example.com')
-                                    ->helperText('SNI for TLS connections'),
-
+                                    ->default('tls'),
                                 Forms\Components\Select::make('header_type')
                                     ->label('Header Type')
                                     ->options([
@@ -483,409 +203,25 @@ class ServerResource extends Resource
                                         'ws' => 'WebSocket',
                                         'grpc' => 'gRPC',
                                     ])
-                                    ->default('none')
-                                    ->prefixIcon('heroicon-o-document-text'),
+                                    ->default('none'),
                             ]),
-
-                            Textarea::make('request_header')
-                                ->label('Request Headers')
-                                ->rows(3)
-                                ->placeholder('{"Host": "example.com"}')
-                                ->helperText('Custom request headers (JSON format). Leave empty for defaults.'),
-
-                            Textarea::make('response_header')
-                                ->label('Response Headers')
-                                ->rows(3)
-                                ->placeholder('{"Content-Type": "application/json"}')
-                                ->helperText('Custom response headers (JSON format). Leave empty to use panel defaults.'),
-
-                            Grid::make(2)->schema([
-                                Textarea::make('reality')
-                                    ->label('Reality Settings')
-                                    ->rows(4)
-                                    ->placeholder('{"dest": "google.com:443", "serverNames": ["google.com"]}')
-                                    ->helperText('Reality protocol configuration (JSON format). Applies only when Security is set to Reality.'),
-
-                                Textarea::make('tlsSettings')
-                                    ->label('TLS Settings')
-                                    ->rows(4)
-                                    ->placeholder('{"serverName": "example.com", "certificates": []}')
-                                    ->helperText('TLS configuration settings (JSON format). Applies when Security is TLS.'),
+                            Grid::make(3)->schema([
+                                TextInput::make('sni')->label('SNI')->placeholder('example.com'),
+                                TextInput::make('port')->label('Main Port')->numeric()->minValue(1)->maxValue(65535)->placeholder('443'),
+                                TextInput::make('flag')->label('Flag (ISO code)')->maxLength(10)->placeholder('DE'),
                             ]),
-
-                            Textarea::make('xui_config')
-                                ->label('XUI Configuration')
-                                ->rows(5)
-                                ->placeholder('{"api_timeout": 30, "retry_count": 3}')
-                                ->helperText('Additional XUI panel configuration (JSON format). For advanced overrides.'),
-
-                            Textarea::make('connection_settings')
-                                ->label('Connection Settings')
-                                ->rows(4)
-                                ->placeholder('{"keep_alive": true, "compression": false}')
-                                ->helperText('Advanced connection settings (JSON format). Use with caution.'),
                         ])->columns(1),
-                ])->columnSpan(2)->hidden(fn ($context) => $context === 'create'),
-
-                Group::make()->schema([
-                    Section::make('📊 Status & Monitoring')
-                        ->description('Server operational status and metrics')
-                        ->icon('heroicon-o-chart-bar')
-                        ->schema([
-                            TextInput::make('health_status')
-                                ->label('Health Status')
-                                ->maxLength(50)
-                                ->default('unknown')
-                                ->prefixIcon('heroicon-o-heart')
-                                ->placeholder('healthy, warning, error')
-                                ->helperText('Detailed health status'),
-
-                            Textarea::make('health_message')
-                                ->label('Health Message')
-                                ->rows(2)
-                                ->placeholder('Latest health check result')
-                                ->helperText('Latest health check message'),
-
-                            Grid::make(2)->schema([
-                                TextInput::make('response_time_ms')
-                                    ->label('Response Time (ms)')
-                                    ->numeric()
-                                    ->minValue(0)
-                                    ->helperText('Average API response time'),
-
-                                TextInput::make('uptime_percentage')
-                                    ->label('Uptime (%)')
-                                    ->numeric()
-                                    ->minValue(0)
-                                    ->maxValue(100)
-                                    ->helperText('Rolling uptime percentage'),
-                            ]),
-
-                            Grid::make(1)->schema([
-                                TextInput::make('total_clients')
-                                    ->label('Total Clients')
-                                    ->numeric()
-                                    ->default(0)
-                                    ->minValue(0)
-                                    ->prefixIcon('heroicon-o-users')
-                                    ->helperText('Total registered clients'),
-
-                                TextInput::make('active_clients')
-                                    ->label('Active Clients')
-                                    ->numeric()
-                                    ->default(0)
-                                    ->minValue(0)
-                                    ->prefixIcon('heroicon-o-user-group')
-                                    ->helperText('Currently active connections'),
-
-                                TextInput::make('total_traffic_mb')
-                                    ->label('Total Traffic (MB)')
-                                    ->numeric()
-                                    ->default(0)
-                                    ->minValue(0)
-                                    ->prefixIcon('heroicon-o-arrow-trending-up')
-                                    ->helperText('Total data transfer in MB'),
-
-                                TextInput::make('total_inbounds')
-                                    ->label('Total Inbounds')
-                                    ->numeric()
-                                    ->default(0)
-                                    ->minValue(0)
-                                    ->prefixIcon('heroicon-o-inbox-stack')
-                                    ->helperText('Number of inbound configurations'),
-
-                                TextInput::make('active_inbounds')
-                                    ->label('Active Inbounds')
-                                    ->numeric()
-                                    ->default(0)
-                                    ->minValue(0)
-                                    ->prefixIcon('heroicon-o-inbox')
-                                    ->helperText('Currently active inbounds'),
-                            ]),
-                        ]),
-
-                    Section::make('⚙️ Capacity & Limits')
-                        ->description('Server capacity configuration')
-                        ->icon('heroicon-o-scale')
-                        ->schema([
-                            TextInput::make('max_clients_per_inbound')
-                                ->label('Max Clients per Inbound')
-                                ->numeric()
-                                ->default(100)
-                                ->minValue(1)
-                                ->maxValue(10000)
-                                ->prefixIcon('heroicon-o-user-plus')
-                                ->helperText('Client limit per inbound'),
-
-                            TextInput::make('total_online_clients')
-                                ->label('Total Online Clients')
-                                ->numeric()
-                                ->default(0)
-                                ->minValue(0)
-                                ->prefixIcon('heroicon-o-signal')
-                                ->helperText('Real-time online client count'),
-                        ]),
-
-                    Section::make('🤖 Automation Settings')
-                        ->description('Automated management configuration')
+                    Step::make('Automation')
                         ->icon('heroicon-o-cog-8-tooth')
-                        ->collapsible()
                         ->schema([
-                            Toggle::make('auto_provisioning')
-                                ->label('🚀 Auto Provisioning')
-                                ->default(false)
-                                ->helperText('Enable automatic client provisioning'),
-
-                            Toggle::make('auto_sync_enabled')
-                                ->label('🔄 Auto Sync')
-                                ->default(true)
-                                ->helperText('Enable automatic synchronization'),
-
-                            Toggle::make('auto_cleanup_depleted')
-                                ->label('🧹 Auto Cleanup Depleted')
-                                ->default(false)
-                                ->helperText('Automatically remove depleted clients'),
-
-                            Toggle::make('backup_notifications_enabled')
-                                ->label('📧 Backup Notifications')
-                                ->default(true)
-                                ->helperText('Enable backup notification emails'),
-
-                            TextInput::make('sync_interval_minutes')
-                                ->label('Sync Interval (Minutes)')
-                                ->numeric()
-                                ->default(30)
-                                ->minValue(1)
-                                ->maxValue(1440)
-                                ->prefixIcon('heroicon-o-clock')
-                                ->helperText('Synchronization interval in minutes'),
-                        ]),
-
-                    Section::make('🔌 API Configuration')
-                        ->description('X-UI API settings and session management')
-                        ->icon('heroicon-o-rss')
-                        ->collapsible()
-                        ->schema([
-                            TextInput::make('api_version')
-                                ->label('API Version')
-                                ->maxLength(20)
-                                ->default('v1')
-                                ->prefixIcon('heroicon-o-code-bracket')
-                                ->helperText('X-UI API version'),
-
-                            Grid::make(2)->schema([
-                                TextInput::make('api_timeout')
-                                    ->label('API Timeout (seconds)')
-                                    ->numeric()
-                                    ->default(30)
-                                    ->minValue(5)
-                                    ->maxValue(300)
-                                    ->prefixIcon('heroicon-o-clock'),
-
-                                TextInput::make('api_retry_count')
-                                    ->label('API Retry Count')
-                                    ->numeric()
-                                    ->default(3)
-                                    ->minValue(1)
-                                    ->maxValue(10)
-                                    ->prefixIcon('heroicon-o-arrow-path'),
+                            Grid::make(3)->schema([
+                                Toggle::make('auto_sync_enabled')->label('Auto Sync')->default(true),
+                                Toggle::make('auto_provisioning')->label('Auto Provisioning')->default(false),
+                                TextInput::make('sync_interval_minutes')->label('Sync Interval (min)')->numeric()->minValue(1)->maxValue(1440)->default(30),
                             ]),
-
-                            TextInput::make('login_attempts')
-                                ->label('Login Attempts')
-                                ->numeric()
-                                ->default(0)
-                                ->disabled()
-                                ->prefixIcon('heroicon-o-shield-exclamation')
-                                ->helperText('Failed login attempt count'),
-
-                            Textarea::make('session_cookie')
-                                ->label('Session Cookie')
-                                ->rows(3)
-                                ->disabled()
-                                ->helperText('Current X-UI session cookie'),
-
-                            TextInput::make('session_cookie_name')
-                                ->label('Session Cookie Name')
-                                ->disabled()
-                                ->helperText('Cookie key name used by X-UI (if applicable)'),
-                        ]),
-
-                    Section::make('🔐 XUI Session Management')
-                        ->description('X-UI panel session and authentication tracking')
-                        ->icon('heroicon-o-key')
-                        ->collapsible()
-                        ->schema([
-                            Grid::make(2)->schema([
-                                Placeholder::make('session_expires_info')
-                                    ->label('Session Expires')
-                                    ->content(fn (?Server $record): string =>
-                                        $record && $record->session_expires_at ?
-                                        $record->session_expires_at->format('M j, Y g:i A') : 'No active session'),
-
-                                Placeholder::make('last_login_info')
-                                    ->label('Last Panel Login')
-                                    ->content(fn (?Server $record): string =>
-                                        $record && $record->last_login_at ?
-                                        $record->last_login_at->format('M j, Y g:i A') : 'Never logged in'),
-                            ]),
-
-                            Grid::make(2)->schema([
-                                TextInput::make('login_attempts')
-                                    ->label('Failed Login Attempts')
-                                    ->numeric()
-                                    ->default(0)
-                                    ->disabled()
-                                    ->prefixIcon('heroicon-o-shield-exclamation')
-                                    ->helperText('Failed login attempt count'),
-
-                                Placeholder::make('last_login_attempt_info')
-                                    ->label('Last Login Attempt')
-                                    ->content(fn (?Server $record): string =>
-                                        $record && $record->last_login_attempt_at ?
-                                        $record->last_login_attempt_at->format('M j, Y g:i A') : 'No attempts recorded'),
-                            ]),
-                        ]),
-
-                    Section::make('⚡ Performance & Traffic')
-                        ->description('Real-time server performance metrics')
-                        ->icon('heroicon-o-chart-bar-square')
-                        ->collapsible()
-                        ->schema([
-                            Textarea::make('performance_metrics')
-                                ->label('Performance Metrics')
-                                ->rows(4)
-                                ->disabled()
-                                ->placeholder('{"cpu_usage": 45, "memory_usage": 60, "disk_usage": 30}')
-                                ->helperText('Real-time performance data (JSON format)'),
-
-                            Textarea::make('global_traffic_stats')
-                                ->label('Global Traffic Statistics')
-                                ->rows(4)
-                                ->disabled()
-                                ->placeholder('{"total_up": 1024, "total_down": 2048, "current_connections": 50}')
-                                ->helperText('Global traffic statistics (JSON format)'),
-
-                            Placeholder::make('last_global_sync_info')
-                                ->label('Last Global Sync')
-                                ->content(fn (?Server $record): string =>
-                                    $record && $record->last_global_sync_at ?
-                                    $record->last_global_sync_at->format('M j, Y g:i A') : 'Never synced'),
-                        ]),
-
-                    Section::make('🚨 Monitoring & Alerts')
-                        ->description('Server monitoring and alert configuration')
-                        ->icon('heroicon-o-bell-alert')
-                        ->collapsible()
-                        ->schema([
-                            Textarea::make('alert_settings')
-                                ->label('Alert Settings')
-                                ->rows(4)
-                                ->placeholder('{"cpu_threshold": 80, "memory_threshold": 85, "disk_threshold": 90}')
-                                ->helperText('Alert thresholds and settings (JSON format)'),
-
-                            Textarea::make('monitoring_thresholds')
-                                ->label('Monitoring Thresholds')
-                                ->rows(4)
-                                ->placeholder('{"response_time": 5000, "uptime_threshold": 99.5}')
-                                ->helperText('Monitoring thresholds configuration (JSON format)'),
-
-                            Textarea::make('provisioning_rules')
-                                ->label('Provisioning Rules')
-                                ->rows(4)
-                                ->placeholder('{"auto_create_inbound": true, "default_protocol": "vless"}')
-                                ->helperText('Automated provisioning rules (JSON format)'),
-                        ]),
-
-                    Section::make('🔧 API Configuration')
-                        ->description('X-UI API settings and rate limiting')
-                        ->icon('heroicon-o-rss')
-                        ->collapsible()
-                        ->schema([
-                            Grid::make(2)->schema([
-                                TextInput::make('api_version')
-                                    ->label('API Version')
-                                    ->maxLength(20)
-                                    ->default('v1')
-                                    ->prefixIcon('heroicon-o-code-bracket')
-                                    ->helperText('X-UI API version'),
-
-                                TextInput::make('api_timeout')
-                                    ->label('API Timeout (seconds)')
-                                    ->numeric()
-                                    ->default(30)
-                                    ->minValue(5)
-                                    ->maxValue(300)
-                                    ->prefixIcon('heroicon-o-clock')
-                                    ->helperText('API request timeout'),
-                            ]),
-
-                            Grid::make(2)->schema([
-                                TextInput::make('api_retry_count')
-                                    ->label('API Retry Count')
-                                    ->numeric()
-                                    ->default(3)
-                                    ->minValue(1)
-                                    ->maxValue(10)
-                                    ->prefixIcon('heroicon-o-arrow-path')
-                                    ->helperText('Number of retry attempts'),
-
-                                Textarea::make('api_capabilities')
-                                    ->label('API Capabilities')
-                                    ->rows(3)
-                                    ->placeholder('["inbound_management", "client_management", "traffic_monitoring"]')
-                                    ->helperText('Available API capabilities (JSON array)'),
-                            ]),
-
-                            Textarea::make('api_rate_limits')
-                                ->label('API Rate Limits')
-                                ->rows(3)
-                                ->placeholder('{"requests_per_minute": 60, "burst_limit": 10}')
-                                ->helperText('API rate limiting configuration (JSON format)'),
-                        ]),
-
-                    Section::make('ℹ️ System Information')
-                        ->description('System timestamps and metadata')
-                        ->icon('heroicon-o-information-circle')
-                        ->collapsible()
-                        ->schema([
-                            Placeholder::make('created_info')
-                                ->label('Created')
-                                ->content(fn (?Server $record): string =>
-                                    $record ? $record->created_at->format('M j, Y g:i A') : 'Not created yet'),
-
-                            Placeholder::make('updated_info')
-                                ->label('Last Updated')
-                                ->content(fn (?Server $record): string =>
-                                    $record ? $record->updated_at->diffForHumans() : 'Never updated'),
-
-                            Placeholder::make('last_connected_info')
-                                ->label('Last Connection Test')
-                                ->content(fn (?Server $record): string =>
-                                    $record && $record->last_connected_at ?
-                                    $record->last_connected_at->format('M j, Y g:i A') : 'Never tested'),
-
-                            Placeholder::make('last_health_check_info')
-                                ->label('Last Health Check')
-                                ->content(fn (?Server $record): string =>
-                                    $record && $record->last_health_check_at ?
-                                    $record->last_health_check_at->format('M j, Y g:i A') : 'Never checked'),
-
-                            Placeholder::make('last_login_info')
-                                ->label('Last Panel Login')
-                                ->content(fn (?Server $record): string =>
-                                    $record && $record->last_login_at ?
-                                    $record->last_login_at->format('M j, Y g:i A') : 'Never logged in'),
-
-                            Placeholder::make('session_expires_info')
-                                ->label('Session Expires')
-                                ->content(fn (?Server $record): string =>
-                                    $record && $record->session_expires_at ?
-                                    $record->session_expires_at->format('M j, Y g:i A') : 'No active session'),
-                        ]),
-                ])->columnSpan(1)->hidden(fn ($context) => $context === 'create'),
-            ])
-            ->columns(3);
+                        ])->columns(1)
+                ])
+            ]);
     }
 
     public static function table(Table $table): Table
@@ -1166,177 +502,17 @@ class ServerResource extends Resource
                         $query->where('last_health_check_at', '>=', now()->subDay())),
             ])
             ->actions([
-                Action::make('login_and_sync')
-                    ->label('Login & Sync')
-                    ->icon('heroicon-o-arrows-right-left')
-                    ->color('success')
-                    ->tooltip('Authenticate then synchronize inbounds & clients')
-                    ->requiresConfirmation()
-                    ->action(function (Server $record) {
-                        try {
-                            $xuiService = new XUIService($record);
-                            if (!$xuiService->testConnection()) {
-                                Notification::make()
-                                    ->title('🔴 Login Failed')
-                                    ->body("Authentication failed for {$record->name}. Check credentials or base path.")
-                                    ->danger()
-                                    ->send();
-                                return;
-                            }
-                            $inbounds = $xuiService->syncAllInbounds();
-                            $clients = $xuiService->syncAllClients();
-                            $record->refresh();
-                            Notification::make()
-                                ->title('✅ Login & Sync Complete')
-                                ->body("{$record->name}: {$inbounds} inbounds, {$clients} clients. Session until " . ($record->session_expires_at? $record->session_expires_at->diffForHumans(): 'n/a'))
-                                ->success()
-                                ->send();
-                        } catch (\Exception $e) {
-                            Notification::make()
-                                ->title('❌ Login & Sync Error')
-                                ->body($e->getMessage())
-                                ->danger()
-                                ->send();
-                        }
-                    }),
-                Action::make('test_connection')
-                    ->label('Test Connection')
-                    ->icon('heroicon-o-signal')
-                    ->color('info')
-                    ->tooltip('Test X-UI panel connection')
-                    ->action(function (Server $record) {
-                        try {
-                            $xuiService = new XUIService($record);
-                            $result = $xuiService->testConnection();
-
-                            if ($result) {
-                                $record->update([
-                                    'last_connected_at' => now(),
-                                    'status' => 'up',
-                                    'health_status' => 'healthy',
-                                ]);
-                                Notification::make()
-                                    ->title('🟢 Connection Successful')
-                                    ->body("Successfully connected to {$record->name}")
-                                    ->success()
-                                    ->send();
-                            } else {
-                                $record->update([
-                                    'status' => 'down',
-                                    'health_status' => 'unhealthy',
-                                ]);
-
-                                Notification::make()
-                                    ->title('🔴 Connection Failed')
-                                    ->body("Failed to connect to {$record->name}")
-                                    ->danger()
-                                    ->send();
-                            }
-                        } catch (\Exception $e) {
-                            Notification::make()
-                                ->title('❌ Connection Error')
-                                ->body($e->getMessage())
-                                ->danger()
-                                ->send();
-                        }
-                    }),
-
-                Action::make('sync_data')
-                    ->label('Sync Data')
-                    ->icon('heroicon-o-arrow-path')
-                    ->color('warning')
-                    ->tooltip('Synchronize server data from X-UI panel')
-                    ->action(function (Server $record) {
-                        try {
-                            $xuiService = new XUIService($record);
-                            $inboundCount = $xuiService->syncAllInbounds();
-                            $clientCount = $xuiService->syncAllClients();
-
-                            $record->update(['last_global_sync_at' => now()]);
-
-                            Notification::make()
-                                ->title('🔄 Sync Successful')
-                                ->body("Synchronized {$inboundCount} inbounds and {$clientCount} clients for {$record->name}")
-                                ->success()
-                                ->send();
-                        } catch (\Exception $e) {
-                            Notification::make()
-                                ->title('❌ Sync Failed')
-                                ->body($e->getMessage())
-                                ->danger()
-                                ->send();
-                        }
-                    }),
-
-                Action::make('reset_session')
-                    ->label('Reset Session')
-                    ->icon('heroicon-o-key')
-                    ->color('warning')
-                    ->tooltip('Reset XUI session and force re-authentication')
-                    ->action(function (Server $record) {
-                        $record->update([
-                            'session_cookie' => null,
-                            'session_expires_at' => null,
-                            'login_attempts' => 0,
-                        ]);
-
-                        Notification::make()
-                            ->title('🔐 Session Reset')
-                            ->body("XUI session reset for {$record->name}")
-                            ->success()
-                            ->send();
-                    }),
-
-                Action::make('view_inbounds')
-                    ->label('View Inbounds')
-                    ->icon('heroicon-o-inbox-stack')
-                    ->color('info')
-                    ->tooltip('View all inbounds on this server')
-                    ->url(fn (Server $record): string =>
-                        InboundResource::getUrl('index', [
-                            'tableFilters[server][value]' => $record->id,
-                        ])
-                    ),
-
-                Action::make('view_clients')
-                    ->label('View Clients')
-                    ->icon('heroicon-o-users')
-                    ->color('success')
-                    ->tooltip('View all clients on this server')
-                    ->url(fn (Server $record): string =>
-                        ClientResource::getUrl('index', [
-                            'tableFilters[server][value]' => $record->id,
-                        ])
-                    ),
-
-                Action::make('online_clients')
-                    ->label('Online Clients')
-                    ->icon('heroicon-o-signal')
-                    ->color('success')
-                    ->tooltip('View currently online clients')
-                    ->action(function (Server $record) {
-                        try {
-                            $xuiService = new XUIService($record);
-                            $onlineClients = $xuiService->getOnlineClients();
-
-                            Notification::make()
-                                ->title('📊 Online Clients')
-                                ->body("Currently online: " . count($onlineClients) . " clients")
-                                ->info()
-                                ->send();
-                        } catch (\Exception $e) {
-                            Notification::make()
-                                ->title('❌ Error Getting Online Clients')
-                                ->body($e->getMessage())
-                                ->danger()
-                                ->send();
-                        }
-                    }),
-
-                ViewAction::make()
-                    ->color('info'),
-                EditAction::make()
-                    ->color('warning'),
+                ActionGroup::make([
+                    Action::make('login_and_sync'),
+                    Action::make('test_connection'),
+                    Action::make('sync_data'),
+                    Action::make('reset_session'),
+                    Action::make('view_inbounds'),
+                    Action::make('view_clients'),
+                    Action::make('online_clients'),
+                    ViewAction::make()->color('info'),
+                    EditAction::make()->color('warning'),
+                ])
             ])
             ->bulkActions([
                 BulkActionGroup::make([
@@ -1855,7 +1031,7 @@ class ServerResource extends Resource
                             \Filament\Schemas\Components\Section::make('X-UI Session')
                                 ->columns(3)
                                 ->schema([
-                                    \Filament\Infolists\Components\TextEntry::make('session_cookie_name')->label('Cookie Name')->icon('heroicon-o-cookie'),
+                                    \Filament\Infolists\Components\TextEntry::make('session_cookie_name')->label('Cookie Name')->icon('heroicon-o-key'),
                                     \Filament\Infolists\Components\TextEntry::make('session_expires_at')->label('Expires')->dateTime()->since()->icon('heroicon-o-clock'),
                                     \Filament\Infolists\Components\TextEntry::make('last_login_at')->label('Last Login')->dateTime()->since()->icon('heroicon-o-arrow-right-on-rectangle'),
                                     \Filament\Infolists\Components\TextEntry::make('login_attempts')->label('Login Attempts')->icon('heroicon-o-exclamation-triangle')->badge()->color('warning'),

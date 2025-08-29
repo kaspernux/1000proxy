@@ -40,6 +40,13 @@ class StaffManagement extends Page implements HasTable, HasForms
     protected static ?string $title = 'Staff Management';
     // Explicit Blade view reference to the renamed page template
     protected string $view = 'filament.admin.pages.staff-management';
+
+    public function getViewData(): array
+    {
+        return [
+            'stats' => $this->statistics ?? $this->userService->getUserStatistics(),
+        ];
+    }
     protected static ?int $navigationSort = 3;
 
     public array $filters = [];
@@ -196,6 +203,14 @@ class StaffManagement extends Page implements HasTable, HasForms
                     ->sortable()
                     ->placeholder('Never'),
 
+                TextColumn::make('last_activity_at')
+                    ->label('Last Activity')
+                    ->description('Most recent user action')
+                    ->dateTime()
+                    ->sortable()
+                    ->getStateUsing(fn ($record) => $record->last_activity_at ?? $record->last_login_at)
+                    ->placeholder('No activity'),
+
                 TextColumn::make('created_at')
                     ->label('Registered')
                     ->dateTime()
@@ -213,12 +228,20 @@ class StaffManagement extends Page implements HasTable, HasForms
                     ->requiresConfirmation()
                     ->visible(fn () => auth()->user()?->isAdmin() || auth()->user()?->isManager())
                     ->action(fn (User $record) => $this->sendResetLink($record->id)),
+                Action::make('viewActivity')
+                    ->label('View Activity')
+                    ->icon('heroicon-o-list-bullet')
+                    ->color('info')
+                    ->modalHeading(fn (User $record) => 'Activity Log for ' . $record->name)
+                    ->modalContent(fn (User $record) => view('filament.admin.pages.partials.user-activity-log', ['user' => $record]))
+                    ->modalSubmitAction(false)
+                    ->visible(fn () => auth()->user()?->isAdmin() || auth()->user()?->isManager() || auth()->user()?->isSupportManager()),
             ])
             ->filters([
                 SelectFilter::make('role')
                     ->options([
                         'admin' => 'Admin',
-            'manager' => 'Manager',
+                        'manager' => 'Manager',
                         'support_manager' => 'Support Manager',
                         'sales_support' => 'Sales Support',
                     ]),
@@ -241,6 +264,10 @@ class StaffManagement extends Page implements HasTable, HasForms
                 Filter::make('inactive_30_days')
                     ->label('Inactive 30+ Days')
                     ->query(fn (Builder $query): Builder => $query->where('last_login_at', '<', now()->subDays(30))),
+
+                Filter::make('recent_activity')
+                    ->label('Recent Activity (7d)')
+                    ->query(fn (Builder $query): Builder => $query->where('last_activity_at', '>=', now()->subDays(7))),
             ])
             ->bulkActions([
                 BulkAction::make('activate')
@@ -263,10 +290,10 @@ class StaffManagement extends Page implements HasTable, HasForms
                     ->label('Change Role')
                     ->icon('heroicon-o-user-group')
                     ->form([
-            Select::make('role')
+                        Select::make('role')
                             ->options([
                                 'admin' => 'Admin',
-                'manager' => 'Manager',
+                                'manager' => 'Manager',
                                 'support_manager' => 'Support Manager',
                                 'sales_support' => 'Sales Support',
                             ])

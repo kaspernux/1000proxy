@@ -144,17 +144,57 @@ class MyActiveServers extends Page implements HasTable
                                 return number_format($gb, 2) . ' GB';
                             }
                         } catch (\Throwable $e) { /* ignore */ }
+
                         // Fallbacks: use remote_up+remote_down if available, else stored MB
                         $bytes = (int) (($record->remote_up ?? 0) + ($record->remote_down ?? 0));
                         if ($bytes > 0) {
                             return number_format($bytes / 1073741824, 2) . ' GB';
                         }
+
                         return is_numeric($state) ? number_format(((float)$state) / 1024, 2) . ' GB' : '0 GB';
+                    })
+                    ->getStateUsing(function ($record) {
+                        // Provide numeric total bytes for color/tooltip helpers
+                        try {
+                            $live = app(CacheService::class)->getClientTraffic($record->id);
+                            if (is_array($live) && isset($live['total'])) {
+                                return (int) $live['total'];
+                            }
+                        } catch (\Throwable $e) { /* ignore */ }
+                        return (int) (($record->remote_up ?? 0) + ($record->remote_down ?? 0));
                     })
                     ->sortable()
                     ->toggleable()
                     ->icon('heroicon-o-signal')
-                    ->color('info')
+                    ->color(function ($record) {
+                        $total = (int) (($record->remote_up ?? 0) + ($record->remote_down ?? 0));
+                        try {
+                            $live = app(CacheService::class)->getClientTraffic($record->id);
+                            if (is_array($live) && isset($live['total'])) $total = (int) $live['total'];
+                        } catch (\Throwable $e) { /* ignore */ }
+
+                        $limit = $record->total_gb_bytes ?? 0;
+                        if ($limit == 0) return 'primary'; // Unlimited
+
+                        $percentage = $limit > 0 ? (($total / (int)$limit) * 100) : 0;
+                        if ($percentage > 90) return 'danger';
+                        if ($percentage > 75) return 'warning';
+                        if ($percentage > 50) return 'info';
+                        return 'success';
+                    })
+                    ->tooltip(function ($record) {
+                        $up = (int) ($record->remote_up ?? 0);
+                        $down = (int) ($record->remote_down ?? 0);
+                        try {
+                            $live = app(CacheService::class)->getClientTraffic($record->id);
+                            if (is_array($live)) {
+                                $up = (int) ($live['up'] ?? $up);
+                                $down = (int) ($live['down'] ?? $down);
+                            }
+                        } catch (\Throwable $e) { /* ignore */ }
+
+                        return "Upload: " . number_format($up / 1024 / 1024, 2) . " MB\nDownload: " . number_format($down / 1024 / 1024, 2) . " MB";
+                    })
                     ->alignment('right')
                     ->extraAttributes(['class' => 'text-orange-600 dark:text-orange-400 sm:text-base text-xs']),
 

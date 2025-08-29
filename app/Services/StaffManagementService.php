@@ -15,8 +15,9 @@ class StaffManagementService
      */
     public function searchUsers(array $filters = []): Builder
     {
-        $query = User::query()
-            ->whereIn('role', ['admin', 'manager', 'analyst', 'support_manager', 'sales_support']);
+        $query = User::with('userActivities')
+            ->whereIn('role', ['admin', 'manager', 'analyst', 'support_manager', 'sales_support'])
+            ->orderByDesc('last_activity_at');
 
         if (!empty($filters['search'])) {
             $search = trim((string) $filters['search']);

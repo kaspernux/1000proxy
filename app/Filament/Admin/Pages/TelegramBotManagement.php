@@ -27,6 +27,26 @@ class TelegramBotManagement extends Page
     {
         return [
             \Filament\Actions\ActionGroup::make([
+                    Action::make('queue_monitor')
+                        ->label('Queue Monitor')
+                        ->icon('heroicon-o-cog-8-tooth')
+                        ->url(fn() => config('horizon.domain') ? (config('horizon.domain') . '/horizon') : (config('app.url') . '/horizon'))
+                        ->openUrlInNewTab(),
+
+                    Action::make('prune_failed_jobs')
+                        ->label('Prune Failed Jobs')
+                        ->icon('heroicon-o-trash')
+                        ->requiresConfirmation()
+                        ->modalHeading('Prune Failed Telegram Jobs')
+                        ->modalDescription('This will delete all failed jobs from the queue. Useful after fixing errors.')
+                        ->action(function () {
+                            try {
+                                \DB::table('failed_jobs')->where('queue', 'telegram')->delete();
+                                Notification::make()->title('Failed jobs pruned')->success()->send();
+                            } catch (\Throwable $e) {
+                                Notification::make()->title('Prune failed')->body($e->getMessage())->danger()->send();
+                            }
+                        }),
                 Action::make('bot_info')
                 ->label('Bot Info')
                 ->icon('heroicon-o-sparkles')

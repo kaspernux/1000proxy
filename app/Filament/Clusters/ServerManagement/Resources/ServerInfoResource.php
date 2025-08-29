@@ -29,6 +29,7 @@ use Filament\Schemas\Components\Tabs;
 use Filament\Schemas\Components\Section as InfolistSection;
 use Filament\Infolists\Components\TextEntry;
 use Filament\Infolists\Components\IconEntry;
+use Filament\Infolists\Components\LinkEntry;
 
 
 class ServerInfoResource extends Resource
@@ -44,17 +45,11 @@ class ServerInfoResource extends Resource
     }
 
     protected static ?string $model = ServerInfo::class;
-
     protected static string | BackedEnum | null $navigationIcon = 'heroicon-o-information-circle';
-
     protected static ?string $navigationLabel = 'Server Info';
-
     protected static ?string $pluralModelLabel = 'Server Info';
-
     protected static string | UnitEnum | null $navigationGroup = 'SERVER SETTINGS';
-
     protected static ?int $navigationSort = 5;
-
     protected static ?string $recordTitleAttribute = 'title';
 
     public static function getLabel(): string
@@ -267,6 +262,29 @@ class ServerInfoResource extends Resource
                         'down' => '🔴 Down',
                         'paused' => '⏸️ Paused',
                         'maintenance' => '🔧 Maintenance',
+
+            Tables\Columns\TextColumn::make('server.panel_url')
+                ->label('Panel')
+                ->url(fn ($record) => $record->server?->getPanelAccessUrl())
+                ->openUrlInNewTab()
+                ->tooltip(fn ($record) => $record->server?->getApiBaseUrl() ?? '-'),
+
+            Tables\Columns\TextColumn::make('server.total_online_clients')
+                ->label('Online')
+                ->numeric()
+                ->sortable()
+                ->alignCenter()
+                ->color(fn ($state) => $state > 200 ? 'danger' : ($state > 50 ? 'warning' : 'success')),
+
+            Tables\Columns\TextColumn::make('server.health_status')
+                ->label('Health')
+                ->badge()
+                ->color(fn ($state) => match ($state) {
+                    'healthy' => 'success',
+                    'degraded' => 'warning',
+                    'critical' => 'danger',
+                    default => 'gray',
+                }),
                     ]),
 
                 Tables\Filters\Filter::make('high_usage')
@@ -350,10 +368,10 @@ class ServerInfoResource extends Resource
                         ->label('View Server')
                         ->icon('heroicon-o-server')
                         ->color('success')
-                        ->url(fn ($record) => route('filament.admin.clusters.server-management.resources.servers.view', $record->server_id))
+                        ->url(fn ($record) => route('filament.admin.server-management.resources.servers.view', $record->server_id))
                         ->openUrlInNewTab(),
 
-                    \Filament\Actions\DeleteAction::make()
+                \Filament\Actions\DeleteAction::make()
                         ->color('danger'),
                 ])
                 ->label('Actions')
@@ -437,38 +455,95 @@ class ServerInfoResource extends Resource
                                     TextEntry::make('ucount')->label('User Count')->badge(),
                                 ]),
                         ]),
-                    Tabs\Tab::make('Description')
-                        ->icon('heroicon-m-document-text')
-                        ->schema([
-                            InfolistSection::make('Details')
-                                ->columns(1)
-                                ->schema([
-                                    TextEntry::make('remark')->label('Information')->markdown(),
-                                ]),
-                        ]),
-                    Tabs\Tab::make('Meta')
-                        ->icon('heroicon-m-clock')
-                        ->schema([
-                            InfolistSection::make('Timestamps')
-                                ->columns(2)
-                                ->schema([
-                                    TextEntry::make('created_at')->label('Created')->since(),
-                                    TextEntry::make('updated_at')->label('Updated')->since(),
-                                ]),
-                        ]),
+                        Tabs\Tab::make('Real Server Info')
+                            ->icon('heroicon-m-server')
+                            ->schema([
+                                InfolistSection::make('Server Details')
+                                    ->columns(2)
+                                    ->schema([
+                                        TextEntry::make('server.name')->label('Name'),
+                                        TextEntry::make('server.host')->label('Host'),
+                                        TextEntry::make('server.panel_port')->label('Panel Port'),
+                                        TextEntry::make('server.ip')->label('IP'),
+                                        TextEntry::make('server.country')->label('Country'),
+                                        TextEntry::make('server.status')->label('Status'),
+                                        TextEntry::make('server.health_status')->label('Health')->badge(),
+                                        TextEntry::make('server.total_online_clients')->label('Online Clients'),
+                                        TextEntry::make('server.active_inbounds')->label('Active Inbounds'),
+                                        TextEntry::make('server.last_global_sync_at')->label('Last Sync')->since(),
+                                        TextEntry::make('server.panel_url')
+                                            ->label('Panel URL')
+                                            ->url(fn($record) => $record->server?->getPanelAccessUrl())
+                                            ->openUrlInNewTab(),
+                                    ]),
+                            ]),
+                        Tabs\Tab::make('FeatureAd')
+                            ->icon('heroicon-m-flag')
+                            ->schema([
+                                InfolistSection::make('FeatureAd Details')
+                                    ->columns(2)
+                                    ->schema([
+                                        TextEntry::make('server.featureAd.title')->label('Title'),
+                                        TextEntry::make('server.featureAd.subtitle')->label('Subtitle'),
+                                        TextEntry::make('server.featureAd.body')->label('Body'),
+                                        IconEntry::make('server.featureAd.is_active')->label('Active')->boolean(),
+                                        TextEntry::make('server.featureAd.starts_at')->label('Starts At')->since(),
+                                        TextEntry::make('server.featureAd.ends_at')->label('Ends At')->since(),
+                                    ])
+                                    ->visible(fn($record) => $record->server?->featureAd !== null),
+                                InfolistSection::make('FeatureAd X-UI Metadata')
+                                    ->columns(2)
+                                    ->schema([
+                                        TextEntry::make('server.featureAd.metadata.xui_total_online')->label('Total Online'),
+                                        TextEntry::make('server.featureAd.metadata.last_fetched_at')->label('Last Fetched')->since(),
+                                        TextEntry::make('server.featureAd.metadata.xui_health')->label('Health Summary')->formatStateUsing(fn($state) => is_array($state) ? json_encode($state) : (string)$state),
+                                    ])
+                                    ->visible(fn($record) => $record->server?->featureAd !== null),
+                            ]),
+                        Tabs\Tab::make('X-UI Live Data')
+                            ->icon('heroicon-m-computer-desktop')
+                            ->schema([
+                                InfolistSection::make('Remote Panel')
+                                    ->columns(1)
+                                    ->schema([
+                                        TextEntry::make('server.panel_url')
+                                            ->label('Panel URL')
+                                            ->url(fn ($record) => $record->server?->getPanelAccessUrl())
+                                            ->openUrlInNewTab()
+                                            ->hint('Open the remote X-UI panel for this server'),
+                                    ]),
+                                InfolistSection::make('Live Stats')
+                                    ->columns(2)
+                                    ->schema([
+                                        TextEntry::make('server.total_online_clients')->label('Online Clients'),
+                                        TextEntry::make('server.active_inbounds')->label('Active Inbounds'),
+                                        TextEntry::make('server.health_status')->label('Health')->badge(),
+                                        TextEntry::make('server.last_global_sync_at')->label('Last Sync')->since(),
+                                    ]),
+                            ]),
+                        Tabs\Tab::make('Description')
+                            ->icon('heroicon-m-document-text')
+                            ->schema([
+                                InfolistSection::make('Details')
+                                    ->columns(1)
+                                    ->schema([
+                                        TextEntry::make('remark')->label('Information')->markdown(),
+                                    ]),
+                            ]),
+                        Tabs\Tab::make('Meta')
+                            ->icon('heroicon-m-clock')
+                            ->schema([
+                                InfolistSection::make('Timestamps')
+                                    ->columns(2)
+                                    ->schema([
+                                        TextEntry::make('created_at')->label('Created')->since(),
+                                        TextEntry::make('updated_at')->label('Updated')->since(),
+                                    ]),
+                            ]),
                 ])
-                ->contained(true)
-                ->columnSpanFull(),
+                ->columnSpanFull()
         ]);
     }
-
-    public static function getRelations(): array
-    {
-        return [
-            //
-        ];
-    }
-
     public static function getPages(): array
     {
         return [

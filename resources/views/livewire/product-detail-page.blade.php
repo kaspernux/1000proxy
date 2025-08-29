@@ -7,6 +7,16 @@
     </div>
 
     <!-- Product Header -->
+    <!-- Masked Server IP Display -->
+    @if($serverPlan->server && $serverPlan->server->ip_address)
+        @php
+            $ip_address = $serverPlan->server->ip_address;
+            $maskedIp = preg_replace('/^(\d+\.\d+)\.\d+\.\d+$/', '$1.xxx.xxx', $ip_address);
+        @endphp
+        <div class="mb-2 text-xs text-gray-400">
+            <span class="font-mono">IP: {{ $maskedIp }}</span>
+        </div>
+    @endif
     <div class="max-w-7xl mx-auto mb-8 relative z-10">
         <nav class="flex items-center space-x-2 text-sm text-gray-300 mb-4">
             <a href="/" wire:navigate class="hover:text-blue-400 transition-colors duration-300">
@@ -20,6 +30,7 @@
             @endif
         </nav>
     </div>
+    
 
     <section class="max-w-7xl mx-auto relative z-10">
         <div class="grid grid-cols-1 lg:grid-cols-2 gap-12">

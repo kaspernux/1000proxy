@@ -1,4 +1,4 @@
-@extends('layouts.mobile')
+@extends('layouts.app')
 
 @section('content')
     <div class="max-w-xl mx-auto py-12 px-6">

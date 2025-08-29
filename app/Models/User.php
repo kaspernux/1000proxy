@@ -7,6 +7,8 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Filament\Models\Contracts\FilamentUser;
+
+    
 use Laravel\Sanctum\HasApiTokens;
 use App\Traits\HasStaffRoles;
 use Spatie\Permission\Traits\HasRoles;
@@ -323,6 +325,28 @@ class User extends Authenticatable implements FilamentUser
     public function getLocaleOrDefault(): string
     {
         return $this->locale ?: config('locales.default', 'en');
+    }
+
+    /**
+     * Get all activity logs for the user.
+     */
+    public function userActivities()
+    {
+        return $this->hasMany(UserActivity::class);
+    }
+
+    /**
+     * Log an activity and update last_activity_at.
+     */
+    public function logActivity($action, $description = null, $ip = null)
+    {
+        $this->userActivities()->create([
+            'action' => $action,
+            'description' => $description,
+            'ip_address' => $ip ?? request()->ip(),
+        ]);
+        $this->last_activity_at = now();
+        $this->save();
     }
 
     // Staff do not own orders; access via filtered queries or services.

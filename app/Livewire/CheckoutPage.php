@@ -9,6 +9,7 @@ use Livewire\Attributes\On;
 use App\Models\Order;
 use App\Models\ServerPlan;
 use App\Models\PaymentMethod;
+use App\Models\Address;
 use App\Helpers\CartManagement;
 use App\Services\Payment\AutoSelector;
 use App\Services\PaymentGateways\StripePaymentService;
@@ -208,14 +209,38 @@ class CheckoutPage extends Component
     // Only disable if: no payment method chosen OR terms not agreed.
     // Wallet insufficiency no longer blocks the button; processOrder() will handle auto-switch
     // or raise a user-friendly error.
-    return empty($this->payment_method) || !$this->agree_to_terms;
+    // Button should be active only when user agreed to terms.
+    return !$this->agree_to_terms;
     }
 
     private function prefillUserData()
     {
         if (\Illuminate\Support\Facades\Auth::guard('customer')->check()) {
             $customer = \Illuminate\Support\Facades\Auth::guard('customer')->user();
-            // Support legacy single name column by splitting on first space
+            // If the customer has a default billing address, prefer it for prefill
+            try {
+                $billing = Address::where('customer_id', $customer->id)
+                    ->where('type', 'billing')
+                    ->where('is_default', true)
+                    ->first();
+                if ($billing) {
+                    $this->first_name = $billing->first_name ?? ($customer->name ? explode(' ', $customer->name)[0] : '');
+                    $this->last_name = $billing->last_name ?? (count(explode(' ', $customer->name))>1 ? explode(' ', $customer->name, 2)[1] : '');
+                    $this->company = $billing->company ?? $customer->company ?? '';
+                    $this->address = $billing->address_line_1 ?? '';
+                    $this->city = $billing->city ?? '';
+                    $this->state = $billing->state ?? '';
+                    $this->postal_code = $billing->postal_code ?? '';
+                    $this->country = $billing->country ?? '';
+                    $this->phone = $billing->phone ?? $customer->phone ?? '';
+                    $this->email = $customer->email ?? '';
+                    return;
+                }
+            } catch (\Throwable $e) {
+                \Log::warning('Failed to load billing address for checkout prefill', ['error' => $e->getMessage(), 'customer_id' => $customer->id]);
+            }
+
+            // Fallback: Support legacy single name column by splitting on first space
             if (empty($customer->first_name) && empty($customer->last_name) && !empty($customer->name)) {
                 $parts = preg_split('/\s+/', trim($customer->name), 2);
                 $customer->first_name = $parts[0] ?? '';
@@ -920,19 +945,61 @@ class CheckoutPage extends Component
         $this->currentStep = 4; // Confirmation step
         $this->order_created = $responseData['order'] ?? null;
 
-        $this->alert('success', 'Order completed successfully!', [
-            'position' => 'center',
-            'timer' => false,
-            'toast' => false,
-        ]);
-
         // Security logging
         Log::info('Order completed successfully via Livewire', [
             'order_id' => $responseData['order']['id'] ?? null,
             'customer_id' => Auth::guard('customer')->id(),
-            'payment_method' => $this->payment_method,
-            'ip' => request()->ip(),
         ]);
+
+        // Persist customer billing/contact details so they are available on next visit.
+        // Use Customer columns for name/email/phone/company (already present) and the Address model for billing address.
+        try {
+            $customer = Auth::guard('customer')->user();
+            if ($customer) {
+                // Update basic profile fields that exist on customers table
+                $custUpdate = [];
+                $fullName = trim(($this->first_name ?? '') . ' ' . ($this->last_name ?? ''));
+                if (!empty($fullName)) $custUpdate['name'] = $fullName;
+                if (!empty($this->email)) $custUpdate['email'] = $this->email;
+                if (!empty($this->phone)) $custUpdate['phone'] = $this->phone;
+                if (!empty($this->company)) $custUpdate['company'] = $this->company;
+                if (!empty($custUpdate)) {
+                    $customer->update($custUpdate);
+                }
+
+                // Upsert billing address using Address model
+                $addressData = [
+                    'customer_id' => $customer->id,
+                    'type' => 'billing',
+                    'first_name' => $this->first_name ?? null,
+                    'last_name' => $this->last_name ?? null,
+                    'company' => $this->company ?? null,
+                    'address_line_1' => $this->address ?? null,
+                    'address_line_2' => null,
+                    'city' => $this->city ?? null,
+                    'state' => $this->state ?? null,
+                    'postal_code' => $this->postal_code ?? null,
+                    'country' => $this->country ?? null,
+                    'phone' => $this->phone ?? null,
+                    'is_default' => true,
+                ];
+
+                // Clear previous default billing addresses
+                Address::where('customer_id', $customer->id)->where('type', 'billing')->update(['is_default' => false]);
+
+                $existing = Address::where('customer_id', $customer->id)->where('type', 'billing')->first();
+                if ($existing) {
+                    $existing->update(array_filter($addressData, function ($v) { return $v !== null && $v !== ''; }));
+                    // ensure it's default
+                    $existing->update(['is_default' => true]);
+                } else {
+                    Address::create($addressData);
+                }
+            }
+        } catch (\Throwable $e) {
+            Log::warning('Failed to persist customer billing details after order', ['error' => $e->getMessage()]);
+        }
+
     }
 
     private function createOrder()
@@ -987,7 +1054,6 @@ class CheckoutPage extends Component
     public function handlePaymentCompleted($data)
     {
         $this->currentStep = 4;
-        $this->alert('success', 'Payment completed successfully!');
     }
 
     #[On('paymentFailed')]

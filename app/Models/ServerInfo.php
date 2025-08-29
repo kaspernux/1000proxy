@@ -10,6 +10,7 @@ use App\Models\DownloadableItem;
 use App\Models\ServerPlan;
 use App\Models\ServerCategory;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use UnitEnum;
 
 class ServerInfo extends Model
 {

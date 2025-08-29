@@ -633,7 +633,10 @@ class OrderResource extends Resource
 
             InfolistSection::make('Links')
                 ->schema([
-                    TextEntry::make('payment_invoice_url')->label('Invoice URL')->url()->copyable(),
+                    TextEntry::make('payment_invoice_url')
+                        ->label('Invoice URL')
+                        ->url(fn ($record) => $record->payment_invoice_url ?? null)
+                        ->copyable(),
                 ])->columns(1),
         ]);
     }
