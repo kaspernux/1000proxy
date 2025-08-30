@@ -85,12 +85,12 @@
                             <x-heroicon-o-shopping-cart class="w-5 h-5 sm:w-6 sm:h-6 text-white group-hover:text-blue-400 transition-colors duration-300" />
                         </a>
                         
-                        @if($total_count > 0)
-                            <span class="absolute -top-1 -right-1 sm:-top-2 sm:-right-2 bg-gradient-to-r from-yellow-500 to-orange-500 text-gray-900 text-xs font-bold rounded-full h-5 w-5 sm:h-7 sm:w-7 flex items-center justify-center animate-bounce shadow-lg ring-2 ring-yellow-400/30" data-cart-count>
-                                {{ $total_count }}
+                            {{-- Always render cart badge so client-side JS can update it without re-rendering the navbar. Hide when zero. --}}
+                            @php $initialCount = $total_count ?? 0; @endphp
+                            <span class="absolute -top-1 -right-1 sm:-top-2 sm:-right-2 bg-gradient-to-r from-yellow-500 to-orange-500 text-gray-900 text-xs font-bold rounded-full h-5 w-5 sm:h-7 sm:w-7 flex items-center justify-center animate-bounce shadow-lg ring-2 ring-yellow-400/30" data-cart-count style="display: {{ $initialCount > 0 ? 'flex' : 'none' }};">
+                                {{ $initialCount }}
                             </span>
-                            <div class="absolute -top-0.5 -right-0.5 sm:-top-1 sm:-right-1 w-2 h-2 sm:w-3 sm:h-3 bg-yellow-400 rounded-full animate-ping"></div>
-                        @endif
+                            <div class="absolute -top-0.5 -right-0.5 sm:-top-1 sm:-right-1 w-2 h-2 sm:w-3 sm:h-3 bg-yellow-400 rounded-full animate-ping" data-cart-ping style="display: {{ $initialCount > 0 ? 'block' : 'none' }};"></div>
                     </div>
 
                     <!-- Enhanced User Menu -->
@@ -156,12 +156,12 @@
                                     <span class="group-hover:text-blue-900 md:group-hover:text-blue-200 transition-colors">Dashboard</span>
                                 </a>
 
-                                <!-- <a href="/categories" class="group flex items-center px-4 py-3 text-sm mobile-force-dark-text hover:bg-gradient-to-r hover:from-yellow-50 hover:to-orange-100 md:hover:from-yellow-600/40 md:hover:to-orange-700/40 hover:text-yellow-900 md:hover:text-white transition-all duration-200">
+                                <a href="/categories" class="group flex items-center px-4 py-3 text-sm mobile-force-dark-text hover:bg-gradient-to-r hover:from-yellow-50 hover:to-orange-100 md:hover:from-yellow-600/40 md:hover:to-orange-700/40 hover:text-yellow-900 md:hover:text-white transition-all duration-200">
                                     <div class="w-8 h-8 bg-gradient-to-br from-yellow-100 to-orange-200 md:from-yellow-500/40 md:to-orange-600/40 rounded-lg flex items-center justify-center mr-3 group-hover:scale-110 transition-transform duration-200">
                                         <x-heroicon-o-squares-2x2 class="w-4 h-4 text-yellow-600 md:text-yellow-300" />
                                     </div>
                                     <span class="group-hover:text-yellow-900 md:group-hover:text-orange-200 transition-colors">Categories</span>
-                                </a> -->
+                                </a>
 
                                 <div class="border-t border-gray-300 md:border-gray-600/80 my-2"></div>
 

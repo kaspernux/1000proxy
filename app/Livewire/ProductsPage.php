@@ -112,6 +112,8 @@ class ProductsPage extends Component
 
             $total_count = CartManagement::addItemToCart($server_plan_id);
             $this->dispatch('update-cart-count', total_count: $total_count)->to(Navbar::class);
+            $this->dispatch('cartUpdated');
+            $this->dispatch('cart-count-updated', ['count' => $total_count]);
 
             $this->is_adding_to_cart = false;
 

@@ -166,7 +166,17 @@ class AccountSettings extends Component
 
     public function loadAddresses()
     {
-        $this->addresses = Address::where('customer_id', $this->customer->id)->get()->toArray();
+        $this->addresses = Address::where('customer_id', $this->customer->id)
+            ->with(['countryRelation','cityRelation','postalCodeRelation'])
+            ->get()
+            ->map(function($a){
+                $arr = $a->toArray();
+                // provide normalized fields for UI convenience
+                $arr['country_iso2'] = $a->countryRelation?->iso2 ?? $a['country'] ?? null;
+                $arr['city_name'] = $a->cityRelation?->name ?? $a['city'] ?? null;
+                $arr['postal_code_value'] = $a->postalCodeRelation?->postal_code ?? $a['postal_code'] ?? null;
+                return $arr;
+            })->toArray();
     }
 
     public function loadNotificationPreferences()
@@ -405,10 +415,14 @@ class AccountSettings extends Component
 
     public function editAddress($id)
     {
-        $address = Address::find($id);
+        $address = Address::with(['countryRelation','cityRelation','postalCodeRelation'])->find($id);
         if ($address && $address->customer_id === $this->customer->id) {
             $this->editingAddress = $id;
-            $this->newAddress = $address->toArray();
+            $arr = $address->toArray();
+            $arr['country'] = $address->countryRelation?->iso2 ?? $arr['country'] ?? '';
+            $arr['city'] = $address->cityRelation?->name ?? $arr['city'] ?? '';
+            $arr['postal_code'] = $address->postalCodeRelation?->postal_code ?? $arr['postal_code'] ?? '';
+            $this->newAddress = $arr;
             $this->showAddressModal = true;
         }
     }
@@ -440,13 +454,32 @@ class AccountSettings extends Component
 
             RateLimiter::hit($key, 300);
 
+            // Resolve normalized IDs when possible
+            $addrData = $this->newAddress;
+            try {
+                if (!empty($addrData['country'])) {
+                    $countryModel = \App\Models\Country::where('iso2', $addrData['country'])->orWhere('name', $addrData['country'])->first();
+                    if ($countryModel) $addrData['country_id'] = $countryModel->id;
+                }
+                if (!empty($addrData['city']) && !empty($addrData['country_id'])) {
+                    $cityModel = \App\Models\City::where('country_id', $addrData['country_id'])->where('name', $addrData['city'])->first();
+                    if ($cityModel) $addrData['city_id'] = $cityModel->id;
+                }
+                if (!empty($addrData['postal_code']) && !empty($addrData['country_id'])) {
+                    $pcModel = \App\Models\PostalCode::where('country_id', $addrData['country_id'])->where('postal_code', $addrData['postal_code'])->first();
+                    if ($pcModel) $addrData['postal_code_id'] = $pcModel->id;
+                }
+            } catch (\Throwable $e) {
+                Log::debug('Address normalization failed (saveAddress)', ['error' => $e->getMessage()]);
+            }
+
             if ($this->editingAddress) {
                 Address::where('id', $this->editingAddress)
                        ->where('customer_id', $this->customer->id)
-                       ->update($this->newAddress);
+                       ->update($addrData);
                 $message = 'Address updated successfully!';
             } else {
-                Address::create(array_merge($this->newAddress, ['customer_id' => $this->customer->id]));
+                Address::create(array_merge($addrData, ['customer_id' => $this->customer->id]));
                 $message = 'Address added successfully!';
             }
 

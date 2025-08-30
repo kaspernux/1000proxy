@@ -14,10 +14,11 @@ class Navbar extends Component
     public $tick = 0; // dummy reactive counter to force rerender when needed
 
     protected $listeners = [
-        'update-cart-count' => 'updateCartCount',
-        'cart-updated' => 'refreshCartCount',
-        'cartUpdated' => 'refreshCartCount',
-        'wallet-updated' => 'refreshWallet'
+    'update-cart-count' => 'updateCartCount',
+    'cart-updated' => 'refreshCartCount',
+    'cartUpdated' => 'refreshCartCount',
+    'refresh-cart-count' => 'refreshCartCount',
+    'wallet-updated' => 'refreshWallet'
     ];
 
     public function mount()

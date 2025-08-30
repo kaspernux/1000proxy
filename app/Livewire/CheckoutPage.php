@@ -109,12 +109,12 @@ class CheckoutPage extends Component
             'first_name' => 'required|string|max:255|min:2',
             'last_name' => 'required|string|max:255|min:2',
             'email' => 'required|email|max:255',
-            'phone' => 'required|string|max:20',
+            'phone' => ['required','string','max:20','regex:/^\+?[0-9\s\-().]{7,20}$/'],
             'company' => 'nullable|string|max:255',
             'address' => 'required|string|max:255',
             'city' => 'required|string|max:255',
             'state' => 'required|string|max:255',
-            'postal_code' => 'required|string|max:10',
+            'postal_code' => 'required|string|max:20',
             'country' => 'required|string|max:255',
             'agree_to_terms' => 'accepted',
             'coupon_code' => 'nullable|string|max:50',
@@ -228,10 +228,11 @@ class CheckoutPage extends Component
                     $this->last_name = $billing->last_name ?? (count(explode(' ', $customer->name))>1 ? explode(' ', $customer->name, 2)[1] : '');
                     $this->company = $billing->company ?? $customer->company ?? '';
                     $this->address = $billing->address_line_1 ?? '';
-                    $this->city = $billing->city ?? '';
+                    // If normalized relations exist, prefer them
+                    $this->city = $billing->city ?? ($billing->cityRelation?->name ?? '');
                     $this->state = $billing->state ?? '';
-                    $this->postal_code = $billing->postal_code ?? '';
-                    $this->country = $billing->country ?? '';
+                    $this->postal_code = $billing->postal_code ?? ($billing->postalCodeRelation?->postal_code ?? '');
+                    $this->country = $billing->country ?? ($billing->countryRelation?->iso2 ?? $billing->country ?? '');
                     $this->phone = $billing->phone ?? $customer->phone ?? '';
                     $this->email = $customer->email ?? '';
                     return;
@@ -389,14 +390,27 @@ class CheckoutPage extends Component
     private function validateBillingInfo()
     {
         try {
+            // Auto-fill postal code from country default if present and postal_code empty
+            if (empty($this->postal_code) && !empty($this->country)) {
+                try {
+                    $svc = app(\App\Services\AddressLookupService::class);
+                    $default = $svc->defaultPostalForCountry($this->country);
+                    if ($default) {
+                        $this->postal_code = $default;
+                    }
+                } catch (\Throwable $e) {
+                    \Log::debug('Address lookup failed (validateBillingInfo)', ['error'=>$e->getMessage()]);
+                }
+            }
+
             $this->validate([
                 'first_name' => 'required|string|max:255|min:2',
                 'last_name' => 'required|string|max:255|min:2',
                 'email' => 'required|email|max:255',
-                'phone' => 'required|string|max:20',
+                'phone' => ['required','string','max:20','regex:/^\+?[0-9\s\-().]{7,20}$/'],
                 'address' => 'required|string|max:255',
                 'city' => 'required|string|max:255',
-                'postal_code' => 'required|string|max:10',
+                'postal_code' => 'required|string|max:20',
                 'country' => 'required|string|max:255',
             ]);
             return true;
@@ -517,12 +531,36 @@ class CheckoutPage extends Component
                 return;
             }
 
-            // Validate coupon
-            $discount = $this->validateCoupon($this->coupon_code);
+            // Validate coupon via DB
+            $coupon = \App\Models\Coupon::where('code', $this->coupon_code)->where('is_active', true)->first();
+            if (!$coupon) {
+                RateLimiter::hit($key, 600);
+                $this->alert('error', 'Invalid or expired coupon code');
+                $this->is_applying_coupon = false;
+                return;
+            }
+
+            // Prevent reuse if single-use-per-customer
+            $customerId = Auth::guard('customer')->id();
+            if ($coupon->single_use_per_customer) {
+                $used = \App\Models\CouponUsage::where('coupon_id', $coupon->id)->where('customer_id', $customerId)->exists();
+                if ($used) {
+                    $this->alert('error', 'This coupon has already been used by your account.');
+                    $this->is_applying_coupon = false;
+                    return;
+                }
+            }
+
+            // Compute discount based on coupon type
+            if ($coupon->type === 'percent') {
+                $discount = round(($this->order_summary['subtotal'] ?? 0) * ($coupon->value / 100), 2);
+            } else {
+                $discount = min((float)$coupon->value, ($this->order_summary['subtotal'] ?? 0));
+            }
 
             if ($discount > 0) {
                 $this->discount_amount = $discount;
-                $this->applied_coupon = $this->coupon_code;
+                $this->applied_coupon = $coupon->code;
                 $this->calculateOrderSummary();
 
                 // Clear rate limit on success
@@ -534,13 +572,8 @@ class CheckoutPage extends Component
                     'toast' => true,
                 ]);
             } else {
-                RateLimiter::hit($key, 600); // 10 minutes = 600 seconds
-                
-                $this->alert('error', 'Invalid or expired coupon code', [
-                    'position' => 'top-end',
-                    'timer' => 3000,
-                    'toast' => true,
-                ]);
+                RateLimiter::hit($key, 600);
+                $this->alert('error', 'Invalid or expired coupon code');
             }
 
             $this->is_applying_coupon = false;
@@ -750,6 +783,23 @@ class CheckoutPage extends Component
                     'order_id' => $order->id,
                     'missing_columns' => $missing
                 ]);
+            }
+
+            // Record coupon usage (if applied)
+            if (!empty($this->applied_coupon)) {
+                try {
+                    $coupon = \App\Models\Coupon::where('code', $this->applied_coupon)->first();
+                    if ($coupon) {
+                        \App\Models\CouponUsage::create([
+                            'coupon_id' => $coupon->id,
+                            'customer_id' => $customer->id,
+                            'order_id' => $order->id,
+                        ]);
+                        $coupon->increment('used_count');
+                    }
+                } catch (\Throwable $e) {
+                    \Log::warning('Failed to record coupon usage', ['error' => $e->getMessage()]);
+                }
             }
             $createdItems = 0;
             foreach ($this->cart_items as $item) {
@@ -967,7 +1017,7 @@ class CheckoutPage extends Component
                     $customer->update($custUpdate);
                 }
 
-                // Upsert billing address using Address model
+                // Upsert billing address using Address model and normalized references where possible
                 $addressData = [
                     'customer_id' => $customer->id,
                     'type' => 'billing',
@@ -983,6 +1033,31 @@ class CheckoutPage extends Component
                     'phone' => $this->phone ?? null,
                     'is_default' => true,
                 ];
+
+                // Attempt to resolve normalized IDs via AddressLookupService
+                try {
+                    $svc = app(\App\Services\AddressLookupService::class);
+                    if (!empty($this->country)) {
+                        $countryModel = \App\Models\Country::where('iso2', $this->country)->orWhere('name', $this->country)->first();
+                        if ($countryModel) {
+                            $addressData['country_id'] = $countryModel->id;
+                        }
+                    }
+                    if (!empty($this->city) && !empty($addressData['country_id'])) {
+                        $cityModel = \App\Models\City::where('country_id', $addressData['country_id'])->where('name', $this->city)->first();
+                        if ($cityModel) {
+                            $addressData['city_id'] = $cityModel->id;
+                        }
+                    }
+                    if (!empty($this->postal_code) && !empty($addressData['country_id'])) {
+                        $pcModel = \App\Models\PostalCode::where('country_id', $addressData['country_id'])->where('postal_code', $this->postal_code)->first();
+                        if ($pcModel) {
+                            $addressData['postal_code_id'] = $pcModel->id;
+                        }
+                    }
+                } catch (\Throwable $e) {
+                    \Log::debug('Address normalization lookup failed (handlePaymentSuccess)', ['error' => $e->getMessage()]);
+                }
 
                 // Clear previous default billing addresses
                 Address::where('customer_id', $customer->id)->where('type', 'billing')->update(['is_default' => false]);

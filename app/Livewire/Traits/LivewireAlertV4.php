@@ -19,134 +19,11 @@ trait LivewireAlertV4
      */
     public function alert(string $type, string $title, array $options = []): void
     {
-        // Resolve the alert service bound to the current Livewire component context
-        /** @var LivewireAlertService $alert */
-        $alert = app(LivewireAlertService::class);
-
-        // Base
-        $alert->title($title);
-
-        // Icon/type
-        switch (strtolower($type)) {
-            case 'success':
-                $alert->success();
-                break;
-            case 'error':
-                $alert->error();
-                break;
-            case 'warning':
-                $alert->warning();
-                break;
-            case 'info':
-                $alert->info();
-                break;
-            case 'question':
-                $alert->question();
-                break;
-        }
-
-        // Common mappings
-        if (array_key_exists('text', $options) && is_string($options['text'])) {
-            $alert->text($options['text']);
-        }
-
-        if (array_key_exists('toast', $options)) {
-            $alert->toast((bool) $options['toast']);
-        }
-
-        if (array_key_exists('position', $options) && is_string($options['position'])) {
-            $alert->position($options['position']);
-        }
-
-        if (array_key_exists('timer', $options)) {
-            $alert->timer(is_null($options['timer']) ? null : (int) $options['timer']);
-        }
-
-        if (!empty($options['html']) && is_string($options['html'])) {
-            $alert->html($options['html']);
-        }
-
-        if (array_key_exists('allowOutsideClick', $options)) {
-            $alert->allowOutsideClick((bool) $options['allowOutsideClick']);
-        }
-
-        if (array_key_exists('allowEscapeKey', $options)) {
-            $alert->allowEscapeKey((bool) $options['allowEscapeKey']);
-        }
-
-        // Buttons
-        if (!empty($options['showConfirmButton'])) {
-            $alert->withConfirmButton(
-                $options['confirmButtonText'] ?? null
-            );
-        } elseif (!empty($options['confirmButtonText'])) {
-            // If only text provided, still enable confirm button
-            $alert->withConfirmButton($options['confirmButtonText']);
-        }
-
-        if (!empty($options['showCancelButton'])) {
-            $alert->withCancelButton(
-                $options['cancelButtonText'] ?? null
-            );
-        } elseif (!empty($options['cancelButtonText'])) {
-            $alert->withCancelButton($options['cancelButtonText']);
-        }
-
-        if (!empty($options['showDenyButton'])) {
-            $alert->withDenyButton(
-                $options['denyButtonText'] ?? null
-            );
-        } elseif (!empty($options['denyButtonText'])) {
-            $alert->withDenyButton($options['denyButtonText']);
-        }
-
-        if (!empty($options['confirmButtonColor']) && is_string($options['confirmButtonColor'])) {
-            $alert->confirmButtonColor($options['confirmButtonColor']);
-        }
-        if (!empty($options['cancelButtonColor']) && is_string($options['cancelButtonColor'])) {
-            $alert->cancelButtonColor($options['cancelButtonColor']);
-        }
-        if (!empty($options['denyButtonColor']) && is_string($options['denyButtonColor'])) {
-            $alert->denyButtonColor($options['denyButtonColor']);
-        }
-
-        // Pass-through for any remaining SweetAlert2 options
-        $known = [
-            'text','toast','position','timer','timerProgressBar','html',
-            'allowOutsideClick','allowEscapeKey',
-            'showConfirmButton','showCancelButton','showDenyButton',
-            'confirmButtonText','cancelButtonText','denyButtonText',
-            'confirmButtonColor','cancelButtonColor','denyButtonColor',
-        ];
-
-        $additional = array_diff_key($options, array_flip($known));
-        if (!empty($additional)) {
-            $alert->withOptions($additional);
-        }
-
-        // Timer progress bar isn't a dedicated method, pass via options
-        if (array_key_exists('timerProgressBar', $options)) {
-            $alert->withOptions(['timerProgressBar' => (bool) $options['timerProgressBar']]);
-        }
-
-        $alert->show();
-
-        // Back-compat: also emit a Livewire event that tests expect
-        try {
-            if (method_exists($this, 'dispatch')) {
-                $payload = array_merge([
-                    'type' => strtolower($type),
-                    'title' => $title,
-                ], $options);
-                $this->dispatch('toast', $payload);
-            }
-        } catch (\Throwable $e) {
-            // ignore
-        }
-
-        // Fire a browser event as a fallback so the frontend can render the alert
-        // even if the package's JS listener isn't present. This ensures reliability
-        // across public pages and Filament panels.
+        // Build a normalized payload and dispatch a single browser 'swal' event.
+        // We intentionally avoid calling the LivewireAlert service methods here
+        // to prevent that package from rendering its own UI; the global layout
+        // now owns presentation (Swal + stacked toast) and we must send only
+        // one event to it.
         try {
             $payload = array_merge([
                 'icon' => strtolower($type),
@@ -164,9 +41,56 @@ trait LivewireAlertV4
                 $payload['timer'] = is_null($options['timer']) ? null : (int) $options['timer'];
             }
 
-            // Dispatch as a browser event; the layout listens for this and calls Swal.fire()
+            // Ensure `text` is always present so client toasts can display a message.
+            if (!array_key_exists('text', $payload) || is_null($payload['text'])) {
+                // Prefer any 'message' key if present, otherwise empty string
+                $payload['text'] = $payload['message'] ?? '';
+            }
+
+            // Also ensure `message` exists (some clients look for `message`)
+            if (!array_key_exists('message', $payload) || is_null($payload['message'])) {
+                // If no explicit message/text provided, fall back to the title so
+                // toast UIs that expect a `message` still show readable content.
+                $payload['message'] = $payload['text'] ?? $payload['title'] ?? '';
+            }
+
+            // Explicitly include toast flag when provided; default to true for
+            // $this->alert() invocations that are commonly used for toasts.
+            if (!array_key_exists('toast', $payload)) {
+                $payload['toast'] = $options['toast'] ?? true;
+            }
+
+            // Normalize icon to a simple string or null so clients can display it.
+            if (isset($payload['icon']) && $payload['icon'] !== null) {
+                $payload['icon'] = (string) $payload['icon'];
+            } else {
+                $payload['icon'] = $payload['icon'] ?? null;
+            }
+
+            // Dispatch as a vendor-shaped 'alert' browser event so the
+            // included Livewire Alert client-side adapter (or our layout
+            // interception) can normalize and render it. This preserves
+            // compatibility with existing LivewireAlert flows while still
+            // routing presentation through our unified UI.
+            $vendorDetail = [
+                // `message` is the top-level string livewire-alert expects as the
+                // title; `options` must avoid a `message` key because
+                // SweetAlert2 does not recognize it (causes console warnings).
+                'message' => $payload['title'] ?? '',
+                'type' => $payload['icon'] ?? null,
+                'options' => array_filter(array_merge($payload, []), function($k) { return $k !== 'message'; }, ARRAY_FILTER_USE_KEY) ,
+                // Vendor script also reads `events` and `data` properties
+                'events' => $payload['events'] ?? [],
+                'data' => $payload['data'] ?? [],
+            ];
+
+            // Use Livewire's dispatchBrowserEvent to emit a DOM CustomEvent
+            // that the vendor `livewire-alert` script listens for.
             if (method_exists($this, 'dispatchBrowserEvent')) {
-                $this->dispatchBrowserEvent('swal', $payload);
+                $this->dispatchBrowserEvent('alert', $vendorDetail);
+            } elseif (method_exists($this, 'dispatch')) {
+                // Fallback to older Livewire dispatch signature if available
+                $this->dispatch('alert', $vendorDetail);
             }
         } catch (\Throwable $e) {
             // Silently ignore to avoid breaking the request cycle due to client-side helpers.

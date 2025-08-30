@@ -367,7 +367,7 @@
             </div>
             
             <!-- Categories Grid with enhanced responsive design -->
-            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-10 lg:gap-12 xl:gap-16 mb-28 lg:mb-32">
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 gap-10 lg:gap-12 xl:gap-16 mb-28 lg:mb-32">
                 @foreach($this->categories as $index => $serverCategory)
                 <div class="group relative" wire:key="{{$serverCategory->id}}" style="animation-delay: {{ $index * 100 }}ms">
                     <a href="/servers?selected_categories[0]={{ $serverCategory->id }}" wire:navigate 

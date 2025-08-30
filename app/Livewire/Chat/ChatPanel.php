@@ -184,7 +184,7 @@ class ChatPanel extends Component
 
         // Enforce: Customers cannot chat with Customers
         if ($actor instanceof Customer && $targetType === Customer::class) {
-            $this->dispatch('toast', type: 'error', message: 'Customers cannot chat with other customers.');
+            $this->alert('error', 'Customers cannot chat with other customers.', ['toast' => true, 'position' => 'top-end']);
             return;
         }
 
@@ -242,7 +242,7 @@ class ChatPanel extends Component
 
         // internal groups restricted to Users only
         if ($this->newChatPrivacy === 'internal' && $actor instanceof Customer) {
-            $this->dispatch('toast', type: 'error', message: 'Only staff can create internal groups.');
+            $this->alert('error', 'Only staff can create internal groups.', ['toast' => true, 'position' => 'top-end']);
             return;
         }
 
@@ -280,7 +280,7 @@ class ChatPanel extends Component
             $this->ensureGuestKey();
             $support = $this->resolveSupportUser();
             if (!$support) {
-                $this->dispatch('toast', type: 'error', message: 'Support is currently unavailable. Please try again later.');
+                $this->alert('error', 'Support is currently unavailable. Please try again later.', ['toast' => true, 'position' => 'top-end']);
                 return;
             }
             // Create a direct conversation with only support as a participant
@@ -315,7 +315,7 @@ class ChatPanel extends Component
                 ->where('participant_id', $actor->getKey())
                 ->first();
             if (!$participant || !$participant->can_post) {
-                $this->dispatch('toast', type: 'error', message: 'You cannot post in this conversation.');
+                $this->alert('error', 'You cannot post in this conversation.', ['toast' => true, 'position' => 'top-end']);
                 return;
             }
         }
@@ -420,7 +420,7 @@ class ChatPanel extends Component
         $msg = Message::findOrFail($messageId);
         // Only admins can delete
         if (!($actor instanceof User && $actor->hasRole('admin'))) {
-            $this->dispatch('toast', type: 'error', message: 'Only admins can delete messages.');
+            $this->alert('error', 'Only admins can delete messages.', ['toast' => true, 'position' => 'top-end']);
             return;
         }
         $msg->update(['is_deleted' => true, 'body' => '[deleted]']);
@@ -439,7 +439,7 @@ class ChatPanel extends Component
         $u = auth()->user();
         if ($u instanceof User && method_exists($u, 'hasRole') && $u->hasRole('admin')) return $u;
         if ($u instanceof User && property_exists($u, 'role') && $u->role === 'admin') return $u;
-        $this->dispatch('toast', type: 'error', message: 'Only admins can perform this action.');
+    $this->alert('error', 'Only admins can perform this action.', ['toast' => true, 'position' => 'top-end']);
         return null;
     }
 
@@ -452,7 +452,7 @@ class ChatPanel extends Component
     event(new \App\Events\Chat\SessionTerminated($conv->id));
         $conv->archived_at = now();
         $conv->save();
-        $this->dispatch('toast', type: 'success', message: 'Conversation archived.');
+    $this->alert('success', 'Conversation archived.', ['toast' => true, 'position' => 'top-end']);
         $this->activeConversationId = null;
     }
 
@@ -463,7 +463,7 @@ class ChatPanel extends Component
         if (!$conv) return;
         $conv->archived_at = null;
         $conv->save();
-        $this->dispatch('toast', type: 'success', message: 'Conversation unarchived.');
+    $this->alert('success', 'Conversation unarchived.', ['toast' => true, 'position' => 'top-end']);
     }
 
     public function deleteConversation(): void
@@ -474,7 +474,7 @@ class ChatPanel extends Component
         if (!$conv) return;
     event(new \App\Events\Chat\SessionTerminated($conv->id));
         $conv->delete(); // soft delete
-        $this->dispatch('toast', type: 'success', message: 'Conversation deleted.');
+    $this->alert('success', 'Conversation deleted.', ['toast' => true, 'position' => 'top-end']);
         $this->activeConversationId = null;
     }
 
@@ -508,7 +508,7 @@ class ChatPanel extends Component
         $this->validate(['privacy' => [Rule::in(['private','public','internal'])]]);
         $conv->privacy = $privacy;
         $conv->save();
-        $this->dispatch('toast', type: 'success', message: 'Privacy updated.');
+    $this->alert('success', 'Privacy updated.', ['toast' => true, 'position' => 'top-end']);
     }
 
     public function inviteParticipant(string $type, int $id): void
@@ -518,7 +518,7 @@ class ChatPanel extends Component
 
         // internal groups: only Users can be invited
         if ($conv->privacy === 'internal' && $type !== User::class) {
-            $this->dispatch('toast', type: 'error', message: 'Internal groups are staff-only.');
+            $this->alert('error', 'Internal groups are staff-only.', ['toast' => true, 'position' => 'top-end']);
             return;
         }
 
@@ -528,7 +528,7 @@ class ChatPanel extends Component
             ->where('participant_id', $id)
             ->exists();
         if ($exists) {
-            $this->dispatch('toast', type: 'warning', message: 'Already a participant.');
+            $this->alert('warning', 'Already a participant.', ['toast' => true, 'position' => 'top-end']);
             return;
         }
 
@@ -542,7 +542,7 @@ class ChatPanel extends Component
             'can_delete' => false,
             'joined_at' => now(),
         ]);
-        $this->dispatch('toast', type: 'success', message: 'Participant invited.');
+    $this->alert('success', 'Participant invited.', ['toast' => true, 'position' => 'top-end']);
     }
 
     #[On('message-list-visible')]

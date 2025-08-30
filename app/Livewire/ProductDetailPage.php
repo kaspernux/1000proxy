@@ -228,9 +228,11 @@ class ProductDetailPage extends Component
             RateLimiter::hit($key, 60); // 1-minute window
 
             $total_count = CartManagement::addItemToCartWithQty($server_plan_id, $this->quantity);
+            // Notify the server-side navbar component directly
             $this->dispatch('update-cart-count', total_count: $total_count)->to(Navbar::class);
-            // Emit a generic cartUpdated event so dependent components/tests can listen.
+            // Emit compatibility events and a browser event so the navbar updates immediately
             $this->dispatch('cartUpdated');
+            $this->dispatch('cart-count-updated', ['count' => $total_count]);
             $this->is_adding_to_cart = false;
 
             $this->alert('success', "Added {$this->quantity} × {$plan->name} to cart!", [

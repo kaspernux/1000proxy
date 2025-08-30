@@ -1,10 +1,12 @@
-<div
-    class="fixed z-50 bottom-4 right-4 md:bottom-6 md:right-6"
-    x-data="{ open: false }"
-    x-effect="if (open) { setTimeout(() => window.dispatchEvent(new CustomEvent('chat-opened')), 150) }"
-    x-on:keydown.escape.window="open = false"
-    @open-chat.window="open = true"
->
+<div>
+    <style>[x-cloak]{display:none !important;}</style>
+    <div
+        class="fixed z-50 bottom-4 right-4 md:bottom-6 md:right-6"
+        x-data="{ open: false }"
+        x-effect="if (open) { setTimeout(() => window.dispatchEvent(new CustomEvent('chat-opened')), 150) }"
+        x-on:keydown.escape.window="open = false"
+        @open-chat.window="open = true"
+    >
     <!-- Icon-only launcher (hidden while open) -->
     <button
         type="button"
@@ -14,6 +16,7 @@
         :aria-expanded="open.toString()"
         aria-controls="chat-widget-panel"
         aria-label="Open support chat"
+        x-cloak
         class="group relative inline-flex items-center justify-center h-12 w-12 rounded-full text-white shadow-lg shadow-primary-900/20 ring-1 ring-black/5 bg-gradient-to-r from-primary-600 to-primary-500 hover:from-primary-500 hover:to-primary-400 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-300"
     >
         <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor" class="size-7">
@@ -27,7 +30,7 @@
     </button>
 
     <!-- Backdrop -->
-    <div x-show="open" x-transition.opacity class="fixed inset-0 z-40" aria-hidden="true">
+    <div x-show="open" x-transition.opacity class="fixed inset-0 z-40" aria-hidden="true" x-cloak>
         <div class="absolute inset-0 bg-black/40" @click="open = false"></div>
     </div>
 
@@ -41,6 +44,7 @@
         x-transition:leave-start="opacity-100 translate-y-0 scale-100"
         x-transition:leave-end="opacity-0 translate-y-2 scale-95"
     id="chat-widget-panel"
+    x-cloak
     class="mt-3 w-[420px] max-w-[95vw] h-[560px] max-h-[60vh] bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-2xl shadow-2xl overflow-hidden relative z-50"
     >
         <!-- Header -->

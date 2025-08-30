@@ -269,9 +269,15 @@ class ServerBrowser extends Component
 
     public function quickAddToCart($serverPlanId)
     {
-        $this->dispatch('addToCart', serverPlanId: $serverPlanId);
+    // Use CartManagement helper for consistent behavior
+    $total_count = \App\Helpers\CartManagement::addItemToCart($serverPlanId);
+    $this->dispatch('update-cart-count', total_count: $total_count)->to(\App\Livewire\Partials\Navbar::class);
+    $this->dispatch('cartUpdated');
+    $this->dispatch('cartUpdated');
+    $this->dispatch('cart-count-updated', ['count' => $total_count]);
 
-        $this->alert('success', 'Added to cart!', [
+    // Centralized notification via LivewireAlertV4 to avoid duplicate toasts
+    $this->alert('success', 'Added to cart!', [
             'position' => 'bottom-end',
             'timer' => 2000,
             'toast' => true,

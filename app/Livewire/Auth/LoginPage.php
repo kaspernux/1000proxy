@@ -346,7 +346,6 @@ class LoginPage extends Component
                 'timer' => 3000,
                 'toast' => true,
             ]);
-            $this->dispatch('toast');
             return;
         }
         return redirect()->route('auth.forgot', ['email' => $this->email]);

@@ -391,30 +391,21 @@ class CartPage extends Component
 
     private function validateAndCalculateDiscount($code)
     {
-        // TODO: Replace this mock coupon validation with integration to a real coupon system.
-        // Mock coupon validation - replace with real coupon system
-        $coupons = [
-            'SAVE10' => 0.10, // 10% discount
-            'WELCOME' => 5.00, // $5 off
-            'FIRST20' => 0.20, // 20% discount
-        ];
+        // Use DB-backed coupons
+        $coupon = \App\Models\Coupon::where('code', $code)->where('is_active', true)->first();
+        if (!$coupon) return 0;
 
-    if (isset($coupons[$code])) {
-            $discountRate = $coupons[$code];
-
-            if ($discountRate < 1) {
-                // Percentage discount
-        // Recompute using current items to avoid stale totals
-        $subtotal = \App\Helpers\CartManagement::calculateGrandTotal($this->order_items);
-        return round($subtotal * $discountRate, 2);
-            } else {
-                // Fixed amount discount
-        $subtotal = \App\Helpers\CartManagement::calculateGrandTotal($this->order_items);
-        return min($discountRate, $subtotal);
-            }
+        $customerId = \Illuminate\Support\Facades\Auth::guard('customer')->id();
+        if ($coupon->single_use_per_customer && $customerId) {
+            $used = \App\Models\CouponUsage::where('coupon_id', $coupon->id)->where('customer_id', $customerId)->exists();
+            if ($used) return 0;
         }
 
-        return 0;
+        $subtotal = \App\Helpers\CartManagement::calculateGrandTotal($this->order_items);
+        if ($coupon->type === 'percent') {
+            return round($subtotal * ($coupon->value / 100), 2);
+        }
+        return min((float)$coupon->value, $subtotal);
     }
 
     public function removeCoupon()
@@ -472,6 +463,10 @@ class CartPage extends Component
         $this->refreshCart();
 
         $this->dispatch('update-cart-count', total_count: $total_count)->to(\App\Livewire\Partials\Navbar::class);
+
+            // Ensure immediate client-side update
+            $this->dispatch('cartUpdated');
+            $this->dispatch('cart-count-updated', ['count' => $total_count]);
 
         $this->alert('success', 'Recommended item added to cart!', [
             'position' => 'bottom-end',

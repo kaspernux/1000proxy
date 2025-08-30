@@ -19,10 +19,14 @@ class Address extends Model
         'company',
         'address_line_1',
         'address_line_2',
-        'city',
-        'state',
-        'postal_code',
-        'country',
+    'city',
+    'state',
+    'postal_code',
+    'country',
+    // normalized references
+    'country_id',
+    'city_id',
+    'postal_code_id',
         'phone',
         'is_default',
     ];
@@ -93,5 +97,29 @@ class Address extends Model
     public function scopeDefault($query)
     {
         return $query->where('is_default', true);
+    }
+
+    /**
+     * Normalized country relation (optional).
+     */
+    public function countryRelation()
+    {
+        return $this->belongsTo(Country::class, 'country_id');
+    }
+
+    /**
+     * Normalized city relation (optional).
+     */
+    public function cityRelation()
+    {
+        return $this->belongsTo(City::class, 'city_id');
+    }
+
+    /**
+     * Normalized postal code relation (optional).
+     */
+    public function postalCodeRelation()
+    {
+        return $this->belongsTo(PostalCode::class, 'postal_code_id');
     }
 }

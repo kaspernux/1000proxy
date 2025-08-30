@@ -374,6 +374,20 @@
                     <button wire:click="sendMessage" class="inline-flex items-center justify-center h-10 w-10 rounded-full bg-primary-600 hover:bg-primary-500 text-white shadow-md">
                         <svg class="size-5" xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 24 24"><path d="M3.404 2.361a.75.75 0 01.823-.12l16.5 7.5a.75.75 0 010 1.36l-16.5 7.5a.75.75 0 01-1.043-.857l1.57-6.284a.75.75 0 01.353-.48l6.468-3.732a.25.25 0 000-.432L4.607 3.697a.75.75 0 01-.356-.48l-1.57-6.284z"/></svg>
                     </button>
+                    
+                    <!-- Upload progress & selected files -->
+                    <div class="mt-2 space-y-1">
+                        <div x-show="progress > 0" class="h-1 w-full bg-gray-100 dark:bg-gray-800 rounded">
+                            <div class="h-1 bg-primary-500 rounded" :style="`width: ${progress}%;`"></div>
+                        </div>
+                        @if(!empty($uploads))
+                            <div class="flex flex-wrap gap-2 text-xs text-gray-600 dark:text-gray-300">
+                                @foreach($uploads as $u)
+                                    <span class="px-2 py-1 rounded bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 truncate max-w-[200px]">{{ $u->getClientOriginalName() }}</span>
+                                @endforeach
+                            </div>
+                        @endif
+                    </div>
                 </div>
                 <!-- Typing indicator with names -->
                 <div class="mt-1 text-[11px] text-gray-500 min-h-5">
@@ -391,19 +405,7 @@
                         </div>
                     @endif
                 </div>
-                <!-- Upload progress & selected files -->
-                <div class="mt-2 space-y-1">
-                    <div x-show="progress > 0" class="h-1 w-full bg-gray-100 dark:bg-gray-800 rounded">
-                        <div class="h-1 bg-primary-500 rounded" :style="`width: ${progress}%;`"></div>
-                    </div>
-                    @if(!empty($uploads))
-                        <div class="flex flex-wrap gap-2 text-xs text-gray-600 dark:text-gray-300">
-                            @foreach($uploads as $u)
-                                <span class="px-2 py-1 rounded bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 truncate max-w-[200px]">{{ $u->getClientOriginalName() }}</span>
-                            @endforeach
-                        </div>
-                    @endif
-                </div>
+                {{-- Upload progress & selected files removed (duplicate). Progress markup is already inside the composer x-data scope. --}}
                 @error('message') <div class="text-xs text-red-600 mt-1">{{ $message }}</div> @enderror
             @else
                 <div class="text-sm text-gray-500">Start a conversation from the left panel.</div>

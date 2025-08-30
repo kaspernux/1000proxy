@@ -1,0 +1,2 @@
+domain,dataset_id,iso2,country,city,postal,limit
+public.opendatasoft.com,world-wide-postal-codes,country_code,country,city,postal_code,1000

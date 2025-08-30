@@ -305,7 +305,7 @@
 
                         <div>
                             <label class="block text-white font-medium mb-2 sm:mb-3 text-sm sm:text-base">Country *</label>
-                            <select wire:model.live="country"
+                            <select wire:model="country"
                                     class="w-full px-3 sm:px-4 py-2 sm:py-3 bg-white border border-white/20 rounded-lg sm:rounded-xl text-black focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 text-sm sm:text-base">
                                 <option value="" class="text-gray-500">Select Country</option>
                                 <option value="US" class="text-black">United States</option>
@@ -396,7 +396,7 @@
                             <div>
                                 <label class="block text-white font-medium mb-2 sm:mb-3 text-sm sm:text-base">State/Province *</label>
                                 @if($country === 'US')
-                                    <select wire:model.live="state"
+                                    <select wire:model="state"
                                             class="w-full px-3 sm:px-4 py-2 sm:py-3 bg-white border border-white/20 rounded-lg sm:rounded-xl text-black focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 text-sm sm:text-base">
                                         <option value="" class="text-gray-500">Select State</option>
                                         <option value="AL" class="text-black">Alabama</option>
@@ -451,7 +451,7 @@
                                         <option value="WY" class="text-black">Wyoming</option>
                                     </select>
                                 @elseif($country === 'CA')
-                                    <select wire:model.live="state"
+                                    <select wire:model="state"
                                             class="w-full px-3 sm:px-4 py-2 sm:py-3 bg-white border border-white/20 rounded-lg sm:rounded-xl text-black focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 text-sm sm:text-base">
                                         <option value="" class="text-gray-500">Select Province</option>
                                         <option value="AB" class="text-black">Alberta</option>
@@ -469,7 +469,7 @@
                                         <option value="YT" class="text-black">Yukon</option>
                                     </select>
                                 @elseif($country === 'GB')
-                                    <select wire:model.live="state"
+                                    <select wire:model="state"
                                             class="w-full px-4 py-3 bg-white border border-white/20 rounded-xl text-black focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200">
                                         <option value="" class="text-gray-500">Select Region</option>
                                         <option value="England" class="text-black">England</option>
@@ -742,6 +742,27 @@
                     </div>
                     @endif
 
+                    {{-- Inline hints explaining disabled state: moved to its own wrapper --}}
+                    <div class="mb-3 sm:mb-4">
+                        @if(empty($payment_method) || !$agree_to_terms || $this->disableComplete)
+                            <div class="text-sm text-yellow-300">
+                                <div class="flex items-start space-x-2">
+                                    <div class="w-4 h-4 text-yellow-300 flex-shrink-0 mt-0.5">
+                                        <x-custom-icon name="exclamation-triangle" class="w-4 h-4 text-yellow-300" />
+                                    </div>
+                                    <div>
+                                        @if(empty($payment_method))
+                                            <div>Please select a Payment Method to enable the "Complete Order" button.</div>
+                                        @endif
+                                        @if(!$agree_to_terms)
+                                            <div>Please select a Payment Method and agree to the Terms and Conditions to proceed.</div>
+                                        @endif
+                                    </div>
+                                </div>
+                            </div>
+                        @endif
+                    </div>
+
                     <div class="flex flex-col sm:flex-row justify-between items-stretch sm:items-center space-y-3 sm:space-y-0 sm:space-x-4 mt-6 sm:mt-8">
                         <button wire:click="previousStep"
                                 class="order-2 sm:order-1 px-4 sm:px-6 py-2 sm:py-3 bg-white/10 hover:bg-white/20 text-white font-medium rounded-xl border border-white/20 transition-all duration-200 flex items-center justify-center text-sm sm:text-base">
@@ -751,7 +772,7 @@
                         
                         <button wire:click="processOrder"
                                 wire:loading.attr="disabled"
-                                @disabled($this->disableComplete)
+                                @disabled(empty($payment_method) || !$agree_to_terms || $this->disableComplete)
                                 class="order-1 sm:order-2 px-6 sm:px-8 py-3 sm:py-4 bg-gradient-to-r from-green-600 to-green-500 hover:from-green-500 hover:to-green-400 text-white font-bold text-base sm:text-lg rounded-xl shadow-xl hover:shadow-2xl transition-all duration-300 transform hover:scale-105 flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed relative">
                             @if($this->walletInsufficient)
                                 <span class="absolute -top-6 left-0 w-full text-center text-xs text-red-300 font-medium">Insufficient wallet balance</span>
@@ -776,25 +797,23 @@
                         <p class="text-base sm:text-lg lg:text-xl text-green-200 px-4">Thank you for your purchase. Your order has been processed successfully.</p>
                     </div>
 
-                    @if(isset($orderDetails))
                     <div class="bg-white/5 rounded-xl sm:rounded-2xl p-4 sm:p-6 mb-6 sm:mb-8 text-left">
                         <h3 class="text-lg sm:text-xl font-bold text-white mb-3 sm:mb-4">Order Details</h3>
                         <div class="space-y-2">
                             <div class="flex justify-between text-sm sm:text-base">
                                 <span class="text-green-200">Order Number:</span>
-                                <span class="text-white font-medium">#{{ $orderDetails['order_number'] ?? 'N/A' }}</span>
+                                <span class="text-white font-medium">#{{ $orderDetails['order_number'] ?? ($orderDetails->order_number ?? 'N/A') }}</span>
                             </div>
                             <div class="flex justify-between text-sm sm:text-base">
                                 <span class="text-green-200">Total Amount:</span>
-                                <span class="text-white font-medium">${{ number_format($orderDetails['total'] ?? 0, 2) }}</span>
+                                <span class="text-white font-medium">${{ number_format($orderDetails['total'] ?? ($orderDetails->total ?? $order_summary['total'] ?? 0), 2) }}</span>
                             </div>
                             <div class="flex justify-between text-sm sm:text-base">
                                 <span class="text-green-200">Payment Method:</span>
-                                <span class="text-white font-medium capitalize">{{ $payment_method ?? 'N/A' }}</span>
+                                <span class="text-white font-medium capitalize">{{ $payment_method ?? ($orderDetails['payment_method'] ?? ($orderDetails->payment_method ?? 'N/A')) }}</span>
                             </div>
                         </div>
                     </div>
-                    @endif
 
                     <div class="space-y-3 sm:space-y-4">
                         <button wire:click="goToOrders"
