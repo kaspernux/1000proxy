@@ -66,6 +66,7 @@ use App\Console\Commands\RefreshClientStatus;
 use App\Console\Commands\XuiDiagnoseCommand;
 use App\Console\Commands\XuiUnlockCommand;
 use App\Console\Commands\XuiConfigurePanel;
+use App\Console\Commands\DispatchFeatureAdXuiFetch;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
 
@@ -132,8 +133,9 @@ $app = Application::configure(basePath: dirname(__DIR__))
         RefreshClientStatus::class,
         RefreshServerMetrics::class,
         XuiDiagnoseCommand::class,
-    XuiUnlockCommand::class,
+        XuiUnlockCommand::class,
         XuiConfigurePanel::class,
+        DispatchFeatureAdXuiFetch::class,
     ])
     ->withSchedule(function (Schedule $schedule) {
         $schedule->job(new PruneOldExportsJob())->dailyAt('02:15');
@@ -146,6 +148,10 @@ $app = Application::configure(basePath: dirname(__DIR__))
     // Warm dashboard/server metrics every 5 minutes; force once hourly.
     $schedule->command('metrics:refresh')->everyFiveMinutes()->withoutOverlapping();
     $schedule->command('metrics:refresh --force')->hourly()->withoutOverlapping();
+    // Dispatch feature ad X-UI fetch for active ads every 5 minutes
+    $schedule->command('featuread:fetch-xui --only-active')->everyFiveMinutes()->withoutOverlapping();
+    // Run XUI client sync every minute (lightweight, only active clients)
+    $schedule->command('xui:sync-clients --limit=200')->everyMinute()->withoutOverlapping()->runInBackground();
     })
     ->withMiddleware(function (Middleware $middleware) {
     // Global & security middleware

@@ -28,6 +28,7 @@ use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\BulkAction;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Cache;
 use BackedEnum;
 use UnitEnum;
 use Filament\Schemas\Schema;
@@ -125,8 +126,46 @@ class InboundClientIPResource extends Resource
                             InfolistSection::make('Summary')
                                 ->columns(3)
                                 ->schema([
-                                    TextEntry::make('client_email')->label('Client Email')->color('primary'),
-                                    TextEntry::make('ips')->label('IP Addresses')->formatStateUsing(fn($s) => str_replace("\n", ', ', (string) $s))->wrap(),
+                                            TextEntry::make('client_email')->label('Client Email')->color('primary'),
+                                            TextEntry::make('ips')->label('IP Addresses')->formatStateUsing(function ($s, $record) {
+                                                // Attempt to show live IPs from 3X-UI when available
+                                                try {
+                                                    $serverClient = static::resolveServerClientByEmail($record->client_email);
+                                                    if ($serverClient) {
+                                                        $server = $serverClient->inbound?->server ?? $serverClient->server ?? null;
+                                                    } else {
+                                                        $server = null;
+                                                    }
+                                                    if ($server) {
+                                                        $idPart = $serverClient->id ?? ($record->client_email ?: 'unknown');
+                                                        $key = "xui_client_ips_{$server->id}_{$idPart}";
+                                                        $live = Cache::remember($key, 30, function () use ($server, $serverClient, $record) {
+                                                            try {
+                                                                $svc = new XUIService($server);
+                                                                // Prefer UUID lookup when available
+                                                                if (!empty($serverClient->id)) {
+                                                                    $remote = $svc->getClientByUuid($serverClient->id);
+                                                                } else {
+                                                                    $remote = $svc->getClientByEmail($record->client_email);
+                                                                }
+                                                                // If remote returns client object with IPs under obj->ips, try client ips endpoint
+                                                                $ips = $svc->getClientIps($serverClient->id ?: $record->client_email);
+                                                                return $ips;
+                                                            } catch (\Throwable $t) {
+                                                                return null;
+                                                            }
+                                                        });
+                                                        if (is_array($live) && count($live) > 0) {
+                                                            return implode(', ', $live);
+                                                        }
+                                                    }
+                                                } catch (\Throwable $t) {
+                                                    // ignore and fall through to stored ips
+                                                }
+                                                $stored = trim((string) $s);
+                                                if ($stored === '') return '(none)';
+                                                return str_replace("\n", ', ', $stored);
+                                            })->wrap(),
                                 ]),
                         ]),
                     Tabs\Tab::make('Meta')
@@ -168,6 +207,37 @@ class InboundClientIPResource extends Resource
                 TextColumn::make('ips')
                     ->label('IP Addresses')
                     ->limit(50)
+                    ->getStateUsing(function ($record) {
+                        try {
+                            $serverClient = static::resolveServerClientByEmail($record->client_email);
+                            if ($serverClient) {
+                                $server = $serverClient->inbound?->server ?? $serverClient->server ?? null;
+                            } else {
+                                $server = null;
+                            }
+                            if ($server) {
+                                $idPart = $serverClient->id ?? ($record->client_email ?: 'unknown');
+                                $key = "xui_client_ips_{$server->id}_{$idPart}";
+                                $live = Cache::remember($key, 30, function () use ($server, $serverClient, $record) {
+                                    try {
+                                        $svc = new XUIService($server);
+                                        $identifier = $serverClient->id ?: $record->client_email;
+                                        return $svc->getClientIps($identifier);
+                                    } catch (\Throwable $t) {
+                                        return null;
+                                    }
+                                });
+                                if (is_array($live) && count($live) > 0) {
+                                    return implode(', ', $live);
+                                }
+                            }
+                        } catch (\Throwable $t) {
+                            // fall back to stored ips
+                        }
+                        $stored = trim((string) $record->ips);
+                        if ($stored === '') return '(none)';
+                        return str_replace("\n", ', ', $stored);
+                    })
                     ->tooltip(fn ($record) => $record->ips)
                     ->searchable()
                     ->wrap(),
@@ -256,7 +326,7 @@ class InboundClientIPResource extends Resource
                         ->color('info')
                         ->tooltip('Pull latest client IPs from 3X-UI')
                         ->action(function ($record) {
-                            $serverClient = ServerClient::query()->where('email', $record->client_email)->first();
+                            $serverClient = static::resolveServerClientByEmail($record->client_email);
                             if (!$serverClient) {
                                 \Filament\Notifications\Notification::make()
                                     ->title('No matching client')
@@ -265,7 +335,7 @@ class InboundClientIPResource extends Resource
                                     ->send();
                                 return;
                             }
-                            $server = $serverClient->server ?? $serverClient->inbound?->server;
+                            $server = $serverClient->inbound?->server ?? $serverClient->server;
                             if (!$server instanceof Server) {
                                 \Filament\Notifications\Notification::make()
                                     ->title('Server not found')
@@ -274,7 +344,9 @@ class InboundClientIPResource extends Resource
                                 return;
                             }
                             $xui = new XUIService($server);
-                            $ipsList = $xui->getClientIps($record->client_email);
+                            // Prefer uuid lookup if available
+                            $identifier = $serverClient->id ?: $record->client_email;
+                            $ipsList = $xui->getClientIps($identifier);
                             if (empty($ipsList)) {
                                 \Filament\Notifications\Notification::make()
                                     ->title('No IP records')
@@ -439,5 +511,27 @@ class InboundClientIPResource extends Resource
     public static function getNavigationBadgeColor(): string|array|null
     {
         return static::getModel()::count() > 20 ? 'success' : 'warning';
+    }
+
+    /**
+     * Robust resolver: find a ServerClient by email or fallback to sub_id or id
+     */
+    protected static function resolveServerClientByEmail(string $email)
+    {
+        // direct match
+        $client = ServerClient::query()->where('email', $email)->first();
+        if ($client) return $client;
+
+        // try matching by sub_id
+        $client = ServerClient::query()->where('sub_id', $email)->first();
+        if ($client) return $client;
+
+        // try uuid/id
+        $client = ServerClient::query()->where('id', $email)->orWhere('uuid', $email)->first();
+        if ($client) return $client;
+
+        // try loose contains (some panels append +subid to email local part)
+        $client = ServerClient::query()->where('email', 'like', '%' . explode('@', $email)[0] . '%')->first();
+        return $client;
     }
 }

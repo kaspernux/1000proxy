@@ -28,6 +28,7 @@ use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
 use Filament\Actions\ViewAction;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\Cache;
 use Filament\Forms\Components\View as ViewComponent;
 use Filament\Forms\Components\Placeholder;
 use Filament\Forms\Components\Image;
@@ -422,12 +423,50 @@ class ServerClientResource extends Resource
                 ])
                 ->formatStateUsing(fn ($state) => $state ? 'Online' : 'Offline'),
 
-            // ✅ Traffic usage with visual indicators
+            // ✅ Traffic usage with visual indicators (prefer cached live XUI if available)
             TextColumn::make('traffic_usage')
                 ->label('Traffic Used')
                 ->getStateUsing(function ($record) {
                     $up = $record->remote_up ?? 0;
                     $down = $record->remote_down ?? 0;
+
+                    try {
+                        $server = $record->inbound?->server ?? ($record->server ?? null);
+                        if (!$server) {
+                            $resolved = static::resolveServerClientByEmail($record->email);
+                            $server = $resolved?->inbound?->server ?? $resolved?->server ?? null;
+                            $record = $resolved ?: $record;
+                        }
+
+                        if ($server) {
+                            $idPart = $record->id ?? ($record->email ?: 'unknown');
+                            $key = "xui_client_traffic_{$server->id}_{$idPart}";
+                            $live = Cache::remember($key, 30, function () use ($server, $record) {
+                                try {
+                                    $svc = new XUIService($server);
+                                    // Prefer UUID lookup, fall back to email
+                                    $remote = null;
+                                    if (!empty($record->id)) {
+                                        $remote = $svc->getClientByUuid($record->id);
+                                    }
+                                    if (empty($remote) && !empty($record->email)) {
+                                        $remote = $svc->getClientByEmail($record->email);
+                                    }
+                                    return $remote;
+                                } catch (\Throwable $t) {
+                                    return null;
+                                }
+                            });
+
+                            if (is_array($live) && (isset($live['up']) || isset($live['down']))) {
+                                $up = $live['up'] ?? $up;
+                                $down = $live['down'] ?? $down;
+                            }
+                        }
+                    } catch (\Throwable $t) {
+                        // fallback to stored values
+                    }
+
                     $total = $up + $down;
                     return number_format($total / 1024 / 1024 / 1024, 2) . ' GB';
                 })
@@ -438,19 +477,73 @@ class ServerClientResource extends Resource
                     $total = $up + $down;
                     $limit = $record->total_gb_bytes ?? 0;
 
-                    if ($limit == 0) return 'primary'; // Unlimited
+                    try {
+                        $server = $record->inbound?->server ?? ($record->server ?? null);
+                        if (!$server) {
+                            $resolved = static::resolveServerClientByEmail($record->email);
+                            $server = $resolved?->inbound?->server ?? $resolved?->server ?? null;
+                            $record = $resolved ?: $record;
+                        }
+                        if ($server) {
+                            $idPart = $record->id ?? ($record->email ?: 'unknown');
+                            $key = "xui_client_traffic_{$server->id}_{$idPart}";
+                            $live = Cache::get($key);
+                            if (empty($live)) {
+                                try {
+                                    $svc = new XUIService($server);
+                                    $live = !empty($record->id) ? $svc->getClientByUuid($record->id) : null;
+                                    if (empty($live) && !empty($record->email)) {
+                                        $live = $svc->getClientByEmail($record->email);
+                                    }
+                                    if (is_array($live)) {
+                                        Cache::put($key, $live, 30);
+                                    }
+                                } catch (\Throwable $t) {
+                                    // ignore
+                                }
+                            }
+                            if (is_array($live) && (isset($live['up']) || isset($live['down']))) {
+                                $up = $live['up'] ?? $up;
+                                $down = $live['down'] ?? $down;
+                                $total = $up + $down;
+                            }
+                        }
+                    } catch (\Throwable $t) {
+                        // ignore and continue with stored values
+                    }
 
-                    $percentage = ($total / $limit) * 100;
+                    if ($limit == 0) return 'primary';
 
+                    $percentage = $limit > 0 ? ($total / $limit) * 100 : 0;
                     if ($percentage > 90) return 'danger';
                     if ($percentage > 75) return 'warning';
                     if ($percentage > 50) return 'info';
                     return 'success';
                 })
                 ->tooltip(function ($record) {
-                    $up = number_format(($record->remote_up ?? 0) / 1024 / 1024, 2);
-                    $down = number_format(($record->remote_down ?? 0) / 1024 / 1024, 2);
-                    return "Upload: {$up} MB\nDownload: {$down} MB";
+                    $up = $record->remote_up ?? 0;
+                    $down = $record->remote_down ?? 0;
+                    try {
+                        $server = $record->inbound?->server ?? ($record->server ?? null);
+                        if (!$server) {
+                            $resolved = static::resolveServerClientByEmail($record->email);
+                            $server = $resolved?->inbound?->server ?? $resolved?->server ?? null;
+                            $record = $resolved ?: $record;
+                        }
+                        if ($server) {
+                            $idPart = $record->id ?? ($record->email ?: 'unknown');
+                            $key = "xui_client_traffic_{$server->id}_{$idPart}";
+                            $live = Cache::get($key);
+                            if (is_array($live) && (isset($live['up']) || isset($live['down']))) {
+                                $up = $live['up'] ?? $up;
+                                $down = $live['down'] ?? $down;
+                            }
+                        }
+                    } catch (\Throwable $t) {}
+
+                    $upMb = number_format($up / 1024 / 1024, 2);
+                    $downMb = number_format($down / 1024 / 1024, 2);
+                    return "Upload: {$upMb} MB\nDownload: {$downMb} MB";
                 }),
 
             TextColumn::make('limit_ip')
@@ -698,61 +791,62 @@ class ServerClientResource extends Resource
     ->defaultSort('created_at', 'desc')
     ->poll('30s') // Auto-refresh every 30 seconds for real-time updates
         ->headerActions([
-            Action::make('Sync Clients from XUI')
+            Action::make('sync_all_clients')
                 ->icon('heroicon-o-arrow-path')
                 ->label('Sync All Clients')
                 ->color('primary')
                 ->requiresConfirmation()
                 ->action(function () {
-                    $servers = \App\Models\Server::all();
+                    $servers = \App\Models\Server::with('inbounds')->get();
+                    $updated = 0;
+                    $errors = 0;
 
                     foreach ($servers as $server) {
                         try {
-                            $xui             = new XUIService($server);
-                            $remoteInbounds  = $xui->listInbounds();
+                            $xui = new XUIService($server);
 
-                            foreach ($remoteInbounds as $inbound) {
-                                // 1) Ensure we have a local inbound record
-                                $localInbound = ServerInbound::firstOrCreate([
-                                    'server_id' => $server->id,
-                                    'port'      => $inbound->port,
-                                ]);
-
-                                // 2) Decode the inbound settings and extract remote clients
-                                $settings    = is_string($inbound->settings)
-                                    ? json_decode($inbound->settings, true)
-                                    : (array) $inbound->settings;
-                                $clients     = $settings['clients'] ?? [];
-                                $remoteSubIds = [];
-
-                                // 3) Upsert each remote client, and collect its subId
+                            foreach ($server->inbounds as $inbound) {
+                                $clients = \App\Models\ServerClient::where('server_inbound_id', $inbound->id)->get();
                                 foreach ($clients as $client) {
-                                    $remoteSubIds[] = $client['subId'] ?? null;
-                                    ServerClient::fromRemoteClient(
-                                        (array) $client,
-                                        $localInbound->id
-                                    );
-                                }
+                                    try {
+                                        $remote = $xui->getClientByEmail($client->email);
+                                        if ($remote) {
+                                            $client->update([
+                                                'remote_up' => $remote['up'] ?? $client->remote_up,
+                                                'remote_down' => $remote['down'] ?? $client->remote_down,
+                                                'last_api_sync_at' => now(),
+                                                'api_sync_status' => 'success',
+                                            ]);
 
-                                // 4) Delete any local clients no longer present remotely
-                                ServerClient::where('server_inbound_id', $localInbound->id)
-                                    ->whereNotIn('subId', array_filter($remoteSubIds))
-                                    ->delete();
+                                            // short-lived cache for UI
+                                            $key = "xui_client_traffic_{$server->id}_{$client->email}";
+                                            Cache::put($key, $remote, 30);
+                                            $updated++;
+                                        } else {
+                                            $client->update(['api_sync_status' => 'not_found', 'last_api_sync_at' => now()]);
+                                        }
+                                    } catch (\Throwable $e) {
+                                        Log::warning('Sync client failed: ' . $e->getMessage());
+                                        $client->update(['api_sync_status' => 'error', 'last_api_sync_at' => now()]);
+                                        $errors++;
+                                    }
+                                }
                             }
                         } catch (\Throwable $e) {
                             Log::error("Client sync failed for server ID {$server->id}: " . $e->getMessage());
+                            $errors++;
                         }
                     }
 
                     \Filament\Notifications\Notification::make()
-                        ->title('Success')
-                        ->body('Clients synced and stale records removed.')
+                        ->title('Sync complete')
+                        ->body("Updated: {$updated}, Errors: {$errors}")
                         ->success()
                         ->send();
-                })
-            ]);
+        }),
+    ]);
 
-        return \App\Filament\Concerns\HasPerformanceOptimizations::applyTablePreset($table, [
+    return \App\Filament\Concerns\HasPerformanceOptimizations::applyTablePreset($table, [
             'defaultPage' => 50,
             'empty' => [
                 'icon' => 'heroicon-o-user-group',
@@ -775,6 +869,29 @@ class ServerClientResource extends Resource
             'view' => Pages\ViewServerClient::route('/{record}'),
             'edit' => Pages\EditServerClient::route('/{record}/edit'),
         ];
+    }
+
+    /**
+     * Robust resolver: find a ServerClient by email or fallback to sub_id or id
+     */
+    protected static function resolveServerClientByEmail(string $email)
+    {
+        // direct match
+        $client = ServerClient::query()->where('email', $email)->first();
+        if ($client) return $client;
+
+        // try matching by sub_id
+        $client = ServerClient::query()->where('sub_id', $email)->first();
+        if ($client) return $client;
+
+        // try uuid/id
+        $client = ServerClient::query()->where('id', $email)->orWhere('uuid', $email)->first();
+        if ($client) return $client;
+
+        // try loose contains (some panels append +subid to email local part)
+        $local = explode('@', $email)[0] ?? $email;
+        $client = ServerClient::query()->where('email', 'like', '%' . $local . '%')->first();
+        return $client;
     }
 
     // ✅ Infolist for view page (polished layout)
