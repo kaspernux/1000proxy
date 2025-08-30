@@ -1,0 +1,19 @@
+[Unit]
+Description=XUI Docker Compose Service
+After=network.target docker.service
+
+[Service]
+Type=notify
+WorkingDirectory=/opt/xui
+ExecStart=/usr/bin/docker compose -f /opt/xui/docker-compose.yml up --remove-orphans
+ExecStop=/usr/bin/docker compose -f /opt/xui/docker-compose.yml down
+TimeoutStartSec=300
+Restart=always
+RestartSec=5s
+
+[Install]
+WantedBy=multi-user.target
+
+# Notes:
+# - Copy this file to /etc/systemd/system/xui.service and run: systemctl daemon-reload; systemctl enable --now xui
+# - Ensure /opt/xui/docker-compose.yml exists (copy deploy/docker-compose.xui.yml and edit as needed)

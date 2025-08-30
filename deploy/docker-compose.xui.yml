@@ -1,0 +1,15 @@
+version: '3.8'
+services:
+  xui:
+    image: xui/x-ui:latest
+    container_name: xui
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:1111:54321" # Host binds to localhost port 1111, UI/API inside container is 54321
+      # add any proxy ports you need, e.g.:
+      # - "8388:8388/tcp"
+      # - "8388:8388/udp"
+    volumes:
+      - ./xui-data:/usr/local/x-ui
+    environment:
+      - TZ=UTC
