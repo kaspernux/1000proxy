@@ -240,6 +240,18 @@ class AccountSettings extends Component
                 'timezone' => $this->timezone,
             ]);
 
+            // Refresh the model so Livewire bindings reflect persisted values immediately
+            $this->customer = $this->customer->fresh();
+
+            // Reassign public properties from refreshed model to keep inputs in sync
+            $this->name = $this->customer->name;
+            $this->email = $this->customer->email;
+            $this->phone = $this->customer->phone;
+            $this->date_of_birth = $this->customer->date_of_birth?->format('Y-m-d');
+            $this->bio = $this->customer->bio;
+            $this->website = $this->customer->website;
+            $this->company = $this->customer->company;
+
             // Clear rate limit on success
             RateLimiter::clear($key);
 

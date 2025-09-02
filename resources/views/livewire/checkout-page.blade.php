@@ -259,54 +259,66 @@
                         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
                             <div>
                                 <label class="block text-white font-medium mb-2 sm:mb-3 text-sm sm:text-base">First Name *</label>
-                                <input type="text"
-                                       wire:model="first_name"
-                                       class="w-full px-3 sm:px-4 py-2 sm:py-3 bg-white/10 border border-white/20 rounded-lg sm:rounded-xl text-white placeholder-white/60 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 text-sm sm:text-base"
-                                       placeholder="Enter your first name">
+                    <input type="text"
+                        id="checkout_first_name" name="first_name"
+                        wire:model="first_name"
+                        autocomplete="given-name"
+                        class="w-full px-3 sm:px-4 py-2 sm:py-3 bg-white/10 border border-white/20 rounded-lg sm:rounded-xl text-white placeholder-white/60 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 text-sm sm:text-base"
+                        placeholder="Enter your first name">
                                 @error('first_name') <span class="text-red-400 text-xs sm:text-sm mt-1 block">{{ $message }}</span> @enderror
                             </div>
 
                             <div>
                                 <label class="block text-white font-medium mb-2 sm:mb-3 text-sm sm:text-base">Last Name *</label>
-                                <input type="text"
-                                       wire:model="last_name"
-                                       class="w-full px-3 sm:px-4 py-2 sm:py-3 bg-white/10 border border-white/20 rounded-lg sm:rounded-xl text-white placeholder-white/60 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 text-sm sm:text-base"
-                                       placeholder="Enter your last name">
+                    <input type="text"
+                        id="checkout_last_name" name="last_name"
+                        wire:model="last_name"
+                        autocomplete="family-name"
+                        class="w-full px-3 sm:px-4 py-2 sm:py-3 bg-white/10 border border-white/20 rounded-lg sm:rounded-xl text-white placeholder-white/60 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 text-sm sm:text-base"
+                        placeholder="Enter your last name">
                                 @error('last_name') <span class="text-red-400 text-xs sm:text-sm mt-1 block">{{ $message }}</span> @enderror
                             </div>
                         </div>
 
                         <div>
                             <label class="block text-white font-medium mb-2 sm:mb-3 text-sm sm:text-base">Email Address *</label>
-                            <input type="email"
-                                   wire:model="email"
-                                   class="w-full px-3 sm:px-4 py-2 sm:py-3 bg-white/10 border border-white/20 rounded-lg sm:rounded-xl text-white placeholder-white/60 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 text-sm sm:text-base"
-                                   placeholder="Enter your email address">
+                <input type="email"
+                    id="checkout_email" name="email"
+                    wire:model="email"
+                    autocomplete="email"
+                    class="w-full px-3 sm:px-4 py-2 sm:py-3 bg-white/10 border border-white/20 rounded-lg sm:rounded-xl text-white placeholder-white/60 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 text-sm sm:text-base"
+                    placeholder="Enter your email address">
                             @error('email') <span class="text-red-400 text-xs sm:text-sm mt-1 block">{{ $message }}</span> @enderror
                         </div>
 
                         <div>
                             <label class="block text-white font-medium mb-2 sm:mb-3 text-sm sm:text-base">Phone Number *</label>
-                            <input type="tel"
-                                   wire:model="phone"
-                                   class="w-full px-3 sm:px-4 py-2 sm:py-3 bg-white/10 border border-white/20 rounded-lg sm:rounded-xl text-white placeholder-white/60 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 text-sm sm:text-base"
-                                   placeholder="Enter your phone number">
+                <input type="tel"
+                    id="checkout_phone" name="phone"
+                    wire:model="phone"
+                    inputmode="tel"
+                    pattern="\+?[0-9\s\-().]{7,20}"
+                    autocomplete="tel"
+                    class="w-full px-3 sm:px-4 py-2 sm:py-3 bg-white/10 border border-white/20 rounded-lg sm:rounded-xl text-white placeholder-white/60 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 text-sm sm:text-base"
+                    placeholder="Enter your phone number">
                             @error('phone') <span class="text-red-400 text-xs sm:text-sm mt-1 block">{{ $message }}</span> @enderror
                         </div>
 
                         <div>
                             <label class="block text-white font-medium mb-2 sm:mb-3 text-sm sm:text-base">Address *</label>
-                            <input type="text"
-                                   wire:model="address"
-                                   class="w-full px-3 sm:px-4 py-2 sm:py-3 bg-white/10 border border-white/20 rounded-lg sm:rounded-xl text-white placeholder-white/60 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 text-sm sm:text-base"
-                                   placeholder="Enter your address">
+                <input type="text"
+                    id="checkout_address" name="address"
+                    wire:model="address"
+                    autocomplete="street-address"
+                    class="w-full px-3 sm:px-4 py-2 sm:py-3 bg-white/10 border border-white/20 rounded-lg sm:rounded-xl text-white placeholder-white/60 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 text-sm sm:text-base"
+                    placeholder="Enter your address">
                             @error('address') <span class="text-red-400 text-xs sm:text-sm mt-1 block">{{ $message }}</span> @enderror
                         </div>
 
                         <div>
                             <label class="block text-white font-medium mb-2 sm:mb-3 text-sm sm:text-base">Country *</label>
-                            <select wire:model="country"
-                                    class="w-full px-3 sm:px-4 py-2 sm:py-3 bg-white border border-white/20 rounded-lg sm:rounded-xl text-black focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 text-sm sm:text-base">
+                <select id="checkout_country" name="country" wire:model="country"
+                    class="w-full px-3 sm:px-4 py-2 sm:py-3 bg-white border border-white/20 rounded-lg sm:rounded-xl text-black focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 text-sm sm:text-base">
                                 <option value="" class="text-gray-500">Select Country</option>
                                 <option value="US" class="text-black">United States</option>
                                 <option value="CA" class="text-black">Canada</option>

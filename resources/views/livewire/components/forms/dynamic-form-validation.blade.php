@@ -169,7 +169,7 @@
             </label>
             <div class="relative">
                 <input type="tel" 
-                       id="phone" 
+                       id="dynamic_phone" 
                        name="phone"
                        data-validation='[
                            {"type":"pattern","pattern":"^[\\+]?[1-9]\\d{1,14}$","message":"Please enter a valid phone number"}

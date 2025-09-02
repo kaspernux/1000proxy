@@ -140,40 +140,40 @@
                         <!-- Personal Information -->
                         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
                             <div>
-                                <label for="name" class="block text-sm font-medium text-white mb-2">Full Name</label>
-                                <input type="text" id="name" wire:model="name" class="mt-1 block w-full rounded-md bg-white/10 border border-white/20 backdrop-blur-sm text-white placeholder-gray-300 focus:border-blue-400 focus:ring-2 focus:ring-blue-400/50 sm:text-sm transition-all">
+                                <label for="account_name" class="block text-sm font-medium text-white mb-2">Full Name</label>
+                                <input type="text" id="account_name" name="name" wire:model="name" class="mt-1 block w-full rounded-md bg-white/10 border border-white/20 backdrop-blur-sm text-white placeholder-gray-300 focus:border-blue-400 focus:ring-2 focus:ring-blue-400/50 sm:text-sm transition-all">
                                 @error('name') <span class="text-red-400 text-sm">{{ $message }}</span> @enderror
                             </div>
                             <div>
-                                <label for="email" class="block text-sm font-medium text-white mb-2">Email Address</label>
-                                <input type="email" id="email" wire:model="email" class="mt-1 block w-full rounded-md bg-white/10 border border-white/20 backdrop-blur-sm text-white placeholder-gray-300 focus:border-blue-400 focus:ring-2 focus:ring-blue-400/50 sm:text-sm transition-all">
+                                <label for="account_email" class="block text-sm font-medium text-white mb-2">Email Address</label>
+                                <input type="email" id="account_email" name="email" wire:model="email" class="mt-1 block w-full rounded-md bg-white/10 border border-white/20 backdrop-blur-sm text-white placeholder-gray-300 focus:border-blue-400 focus:ring-2 focus:ring-blue-400/50 sm:text-sm transition-all">
                                 @error('email') <span class="text-red-400 text-sm">{{ $message }}</span> @enderror
                             </div>
                             <div>
-                                <label for="phone" class="block text-sm font-medium text-white mb-2">Phone Number</label>
-                                <input type="tel" id="phone" wire:model="phone" class="mt-1 block w-full rounded-md bg-white/10 border border-white/20 backdrop-blur-sm text-white placeholder-gray-300 focus:border-blue-400 focus:ring-2 focus:ring-blue-400/50 sm:text-sm transition-all">
+                                <label for="account_phone" class="block text-sm font-medium text-white mb-2">Phone Number</label>
+                                <input type="tel" id="account_phone" name="phone" wire:model="phone" class="mt-1 block w-full rounded-md bg-white/10 border border-white/20 backdrop-blur-sm text-white placeholder-gray-300 focus:border-blue-400 focus:ring-2 focus:ring-blue-400/50 sm:text-sm transition-all">
                                 @error('phone') <span class="text-red-400 text-sm">{{ $message }}</span> @enderror
                             </div>
                             <div>
-                                <label for="date_of_birth" class="block text-sm font-medium text-white mb-2">Date of Birth</label>
-                                <input type="date" id="date_of_birth" wire:model="date_of_birth" class="mt-1 block w-full rounded-md bg-white/10 border border-white/20 backdrop-blur-sm text-white placeholder-gray-300 focus:border-blue-400 focus:ring-2 focus:ring-blue-400/50 sm:text-sm transition-all">
+                                <label for="account_date_of_birth" class="block text-sm font-medium text-white mb-2">Date of Birth</label>
+                                <input type="date" id="account_date_of_birth" name="date_of_birth" wire:model="date_of_birth" class="mt-1 block w-full rounded-md bg-white/10 border border-white/20 backdrop-blur-sm text-white placeholder-gray-300 focus:border-blue-400 focus:ring-2 focus:ring-blue-400/50 sm:text-sm transition-all">
                                 @error('date_of_birth') <span class="text-red-400 text-sm">{{ $message }}</span> @enderror
                             </div>
                             <div>
-                                <label for="company" class="block text-sm font-medium text-white mb-2">Company</label>
-                                <input type="text" id="company" wire:model="company" class="mt-1 block w-full rounded-md bg-white/10 border border-white/20 backdrop-blur-sm text-white placeholder-gray-300 focus:border-blue-400 focus:ring-2 focus:ring-blue-400/50 sm:text-sm transition-all">
+                                <label for="account_company" class="block text-sm font-medium text-white mb-2">Company</label>
+                                <input type="text" id="account_company" name="company" wire:model="company" class="mt-1 block w-full rounded-md bg-white/10 border border-white/20 backdrop-blur-sm text-white placeholder-gray-300 focus:border-blue-400 focus:ring-2 focus:ring-blue-400/50 sm:text-sm transition-all">
                                 @error('company') <span class="text-red-400 text-sm">{{ $message }}</span> @enderror
                             </div>
                             <div>
-                                <label for="website" class="block text-sm font-medium text-white mb-2">Website</label>
-                                <input type="url" id="website" wire:model="website" placeholder="https://" class="mt-1 block w-full rounded-md bg-white/10 border border-white/20 backdrop-blur-sm text-white placeholder-gray-300 focus:border-blue-400 focus:ring-2 focus:ring-blue-400/50 sm:text-sm transition-all">
+                                <label for="account_website" class="block text-sm font-medium text-white mb-2">Website</label>
+                                <input type="url" id="account_website" name="website" wire:model="website" placeholder="https://" class="mt-1 block w-full rounded-md bg-white/10 border border-white/20 backdrop-blur-sm text-white placeholder-gray-300 focus:border-blue-400 focus:ring-2 focus:ring-blue-400/50 sm:text-sm transition-all">
                                 @error('website') <span class="text-red-400 text-sm">{{ $message }}</span> @enderror
                             </div>
                         </div>
 
                         <div>
-                            <label for="bio" class="block text-sm font-medium text-white mb-2">Bio</label>
-                            <textarea id="bio" wire:model="bio" rows="3" class="mt-1 block w-full rounded-md bg-white/10 border border-white/20 backdrop-blur-sm text-white placeholder-gray-300 focus:border-blue-400 focus:ring-2 focus:ring-blue-400/50 sm:text-sm transition-all" placeholder="Tell us about yourself..."></textarea>
+                            <label for="account_bio" class="block text-sm font-medium text-white mb-2">Bio</label>
+                            <textarea id="account_bio" name="bio" wire:model="bio" rows="3" class="mt-1 block w-full rounded-md bg-white/10 border border-white/20 backdrop-blur-sm text-white placeholder-gray-300 focus:border-blue-400 focus:ring-2 focus:ring-blue-400/50 sm:text-sm transition-all" placeholder="Tell us about yourself..."></textarea>
                             @error('bio') <span class="text-red-400 text-sm">{{ $message }}</span> @enderror
                         </div>
 

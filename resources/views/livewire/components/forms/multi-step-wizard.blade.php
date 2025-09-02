@@ -124,7 +124,7 @@
                         Phone Number
                     </label>
                     <input type="tel" 
-                           id="phone" 
+                           id="wizard_phone" 
                            name="phone"
                            x-model="formData.phone"
                            @input="clearFieldError('phone')"
