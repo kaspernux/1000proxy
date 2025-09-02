@@ -570,7 +570,7 @@ class ServerPlanResource extends Resource
                 Tabs\Tab::make('Capacity')->schema([
                     InfolistSection::make('Usage & Limits')->schema([
                         TextEntry::make('volume')->label('Data (GB)'),
-                        TextEntry::make('unlimited_traffic')->label('Unlimited')->boolean(),
+                        TextEntry::make('unlimited_traffic')->label('Unlimited')->formatStateUsing(fn ($s) => $s ? 'Yes' : 'No'),
                         TextEntry::make('concurrent_connections')->label('Max Connections'),
                         TextEntry::make('bandwidth_mbps')->label('Bandwidth (Mbps)'),
                     ])->columns(4),
@@ -578,10 +578,10 @@ class ServerPlanResource extends Resource
                 Tabs\Tab::make('Meta')->schema([
                     InfolistSection::make('Meta')->schema([
                         TextEntry::make('visibility')->badge(),
-                        TextEntry::make('is_active')->label('Active')->boolean(),
-                        TextEntry::make('is_featured')->label('Featured')->boolean(),
-                        TextEntry::make('in_stock')->label('In Stock')->boolean(),
-                        TextEntry::make('on_sale')->label('On Sale')->boolean(),
+                        TextEntry::make('is_active')->label('Active')->formatStateUsing(fn ($s) => $s ? 'Yes' : 'No'),
+                        TextEntry::make('is_featured')->label('Featured')->formatStateUsing(fn ($s) => $s ? 'Yes' : 'No'),
+                        TextEntry::make('in_stock')->label('In Stock')->formatStateUsing(fn ($s) => $s ? 'Yes' : 'No'),
+                        TextEntry::make('on_sale')->label('On Sale')->formatStateUsing(fn ($s) => $s ? 'Yes' : 'No'),
                         TextEntry::make('created_at')->dateTime()->label('Created'),
                         TextEntry::make('updated_at')->dateTime()->label('Updated'),
                     ])->columns(3),

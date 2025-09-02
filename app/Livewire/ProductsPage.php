@@ -361,7 +361,7 @@ class ProductsPage extends Component
                               ->toArray();
 
         return view('livewire.products-page', [
-            'serverPlans' => $serverQuery->paginate(9),
+            'serverPlans' => $serverQuery->paginate(12),
             'brands'      => ServerBrand::where('is_active', 1)->get(['id', 'name', 'slug']),
             'categories'  => ServerCategory::where('is_active', 1)->get(['id', 'name', 'slug', 'image']),
             'countries'   => $countries,

@@ -73,6 +73,12 @@ class DatabaseSeeder extends Seeder
             ]);
         }
 
+        if ($this->command->confirm('Also seed Chicago server plans now (chicago.1000proxy.me)?', false)) {
+            $this->call([
+                ServerPlanChicagoSeeder::class,
+            ]);
+        }
+
         // Step 3: Customers (independent)
         $this->command->info('👥 Seeding customers...');
         $this->call([
