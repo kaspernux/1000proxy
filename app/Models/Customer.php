@@ -83,40 +83,52 @@ class Customer extends Authenticatable implements MustVerifyEmail
         'email_verified_at',
     ];
 
-    protected function casts(): array
-    {
-        return [
-            'email_verified_at' => 'datetime',
-            'suspended_at' => 'datetime',
-            'last_login_at' => 'datetime',
-            'first_start' => 'datetime',
-            'agent_date' => 'datetime',
-            'premium_expires_at' => 'datetime',
-            'date_of_birth' => 'date',
-            'password' => 'hashed',
-            'is_active' => 'boolean',
-            'is_agent' => 'boolean',
-            'email_notifications' => 'boolean',
-            'two_factor_enabled' => 'boolean',
-            'login_alerts' => 'boolean',
-            'premium' => 'boolean',
-            'sms_notifications' => 'array',
-            'privacy_settings' => 'array',
-            'account_stats' => 'array',
-        ];
-    }
+    // Use the standard Eloquent $casts property so Laravel will apply casts correctly
+    protected $casts = [
+        'email_verified_at' => 'datetime',
+        'suspended_at' => 'datetime',
+        'last_login_at' => 'datetime',
+        'first_start' => 'datetime',
+        'agent_date' => 'datetime',
+        'premium_expires_at' => 'datetime',
+        'date_of_birth' => 'date',
+        // Use Laravel's native hashed cast to ensure passwords are stored securely
+        'password' => 'hashed',
+        'is_active' => 'boolean',
+        'is_agent' => 'boolean',
+        'email_notifications' => 'boolean',
+        'two_factor_enabled' => 'boolean',
+        'login_alerts' => 'boolean',
+        'premium' => 'boolean',
+        'sms_notifications' => 'array',
+        'privacy_settings' => 'array',
+        'account_stats' => 'array',
+    ];
 
     protected static function booted()
     {
         static::created(function ($customer) {
-            $wallet = $customer->wallet()->create([
-                'balance' => 0,
-                'is_default' => true,
-            ]);
+            // Wrap wallet creation and address generation in try/catch so a failing QR service
+            // or filesystem permission issue doesn't cause the whole registration to 500.
+            try {
+                $wallet = $customer->wallet()->create([
+                    'balance' => 0,
+                    'is_default' => true,
+                ]);
 
-            $wallet->generateDepositAddresses();
+                // generateDepositAddresses() internally handles QR generation exceptions,
+                // but still guard the call in case of unexpected errors.
+                try {
+                    $wallet->generateDepositAddresses();
+                } catch (\Throwable $e) {
+                    \Log::warning('Failed to generate deposit addresses for customer wallet', ['customer_id' => $customer->id, 'error' => $e->getMessage()]);
+                }
+            } catch (\Throwable $e) {
+                \Log::warning('Failed creating wallet for customer', ['customer_id' => $customer->id, 'error' => $e->getMessage()]);
+            }
 
-            // Ensure the customer has a persistent referral code
+            // Ensure the customer has a persistent referral code. Do not allow failures here
+            // to interrupt the request.
             if (empty($customer->referral_code)) {
                 try {
                     $customer->referral_code = strtoupper(\Illuminate\Support\Str::random(8));

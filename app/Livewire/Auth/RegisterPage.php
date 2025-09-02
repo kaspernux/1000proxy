@@ -71,6 +71,9 @@ class RegisterPage extends Component
     {
         $this->is_loading = true;
 
+    // Log the incoming terms_accepted value for debugging
+    \Log::debug('Livewire registration save called', ['email' => $this->email, 'terms_accepted' => $this->terms_accepted]);
+
         try {
             // Check rate limiting
             $key = 'register.' . request()->ip();

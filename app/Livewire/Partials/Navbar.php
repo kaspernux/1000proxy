@@ -12,6 +12,9 @@ class Navbar extends Component
 {
     public $total_count = 0;
     public $tick = 0; // dummy reactive counter to force rerender when needed
+    // Accept terms flag present on some pages; declared here to avoid Livewire
+    // "Public property not found" errors when other components update it.
+    public $terms_accepted = false;
 
     protected $listeners = [
     'update-cart-count' => 'updateCartCount',

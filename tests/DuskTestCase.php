@@ -27,16 +27,28 @@ abstract class DuskTestCase extends BaseTestCase
      */
     protected function driver(): RemoteWebDriver
     {
-        $options = (new ChromeOptions)->addArguments(collect([
+        $args = collect([
             $this->shouldStartMaximized() ? '--start-maximized' : '--window-size=1920,1080',
             '--disable-search-engine-choice-screen',
             '--disable-smooth-scrolling',
-        ])->unless($this->hasHeadlessDisabled(), function (Collection $items) {
-            return $items->merge([
-                '--disable-gpu',
-                '--headless=new',
-            ]);
-        })->all());
+        ]);
+
+        // ensure unique user-data-dir to avoid "already in use" when tests run in parallel
+        $tmpDir = sys_get_temp_dir() . '/dusk_profile_' . uniqid();
+        if (! is_dir($tmpDir)) {
+            @mkdir($tmpDir, 0700, true);
+        }
+        $args->push('--user-data-dir=' . $tmpDir);
+        // extra flags commonly needed in CI/container environments
+        $args->push('--no-sandbox');
+        $args->push('--disable-dev-shm-usage');
+        $args->push('--disable-setuid-sandbox');
+
+        if (! $this->hasHeadlessDisabled()) {
+            $args = $args->merge(['--disable-gpu', '--headless=new']);
+        }
+
+        $options = (new ChromeOptions)->addArguments($args->all());
 
         return RemoteWebDriver::create(
             $_ENV['DUSK_DRIVER_URL'] ?? env('DUSK_DRIVER_URL') ?? 'http://localhost:9515',
