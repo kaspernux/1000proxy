@@ -182,3 +182,15 @@ Route::get('/test-basic', function () {
         'livewire_loaded' => class_exists('Livewire\Livewire')
     ]);
 });
+
+// Echo headers and cookies for PHPUnit to assert what it sends on a request.
+Route::get('/test-echo-headers', function (Request $request) {
+    return response()->json([
+        'headers' => $request->headers->all(),
+        'cookies' => $request->cookies->all(),
+        'raw_cookie' => $request->headers->get('Cookie'),
+    ]);
+})->withoutMiddleware([
+    \Illuminate\Foundation\Http\Middleware\VerifyCsrfToken::class,
+    \App\Http\Middleware\EnhancedCsrfProtection::class,
+]);

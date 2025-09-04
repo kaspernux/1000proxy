@@ -39,7 +39,9 @@ class NowPaymentsWebhookController extends Controller
             ]);
             return response()->json(['success' => false, 'error' => 'Invalid signature'], Response::HTTP_UNAUTHORIZED);
         }
-        Log::info('NowPayments Webhook Received (verified)', $payload);
+    Log::info('NowPayments Webhook Received (verified)', $payload);
+    // Mark request as verified so unified handler doesn't re-check with a different algorithm
+    $request->attributes->set('nowpayments_verified', true);
     // Delegate to PaymentController for unified processing (updates order / wallet transaction)
     $paymentController = app(PaymentController::class);
     $result = $paymentController->handleWebhook($request, 'nowpayments');

@@ -286,26 +286,43 @@ class ServerInbound extends Model
         $settings = json_decode($inbound->settings ?? '{}', true);
         $clients = $settings['clients'] ?? [];
 
-        return self::updateOrCreate(
-            [
-                'server_id' => $serverId,
-                'port' => $inbound->port,
-            ],
-            [
-                'remote_id' => $inbound->id ?? ($inbound->remote_id ?? null),
-                'protocol' => $inbound->protocol ?? null,
-                'remark' => $inbound->remark ?? '',
-                'enable' => $inbound->enable ?? true,
-                'expiry_time' => $inbound->expiry_time ?? 0,  // Store milliseconds directly from 3X-UI API
-                'settings' => $settings,
-                'streamSettings' => is_string($inbound->streamSettings) ? json_decode($inbound->streamSettings, true) : (array) $inbound->streamSettings,
-                'sniffing' => json_decode($inbound->sniffing ?? '{}', true),
-                'allocate' => json_decode($inbound->allocate ?? '{}', true),
-                'up' => $inbound->up ?? 0,
-                'down' => $inbound->down ?? 0,
-                'total' => count($clients), // ✅ set total to number of clients
-            ]
-        );
+        $attrs = [
+            'server_id' => $serverId,
+            'port' => $inbound->port,
+        ];
+        $values = [
+            'remote_id' => $inbound->id ?? ($inbound->remote_id ?? null),
+            'protocol' => $inbound->protocol ?? null,
+            'remark' => $inbound->remark ?? '',
+            'enable' => $inbound->enable ?? true,
+            'expiry_time' => $inbound->expiry_time ?? 0,  // Store milliseconds directly from 3X-UI API
+            'settings' => $settings,
+            'streamSettings' => is_string($inbound->streamSettings) ? json_decode($inbound->streamSettings, true) : (array) $inbound->streamSettings,
+            'sniffing' => json_decode($inbound->sniffing ?? '{}', true),
+            'allocate' => json_decode($inbound->allocate ?? '{}', true),
+            'up' => $inbound->up ?? 0,
+            'down' => $inbound->down ?? 0,
+            'total' => count($clients), // ✅ set total to number of clients
+        ];
+        $local = self::updateOrCreate($attrs, $values);
+        try {
+            // If debug flag set write a small trace indicating whether create or update
+            if (config('provision.debug_xui', env('PROVISION_DEBUG_XUI', false))) {
+                $trace = debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS, 6);
+                @file_put_contents(storage_path('app/xui_inbound_fromremote_' . ($serverId ?? 's') . '_' . ($inbound->port ?? 'p') . '_' . ($local->id ?? 'n') . '.json'), json_encode([
+                    'ts' => microtime(true),
+                    'action' => 'fromRemoteInbound:updateOrCreate',
+                    'server_id' => $serverId,
+                    'port' => $inbound->port ?? null,
+                    'remote_id' => $inbound->id ?? null,
+                    'local_id' => $local->id ?? null,
+                    'attrs' => $attrs,
+                    'values' => $values,
+                    'trace' => array_map(function($f){ return ['file'=>$f['file'] ?? null,'line'=>$f['line'] ?? null,'function'=>$f['function'] ?? null]; }, $trace),
+                ], JSON_PRETTY_PRINT));
+            }
+        } catch (\Throwable $_) {}
+        return $local;
     }
 
     // === 3X-UI API INTEGRATION METHODS ===

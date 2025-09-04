@@ -380,6 +380,11 @@
                                             <x-heroicon-o-calendar class="w-3 h-3 md:w-4 md:h-4 flex-shrink-0" />
                                             <span class="truncate">{{ \Carbon\Carbon::parse($transaction->created_at)->format('M j, Y H:i') }}</span>
                                         </p>
+                                        @if(!empty($transaction->payment_id))
+                                            <p class="text-xs md:text-sm text-gray-500 dark:text-gray-400 mt-1">
+                                                TxID: <a href="https://nowpayments.io/payment/?iid={{ urlencode($transaction->payment_id) }}" target="_blank" rel="noopener noreferrer" class="text-primary-600 dark:text-primary-400 hover:underline">{{ $transaction->payment_id }}</a>
+                                            </p>
+                                        @endif
                                     </div>
                                 </div>
                                 <div class="text-right flex-shrink-0">

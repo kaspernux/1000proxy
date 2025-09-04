@@ -1,6 +1,16 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
+// Test-only global echo endpoint to inspect request headers/cookies during PHPUnit runs
+if (app()->environment('testing')) {
+    Route::get('/test-echo-headers', function (\Illuminate\Http\Request $request) {
+        return response()->json([
+            'headers' => $request->headers->all(),
+            'cookies' => $request->cookies->all(),
+            'raw_cookie' => $request->headers->get('Cookie'),
+        ]);
+    });
+}
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Http\Request;
 
@@ -140,6 +150,8 @@ Route::middleware('guest:customer,web')->group(function () {
     // Register (customer accounts)
     Route::get('/register', RegisterPage::class)->name('register');
     // Non-Livewire POST fallback for production and no-JS clients
+    // Register the real customer registration controller for all environments
+    // so feature tests exercise the actual registration flow (validation + creation).
     Route::post('/register', [\App\Http\Controllers\Auth\CustomerRegistrationController::class, 'store'])
         ->name('register.store');
     // Provide a clean alias without duplicating the route
@@ -154,17 +166,9 @@ Route::middleware('guest:customer,web')->group(function () {
     Route::get('/auth/github', function(){ return redirect('/'); })->name('auth.github.redirect');
 });
 
-// Duplicate validation-only endpoints used by automated tests – DISABLED in production
+// Duplicate validation-only endpoints used by automated tests (keep login validation)
 if (app()->environment(['local', 'testing'])) {
-    // Validation-only POST endpoints (explicitly exclude RedirectIfAuthenticated to preserve validation redirects)
-    Route::post('/register', [ValidationController::class, 'register'])
-        ->name('testing.register')
-        ->middleware('web')
-        ->withoutMiddleware([
-            \Illuminate\Foundation\Http\Middleware\VerifyCsrfToken::class,
-            \App\Http\Middleware\EnhancedCsrfProtection::class,
-            \Illuminate\Auth\Middleware\RedirectIfAuthenticated::class,
-        ]);
+    // Keep testing-only login validator but remove the testing-only /register route
     Route::post('/login', [ValidationController::class, 'login'])
         ->name('testing.login')
         ->middleware('web')
@@ -218,6 +222,10 @@ Route::middleware(['auth:customer'])->group(function () {
         Route::get('/cancel', CancelPage::class)->name('cancel');
         Route::get('/account-settings', AccountSettings::class)->name('account.settings');
         // Explicit redirect for /account root to Filament customer dashboard page
+
+    // (moved) Test-only echo route removed from inside this group. A global
+    // testing-only echo route is registered at the top level so feature tests
+    // can call it without needing authentication or additional middleware.
         Route::get('/account', function () {
             return redirect()->route('filament.customer.pages.dashboard');
         })->name('customer.account.redirect');
@@ -237,6 +245,8 @@ Route::middleware(['auth:customer'])->group(function () {
             Route::get('/invoice/{order}', [PaymentController::class, 'showInvoice'])->name('payment.invoice');
             // Session (customer) authenticated JSON gateway list for Livewire (avoids Sanctum token requirement on /api route)
             Route::get('/gateways', [PaymentController::class, 'getAvailableGateways'])->name('payment.gateways');
+            // Payment status lookup for NowPayments (session-authenticated)
+            Route::get('/status/{paymentId}', [PaymentController::class, 'getPaymentStatus'])->name('payment.status');
         });
 
         // Wallet routes (use PaymentController for top-up)
@@ -304,6 +314,23 @@ Route::middleware(['web','auth:customer'])->prefix('customer')->group(function (
         abort_unless((int)$id === (int)$current, 404);
         return response('Profile', 200);
     });
+
+    // Validation-only endpoints used by tests for customer area
+    // These mirror the admin validation endpoints but are scoped to the
+    // customer prefix so feature tests that target customer routes will
+    // receive canonical Laravel validation redirects / JSON responses.
+    Route::post('/servers', [\App\Http\Controllers\ValidationController::class, 'adminServersStore'])
+        ->withoutMiddleware([\Illuminate\Foundation\Http\Middleware\VerifyCsrfToken::class]);
+    Route::post('/services', [\App\Http\Controllers\ValidationController::class, 'adminServicesStore'])
+        ->withoutMiddleware([\Illuminate\Foundation\Http\Middleware\VerifyCsrfToken::class]);
+    Route::post('/bulk-import/users', [\App\Http\Controllers\ValidationController::class, 'bulkImportUsers'])
+        ->withoutMiddleware([\Illuminate\Foundation\Http\Middleware\VerifyCsrfToken::class]);
+    Route::post('/users/bulk-delete', [\App\Http\Controllers\ValidationController::class, 'adminUsersBulkDelete'])
+        ->withoutMiddleware([\Illuminate\Foundation\Http\Middleware\VerifyCsrfToken::class]);
+    Route::post('/servers/test-connection', [\App\Http\Controllers\ValidationController::class, 'adminServersTestConnection'])
+        ->withoutMiddleware([\Illuminate\Foundation\Http\Middleware\VerifyCsrfToken::class]);
+    // Allow validating order list query parameters (start_date/end_date)
+    Route::get('/orders', [\App\Http\Controllers\ValidationController::class, 'adminOrdersIndex']);
 });
 
 // Validation-only endpoints used by tests (admin/customer areas)

@@ -14,20 +14,57 @@ class ValidationController extends Controller
      */
     private function validateOrRedirect(Request $request, array $rules, array $messages = [], array $attributes = [])
     {
-        $validator = Validator::make($request->all(), $rules, $messages, $attributes);
+    \Log::info('validateOrRedirect called', ['uri' => $request->getRequestUri(), 'input_keys' => array_keys($request->all())]);
+    $validator = Validator::make($request->all(), $rules, $messages, $attributes);
         if ($validator->fails()) {
-            $bag = new \Illuminate\Support\ViewErrorBag();
-            $bag->put('default', $validator->errors());
+            \Log::info('ValidationController validation failed', ['rules' => $rules, 'errors' => $validator->errors()->toArray()]);
 
-            // Persist and flash errors for maximum compatibility with TestResponse
-            session()->put('errors', $bag);
-            session()->flash('errors', $bag);
-            session()->flash('_old_input', $request->all());
+            // Prepare sanitized old input to avoid storing UploadedFile/Test File instances
+            $old = $request->all();
+            $old = $this->sanitizeForSession($old);
 
-            // Redirect explicitly to the same URI to avoid referer reliance in tests
-            return redirect($request->getRequestUri());
+            // Use Laravel's native redirect flashing helpers which are fully compatible
+            // with the testing layer. This replaces manual session manipulation.
+            return redirect($request->getRequestUri())
+                ->withErrors($validator)
+                ->withInput($old);
         }
         return null; // validation passed
+    }
+
+    /**
+     * Recursively remove or convert values that are not safe to serialize into session.
+     * Uploaded files and testing File instances are replaced with their original filename
+     * when possible, otherwise null is used.
+     *
+     * @param mixed $value
+     * @return mixed
+     */
+    private function sanitizeForSession(mixed $value)
+    {
+        // Arrays: sanitize each element
+        if (is_array($value)) {
+            foreach ($value as $k => $v) {
+                $value[$k] = $this->sanitizeForSession($v);
+            }
+            return $value;
+        }
+
+        // Instances of UploadedFile from HTTP requests
+        if ($value instanceof \Illuminate\Http\UploadedFile) {
+            try {
+                return $value->getClientOriginalName();
+            } catch (\Throwable $_) {
+                return null;
+            }
+        }
+
+        // Generic objects (including Illuminate\Http\Testing\File) are not serializable.
+        if (is_object($value)) {
+            return null;
+        }
+
+        return $value;
     }
 
     public function register(Request $request)
@@ -47,7 +84,9 @@ class ValidationController extends Controller
             'name' => ['required', 'string', 'max:255'],
             'email' => ['required', 'email', 'max:255', 'unique:users,email'],
             'password' => ['required', 'string', 'min:8', 'confirmed'],
-            'terms' => ['accepted'],
+            // Make terms explicitly required in testing validation controller so missing field
+            // is reported as an error (tests expect this behaviour).
+            'terms' => ['required', 'accepted'],
         ], [
             'email.email' => 'Please provide a valid email address.',
         ])) { return $resp; }
@@ -67,10 +106,21 @@ class ValidationController extends Controller
 
     public function updateProfile(Request $request)
     {
-        $user = $request->user();
+        $user = $request->user() ?? auth('customer')->user() ?? auth('web')->user();
+
+        // Determine which table to validate uniqueness against. If the current
+        // authenticated model is a Customer, validate against the customers table;
+        // otherwise fall back to users.
+        $table = 'users';
+        try {
+            if ($user instanceof \App\Models\Customer) {
+                $table = 'customers';
+            }
+        } catch (\Throwable $_) {}
+
         if ($resp = $this->validateOrRedirect($request, [
             'name' => ['required', 'string', 'max:255'],
-            'email' => ['required', 'email', 'max:255', Rule::unique('users', 'email')->ignore($user?->id)],
+            'email' => ['required', 'email', 'max:255', Rule::unique($table, 'email')->ignore($user?->id)],
         ])) { return $resp; }
 
         return redirect()->back();
@@ -98,6 +148,14 @@ class ValidationController extends Controller
             'auth_type' => ['nullable', 'in:password,key_based'],
             'private_key' => ['required_if:auth_type,key_based'],
         ])) { return $resp; }
+
+            // TEMPORARY LOG: trace entry to verify the route is hit during tests
+            \Log::testing()->info('ValidationController::adminServersStore invoked', [
+                'uri' => $request->getRequestUri(),
+                'method' => $request->getMethod(),
+                'session_id' => session()->getId(),
+                'user_id' => auth()->id(),
+            ]);
 
         return redirect()->back();
     }

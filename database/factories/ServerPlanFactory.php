@@ -30,11 +30,10 @@ class ServerPlanFactory extends Factory
 
     $name = $this->faker->randomElement($planTypes) . ' ' . $this->faker->randomElement(['Proxy', 'VPN', 'Server']);
 
-    // Deterministic unique slug generation to avoid DB unique constraint violations in heavy factory usage
-    static $slugCounters = [];
+    // Robust unique slug generation to avoid DB unique constraint collisions during heavy factory usage
+    // Use a short random suffix so multiple test processes or reuse won't collide on the same slug.
     $baseSlug = Str::slug($name);
-    $slugCounters[$baseSlug] = ($slugCounters[$baseSlug] ?? 0) + 1;
-    $slug = $slugCounters[$baseSlug] === 1 ? $baseSlug : $baseSlug.'-'.$slugCounters[$baseSlug];
+    $slug = $baseSlug . '-' . Str::random(6);
 
         return [
             'server_id' => Server::factory(),

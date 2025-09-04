@@ -221,6 +221,21 @@ class AppServiceProvider extends ServiceProvider
 
         Model::unguard();
 
+        // Test-only convenience: when running PHPUnit, if tests mock the Log facade
+        // with Mockery and don't set expectations for channel(), calling Log::channel()
+        // will raise BadMethodCallException. Detect a Mockery root and stub channel()
+        // to return the mock itself so code that chains ->channel(...)->info() keeps working.
+        if (app()->runningUnitTests()) {
+            try {
+                $logRoot = \Illuminate\Support\Facades\Log::getFacadeRoot();
+                if (is_object($logRoot) && method_exists($logRoot, 'shouldReceive')) {
+                    $logRoot->shouldReceive('channel')->andReturn($logRoot);
+                }
+            } catch (\Throwable $e) {
+                // ignore test-only helper failures
+            }
+        }
+
         // Add helpful Livewire testing macros expected by our test suite
         if (class_exists(\Livewire\Features\SupportTesting\Testable::class)) {
             \Livewire\Features\SupportTesting\Testable::macro('assertNull', function (string $name) {

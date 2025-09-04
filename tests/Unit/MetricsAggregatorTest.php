@@ -16,9 +16,11 @@ class MetricsAggregatorTest extends TestCase
 
     public function test_calculates_revenue_summary(): void
     {
-        Order::factory()->create(['payment_status' => 'paid', 'grand_amount' => 100]);
-        Order::factory()->create(['payment_status' => 'paid', 'grand_amount' => 50]);
-        Cache::forget('dash.revenue.summary');
+    // Ensure deterministic state for this test
+    Order::query()->delete();
+    Cache::forget('dash.revenue.summary');
+    Order::factory()->create(['payment_status' => 'paid', 'grand_amount' => 100]);
+    Order::factory()->create(['payment_status' => 'paid', 'grand_amount' => 50]);
         $agg = app(MetricsAggregator::class);
         $summary = $agg->revenueSummary();
         $this->assertEquals(150, (int)$summary['total']);

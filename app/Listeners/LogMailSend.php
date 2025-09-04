@@ -11,9 +11,16 @@ class LogMailSend
         // Lightweight visibility: who/subject
         $to = collect($event->message->getTo() ?? [])->map(fn($a) => $a->getAddress())->all();
         $subject = $event->message->getSubject();
-        logger()->channel('security')->info('Mail sending', [
-            'to' => $to,
-            'subject' => $subject,
-        ]);
+        try {
+            logger()->channel('security')->info('Mail sending', [
+                'to' => $to,
+                'subject' => $subject,
+            ]);
+        } catch (\Throwable $e) {
+            logger()->info('Mail sending', [
+                'to' => $to,
+                'subject' => $subject,
+            ]);
+        }
     }
 }

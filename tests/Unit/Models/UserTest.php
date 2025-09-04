@@ -48,7 +48,9 @@ class UserTest extends TestCase
     public function test_specific_emails_can_access_panel()
     {
         $adminEmail = 'admin@1000proxy.io';
-        $user = User::factory()->create(['email' => $adminEmail]);
+    // Ensure no pre-existing admin user (seeders or other tests) cause unique constraint violations
+    User::where('email', $adminEmail)->delete();
+    $user = User::factory()->create(['email' => $adminEmail]);
 
         $this->assertTrue($user->canAccessPanel());
     }

@@ -50,6 +50,7 @@ class AccessibilityTestSuite extends TestCase
             'name' => 'Gaming',
             'description' => 'Gaming servers',
             'is_active' => true,
+            'slug' => 'gaming-' . uniqid(),
         ]);
 
         // Create server brands

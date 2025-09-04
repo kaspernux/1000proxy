@@ -35,11 +35,19 @@ class XUIService
     {
         try {
             if ($this->server->isLoginLocked()) {
-                logger()->channel('xui')->warning("Login locked for server {$this->server->name} due to too many failed attempts");
+                try {
+                    logger()->channel('xui')->warning("Login locked for server {$this->server->name} due to too many failed attempts");
+                } catch (\Throwable $e) {
+                    logger()->warning("Login locked for server {$this->server->name} due to too many failed attempts");
+                }
                 return false;
             }
             $base = rtrim($this->server->getApiBaseUrl(), '/');
-            $logger = logger()->channel('xui');
+            try {
+                $logger = logger()->channel('xui');
+            } catch (\Throwable $e) {
+                $logger = logger();
+            }
             $bodyLen = app()->bound('xui.debug_body') ? 1500 : 400;
 
             // Fetch login page for potential CSRF token
@@ -68,7 +76,7 @@ class XUIService
                     ]);
                 }
             } catch (\Throwable $t) {
-                $logger->debug('Login page fetch failed', ['error' => $t->getMessage()]);
+                try { $logger->debug('Login page fetch failed', ['error' => $t->getMessage()]); } catch (\Throwable $e) { logger()->debug('Login page fetch failed', ['error' => $t->getMessage()]); }
             }
 
             // Primary JSON login attempt
@@ -128,7 +136,7 @@ class XUIService
                     }
                 }
             } catch (\Throwable $t) {
-                $logger->debug('Primary JSON login exception', ['error' => $t->getMessage()]);
+                try { $logger->debug('Primary JSON login exception', ['error' => $t->getMessage()]); } catch (\Throwable $e) { logger()->debug('Primary JSON login exception', ['error' => $t->getMessage()]); }
             }
             $altBase = preg_replace('#^https://#','http://',$base);
             if ($altBase === $base) {
@@ -146,12 +154,21 @@ class XUIService
 
             $logger = logger()->channel('xui');
             foreach ($candidates as $loginUrl) {
-                $logger->debug('Attempting 3X-UI login', [
-                    'server_id' => $this->server->id,
-                    'name' => $this->server->name,
-                    'login_url' => $loginUrl,
-                    'timeout' => $this->timeout,
-                ]);
+                try {
+                    $logger->debug('Attempting 3X-UI login', [
+                        'server_id' => $this->server->id,
+                        'name' => $this->server->name,
+                        'login_url' => $loginUrl,
+                        'timeout' => $this->timeout,
+                    ]);
+                } catch (\Throwable $e) {
+                    logger()->debug('Attempting 3X-UI login', [
+                        'server_id' => $this->server->id,
+                        'name' => $this->server->name,
+                        'login_url' => $loginUrl,
+                        'timeout' => $this->timeout,
+                    ]);
+                }
 
     $request = Http::timeout($this->timeout)->withOptions(['version' => '1.1'])
                     ->withHeaders([
@@ -184,13 +201,23 @@ class XUIService
                 }
 
                 $bodySnippet = substr($response->body(), 0, $bodyLen);
-                $logger->debug('Login HTTP response', [
-                    'login_url' => $loginUrl,
-                    'status' => $response->status(),
-                    'content_type' => $response->header('Content-Type'),
-                    'length' => strlen($response->body()),
-                    'body_snippet' => $bodySnippet,
-                ]);
+                    try {
+                        $logger->debug('Login HTTP response', [
+                            'login_url' => $loginUrl,
+                            'status' => $response->status(),
+                            'content_type' => $response->header('Content-Type'),
+                            'length' => strlen($response->body()),
+                            'body_snippet' => $bodySnippet,
+                        ]);
+                    } catch (\Throwable $e) {
+                        logger()->debug('Login HTTP response', [
+                            'login_url' => $loginUrl,
+                            'status' => $response->status(),
+                            'content_type' => $response->header('Content-Type'),
+                            'length' => strlen($response->body()),
+                            'body_snippet' => $bodySnippet,
+                        ]);
+                    }
 
                 if ($response->successful()) {
                     $json = null;
@@ -200,16 +227,16 @@ class XUIService
                     $sessionCookie = $this->extractSessionCookie($response);
                     // Detect HTML login page (contains 'async mounted()' or 'twoFactorEnable')
                     if (!$sessionCookie && str_contains(strtolower($bodySnippet), 'vue') && str_contains($bodySnippet, 'twoFactorEnable')) {
-                        $logger->debug('Detected HTML login form (no session cookie yet)', ['login_url' => $loginUrl]);
+                        try { $logger->debug('Detected HTML login form (no session cookie yet)', ['login_url' => $loginUrl]); } catch (\Throwable $e) { logger()->debug('Detected HTML login form (no session cookie yet)', ['login_url' => $loginUrl]); }
                     }
                     if (($data['success'] ?? false) && $sessionCookie) {
                         if ($this->verifySession($sessionCookie)) {
                             $cookieName = $this->server->session_cookie_name ?: 'session';
                             $this->server->updateSession($sessionCookie, 60, $cookieName);
-                            $logger->info("Successfully logged in to 3X-UI server via {$loginUrl}");
+                            try { $logger->info("Successfully logged in to 3X-UI server via {$loginUrl}"); } catch (\Throwable $e) { logger()->info("Successfully logged in to 3X-UI server via {$loginUrl}"); }
                             return true;
                         } else {
-                            $logger->warning('Obtained cookie but verification failed for candidate', ['login_url' => $loginUrl]);
+                            try { $logger->warning('Obtained cookie but verification failed for candidate', ['login_url' => $loginUrl]); } catch (\Throwable $e) { logger()->warning('Obtained cookie but verification failed for candidate', ['login_url' => $loginUrl]); }
                         }
                     }
 
@@ -286,6 +313,8 @@ class XUIService
                     ->withHeaders($this->server->getSessionHeader() + ['Connection' => 'close']);
 
                 if ($method === 'POST') {
+                    // Default to JSON POST for API endpoints (matches Postman collection examples).
+                    // The 'settings' value is typically a JSON string inside the JSON body.
                     $response = $request->asJson()->post($this->server->getApiEndpoint($endpoint), $data);
                 } else {
                     $response = $request->get($this->server->getApiEndpoint($endpoint));
@@ -644,11 +673,131 @@ class XUIService
             }
             // Prefer authenticated request when we have a valid session
             if ($this->server && $this->server->hasValidSession()) {
-                $result = $this->makeAuthenticatedRequest('POST', 'panel/api/inbounds/addClient', [
-                    'id' => $inboundId,
-                    'settings' => $clientSettings,
-                ]);
-                return is_array($result) ? $result : ['success' => false];
+                try {
+                    // Use asForm() to ensure the 'settings' JSON string is posted as form data (some XUI builds expect this)
+                    $endpoint = $this->server->getApiEndpoint('panel/api/inbounds/addClient');
+                    // Use session header but ensure Content-Type does not claim JSON when sending form data
+                    $sessionHeaders = $this->server->getSessionHeader() ?? [];
+                    if (isset($sessionHeaders['Content-Type'])) {
+                        unset($sessionHeaders['Content-Type']);
+                    }
+                    $req = \Illuminate\Support\Facades\Http::timeout($this->timeout)->withOptions(['version' => '1.1'])->withHeaders($sessionHeaders + ['Connection' => 'close']);
+                    // Persist the exact request we are about to send for forensic analysis
+                    try {
+                        $reqDump = [
+                            'timestamp' => now()->toISOString(),
+                            'server_id' => $this->server->id ?? null,
+                            'endpoint' => $endpoint,
+                            'headers' => $this->server->getSessionHeader() + ['Connection' => 'close'],
+                            'body' => [ 'id' => $inboundId, 'settings' => is_string($clientSettings) ? $clientSettings : json_encode($clientSettings) ],
+                        ];
+                        @file_put_contents(storage_path('app/xui_addClient_request_' . time() . '.json'), json_encode($reqDump, JSON_PRETTY_PRINT));
+                    } catch (\Throwable $_) { /* ignore write failures */ }
+
+                    $resp = $req->asForm()->post($endpoint, [ 'id' => $inboundId, 'settings' => $clientSettings ]);
+                    // Attempt to parse JSON if present
+                    try { $json = $resp->json(); } catch (\Throwable $t) { $json = null; }
+                    if ($resp->successful() && is_array($json)) {
+                        return $json;
+                    }
+                    // If not successful or not JSON, capture response and throw to trigger diagnostic path
+                    $fullBody = $resp->body();
+                    @file_put_contents(storage_path('app/xui_addClient_response_' . time() . '.json'), json_encode([ 'body' => $fullBody, 'status' => $resp->status() ], JSON_PRETTY_PRINT));
+                    throw new \Exception('Non-successful response from addClient: ' . substr($fullBody, 0, 1000));
+                } catch (\Exception $e) {
+                    // Capture payload for debugging when the panel returns a logical failure
+                    try {
+                        $dump = [
+                            'timestamp' => now()->toISOString(),
+                            'server_id' => $this->server->id ?? null,
+                            'inbound_id' => $inboundId,
+                            'payload' => is_string($clientSettings) ? $clientSettings : (string) json_encode($clientSettings),
+                            'error' => $e->getMessage(),
+                        ];
+                        @file_put_contents(storage_path('app/xui_addClient_payload_' . time() . '.json'), json_encode($dump, JSON_PRETTY_PRINT));
+                    } catch (\Throwable $_) { /* ignore write failures */ }
+
+                    logger()->channel('xui')->error("Failed to add client to inbound {$inboundId}: " . $e->getMessage(), [
+                        'server_id' => $this->server->id ?? null,
+                        'payload_snippet' => substr(is_string($clientSettings) ? $clientSettings : json_encode($clientSettings), 0, 1000),
+                    ]);
+                    // This fallback is potentially destructive and therefore disabled by default.
+                    // Enable only via config: xui.allow_fallback_update = true
+                    if (!config('xui.allow_fallback_update', false)) {
+                        logger()->channel('xui')->error('Fallback updateInbound disabled by configuration; aborting to avoid destructive changes', ['inbound_id' => $inboundId]);
+                        return ['success' => false, 'error' => 'Fallback update disabled by server configuration'];
+                    }
+
+                    try {
+                        logger()->channel('xui')->warning('Attempting fallback: update inbound settings directly to add client', ['inbound_id' => $inboundId]);
+                        $existing = $this->getInbound($inboundId);
+
+                        // Abort if we couldn't fetch inbound to avoid destructive updates
+                        if (empty($existing) || !isset($existing['id'])) {
+                            logger()->channel('xui')->error('Fallback aborted: existing inbound data missing or empty', ['inbound_id' => $inboundId, 'existing' => $existing]);
+                            return ['success' => false, 'error' => 'Existing inbound data missing - aborting fallback to avoid destructive update'];
+                        }
+
+                        // Backup the existing inbound locally before making any mutation
+                        try { @file_put_contents(storage_path('app/xui_inbound_backup_' . time() . '.json'), json_encode($existing, JSON_PRETTY_PRINT)); } catch (\Throwable $_) {}
+
+                        $settingsRaw = $existing['settings'] ?? ($existing['obj']['settings'] ?? null);
+                        $settingsArr = [];
+                        if (is_string($settingsRaw) && $settingsRaw !== '') {
+                            $decoded = json_decode($settingsRaw, true);
+                            if (is_array($decoded)) $settingsArr = $decoded;
+                        } elseif (is_array($settingsRaw)) {
+                            $settingsArr = $settingsRaw;
+                        }
+                        if (!isset($settingsArr['clients']) || !is_array($settingsArr['clients'])) {
+                            $settingsArr['clients'] = [];
+                        }
+                        $newClients = json_decode(is_string($clientSettings) ? $clientSettings : json_encode($clientSettings), true);
+                        $incoming = $newClients['clients'] ?? [];
+                        foreach ($incoming as $c) {
+                            // prevent duplicates by id
+                            $exists = collect($settingsArr['clients'])->first(fn($x) => isset($x['id']) && ($x['id'] == ($c['id'] ?? null)));
+                            if (!$exists) {
+                                $settingsArr['clients'][] = $c;
+                            }
+                        }
+
+                        // Construct a full inbound payload (do not send a partial payload which may overwrite other fields)
+                        $updatePayload = [
+                            'id' => $existing['id'],
+                            'up' => $existing['up'] ?? 0,
+                            'down' => $existing['down'] ?? 0,
+                            'total' => $existing['total'] ?? 0,
+                            'remark' => $existing['remark'] ?? '',
+                            'enable' => $existing['enable'] ?? true,
+                            'expiryTime' => $existing['expiryTime'] ?? 0,
+                            'listen' => $existing['listen'] ?? '',
+                            'port' => $existing['port'] ?? null,
+                            'protocol' => $existing['protocol'] ?? null,
+                            // streamSettings/sniffing/allocate are stored as JSON strings in many panels
+                            'settings' => json_encode($settingsArr),
+                            'streamSettings' => $existing['streamSettings'] ?? ($existing['stream_settings'] ?? json_encode([])),
+                            'tag' => $existing['tag'] ?? '',
+                            'sniffing' => $existing['sniffing'] ?? ($existing['sniffing'] ?? json_encode([])),
+                            'allocate' => $existing['allocate'] ?? ($existing['allocate'] ?? json_encode([])),
+                        ];
+
+                        // Use authenticated request directly to obtain the full result object which contains 'success'
+                        try {
+                            $result = $this->makeAuthenticatedRequest('POST', "panel/api/inbounds/update/{$inboundId}", $updatePayload);
+                            if (is_array($result) && ($result['success'] ?? false)) {
+                                return $result;
+                            }
+                            logger()->channel('xui')->error('Fallback updateInbound did not return success', ['result' => $result, 'inbound_id' => $inboundId]);
+                        } catch (\Throwable $inner) {
+                            logger()->channel('xui')->error('Fallback updateInbound request failed', ['error' => $inner->getMessage(), 'inbound_id' => $inboundId]);
+                        }
+                    } catch (\Throwable $fallbackEx) {
+                        logger()->channel('xui')->error('Fallback updateInbound failed', ['error' => $fallbackEx->getMessage(), 'inbound_id' => $inboundId]);
+                    }
+
+                    return ['success' => false, 'error' => $e->getMessage()];
+                }
             }
 
             // Fallback (used primarily in tests): call the computed endpoint directly without requiring a session
@@ -1466,7 +1615,9 @@ class XUIService
         $errors = [];
         if (empty($config['host'] ?? '')) $errors[] = 'Host is required';
         if (!empty($config['port']) && !is_numeric($config['port'])) $errors[] = 'Port must be numeric';
-        if (!empty($config['protocol']) && !in_array($config['protocol'], ['vless','vmess','trojan','shadowsocks','mixed'])) $errors[] = 'Unsupported protocol';
+    // Accept broader set of protocols used by various XUI panels
+    $allowed = ['vless','vmess','trojan','shadowsocks','mixed','dokodemo-door','socks','wireguard','http'];
+    if (!empty($config['protocol']) && !in_array($config['protocol'], $allowed)) $errors[] = 'Unsupported protocol';
         return [
             'valid' => empty($errors),
             'errors' => $errors,

@@ -181,13 +181,21 @@ class OrderController extends Controller
                 'payment_status' => 'paid',
             ]);
 
-            // Dispatch job to process order
+            // Dispatch job to process order. Protect provisioning errors from turning into a 500
             if ($order->payment_status === 'paid') {
-                // Avoid external queue drivers during tests
-                if (app()->environment('testing')) {
-                    ProcessXuiOrder::dispatchSync($order);
-                } else {
-                    ProcessXuiOrder::dispatch($order);
+                try {
+                    // Avoid external queue drivers during tests
+                    if (app()->environment('testing')) {
+                        ProcessXuiOrder::dispatchSync($order);
+                    } else {
+                        ProcessXuiOrder::dispatch($order);
+                    }
+                } catch (\Throwable $provisionEx) {
+                    // Log provisioning failure but allow order creation to succeed.
+                    Log::warning('Provisioning job failed during order creation', [
+                        'order_id' => $order->id,
+                        'error' => $provisionEx->getMessage(),
+                    ]);
                 }
             }
 
@@ -220,6 +228,16 @@ class OrderController extends Controller
                 'customer_id' => $customer->id ?? null,
                 'server_id' => $server->id
             ]);
+
+            // During tests, surface the exception message and trace to make failures actionable.
+            if (app()->environment('testing') || config('app.debug')) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Order creation failed',
+                    'error' => $e->getMessage(),
+                    'trace' => $e->getTraceAsString(),
+                ], 500);
+            }
 
             return response()->json([
                 'success' => false,

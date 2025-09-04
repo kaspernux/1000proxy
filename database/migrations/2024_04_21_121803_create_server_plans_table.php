@@ -30,7 +30,7 @@ return new class extends Migration
             $table->string('region')->nullable()->comment('Region/State/Province');
             $table->index('region');
 
-            $table->enum('protocol', ['vless', 'vmess', 'trojan', 'shadowsocks', 'mixed'])->default('vless');
+            $table->enum('protocol', ['vless', 'vmess', 'trojan', 'shadowsocks', 'dokodemo-door', 'socks', 'http', 'wireguard', 'mixed'])->default('vless');
             $table->json('supported_protocols')->nullable();
             $table->index('protocol');
 
@@ -54,7 +54,7 @@ return new class extends Migration
             $table->integer('capacity')->nullable();
             $table->decimal('price', 10, 2);
             $table->decimal('original_price', 10, 2)->nullable();
-            $table->enum('type', ['single', 'multiple', 'dedicated', 'branded'])->default('single');
+            $table->enum('type', ['single', 'multiple', 'shared', 'branded', 'reseller', 'dedicated'])->default('multiple');
             $table->integer('days')->default(30);
             $table->string('billing_cycle', 20)->default('monthly');
             $table->index('billing_cycle');

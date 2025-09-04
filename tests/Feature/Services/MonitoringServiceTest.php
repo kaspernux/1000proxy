@@ -175,8 +175,12 @@ class MonitoringServiceTest extends TestCase
     
     public function test_health_check_logs_critical_issues()
     {
+    // Ensure channel() is allowed on the Log facade mock used by tests
+    Log::shouldReceive('channel')->andReturnSelf();
     Log::shouldReceive('critical')->atLeast()->once();
     Log::shouldReceive('error')->atLeast()->once();
+    // Some code paths may issue warnings; allow them on the mock
+    Log::shouldReceive('warning')->zeroOrMoreTimes();
         
         // Create scenario with no active servers (critical issue)
     Server::factory()->create(['status' => 'down']);
@@ -186,6 +190,7 @@ class MonitoringServiceTest extends TestCase
     
     public function test_health_check_logs_warning_issues()
     {
+    Log::shouldReceive('channel')->andReturnSelf();
     Log::shouldReceive('warning')->atLeast()->once();
         Log::shouldReceive('error')->atLeast()->zeroOrMoreTimes();
         

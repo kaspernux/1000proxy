@@ -31,7 +31,8 @@ class LoginPageTest extends TestCase
     {
         $this->customer = Customer::factory()->create([
             'email' => 'customer@example.com',
-            'password' => Hash::make('password123')
+            'password' => Hash::make('password123'),
+            'email_verified_at' => now(),
         ]);
     }
 
@@ -205,7 +206,7 @@ class LoginPageTest extends TestCase
         Livewire::test(LoginPage::class)
             ->set('email', '')
             ->call('requestPasswordReset')
-            ->assertDispatched('toast'); // Should show warning alert
+            ->assertDispatched('alert'); // Should show warning alert (alert browser event)
     }
 
     /** @test */

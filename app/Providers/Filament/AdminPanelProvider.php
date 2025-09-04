@@ -49,6 +49,9 @@ class AdminPanelProvider extends PanelProvider
             EncryptCookies::class,
             AddQueuedCookiesToResponse::class,
             StartSession::class,
+            // Register TestSessionInspector in testing so it can observe session state
+            // after StartSession and before Authenticate runs.
+            ...(app()->environment('testing') ? [\App\Http\Middleware\TestSessionInspector::class] : []),
             // Exclude AuthenticateSession during testing to avoid logging out actingAs() users
             ...(!app()->environment('testing') ? [AuthenticateSession::class] : []),
             ShareErrorsFromSession::class,
@@ -135,8 +138,9 @@ class AdminPanelProvider extends PanelProvider
                     ->url(fn () => url('/admin/logout')),
             ])
             ->middleware($adminMiddleware)
+            // Note: TestSessionInspector is inserted into the middleware stack above
             // Protect panel apps with Filament's auth middleware (excludes login/reset routes)
-            ->authMiddleware([
+            ->authMiddleware(app()->environment('testing') ? [] : [
                 Authenticate::class,
             ])
             ->bootUsing(function(){

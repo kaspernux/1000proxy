@@ -408,6 +408,16 @@ class TopupWallet extends Component
                     $paymentPayload = $result['data']['payment'] ?? [];
                     $paymentUrl = $paymentPayload['payment_url']
                         ?? ($result['data']['payment_url'] ?? ($result['redirect_url'] ?? null));
+                // Store pending transaction info for polling (if payment_id present)
+                if (!empty($paymentPayload['payment_id'])) {
+                    $this->pendingTransactions[] = (object) [
+                        'id' => $result['data']['transaction_id'] ?? null,
+                        'payment_id' => $paymentPayload['payment_id'],
+                        'payment_url' => $paymentPayload['payment_url'] ?? null,
+                        'status' => $paymentPayload['status'] ?? 'pending',
+                        'amount' => $paymentPayload['amount'] ?? $this->amount,
+                    ];
+                }
                 if ($paymentUrl) {
                     return redirect()->away($paymentUrl);
                 }
@@ -461,6 +471,34 @@ class TopupWallet extends Component
                 'timer' => 5000,
                 'toast' => true,
             ]);
+        }
+    }
+
+    /**
+     * Poll payment status for a NowPayments payment_id
+     */
+    public function pollPaymentStatus(string $paymentId)
+    {
+    try {
+        // Call service directly to avoid needing session cookies for internal HTTP call
+        $nowService = app(\App\Services\PaymentGateways\NowPaymentsService::class);
+        $res = $nowService->verifyPayment($paymentId);
+        $data = $res['data'] ?? [];
+            // Update pendingTransactions entry if exists
+            foreach ($this->pendingTransactions as &$pt) {
+                if (($pt->payment_id ?? null) === $paymentId) {
+            $pt->status = $data['status'] ?? $data['payment_status'] ?? $pt->status;
+                    // If finished/confirmed, move to completed
+                    if (in_array($pt->status, ['finished','confirmed','paid','completed'])) {
+                        $this->completedTransactions[] = $pt;
+                        $this->pendingTransactions = array_filter($this->pendingTransactions, fn($x) => ($x->payment_id ?? null) !== $paymentId);
+                        $this->loadTransactionHistory();
+                    }
+                    break;
+                }
+            }
+        } catch (\Exception $e) {
+            Log::warning('Poll payment status failed', ['payment_id' => $paymentId, 'error' => $e->getMessage()]);
         }
     }
 

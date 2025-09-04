@@ -149,13 +149,29 @@ class CacheOptimizationServiceTest extends TestCase
             'server_id' => $activeServers->first()->id,
         ]);
         $settings = Setting::factory()->count(5)->create();
-        
+    // no-op extra debug removed
+
         $result = $this->cacheService->warmUpCache();
         
         $this->assertTrue($result);
         
         // Verify that critical data is cached
         $cachedServers = Cache::get('server:active_servers');
+        // DEBUG: dump cachedServers content for investigation
+        if (is_iterable($cachedServers)) {
+            echo "DEBUG-CACHED-SERVERS: count=" . (is_countable($cachedServers) ? count($cachedServers) : 'unknown') . "\n";
+            foreach ($cachedServers as $cs) {
+                if (is_object($cs) && property_exists($cs, 'id')) {
+                    echo "CACHED_SERVER_OBJ id=" . $cs->id . "\n";
+                } elseif (is_array($cs) && isset($cs['id'])) {
+                    echo "CACHED_SERVER_ARR id=" . $cs['id'] . "\n";
+                } else {
+                    echo "CACHED_UNKNOWN: " . json_encode($cs) . "\n";
+                }
+            }
+        } else {
+            echo "DEBUG-CACHED-SERVERS: not iterable: " . json_encode($cachedServers) . "\n";
+        }
         $cachedPlans = Cache::get('server:popular_plans');
         $cachedSettings = Cache::get('server:system_settings');
         

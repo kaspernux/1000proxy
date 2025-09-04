@@ -51,13 +51,13 @@ class HomePageBasicTest extends TestCase
         // Create categories using only existing database fields
         $category1 = ServerCategory::create([
             'name' => 'Gaming',
-            'slug' => 'gaming',
+            'slug' => 'gaming-' . uniqid(),
             'is_active' => true
         ]);
 
         $category2 = ServerCategory::create([
             'name' => 'Streaming',
-            'slug' => 'streaming',
+            'slug' => 'streaming-' . uniqid(),
             'is_active' => true
         ]);
 

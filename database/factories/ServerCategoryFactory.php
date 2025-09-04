@@ -35,11 +35,9 @@ class ServerCategoryFactory extends Factory
 
     $name = $this->faker->randomElement($categories) . ' ' . $this->faker->randomElement(['Proxy', 'VPN', 'Server']);
 
-    // Deterministic unique slug generation within test run to minimize DB lookups & race conditions
-    static $slugCounters = [];
+    // Robust unique slug generation for tests: append a short random suffix to avoid collisions
     $baseSlug = Str::slug($name);
-    $slugCounters[$baseSlug] = ($slugCounters[$baseSlug] ?? 0) + 1;
-    $slug = $slugCounters[$baseSlug] === 1 ? $baseSlug : $baseSlug.'-'.$slugCounters[$baseSlug];
+    $slug = $baseSlug . '-' . Str::random(6);
 
         return [
             'name' => $name,

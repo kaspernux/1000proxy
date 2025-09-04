@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Order;
 use App\Models\Invoice;
 use App\Models\PaymentMethod;
+use App\Models\WalletTransaction;
 use App\Http\Requests\CreatePaymentRequest;
 use App\Http\Requests\EstimatePriceRequest;
 use Illuminate\Http\Request;
@@ -321,6 +322,22 @@ class PaymentController extends Controller
                             'user_id' => $actor->id
                         ]
                     ]);
+                    // Persist external payment id on transaction so IPN can map by payment_id
+                    $payData = $result['data'] ?? [];
+                    if (!empty($payData['payment_id']) || !empty($payData['order_id'])) {
+                        if (!empty($payData['payment_id'])) {
+                            $transaction->payment_id = $payData['payment_id'];
+                        }
+                        $meta = is_array($transaction->metadata) ? $transaction->metadata : [];
+                        if (!empty($payData['payment_url'])) {
+                            $meta['payment_url'] = $payData['payment_url'];
+                        }
+                        if (!empty($payData['order_id'])) {
+                            $meta['gateway_order_id'] = $payData['order_id'];
+                        }
+                        $transaction->metadata = $meta;
+                        $transaction->save();
+                    }
                     break;
                 case 'wallet':
                     // For Customer model use getWallet() helper to ensure creation; for User fallback to relation or method if available
@@ -444,6 +461,16 @@ class PaymentController extends Controller
                             'transaction_id' => $transaction->id
                         ]
                     ]);
+                    // Persist external payment id on transaction so IPN can map by payment_id
+                    $payData = $result['data'] ?? [];
+                    if (!empty($payData['payment_id'])) {
+                        $transaction->payment_id = $payData['payment_id'];
+                        // store returned payment_url/invoice_url for reference
+                        if (!empty($payData['payment_url'])) {
+                            $transaction->metadata = array_merge(is_array($transaction->metadata) ? $transaction->metadata : [], ['payment_url' => $payData['payment_url']]);
+                        }
+                        $transaction->save();
+                    }
                     break;
                 case 'paypal':
                     $paypalService = app(\App\Services\PaymentGateways\PayPalPaymentService::class);
@@ -545,10 +572,11 @@ class PaymentController extends Controller
             }
             // NowPayments webhook
             elseif ($gateway === 'nowpayments') {
-                // Verify signature before proceeding
+                // If the dedicated webhook controller already validated the HMAC, skip re-check.
                 $signature = $request->header('X-Nowpayments-Sig');
                 $secret = (string) (config('services.nowpayments.webhook_secret') ?? '');
-                if (!$this->verifyWebhookSignature($request->getContent(), $signature, $secret)) {
+                $alreadyVerified = $request->attributes->get('nowpayments_verified', false);
+                if (!$alreadyVerified && !$this->verifyWebhookSignature($request->getContent(), $signature, $secret)) {
                     Log::warning('Invalid NowPayments webhook signature (unified handler)', [
                         'ip' => $request->ip(),
                         'payload' => $request->getContent(),
@@ -583,13 +611,22 @@ class PaymentController extends Controller
                         }
                     }
                 }
+                // Support mapping by transaction_id (internal) or payment_id (external)
+                $foundTx = null;
                 if ($transactionId) {
-                    $transaction = \App\Models\WalletTransaction::find($transactionId);
-                    if ($transaction && in_array($paymentStatus, ['finished', 'confirmed'])) {
-                        $transaction->update(['status' => 'completed']);
-                        $wallet = $transaction->wallet;
-                        $wallet->increment('balance', $transaction->amount);
-                    }
+                    $foundTx = \App\Models\WalletTransaction::find($transactionId);
+                }
+                if (!$foundTx && !empty($payload['payment_id'])) {
+                    $foundTx = \App\Models\WalletTransaction::where('payment_id', $payload['payment_id'])->first();
+                }
+                // Also allow matching by gateway order id stored in metadata
+                if (!$foundTx && !empty($payload['order_id'])) {
+                    $foundTx = \App\Models\WalletTransaction::whereJsonContains('metadata->gateway_order_id', $payload['order_id'])->first();
+                }
+                if ($foundTx && in_array($paymentStatus, ['finished', 'confirmed'])) {
+                    $foundTx->update(['status' => 'completed']);
+                    $wallet = $foundTx->wallet;
+                    $wallet->increment('balance', $foundTx->amount);
                 }
             }
             // PayPal webhook (stub)
@@ -744,6 +781,8 @@ class PaymentController extends Controller
             'data' => $gateways
         ]);
     }
+
+    
 
     /**
      * Create an invoice
@@ -915,9 +954,24 @@ class PaymentController extends Controller
                 return response()->json(['success'=>false,'error'=>'Forbidden'],403);
             }
 
+            // If invoice not found, attempt to locate a wallet transaction by payment_id
+            $tx = null;
+            if (!$invoice) {
+                $tx = WalletTransaction::where('payment_id', $paymentId)->first();
+                if (!$tx) {
+                    return response()->json(['success' => false, 'error' => 'Payment not found'], 404);
+                }
+            }
+
+            // Ensure ownership for wallet transactions
+            $customer = Auth::guard('customer_api')->user() ?? Auth::guard('customer')->user();
+            if ($tx && $customer && ($tx->wallet->customer_id ?? null) !== $customer->id) {
+                return response()->json(['success' => false, 'error' => 'Forbidden'], 403);
+            }
+
             // Cache the payment status for 30 seconds
             $cacheKey = "payment_status_{$paymentId}";
-            $status = Cache::remember($cacheKey, 30, function () use ($paymentId, $invoice) {
+            $status = Cache::remember($cacheKey, 30, function () use ($paymentId, $invoice, $tx) {
                 try {
                     // Only attempt remote status if the facade/method exists & an API key is configured
                     $apiKeyConfigured = config('services.nowpayments.key');
@@ -930,12 +984,20 @@ class PaymentController extends Controller
                         'error' => $e->getMessage(),
                     ]);
                 }
-                // Fallback minimal structure derived from stored invoice
+                // Fallback minimal structure derived from stored invoice or wallet transaction
+                if ($invoice) {
+                    return [
+                        'payment_id' => $paymentId,
+                        'payment_status' => $invoice->payment_status,
+                        'price_amount' => $invoice->price_amount,
+                        'price_currency' => $invoice->price_currency,
+                    ];
+                }
                 return [
                     'payment_id' => $paymentId,
-                    'payment_status' => $invoice->payment_status,
-                    'price_amount' => $invoice->price_amount,
-                    'price_currency' => $invoice->price_currency,
+                    'payment_status' => $tx->status ?? 'pending',
+                    'price_amount' => $tx->amount,
+                    'price_currency' => $tx->currency ?? null,
                 ];
             });
 

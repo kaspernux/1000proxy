@@ -25,20 +25,18 @@ class OrderHelper
             $quantity = $orderItem['quantity'];
             $serverPlan = $orderItem['server_plan'];
 
-            if ($serverPlan->type === 'single') {
-                // Create new inbound for single plan
+            if ($serverPlan->isDedicated()) {
+                // Dedicated / single / branded plans create a new inbound per plan
                 $inbound = self::createInbound($server, $xuiService);
                 self::createClientsForInbound($inbound, $quantity, $xuiService);
-            } elseif ($serverPlan->type === 'multiple') {
-                // Handle multiple plans based on type (dedicated/branded)
-                if ($serverPlan->slug === 'dedicated' || $serverPlan->slug === 'branded') {
-                    // Logic for dedicated/branded plans (to be implemented)
-                    // For now, leave as placeholder
-                } else {
-                    // Default action if not dedicated or branded
-                    $inbound = $server->inbounds()->first(); // Example, adjust as per your logic
-                    self::createClientsForInbound($inbound, $quantity, $xuiService);
-                }
+            } elseif ($serverPlan->isShared()) {
+                // Multiple/shared plans add clients to an existing inbound
+                $inbound = $server->inbounds()->first(); // simple default; higher-level code should prefer preferred_inbound
+                self::createClientsForInbound($inbound, $quantity, $xuiService);
+            } else {
+                // Fallback: treat unknown types as shared
+                $inbound = $server->inbounds()->first();
+                self::createClientsForInbound($inbound, $quantity, $xuiService);
             }
         }
     }

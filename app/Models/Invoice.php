@@ -2,14 +2,6 @@
 
 namespace App\Models;
 
-use App\Models\Order;
-use App\Models\OrderItem;
-use App\Models\ServerPlan;
-use App\Models\WalletTransaction;
-
-namespace App\Models;
-
-use App\Models\PaymentMethod;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -54,38 +46,24 @@ class Invoice extends Model
         'valid_until',
         'type',
         'redirect_url',
-        'created_at',
-        'updated_at'
     ];
 
-    /**
-     * Get the order associated with the invoice.
-     */
     public function order(): BelongsTo
     {
         return $this->belongsTo(Order::class, 'order_id');
     }
 
-    /**
-     * Get the server plan associated with the invoice.
-     */
     public function serverPlan(): BelongsTo
     {
         return $this->belongsTo(ServerPlan::class, 'server_plan_id');
     }
 
-    /**
-     * Get the payment method associated with the invoice.
-     */
     public function paymentMethod(): BelongsTo
     {
         return $this->belongsTo(PaymentMethod::class);
     }
 
-    /**
-     * Get the order items associated with the invoice.
-     */
-    public function OrderItems(): HasMany
+    public function orderItems(): HasMany
     {
         return $this->hasMany(OrderItem::class);
     }
@@ -95,12 +73,8 @@ class Invoice extends Model
         return $this->belongsTo(WalletTransaction::class);
     }
 
-    /**
-     * Get the customer associated with the invoice.
-     */
     public function customer(): BelongsTo
     {
         return $this->belongsTo(Customer::class, 'customer_id');
     }
-   
 }

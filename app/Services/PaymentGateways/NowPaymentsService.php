@@ -221,6 +221,10 @@ class NowPaymentsService implements PaymentGatewayInterface
                 'success_url' => $paymentData['success_url'] ?? (rtrim(config('app.url'), '/') . (env('NOWPAYMENTS_SUCCESS_URL','/checkout/success'))),
                 'cancel_url' => $paymentData['cancel_url'] ?? (rtrim(config('app.url'), '/') . (env('NOWPAYMENTS_CANCEL_URL','/checkout/cancel'))),
             ];
+            // Forward optional metadata (e.g. transaction_id, wallet_topup) so NowPayments will include it in IPN
+            if (!empty($paymentData['metadata']) && is_array($paymentData['metadata'])) {
+                $payload['metadata'] = $paymentData['metadata'];
+            }
             // Only include pay_currency if explicitly provided; omitting lets user select coin on NP page and avoids min-amount errors
             if (!empty($payCurrency)) {
                 $payload['pay_currency'] = $payCurrency;

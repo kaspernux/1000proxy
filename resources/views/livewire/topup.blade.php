@@ -170,15 +170,55 @@
                     </div>
                 </form>
 
-                        <footer class="text-center pt-6 mb-4">
-                            <a href="{{ url()->previous() }}" class="text-sm font-bold text-yellow-600 dark:text-yellow-400 hover:underline">
-                                ← Back to Wallet
-                            </a>
-                        </footer>
-
+                {{-- Pending Payments / Live Status --}}
+                @if(!empty($pendingTransactions))
+                    <div class="mt-6 bg-white/3 rounded-2xl p-4 border border-white/10">
+                        <h4 class="text-white font-semibold mb-2">Pending Payments</h4>
+                        <div class="space-y-3">
+                            @foreach($pendingTransactions as $pt)
+                                <div class="flex items-center justify-between bg-white/5 p-3 rounded-lg">
+                                    <div>
+                                        <div class="text-sm text-gray-300">TxID:
+                                            @if(!empty($pt->payment_url))
+                                                <a href="{{ $pt->payment_url }}" target="_blank" class="text-yellow-300 hover:underline">{{ $pt->payment_id }}</a>
+                                            @else
+                                                <span class="text-yellow-300">{{ $pt->payment_id }}</span>
+                                            @endif
+                                        </div>
+                                        <div class="text-xs text-gray-400">Amount: {{ $pt->amount }}</div>
+                                    </div>
+                                    <div class="text-right">
+                                        <div class="text-sm text-white">Status: <span class="font-semibold">{{ ucfirst($pt->status) }}</span></div>
+                                        <div class="text-xs text-gray-400 mt-1">Progress: 
+                                            @php
+                                                $percent = match(strtolower($pt->status)) {
+                                                    'waiting' => 5,
+                                                    'pending' => 25,
+                                                    'confirming' => 60,
+                                                    'finished' => 100,
+                                                    'confirmed' => 100,
+                                                    default => 0,
+                                                };
+                                            @endphp
+                                            <div class="w-40 bg-white/10 rounded-full h-2 mt-1 overflow-hidden">
+                                                <div style="width: {{ $percent }}%" class="h-2 bg-green-400"></div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    {{-- Poll this payment id every 8s while visible --}}
+                                    <div wire:poll.visible.8s="pollPaymentStatus('{{ $pt->payment_id }}')"></div>
+                                </div>
+                            @endforeach
+                        </div>
                     </div>
-                </div>
+                @endif
+
+                <footer class="text-center pt-6 mb-4">
+                    <a href="{{ url()->previous() }}" class="text-sm font-bold text-yellow-600 dark:text-yellow-400 hover:underline">
+                        ← Back to Wallet
+                    </a>
+                </footer>
             </div>
         </div>
     </div>
-    </section>
+</section>

@@ -69,6 +69,9 @@ use App\Console\Commands\XuiConfigurePanel;
 use App\Console\Commands\DispatchFeatureAdXuiFetch;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
+use App\Console\Commands\ReconcileNowPayments;
+
+
 
 $app = Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
@@ -136,6 +139,7 @@ $app = Application::configure(basePath: dirname(__DIR__))
         XuiUnlockCommand::class,
         XuiConfigurePanel::class,
         DispatchFeatureAdXuiFetch::class,
+        ReconcileNowPayments::class,
     ])
     ->withSchedule(function (Schedule $schedule) {
         $schedule->job(new PruneOldExportsJob())->dailyAt('02:15');
@@ -152,9 +156,17 @@ $app = Application::configure(basePath: dirname(__DIR__))
     $schedule->command('featuread:fetch-xui --only-active')->everyFiveMinutes()->withoutOverlapping();
     // Run XUI client sync every minute (lightweight, only active clients)
     $schedule->command('xui:sync-clients --limit=200')->everyMinute()->withoutOverlapping()->runInBackground();
-    })
+    $schedule->command('featuread:fetch-xui --only-active')->everyFiveMinutes()->withoutOverlapping();
+    // Reconcile NowPayments pending wallet top-ups (run every 10 minutes)
+    $schedule->command('nowpayments:reconcile --limit=50')->everyTenMinutes()->withoutOverlapping();
+
+})
     ->withMiddleware(function (Middleware $middleware) {
     // Global & security middleware
+    // Testing-only early auth: set the guard user from X-Testing-User before other middleware runs
+    if (($_ENV['APP_ENV'] ?? getenv('APP_ENV')) === 'testing') {
+        $middleware->prepend(\App\Http\Middleware\EarlyTestAuth::class);
+    }
     $middleware->append(SessionSecurity::class);
 
         // Existing middleware
@@ -167,6 +179,8 @@ $app = Application::configure(basePath: dirname(__DIR__))
     $middleware->append(\App\Http\Middleware\DebugAdminRedirects::class);
     $middleware->append(MobileAnalyticsMiddleware::class);
     $middleware->append(TestMobileEnhancementsMiddleware::class);
+    // Testing-only: global admin request inspector to log raw headers/cookies
+    $middleware->append(\App\Http\Middleware\GlobalAdminRequestInspector::class);
 
         // Named middleware for specific routes
         $middleware->alias([

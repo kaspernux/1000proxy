@@ -119,6 +119,8 @@ class OrderTest extends TestCase
 
     public function test_order_scope_paid()
     {
+        // Ensure deterministic state
+        Order::query()->delete();
         Order::factory()->create(['payment_status' => 'paid']);
         Order::factory()->create(['payment_status' => 'pending']);
         Order::factory()->create(['payment_status' => 'paid']);
@@ -129,6 +131,8 @@ class OrderTest extends TestCase
 
     public function test_order_scope_completed()
     {
+        // Ensure deterministic state
+        Order::query()->delete();
         Order::factory()->create(['status' => 'completed']);
         Order::factory()->create(['status' => 'pending']);
         Order::factory()->create(['status' => 'completed']);

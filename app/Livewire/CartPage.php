@@ -151,7 +151,7 @@ class CartPage extends Component
 
     private function calculateTax($amount)
     {
-    // Digital goods: tax disabled sitewide (align with CheckoutPage)
+    // Taxes are disabled sitewide for digital goods (project policy).
     return 0.0;
     }
 
@@ -163,7 +163,7 @@ class CartPage extends Component
 
     private function calculateShipping()
     {
-    // Digital goods: no physical shipping cost (align with CheckoutPage)
+    // Shipping disabled for digital goods / project policy.
     return 0.0;
     }
 

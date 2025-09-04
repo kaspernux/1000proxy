@@ -42,6 +42,27 @@ class CartPageTest extends TestCase
             'server_brand_id' => $brand->id,
             'server_category_id' => $category->id
         ]);
+
+        // Create DB-backed coupons used by tests
+        \App\Models\Coupon::create([
+            'code' => 'SAVE10',
+            'type' => 'percent',
+            'value' => 10,
+            'is_active' => true,
+            'usage_limit' => null,
+            'used_count' => 0,
+            'single_use_per_customer' => false,
+        ]);
+
+        \App\Models\Coupon::create([
+            'code' => 'WELCOME',
+            'type' => 'fixed',
+            'value' => 5.00,
+            'is_active' => true,
+            'usage_limit' => null,
+            'used_count' => 0,
+            'single_use_per_customer' => false,
+        ]);
     }
 
     private function addItemsToCart()
@@ -74,7 +95,8 @@ class CartPageTest extends TestCase
         $summary = $component->get('cartSummary');
 
         $this->assertEquals(19.99, $summary['subtotal']);
-        $this->assertGreaterThan(0, $summary['tax']);
+    // Taxes are disabled sitewide
+    $this->assertEquals(0.0, $summary['tax']);
         $this->assertEquals(1, $summary['items_count']);
     }
 
@@ -212,7 +234,8 @@ class CartPageTest extends TestCase
         $component = Livewire::test(CartPage::class);
         $summary = $component->get('cartSummary');
 
-        $this->assertEquals(0, $summary['shipping']);
+    // Shipping disabled sitewide
+    $this->assertEquals(0.0, $summary['shipping']);
     }
 
     #[Test]
@@ -221,8 +244,8 @@ class CartPageTest extends TestCase
         $component = Livewire::test(CartPage::class);
         $summary = $component->get('cartSummary');
 
-        // Should have shipping cost for orders under $50
-        $this->assertEquals(5.99, $summary['shipping']);
+    // Shipping disabled sitewide, always zero
+    $this->assertEquals(0.0, $summary['shipping']);
     }
 
     #[Test]
@@ -236,8 +259,9 @@ class CartPageTest extends TestCase
         $component->set('country', 'GB');
         $gbComponent = $component->get('cartSummary');
 
-        // Tax rates should be different
-        $this->assertNotEquals($usComponent['tax'], $gbComponent['tax']);
+        // Taxes disabled: both should be zero
+        $this->assertEquals(0.0, $usComponent['tax']);
+        $this->assertEquals(0.0, $gbComponent['tax']);
     }
 
     #[Test]

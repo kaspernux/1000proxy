@@ -22,11 +22,9 @@ class ServerBrandFactory extends Factory
     {
     $name = $this->faker->company . ' Proxy';
 
-    // Ensure unique slug within a single test run to prevent unique constraint violations
-    static $brandSlugCounters = [];
+    // Robust unique slug: append a short random suffix for test isolation
     $baseSlug = Str::slug($name);
-    $brandSlugCounters[$baseSlug] = ($brandSlugCounters[$baseSlug] ?? 0) + 1;
-    $slug = $brandSlugCounters[$baseSlug] === 1 ? $baseSlug : $baseSlug.'-'.$brandSlugCounters[$baseSlug];
+    $slug = $baseSlug . '-' . Str::random(6);
 
         return [
             'name' => $name,

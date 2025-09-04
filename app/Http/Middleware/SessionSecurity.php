@@ -25,6 +25,13 @@ class SessionSecurity
             return $next($request);
         }
 
+        // If the request doesn't have a session store (e.g. some test requests / stateless API calls)
+        // avoid calling $request->session() which throws RuntimeException when session store is not set.
+        if (method_exists($request, 'hasSession') && !$request->hasSession()) {
+            // best-effort: skip session security for stateless requests
+            return $next($request);
+        }
+
         // Validate session security
         if (Auth::check()) {
             $this->validateSessionSecurity($request);

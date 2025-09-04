@@ -7,6 +7,7 @@ use App\Models\Customer;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\DB;
 
 class CustomerRegistrationController extends Controller
 {
@@ -17,14 +18,41 @@ class CustomerRegistrationController extends Controller
             'ip' => $request->ip(),
         ]);
 
+        // Honeypot: block obvious bots (tests expect a 422 when 'website' is filled)
+        if ($request->filled('website')) {
+            return response()->json(['message' => 'Spam detected'], 422);
+        }
+
         // Accept either 'terms' (used by tests/legacy forms) or 'terms_accepted' (used by Livewire)
-        $data = $request->validate([
+        $validator = \Illuminate\Support\Facades\Validator::make($request->all(), [
             'name' => ['required', 'string', 'max:255', 'min:2'],
             'email' => ['required', 'email', 'max:255', 'unique:customers,email'],
             'password' => ['required', 'string', 'min:8', 'max:255', 'confirmed'],
             'password_confirmation' => ['required'],
-            // terms acceptance handled below (ensure at least one of the two inputs is accepted)
         ]);
+
+        // Ensure we report a 'terms' error even when other fields also fail validation.
+        $validator->after(function ($v) use ($request) {
+            if (! ($request->boolean('terms') || $request->boolean('terms_accepted'))) {
+                $v->errors()->add('terms', 'You must accept the Terms of Service to register.');
+            }
+
+            // Prevent registration if the email already exists as a staff/web user.
+            // This ensures staff accounts cannot be recreated via the public /register endpoint.
+            try {
+                $email = (string) $request->input('email');
+                if (! empty($email)) {
+                    $existsInUsers = DB::table('users')->whereRaw('LOWER(email) = ?', [mb_strtolower($email)])->exists();
+                    if ($existsInUsers) {
+                        $v->errors()->add('email', 'The email has already been taken.');
+                    }
+                }
+            } catch (\Throwable $_) {
+                // If DB is not available for some reason in the environment, don't block validation here.
+            }
+        });
+
+        $data = $validator->validate();
 
         // Normalize so downstream code can rely on a single key name
         if (! array_key_exists('terms_accepted', $data)) {

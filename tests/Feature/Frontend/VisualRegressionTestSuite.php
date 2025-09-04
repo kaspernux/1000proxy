@@ -51,6 +51,7 @@ class VisualRegressionTestSuite extends DuskTestCase
             'name' => 'Gaming',
             'description' => 'Gaming servers',
             'is_active' => true,
+            'slug' => 'gaming-' . uniqid(),
         ]);
 
         // Create server brands

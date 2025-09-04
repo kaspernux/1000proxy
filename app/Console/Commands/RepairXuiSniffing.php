@@ -10,7 +10,7 @@ use Illuminate\Support\Facades\Log;
 
 class RepairXuiSniffing extends Command
 {
-    protected $signature = 'xui:repair-sniffing {server : Server ID} {--insecure : Disable TLS verification}';
+    protected $signature = 'xui:repair-sniffing {server : Server ID} {--insecure : Disable TLS verification} {--allow-destructive : Must be provided to permit updates on remote inbounds}';
     protected $description = 'Repair inbounds on a server whose sniffing config was stored as an array instead of object (prevents xray-core start).';
 
     public function handle(): int
@@ -21,6 +21,11 @@ class RepairXuiSniffing extends Command
 
         $xui = new XUIService($server);
         if (!$xui->testConnection()) { $this->error('Login failed'); return 1; }
+
+        if (!$this->option('allow-destructive')) {
+            $this->error('This command is potentially destructive. Re-run with --allow-destructive to proceed.');
+            return 2;
+        }
 
         $this->info('Fetching remote inbounds...');
         $inbounds = $xui->listInbounds();

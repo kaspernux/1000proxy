@@ -56,11 +56,11 @@ class ServerPlan extends Model
         'duration_days',          // Mirror of days for clarity
         'max_connections',        // Legacy naming for concurrent_connections
         'bandwidth_limit_gb',     // Legacy naming for data_limit_gb
-    'original_price',         // strikethrough price
-    'billing_cycle',          // hourly/daily/weekly/monthly/etc
-    'visibility',             // public/private/hidden
-    'unlimited_traffic',      // unlimited flag
-    'supported_protocols',    // JSON list of protocols
+        'original_price',         // strikethrough price
+        'billing_cycle',          // hourly/daily/weekly/monthly/etc
+        'visibility',             // public/private/hidden
+        'unlimited_traffic',      // unlimited flag
+        'supported_protocols',    // JSON list of protocols
     ];
 
     protected $casts = [
@@ -84,11 +84,11 @@ class ServerPlan extends Model
         'duration_days' => 'integer',
         'max_connections' => 'integer',
         'bandwidth_limit_gb' => 'integer',
-    'original_price' => 'decimal:2',
-    'billing_cycle' => 'string',
-    'visibility' => 'string',
-    'unlimited_traffic' => 'boolean',
-    'supported_protocols' => 'array',
+        'original_price' => 'decimal:2',
+        'billing_cycle' => 'string',
+        'visibility' => 'string',
+        'unlimited_traffic' => 'boolean',
+        'supported_protocols' => 'array',
     ];
 
     /**
@@ -99,7 +99,7 @@ class ServerPlan extends Model
     {
         $raw = strtolower((string) ($this->type ?? 'shared'));
         return match($raw) {
-            'single', 'dedicated' => 'dedicated',
+            'single', 'dedicated', 'branded' => 'dedicated',
             'multiple', 'shared' => 'shared',
             default => 'shared',
         };
@@ -119,6 +119,40 @@ class ServerPlan extends Model
     public function isShared(): bool
     {
         return $this->provisioning_type === 'shared';
+    }
+
+    /**
+     * Canonical list of plan types for UI and validation.
+     * Kept in the model so other code can reuse the same mapping.
+     */
+    public static function types(): array
+    {
+        return [
+            'single' => 'Single',
+            'multiple' => 'Multiple',
+            'shared' => 'Shared',
+            'branded' => 'Branded',
+            'reseller' => 'Reseller',
+            'dedicated' => 'Dedicated',
+        ];
+    }
+
+    /**
+     * Canonical list of XUI protocols supported by the system.
+     * Used by Filament fallback lists and validation.
+     */
+    public static function protocols(): array
+    {
+        return [
+            'vless' => 'VLESS',
+            'vmess' => 'VMess',
+            'trojan' => 'Trojan',
+            'shadowsocks' => 'Shadowsocks',
+            'dokodemo-door' => 'Dokodemo-door',
+            'socks' => 'Socks',
+            'http' => 'HTTP',
+            'wireguard' => 'WireGuard',
+        ];
     }
 
     protected static function boot()

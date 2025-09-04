@@ -62,7 +62,11 @@ class DedicatedInboundProvisioningTest extends TestCase
 
         $order->refresh();
         $this->assertEquals('completed', $order->status);
-        $this->assertDatabaseCount('server_inbounds', 1);
+        // Scope the inbound assertion to the target server only. Other seed data
+        // or concurrent tests may create inbounds which would break a global
+        // table count assertion. Assert that exactly one inbound was created
+        // for the server used in this test.
+        $this->assertEquals(1, \App\Models\ServerInbound::where('server_id', $server->id)->count());
         $this->assertDatabaseHas('server_clients', [
             'order_id' => $order->id,
             'server_id' => $server->id,

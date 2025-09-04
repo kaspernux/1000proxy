@@ -47,6 +47,27 @@ class CheckoutPageTest extends TestCase
         ]);
         // Fund wallet (relation is created automatically in model booted())
         $this->customer->wallet()->update(['balance' => 100.00]);
+
+        // Create test coupons used by CheckoutPage tests
+        \App\Models\Coupon::create([
+            'code' => 'SAVE10',
+            'type' => 'percent',
+            'value' => 10,
+            'is_active' => true,
+            'usage_limit' => null,
+            'used_count' => 0,
+            'single_use_per_customer' => false,
+        ]);
+
+        \App\Models\Coupon::create([
+            'code' => 'WELCOME',
+            'type' => 'fixed',
+            'value' => 5.00,
+            'is_active' => true,
+            'usage_limit' => null,
+            'used_count' => 0,
+            'single_use_per_customer' => false,
+        ]);
     }
 
     private function addItemsToCart()
@@ -176,7 +197,7 @@ class CheckoutPageTest extends TestCase
         $summary = $component->get('order_summary');
 
         $this->assertEquals(29.99, $summary['subtotal']);
-    $this->assertGreaterThanOrEqual(0, $summary['tax']);
+    $this->assertEquals(0.0, $summary['tax']);
     $this->assertEquals(1, $summary['items_count']); // default auto-added plan
         $this->assertIsFloat($summary['total']);
     }
@@ -193,7 +214,9 @@ class CheckoutPageTest extends TestCase
         // Test UK tax rate
         $component->set('country', 'GB');
         $gbTotal = $component->get('order_summary')['tax'];
-    $this->assertTrue($gbTotal != $usTotal, 'Expected differing tax rates');
+    // Taxes are disabled sitewide; both should be zero
+    $this->assertEquals(0.0, $usTotal);
+    $this->assertEquals(0.0, $gbTotal);
     }
 
     /** @test */
@@ -215,7 +238,8 @@ class CheckoutPageTest extends TestCase
 
         $summary = $component->get('order_summary');
         $this->assertEquals(60.00, $summary['subtotal']);
-        $this->assertEquals(0, $summary['shipping']);
+    // Shipping disabled sitewide
+    $this->assertEquals(0.0, $summary['shipping']);
     }
 
     /** @test */
@@ -224,8 +248,8 @@ class CheckoutPageTest extends TestCase
         $component = Livewire::test(CheckoutPage::class);
     $component->set('country', 'US');
         $summary = $component->get('order_summary');
-
-        $this->assertGreaterThan(0, $summary['shipping']);
+    // Shipping disabled sitewide
+    $this->assertEquals(0.0, $summary['shipping']);
     }
 
     /** @test */

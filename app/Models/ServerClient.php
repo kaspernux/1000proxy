@@ -338,6 +338,36 @@ class ServerClient extends Model
             case 'vless':
             default:
                 return "vless://{$uuid}@{$ip}:{$port}?{$query}#" . rawurlencode("Default Inbound-{$remark}");
+
+            case 'shadowsocks':
+                // ss://<method>:<password>@host:port#remark
+                $method = $stream['method'] ?? ($stream['security'] ?? 'chacha20-ietf-poly1305');
+                $password = $client['id'] ?? ($client['password'] ?? '');
+                $ss = $method . ':' . $password . '@' . $ip . ':' . $port;
+                return 'ss://' . rtrim(strtr(base64_encode($ss), '+/', '-_'), '=') . '#' . rawurlencode($remark);
+
+            case 'socks':
+                // socks5://user:pass@host:port
+                $user = $client['email'] ?? 'user';
+                $pass = $client['password'] ?? '';
+                return "socks5://{$user}:{$pass}@{$ip}:{$port}#" . rawurlencode($remark);
+
+            case 'dokodemo-door':
+            case 'dokodemo':
+                // Represent as dokodemo://host:port#remark
+                return "dokodemo://{$ip}:{$port}#" . rawurlencode($remark);
+
+            case 'wireguard':
+                // WireGuard typically uses a configuration blob; fallback to a placeholder URL
+                $wg = $client['wireguard_config'] ?? null;
+                if (is_string($wg) && str_starts_with(trim($wg), '-----')) {
+                    return 'wireguard://' . rawurlencode($wg);
+                }
+                return "wireguard://{$ip}:{$port}#" . rawurlencode($remark);
+
+            case 'http':
+                // simple http proxy
+                return "http://{$ip}:{$port}#" . rawurlencode($remark);
         }
     }
 

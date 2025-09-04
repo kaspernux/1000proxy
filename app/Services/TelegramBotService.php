@@ -689,8 +689,7 @@ class TelegramBotService
             }
 
             // Resolve locale with precedence (configurable):
-            // Default behavior: Always use Telegram device/app language first on every update.
-            // Optional: honor a manual override if explicitly enabled in config.
+            // Prefer persisted user locale first, then any manual override, then device language if allowed.
             $preferDevice = (bool) (config('telegram.locale.prefer_device') ?? true);
             $honorManual = (bool) (config('telegram.locale.honor_manual_override') ?? false);
 
@@ -700,15 +699,19 @@ class TelegramBotService
             // Device language as reported by Telegram client
             $deviceLocale = $telegramLang ? LocaleService::normalize(strtolower($telegramLang)) : null;
 
-            if ($preferDevice && $deviceLocale && LocaleService::isSupported($deviceLocale)) {
-                $locale = $deviceLocale;
+            // Priority: 1) persisted entity locale, 2) manual override (if enabled), 3) device locale (if enabled), 4) default
+            if ($entity && $entity->locale) {
+                $locale = LocaleService::normalize($entity->locale);
             } elseif ($honorManual && $override && LocaleService::isSupported($override)) {
                 $locale = $override;
-            } elseif (!$preferDevice && $override && LocaleService::isSupported($override)) {
-                // Backward compatibility if device preference is disabled
-                $locale = $override;
-            } elseif ($entity && $entity->locale) {
-                $locale = LocaleService::normalize($entity->locale);
+            } elseif (!$honorManual && $override && LocaleService::isSupported($override)) {
+                // If manual override exists in cache and honoring manual overrides is disabled,
+                // still consider it only when device preference is explicitly turned off.
+                if (! $preferDevice) {
+                    $locale = $override;
+                }
+            } elseif ($preferDevice && $deviceLocale && LocaleService::isSupported($deviceLocale)) {
+                $locale = $deviceLocale;
             } else {
                 $locale = config('locales.default', 'en');
             }

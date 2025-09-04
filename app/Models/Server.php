@@ -461,6 +461,49 @@ class Server extends Model
     return "{$scheme}://{$host}:{$port}{$web}";
     }
 
+    /**
+     * Whether this server is considered a dedicated provisioning target.
+     *
+     * Assumption: servers set their `type` to 'dedicated' when they should
+     * exclusively host dedicated inbounds. This helper centralises that
+     * detection. If another canonical field exists later, update here.
+     */
+    public function isDedicated(): bool
+    {
+        return strtolower((string) ($this->type ?? '')) === 'dedicated';
+    }
+
+    /**
+     * Whether this server is associated with a brand (used to indicate branded servers).
+     *
+     * Assumption: presence of `server_brand_id` implies branded behaviour. If a
+     * more explicit flag is added to ServerBrand later, this method should read it.
+     */
+    public function isBranded(): bool
+    {
+        try {
+            // Consider server branded if it has an explicit server_brand_id
+            if (!empty($this->server_brand_id)) {
+                return true;
+            }
+
+            // Or if any associated plan is of type 'branded'
+            if ($this->relationLoaded('plans')) {
+                foreach ($this->plans as $p) {
+                    if (strtolower((string) ($p->type ?? '')) === 'branded') {
+                        return true;
+                    }
+                }
+                return false;
+            }
+
+            return $this->plans()->where('type', 'branded')->exists();
+        } catch (\Throwable $e) {
+            // Conservative fallback: treat presence of server_brand_id as branded
+            return !empty($this->server_brand_id);
+        }
+    }
+
     public function getSubscriptionPort(): int
     {
         return ($this->getPanelPort() ?? 443) - 1;

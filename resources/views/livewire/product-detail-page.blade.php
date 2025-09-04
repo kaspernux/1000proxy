@@ -89,6 +89,10 @@
 
             <!-- Right column: Product details, Server Details & Features and Pricing -->
             <div class="space-y-8">
+                <!-- Product Title -->
+                <div class="">
+                    <h1 class="text-3xl lg:text-4xl font-extrabold text-white mb-4">{{ $this->serverPlan->name }}</h1>
+                </div>
                 <!-- Pricing Section (sticky for easier purchase) -->
                 <div class="sticky top-24">
                     <div class="bg-gradient-to-br from-yellow-500/20 to-orange-500/10 backdrop-blur-md rounded-2xl p-8 border border-yellow-400/30 hover:border-yellow-300/50 transition-all duration-300 shadow-xl">

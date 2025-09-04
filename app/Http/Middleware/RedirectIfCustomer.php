@@ -37,6 +37,7 @@ class RedirectIfCustomer
 
             // When a customer hits other admin panel areas, respond with 403 per tests.
             if ($request->is('admin') || $request->is('admin/*')) {
+                try { \Log::debug('RedirectIfCustomer: aborting with 403 because customer guard present', ['path' => $request->path()]); } catch (\Throwable $_) {}
                 abort(403);
             }
             // Allow access to customer panel and related routes
@@ -44,6 +45,7 @@ class RedirectIfCustomer
                 return $next($request);
             }
             // Otherwise send them to storefront landing.
+            try { \Log::debug('RedirectIfCustomer: redirecting customer to storefront', ['path' => $request->path()]); } catch (\Throwable $_) {}
             return redirect('/servers');
         }
 

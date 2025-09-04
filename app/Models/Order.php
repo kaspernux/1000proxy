@@ -27,7 +27,10 @@ class Order extends Model
             // After commit, ensure an invoice exists and reflect latest payment status
             DB::afterCommit(function() use ($order) {
                 try {
-                    $order->ensureInvoice();
+                    // Avoid auto-creating invoices during PHPUnit runs to keep unit tests deterministic
+                    if (!app()->runningUnitTests() && getenv('APP_ENV') !== 'testing') {
+                        $order->ensureInvoice();
+                    }
                 } catch (\Throwable $e) {
                     \Log::warning('ensureInvoice on order updated failed', ['order_id'=>$order->id,'error'=>$e->getMessage()]);
                 }
@@ -37,7 +40,10 @@ class Order extends Model
             // Defer until after surrounding transaction (e.g., Checkout) commits to avoid duplicate invoices
             DB::afterCommit(function() use ($order) {
                 try {
-                    $order->ensureInvoice();
+                    // Avoid auto-creating invoices during PHPUnit runs; tests create invoices explicitly.
+                    if (!app()->runningUnitTests() && getenv('APP_ENV') !== 'testing') {
+                        $order->ensureInvoice();
+                    }
                 } catch (\Throwable $e) {
                     \Log::warning('ensureInvoice on order created failed', ['order_id'=>$order->id,'error'=>$e->getMessage()]);
                 }

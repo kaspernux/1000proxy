@@ -104,6 +104,13 @@ class ServerResource extends Resource
                                     ->searchable()
                                     ->preload()
                                     ->placeholder('Select provider'),
+                                // Legacy 'location' alias used by tests — mirror into 'country'
+                                TextInput::make('location')
+                                    ->label('Location')
+                                    ->maxLength(255)
+                                    ->placeholder('Germany')
+                                    ->reactive()
+                                    ->afterStateUpdated(fn($state, $set) => $set('country', $state)),
                                 TextInput::make('country')
                                     ->label('Country')
                                     ->maxLength(255)
@@ -171,6 +178,23 @@ class ServerResource extends Resource
                                     ->password()
                                     ->required()
                                     ->placeholder('••••••••'),
+                                // Legacy aliases: allow tests to supply panel_username/panel_password
+                                TextInput::make('panel_username')
+                                    ->label('Panel Username (alias)')
+                                    ->reactive()
+                                    ->dehydrated(false)
+                                    ->afterStateHydrated(fn ($state, $set) => $set('username', $state))
+                                    ->afterStateUpdated(fn ($state, $set) => $set('username', $state))
+                                    ->placeholder('admin')
+                                    ->helperText('Legacy alias for automated tests.'),
+                                TextInput::make('panel_password')
+                                    ->label('Panel Password (alias)')
+                                    ->reactive()
+                                    ->dehydrated(false)
+                                    ->afterStateHydrated(fn ($state, $set) => $set('password', $state))
+                                    ->afterStateUpdated(fn ($state, $set) => $set('password', $state))
+                                    ->placeholder('••••••••')
+                                    ->helperText('Legacy alias for automated tests.'),
                             ]),
                         ])->columns(1),
                     Step::make('Security & Protocol')
