@@ -47,8 +47,8 @@ class ProductDetailPageClientDisplayTest extends TestCase
             'plan_id' => $serverPlan->id,
             'status' => 'active',
             'client_link' => 'vless://test-client-link',
-            'remote_sub_link' => 'https://example.com/sub/test',
-            'remote_json_link' => 'https://example.com/json/test'
+            'remote_sub_link' => 'https://example.com/sub_json/test',
+            'remote_json_link' => 'https://example.com/proxy_json/test'
         ]);
 
         // Test as authenticated customer

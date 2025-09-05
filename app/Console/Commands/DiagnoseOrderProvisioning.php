@@ -39,7 +39,7 @@ class DiagnoseOrderProvisioning extends Command
         }
 
         // Basic order info
-        $this->line("Customer: {$order->customer->name ?? 'Unknown'} (ID: {$order->customer_id})");
+        $this->line("Customer: " . (($order->customer && $order->customer->name) ? $order->customer->name : 'Unknown') . " (ID: {$order->customer_id})");
         $this->line("Status: {$order->status}");
         $this->line("Payment Status: {$order->payment_status}");
         $this->line("Created: {$order->created_at}");
