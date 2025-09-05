@@ -42,6 +42,10 @@ class ProductDetailPage extends Component
     // Real-time server monitoring
     public $serverStatus = null;
     public $serverHealth = null;
+    // Customer purchase state
+    public $customerOwnsPlan = false;
+    public $customerOrders = [];
+    public $customerConfigurations = [];
 
     /**
      * Testing helper: allow specific tests to force the production caching code path
@@ -99,6 +103,71 @@ class ProductDetailPage extends Component
         }
 
         $this->checkServerStatus();
+        $this->checkCustomerPurchases();
+    }
+
+    /**
+     * Check if the current customer has already purchased this plan
+     */
+    public function checkCustomerPurchases()
+    {
+        try {
+            $customer = Auth::guard('customer')->user();
+
+            if (!$customer || !$this->serverPlan) {
+                $this->customerOwnsPlan = false;
+                $this->customerOrders = [];
+                $this->customerConfigurations = [];
+                return;
+            }
+
+            // Find orders for this customer and plan
+            $orders = Order::where('customer_id', $customer->id)
+                ->where('payment_status', 'paid')
+                ->whereHas('items', function ($query) {
+                    $query->where('server_plan_id', $this->serverPlan->id);
+                })
+                ->with(['items' => function ($query) {
+                    $query->where('server_plan_id', $this->serverPlan->id);
+                }])
+                ->orderBy('created_at', 'desc')
+                ->get();
+
+            $this->customerOwnsPlan = $orders->isNotEmpty();
+            $this->customerOrders = $orders->toArray();
+
+            if ($this->customerOwnsPlan) {
+                // Get all client configurations for this customer and plan
+                $configurations = [];
+                foreach ($orders as $order) {
+                    $clients = $order->getAllClients()->filter(function ($client) {
+                        return $client->plan_id == $this->serverPlan->id;
+                    });
+
+                    foreach ($clients as $client) {
+                        $configurations[] = $client->getDownloadableConfig();
+                    }
+                }
+                $this->customerConfigurations = $configurations;
+            }
+        } catch (\Throwable $e) {
+            Log::error('Error checking customer purchases', [
+                'error' => $e->getMessage(),
+                'customer_id' => Auth::guard('customer')->id(),
+                'plan_id' => $this->serverPlan->id ?? null,
+            ]);
+            $this->customerOwnsPlan = false;
+            $this->customerOrders = [];
+            $this->customerConfigurations = [];
+        }
+    }
+
+    /**
+     * Refresh customer purchase data (useful for when orders are completed)
+     */
+    public function refreshCustomerPurchases()
+    {
+        $this->checkCustomerPurchases();
     }
 
     #[Computed]
@@ -280,7 +349,15 @@ class ProductDetailPage extends Component
     #[On('cartUpdated')]
     public function handleCartUpdated()
     {
-        // Placeholder: could refresh plan or totals
+        // Refresh customer purchases in case they just completed a purchase
+        $this->checkCustomerPurchases();
+    }
+
+    #[On('orderCompleted')]
+    public function handleOrderCompleted()
+    {
+        // Refresh customer purchases when an order is completed
+        $this->checkCustomerPurchases();
     }
 
     public function toggleSpecifications()
@@ -327,6 +404,9 @@ class ProductDetailPage extends Component
             'totalPrice' => $this->totalPrice,
             'serverStatus' => $this->serverStatus,
             'serverHealth' => $this->serverHealth,
+            'customerOwnsPlan' => $this->customerOwnsPlan,
+            'customerOrders' => $this->customerOrders,
+            'customerConfigurations' => $this->customerConfigurations,
         ]);
     }
 }

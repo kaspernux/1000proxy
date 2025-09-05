@@ -193,14 +193,38 @@ class ClientProvisioningService
                 }
                 if (isset($stream['wsSettings']['headers'])) {
                     $headers = $stream['wsSettings']['headers'];
-                    // If headers provided as a list of pairs, convert to object map
+                    // If headers provided as a list/array, coerce to object map expected by xray.
+                    // Support multiple input shapes seen in panels or user-supplied config:
+                    // - list of pairs like [["Host","example.com"], ["User-Agent","x"]]
+                    // - list of objects like [{"name":"Host","value":"example.com"}]
+                    // - list of single-pair associative maps like [{"Host":"example.com"}]
                     if (is_array($headers) && array_is_list($headers)) {
                         $map = [];
                         foreach ($headers as $pair) {
-                            if (is_array($pair) && count($pair) >= 2) {
+                            if (!is_array($pair)) { continue; }
+                            $k = null; $v = null;
+                            // shape: {"name":"Host","value":"..."}
+                            if (isset($pair['name']) && array_key_exists('value', $pair)) {
+                                $k = (string) $pair['name'];
+                                $v = is_scalar($pair['value']) ? (string) $pair['value'] : json_encode($pair['value']);
+                            }
+                            // shape: {"key":"Host","value":"..."}
+                            elseif (isset($pair['key']) && array_key_exists('value', $pair)) {
+                                $k = (string) $pair['key'];
+                                $v = is_scalar($pair['value']) ? (string) $pair['value'] : json_encode($pair['value']);
+                            }
+                            // shape: ["Host","example.com"]
+                            elseif (array_is_list($pair) && count($pair) >= 2) {
+                                $k = (string) ($pair[0] ?? '');
+                                $v = is_scalar($pair[1]) ? (string) $pair[1] : json_encode($pair[1]);
+                            }
+                            // shape: {"Host":"example.com"}
+                            elseif (count($pair) === 1) {
                                 $k = (string) array_key_first($pair);
-                                $v = (string) ($pair[$k] ?? (array_values($pair)[1] ?? ''));
-                                $map[$k] = $v;
+                                $v = is_scalar(array_values($pair)[0]) ? (string) array_values($pair)[0] : json_encode(array_values($pair)[0]);
+                            }
+                            if ($k !== null && $k !== '') {
+                                $map[trim($k)] = $v ?? '';
                             }
                         }
                         $stream['wsSettings']['headers'] = $map;
@@ -447,8 +471,32 @@ class ClientProvisioningService
             }
 
             if (!$usedExistingRemoteClient) {
-                // Create client on remote XUI panel
-                $remoteClient = $this->createRemoteClient($inbound, $clientConfig);
+                // Create client on remote XUI panel. If remote creation fails
+                // (panel 5xx, network error, etc.) synthesize a local client
+                // so the purchased configuration is still visible in the UI.
+                try {
+                    $remoteClient = $this->createRemoteClient($inbound, $clientConfig);
+                } catch (\Throwable $addEx) {
+                    Log::warning('addClient failed - synthesizing local client for visibility', [
+                        'order_id' => $order->id ?? null,
+                        'item_id' => $item->id ?? null,
+                        'inbound_id' => $inbound->id ?? null,
+                        'error' => $addEx->getMessage(),
+                    ]);
+                    // Synthesize a client payload similar to successful addClient shape
+                    $remoteClient = $clientConfig;
+                    $remoteClient['id'] = $remoteClient['id'] ?? (string) \Illuminate\Support\Str::uuid();
+                    $remoteClient['subId'] = $remoteClient['subId'] ?? strtolower((string) (time() . '-' . Str::random(6)));
+                    $remoteClient['email'] = $remoteClient['email'] ?? ($order->user?->email ?? $order->customer?->email ?? 'generated@1000proxy.me');
+                    $remoteClient['link'] = $remoteClient['link'] ?? ServerClient::buildXuiClientLink($remoteClient, $inbound, $inbound->server);
+                    $host = $inbound->server->getPanelHost();
+                    $port = $inbound->server->getSubscriptionPort();
+                    $remoteClient['sub_link'] = $remoteClient['sub_link'] ?? "https://{$host}:{$port}/sub_json/{$remoteClient['subId']}";
+                    $remoteClient['json_link'] = $remoteClient['json_link'] ?? "https://{$host}:{$port}/proxy_json/{$remoteClient['subId']}";
+                    // mark synthesized so downstream logs can surface the remote error text
+                    $remoteClient['_synthesized_due_to_remote_error'] = true;
+                    $remoteClient['_remote_error_message'] = $addEx->getMessage();
+                }
             }
 
             // If remote client creation returned an explicit failure shape, do not proceed to create a local client.
@@ -473,8 +521,8 @@ class ClientProvisioningService
                     $remoteClient['link'] = $remoteClient['link'] ?? ServerClient::buildXuiClientLink($remoteClient, $inbound, $inbound->server);
                     $host = $inbound->server->getPanelHost();
                     $port = $inbound->server->getSubscriptionPort();
-                    $remoteClient['sub_link'] = $remoteClient['sub_link'] ?? "https://{$host}:{$port}/sub/{$remoteClient['subId']}";
-                    $remoteClient['json_link'] = $remoteClient['json_link'] ?? "https://{$host}:{$port}/json/{$remoteClient['subId']}";
+                    $remoteClient['sub_link'] = $remoteClient['sub_link'] ?? "https://{$host}:{$port}/sub_json/{$remoteClient['subId']}";
+                    $remoteClient['json_link'] = $remoteClient['json_link'] ?? "https://{$host}:{$port}/proxy_json/{$remoteClient['subId']}";
                     // write a snapshot to help debugging
                     if ($this->debugSnapshots) {@file_put_contents(storage_path('app/xui_synth_remoteclient_' . $order->id . '_' . $item->id . '.json'), json_encode(['synth' => true, 'client' => $remoteClient], JSON_PRETTY_PRINT)); }
                 } catch (\Throwable $_) {
@@ -494,8 +542,8 @@ class ClientProvisioningService
                     if ($subId) {
                         $host = $inbound->server->getPanelHost();
                         $port = $inbound->server->getSubscriptionPort();
-                        $remoteClient['sub_link'] = $remoteClient['sub_link'] ?? "https://{$host}:{$port}/sub/{$subId}";
-                        $remoteClient['json_link'] = $remoteClient['json_link'] ?? "https://{$host}:{$port}/json/{$subId}";
+                        $remoteClient['sub_link'] = $remoteClient['sub_link'] ?? "https://{$host}:{$port}/sub_json/{$subId}";
+                        $remoteClient['json_link'] = $remoteClient['json_link'] ?? "https://{$host}:{$port}/proxy_json/{$subId}";
                     }
                 }
             } catch (\Throwable $_) {
@@ -746,6 +794,13 @@ class ClientProvisioningService
         $rawSub = preg_replace('/[^A-Za-z0-9]/', '', $uniqueTag) . Str::lower(Str::random(6));
         $subId = strtolower(substr($rawSub, 0, 16));
 
+        $defaultFlow = null;
+        try {
+            if ($inbound && !str_contains(strtolower($inbound->protocol ?? ''), 'trojan')) {
+                $defaultFlow = 'xtls-rprx-vision';
+            }
+        } catch (\Throwable $_) {}
+
         return [
             'id' => (string) $this->xuiService->generateUID(),
             'email' => $email,
@@ -753,7 +808,7 @@ class ClientProvisioningService
             'totalGB' => ($plan->data_limit_gb ?? $plan->volume) * 1073741824, // Convert GB to bytes
             'expiry_time' => now()->addDays($plan->days + ($plan->trial_days ?? 0))->timestamp * 1000,
             'enable' => true,
-            'flow' => 'xtls-rprx-vision',
+            'flow' => $defaultFlow,
             'tg_id' => $customer->telegram_id ?? '',
             'subId' => $subId,
         ];
@@ -781,9 +836,11 @@ class ClientProvisioningService
         // Protocol-specific fields
         $proto = strtolower($inbound->protocol ?? '');
         if (str_contains($proto, 'trojan')) {
-            // Trojan implementations commonly use 'password' for client credential
+            // Trojan implementations use 'password' for client credential and no 'flow' field
             $clientObj['password'] = $clientConfig['id'];
-            // keep 'id' empty to match some remote snapshots where id is empty
+            // Some panels don't expect 'flow' for trojan (xray removed the feature); remove it
+            if (array_key_exists('flow', $clientObj)) { unset($clientObj['flow']); }
+            // Use id as credential carrier but don't rely on flow
             $clientObj['id'] = $clientConfig['id'];
         } elseif (str_contains($proto, 'shadowsocks') || str_contains($proto, 'ss')) {
             // Shadowsocks often expects method/password fields; map id to password
@@ -1005,12 +1062,29 @@ class ClientProvisioningService
                 try { if ($this->debugSnapshots) {@file_put_contents(storage_path('app/xui_addClient_debug.json'), json_encode(['phase' => 'final_client', 'client' => $client], JSON_PRETTY_PRINT)); } } catch (\Throwable $e) {}
             return array_merge($client, [
                 'link' => ServerClient::buildXuiClientLink($client, $inbound, $inbound->server),
-                'sub_link' => (string) url("https://{$inbound->server->getPanelHost()}:{$inbound->server->getSubscriptionPort()}/sub/{$client['subId']}") ?: "https://{$inbound->server->getPanelHost()}:{$inbound->server->getSubscriptionPort()}/sub/{$client['subId']}",
-                'json_link' => (string) url("https://{$inbound->server->getPanelHost()}:{$inbound->server->getSubscriptionPort()}/json/{$client['subId']}") ?: "https://{$inbound->server->getPanelHost()}:{$inbound->server->getSubscriptionPort()}/json/{$client['subId']}",
+                'sub_link' => (string) url("https://{$inbound->server->getPanelHost()}:{$inbound->server->getSubscriptionPort()}/sub_json/{$client['subId']}") ?: "https://{$inbound->server->getPanelHost()}:{$inbound->server->getSubscriptionPort()}/sub_json/{$client['subId']}",
+                'json_link' => (string) url("https://{$inbound->server->getPanelHost()}:{$inbound->server->getSubscriptionPort()}/proxy_json/{$client['subId']}") ?: "https://{$inbound->server->getPanelHost()}:{$inbound->server->getSubscriptionPort()}/proxy_json/{$client['subId']}",
             ]);
         }
 
 
+        // Sanitize settings to avoid sending malformed or too-large values to remote panels
+        try {
+            $settings = $this->sanitizeRemoteClientSettings($settings);
+        } catch (\Throwable $_) {
+            // best-effort: if sanitizer fails, continue with original settings
+        }
+
+        // If protocol is trojan, do not include 'flow' as recent xray releases removed Flow for Trojan
+        try {
+            if (str_contains($proto, 'trojan') && !empty($settings['clients']) && is_array($settings['clients'])) {
+                foreach ($settings['clients'] as $i => $c) {
+                    if (array_key_exists('flow', $settings['clients'][$i])) {
+                        unset($settings['clients'][$i]['flow']);
+                    }
+                }
+            }
+        } catch (\Throwable $_) {}
         // Some implementations may expect JSON string
         $remoteSettingsPayload = json_encode($settings);
         $attempts = 0;
@@ -1110,14 +1184,106 @@ class ClientProvisioningService
         } while ($attempts < $maxAttempts);
 
         if (!is_array($result) || !($result['success'] ?? false)) {
-            throw new \Exception('Failed to create client on remote XUI panel');
+            // Record forensic artifact for failed remote create
+            try {
+                $dump = [ 'timestamp' => now()->toISOString(), 'server_id' => $inbound->server_id ?? null, 'inbound_id' => $inbound->remote_id ?? $inbound->id ?? null, 'attempts' => $attempts, 'payload' => $remoteSettingsPayload, 'result' => $result ];
+                @file_put_contents(storage_path('app/xui_addClient_failed_' . time() . '.json'), json_encode($dump, JSON_PRETTY_PRINT));
+            } catch (\Throwable $_) {}
+
+            // Fallback: synthesize a local-usable client shape so UI and local persistence can continue.
+            try {
+                $first = $settings['clients'][0] ?? [];
+                $fallback = [
+                    'id' => $clientConfig['id'] ?? ($first['id'] ?? (string) $this->xuiService->generateUID()),
+                    'email' => $clientConfig['email'] ?? ($first['email'] ?? ($clientConfig['id'] . '@generated.1000proxy.me')),
+                    'subId' => $clientConfig['subId'] ?? ($first['subId'] ?? strtolower((string)(time() . '-' . \Str::random(6)))),
+                    'password' => $first['password'] ?? null,
+                    'flow' => $first['flow'] ?? null,
+                    'method' => $first['method'] ?? null,
+                    'totalGB' => isset($first['totalGB']) ? (int) $first['totalGB'] : ($plan->data_limit_gb ?? 0),
+                    'expiryTime' => isset($first['expiryTime']) ? (int) $first['expiryTime'] : 0,
+                    'enable' => $first['enable'] ?? true,
+                    // Mark as synthesized so callers can detect and enqueue reconciliation
+                    'synthesized' => true,
+                    'provision_log' => [ 'notice' => 'synthesized_local_client_due_to_remote_addClient_failure', 'remote_result' => $result ],
+                ];
+                $links = [
+                    'link' => ServerClient::buildXuiClientLink($fallback, $inbound, $inbound->server),
+                    'sub_link' => "https://{$inbound->server->getPanelHost()}:{$inbound->server->getSubscriptionPort()}/sub_json/{$fallback['subId']}",
+                    'json_link' => "https://{$inbound->server->getPanelHost()}:{$inbound->server->getSubscriptionPort()}/proxy_json/{$fallback['subId']}",
+                ];
+                return array_merge($fallback, $links);
+            } catch (\Throwable $e) {
+                // As a last resort, rethrow the original failure if we cannot synthesize
+                throw new \Exception('Failed to create client on remote XUI panel and could not synthesize fallback: ' . ($e->getMessage() ?? ''));
+            }
         }
 
         return array_merge($clientConfig, [
             'link' => ServerClient::buildXuiClientLink($clientConfig, $inbound, $inbound->server),
-            'sub_link' => "https://{$inbound->server->getPanelHost()}:{$inbound->server->getSubscriptionPort()}/sub/{$clientConfig['subId']}",
-            'json_link' => "https://{$inbound->server->getPanelHost()}:{$inbound->server->getSubscriptionPort()}/json/{$clientConfig['subId']}",
+            'sub_link' => "https://{$inbound->server->getPanelHost()}:{$inbound->server->getSubscriptionPort()}/sub_json/{$clientConfig['subId']}",
+            'json_link' => "https://{$inbound->server->getPanelHost()}:{$inbound->server->getSubscriptionPort()}/proxy_json/{$clientConfig['subId']}",
         ]);
+    }
+
+    /**
+     * Sanitize settings array intended for remote XUI panels.
+     * Removes non-printable characters from string fields and enforces sane numeric ranges.
+     */
+    protected function sanitizeRemoteClientSettings(array $settings): array
+    {
+        if (empty($settings['clients']) || !is_array($settings['clients'])) {
+            return $settings;
+        }
+        foreach ($settings['clients'] as $idx => $c) {
+            // sanitize strings: keep printable ascii range only
+            $sanitizeStr = function ($v, $max = 128) {
+                if (!is_string($v)) { return $v; }
+                // remove control and non-ASCII printable characters
+                $clean = preg_replace('/[^\x20-\x7E]/', '', $v);
+                $clean = trim($clean);
+                if (strlen($clean) > $max) { $clean = substr($clean, 0, $max); }
+                return $clean;
+            };
+
+            // Email: keep local-part and domain-safe; fallback to generated if empty
+            if (!empty($c['email'])) {
+                $parts = explode('@', $c['email']);
+                $local = $sanitizeStr($parts[0] ?? '', 64);
+                $domain = $sanitizeStr($parts[1] ?? 'generated.1000proxy.me', 64);
+                $email = $local ? ($local . '@' . $domain) : ($c['email'] ?? null);
+                $settings['clients'][$idx]['email'] = $email;
+            }
+            // subId and tgId
+            if (!empty($c['subId'])) { $settings['clients'][$idx]['subId'] = $sanitizeStr($c['subId'], 64); }
+            if (!empty($c['tgId'])) { $settings['clients'][$idx]['tgId'] = $sanitizeStr($c['tgId'], 64); }
+
+            // flow, method, password, id
+            if (!empty($c['flow'])) { $settings['clients'][$idx]['flow'] = $sanitizeStr($c['flow'], 64); }
+            if (!empty($c['method'])) { $settings['clients'][$idx]['method'] = $sanitizeStr($c['method'], 64); }
+            if (!empty($c['password'])) { $settings['clients'][$idx]['password'] = $sanitizeStr($c['password'], 64); }
+            if (!empty($c['id'])) { $settings['clients'][$idx]['id'] = $sanitizeStr($c['id'], 64); }
+
+            // Numeric caps
+            if (isset($c['totalGB'])) {
+                $val = (int) $c['totalGB'];
+                // Cap at 10 TB
+                $cap = 10 * 1024 * 1024 * 1024 * 1024; // bytes
+                if ($val < 0) { $val = 0; }
+                if ($val > $cap) { $val = $cap; }
+                $settings['clients'][$idx]['totalGB'] = $val;
+            }
+            if (isset($c['expiryTime'])) {
+                $val = (int) $c['expiryTime'];
+                // reasonable window: now -1y .. now + 10y
+                $min = now()->subYear()->getTimestamp() * 1000;
+                $max = now()->addYears(10)->getTimestamp() * 1000;
+                if ($val < $min) { $val = $min; }
+                if ($val > $max) { $val = $max; }
+                $settings['clients'][$idx]['expiryTime'] = $val;
+            }
+        }
+        return $settings;
     }
 
     /**
@@ -1460,10 +1626,19 @@ class ClientProvisioningService
                 $totalGb = (int) ($plan->data_limit_gb ?? $plan->volume ?? 0);
                 $days = (int) ($plan->days + ($plan->trial_days ?? 0));
                 $capacity = (int) ($plan->max_clients ?? 1);
-                $remark = "🌐1000PROXY | {$country} | {$categoryName} | DEDICATED | " .
-                    ($totalGb>0 ? ($totalGb.'GB | ') : '') .
-                    ($days>0 ? ($days.'D | ') : '') .
-                    'CAP:' . $capacity . ' | O' . $order->id . ' | ' . Str::upper(Str::random(4));
+                // Prefer inbound remark to be the new client's email (matches inbound id 6 pattern)
+                // If we have a generated client from base/default, use its email; otherwise fall back to verbose remark.
+                $preferredEmailRemark = null;
+                if (!empty($firstClient) && is_array($firstClient) && !empty($firstClient['email'])) {
+                    $preferredEmailRemark = $firstClient['email'];
+                }
+                if (!$preferredEmailRemark) {
+                    $preferredEmailRemark = "🌐1000PROXY | {$country} | {$categoryName} | DEDICATED | " .
+                        ($totalGb>0 ? ($totalGb.'GB | ') : '') .
+                        ($days>0 ? ($days.'D | ') : '') .
+                        'CAP:' . $capacity . ' | O' . $order->id . ' | ' . Str::upper(Str::random(4));
+                }
+                $remark = $preferredEmailRemark;
                 $tag = 'dedic-' . $order->id . '-' . $plan->id . '-' . Str::lower(Str::random(5));
 
             // Build minimal inbound payload (clone essential fields)

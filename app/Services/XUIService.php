@@ -507,6 +507,87 @@ class XUIService
     // === INBOUND MANAGEMENT METHODS ===
 
     /**
+     * Ensure outbound payloads conform to Xray expectations.
+     * Coerce streamSettings.wsSettings.headers into an associative map
+     * and ensure settings/streamSettings/sniffing/allocate are strings or JSON strings.
+     */
+    private function normalizeOutboundInboundPayload(array & $payload): void
+    {
+        try {
+            // Normalize streamSettings if provided as array or JSON string
+            if (isset($payload['streamSettings'])) {
+                $ss = $payload['streamSettings'];
+                if (is_string($ss) && $ss !== '') {
+                    $decoded = json_decode($ss, true);
+                    if (is_array($decoded)) {
+                        $ssArr = $decoded;
+                    } else {
+                        $ssArr = [];
+                    }
+                } elseif (is_array($ss)) {
+                    $ssArr = $ss;
+                } else {
+                    $ssArr = [];
+                }
+                // Ensure wsSettings.headers is associative map
+                if (isset($ssArr['wsSettings']) && is_array($ssArr['wsSettings'])) {
+                    $ws = $ssArr['wsSettings'];
+                    if (isset($ws['headers'])) {
+                        $headers = $ws['headers'];
+                        if (is_array($headers)) {
+                            // If list, coerce to map
+                            if (array_is_list($headers)) {
+                                $map = [];
+                                foreach ($headers as $pair) {
+                                    if (!is_array($pair)) { continue; }
+                                    $k = null; $v = null;
+                                    if (isset($pair['name']) && array_key_exists('value', $pair)) {
+                                        $k = (string)$pair['name'];
+                                        $v = is_scalar($pair['value']) ? (string)$pair['value'] : json_encode($pair['value']);
+                                    } elseif (isset($pair['key']) && array_key_exists('value', $pair)) {
+                                        $k = (string)$pair['key'];
+                                        $v = is_scalar($pair['value']) ? (string)$pair['value'] : json_encode($pair['value']);
+                                    } elseif (array_is_list($pair) && count($pair) >= 2) {
+                                        $k = (string)($pair[0] ?? '');
+                                        $v = is_scalar($pair[1]) ? (string)$pair[1] : json_encode($pair[1]);
+                                    } elseif (count($pair) === 1) {
+                                        $k = (string) array_key_first($pair);
+                                        $v = is_scalar(array_values($pair)[0]) ? (string) array_values($pair)[0] : json_encode(array_values($pair)[0]);
+                                    }
+                                    if ($k !== null && $k !== '') {
+                                        $map[trim($k)] = $v ?? '';
+                                    }
+                                }
+                                $ssArr['wsSettings']['headers'] = $map;
+                            } else {
+                                // ensure scalar/string values
+                                $map = [];
+                                foreach ($headers as $k => $v) {
+                                    $map[(string)$k] = is_scalar($v) ? (string)$v : json_encode($v);
+                                }
+                                $ssArr['wsSettings']['headers'] = $map;
+                            }
+                        } else {
+                            $ssArr['wsSettings']['headers'] = [];
+                        }
+                    }
+                }
+                // Write back normalized streamSettings
+                $payload['streamSettings'] = json_encode($ssArr);
+            }
+
+            // Ensure settings/sniffing/allocate are JSON strings if provided as arrays
+            foreach (['settings','sniffing','allocate'] as $k) {
+                if (isset($payload[$k]) && is_array($payload[$k])) {
+                    $payload[$k] = json_encode($payload[$k]);
+                }
+            }
+        } catch (\Throwable $_) {
+            // best-effort only
+        }
+    }
+
+    /**
      * Attempt to fetch system telemetry (CPU/Memory/Disk) from panel or sidecar.
      * Returns an array with keys: cpu_usage, memory_usage, disk_usage.
      * If not available, returns null to signal fallback.
@@ -575,6 +656,13 @@ class XUIService
     public function createInbound(array $inboundData): array
     {
         try {
+            // Last-mile defensive normalization: ensure streamSettings.wsSettings.headers
+            // is always an associative map (not a list). This prevents malformed JSON
+            // from reaching xray which may panic on unexpected types.
+            try {
+                $this->normalizeOutboundInboundPayload($inboundData);
+            } catch (\Throwable $_) {}
+
             logger()->channel('xui')->debug('createInbound request payload', [
                 'server_id' => $this->server->id,
                 'keys' => array_keys($inboundData),
@@ -602,6 +690,9 @@ class XUIService
      */
     public function updateInbound(int $inboundId, array $inboundData): array
     {
+        try {
+            $this->normalizeOutboundInboundPayload($inboundData);
+        } catch (\Throwable $_) {}
         $result = $this->makeAuthenticatedRequest('POST', "panel/api/inbounds/update/{$inboundId}", $inboundData);
         return $result['obj'] ?? [];
     }
@@ -684,6 +775,19 @@ class XUIService
                     $req = \Illuminate\Support\Facades\Http::timeout($this->timeout)->withOptions(['version' => '1.1'])->withHeaders($sessionHeaders + ['Connection' => 'close']);
                     // Persist the exact request we are about to send for forensic analysis
                     try {
+                        // Defensive normalization of clientSettings if provided as JSON string
+                        $payloadSettings = is_string($clientSettings) ? @json_decode($clientSettings, true) : $clientSettings;
+                        if (is_array($payloadSettings)) {
+                            // If payload contains streamSettings, normalize headers
+                            if (isset($payloadSettings['streamSettings']) && is_array($payloadSettings['streamSettings'])) {
+                                try {
+                                    $tmp = ['streamSettings' => $payloadSettings['streamSettings']];
+                                    $this->normalizeOutboundInboundPayload($tmp);
+                                    $payloadSettings['streamSettings'] = json_decode($tmp['streamSettings'], true);
+                                } catch (\Throwable $_) {}
+                            }
+                        }
+
                         $reqDump = [
                             'timestamp' => now()->toISOString(),
                             'server_id' => $this->server->id ?? null,
@@ -694,7 +798,15 @@ class XUIService
                         @file_put_contents(storage_path('app/xui_addClient_request_' . time() . '.json'), json_encode($reqDump, JSON_PRETTY_PRINT));
                     } catch (\Throwable $_) { /* ignore write failures */ }
 
-                    $resp = $req->asForm()->post($endpoint, [ 'id' => $inboundId, 'settings' => $clientSettings ]);
+                    // Ensure we send a normalized settings string
+                    $sendSettings = $clientSettings;
+                    try {
+                        if (is_array($payloadSettings)) {
+                            $sendSettings = json_encode($payloadSettings);
+                        }
+                    } catch (\Throwable $_) {}
+
+                    $resp = $req->asForm()->post($endpoint, [ 'id' => $inboundId, 'settings' => $sendSettings ]);
                     // Attempt to parse JSON if present
                     try { $json = $resp->json(); } catch (\Throwable $t) { $json = null; }
                     if ($resp->successful() && is_array($json)) {
