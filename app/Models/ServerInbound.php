@@ -106,6 +106,34 @@ class ServerInbound extends Model
     'allocate' => 'array',
     ];
 
+    /**
+     * Non-persisted transient flag used by provisioning flows to mark
+     * an inbound as "just created" for the lifetime of the current
+     * request. Implement as a model-level property and Eloquent
+     * attribute mutator/accessor so it is never written to the DB.
+     */
+    protected bool $provisioningJustCreatedFlag = false;
+
+    /**
+     * Mutator for provisioning_just_created attribute - store in a
+     * transient property rather than in Eloquent attributes so the
+     * flag is not persisted to the database.
+     */
+    public function setProvisioningJustCreatedAttribute($value): void
+    {
+        $this->provisioningJustCreatedFlag = (bool) $value;
+    }
+
+    /**
+     * Accessor for provisioning_just_created attribute - reads the
+     * transient flag. This keeps existing code that checks
+     * isset($inbound->provisioning_just_created) working.
+     */
+    public function getProvisioningJustCreatedAttribute(): bool
+    {
+        return $this->provisioningJustCreatedFlag;
+    }
+
     public function clients(): HasMany
     {
         return $this->hasMany(ServerClient::class, 'server_inbound_id');

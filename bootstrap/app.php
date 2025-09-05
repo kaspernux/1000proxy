@@ -70,6 +70,8 @@ use App\Console\Commands\DispatchFeatureAdXuiFetch;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
 use App\Console\Commands\ReconcileNowPayments;
+use App\Console\Commands\DiagnoseOrderProvisioning;
+use App\Console\Commands\ReprovisionOrders;
 
 
 
@@ -140,6 +142,8 @@ $app = Application::configure(basePath: dirname(__DIR__))
         XuiConfigurePanel::class,
         DispatchFeatureAdXuiFetch::class,
         ReconcileNowPayments::class,
+        DiagnoseOrderProvisioning::class,
+        ReprovisionOrders::class,
     ])
     ->withSchedule(function (Schedule $schedule) {
         $schedule->job(new PruneOldExportsJob())->dailyAt('02:15');

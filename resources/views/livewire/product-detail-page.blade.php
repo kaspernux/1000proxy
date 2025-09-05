@@ -171,6 +171,138 @@
                     </div>
                 </div>
 
+                <!-- Customer's Purchased Configurations Section -->
+                @if($customerOwnsPlan && !empty($customerConfigurations))
+                <div class="bg-gradient-to-r from-green-600/20 to-emerald-600/20 backdrop-blur-md rounded-2xl p-6 border border-green-500/30 hover:border-green-400/50 transition-all duration-300 mb-6">
+                    <h3 class="text-xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-green-400 to-emerald-400 mb-4 flex items-center">
+                        <x-custom-icon name="check-circle" class="w-6 h-6 mr-3 text-green-400" />
+                        Your Active Configurations
+                    </h3>
+                    <div class="space-y-4">
+                        <div class="bg-green-900/20 border border-green-500/30 rounded-lg p-4">
+                            <p class="text-green-300 text-sm mb-4">
+                                You've already purchased this plan! Here are your active proxy configurations:
+                            </p>
+
+                            @foreach($customerConfigurations as $index => $config)
+                            <div class="bg-white/5 rounded-lg p-4 mb-4 last:mb-0">
+                                <div class="flex justify-between items-start mb-3">
+                                    <h4 class="text-white font-semibold">Configuration #{{ $index + 1 }}</h4>
+                                    <span class="text-xs text-green-400 bg-green-400/20 px-2 py-1 rounded-full">Active</span>
+                                </div>
+
+                                <!-- Configuration Link -->
+                                @if(!empty($config['client_link']))
+                                <div class="mb-3">
+                                    <label class="block text-gray-400 text-sm mb-2">Client Configuration:</label>
+                                    <div class="bg-gray-900/50 rounded-lg p-3 border border-gray-700">
+                                        <code class="text-green-300 text-xs break-all select-all">{{ $config['client_link'] }}</code>
+                                    </div>
+                                    <button class="mt-2 text-xs text-blue-400 hover:text-blue-300" 
+                                            onclick="navigator.clipboard.writeText('{{ $config['client_link'] }}')">
+                                        📋 Copy Link
+                                    </button>
+                                </div>
+                                @endif
+
+                                <!-- Subscription Links -->
+                                @if(!empty($config['subscription_link']))
+                                <div class="mb-3">
+                                    <label class="block text-gray-400 text-sm mb-2">Subscription URL:</label>
+                                    <div class="bg-gray-900/50 rounded-lg p-3 border border-gray-700">
+                                        <code class="text-blue-300 text-xs break-all select-all">{{ $config['subscription_link'] }}</code>
+                                    </div>
+                                    <button class="mt-2 text-xs text-blue-400 hover:text-blue-300" 
+                                            onclick="navigator.clipboard.writeText('{{ $config['subscription_link'] }}')">
+                                        📋 Copy Subscription
+                                    </button>
+                                </div>
+                                @endif
+
+                                <!-- QR Codes -->
+                                @if(!empty($config['qr_codes']))
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    @if(!empty($config['qr_codes']['client']))
+                                    <div class="text-center">
+                                        <label class="block text-gray-400 text-sm mb-2">Client QR Code:</label>
+                                        <div class="bg-white p-2 rounded-lg inline-block">
+                                            <img src="{{ $config['qr_codes']['client'] }}" 
+                                                 alt="Client QR Code" 
+                                                 class="w-32 h-32 mx-auto">
+                                        </div>
+                                    </div>
+                                    @endif
+                                    @if(!empty($config['qr_codes']['subscription']))
+                                    <div class="text-center">
+                                        <label class="block text-gray-400 text-sm mb-2">Subscription QR Code:</label>
+                                        <div class="bg-white p-2 rounded-lg inline-block">
+                                            <img src="{{ $config['qr_codes']['subscription'] }}" 
+                                                 alt="Subscription QR Code" 
+                                                 class="w-32 h-32 mx-auto">
+                                        </div>
+                                    </div>
+                                    @endif
+                                </div>
+                                @endif
+
+                                <!-- Usage Information -->
+                                @if(!empty($config['usage_info']))
+                                <div class="mt-4 p-3 bg-blue-900/20 border border-blue-500/30 rounded-lg">
+                                    <h5 class="text-blue-300 font-medium mb-2">Usage Information:</h5>
+                                    <div class="grid grid-cols-2 gap-4 text-sm">
+                                        @if(isset($config['usage_info']['traffic_used_mb']))
+                                        <div>
+                                            <span class="text-gray-400">Traffic Used:</span>
+                                            <span class="text-white">{{ number_format($config['usage_info']['traffic_used_mb']) }} MB</span>
+                                        </div>
+                                        @endif
+                                        @if(isset($config['usage_info']['traffic_limit_mb']))
+                                        <div>
+                                            <span class="text-gray-400">Traffic Limit:</span>
+                                            <span class="text-white">{{ number_format($config['usage_info']['traffic_limit_mb']) }} MB</span>
+                                        </div>
+                                        @endif
+                                        @if(isset($config['usage_info']['expires_at']) && $config['usage_info']['expires_at'])
+                                        <div>
+                                            <span class="text-gray-400">Expires:</span>
+                                            <span class="text-white">{{ \Carbon\Carbon::parse($config['usage_info']['expires_at'])->format('M j, Y') }}</span>
+                                        </div>
+                                        @endif
+                                        @if(isset($config['usage_info']['status']))
+                                        <div>
+                                            <span class="text-gray-400">Status:</span>
+                                            <span class="text-green-400 capitalize">{{ $config['usage_info']['status'] }}</span>
+                                        </div>
+                                        @endif
+                                    </div>
+                                </div>
+                                @endif
+                            </div>
+                            @endforeach
+
+                            <!-- Quick Action Buttons -->
+                            <div class="flex flex-wrap gap-3 mt-6 pt-4 border-t border-green-500/20">
+                                <a href="/customer/my-active-servers" 
+                                   class="inline-flex items-center px-4 py-2 bg-green-600 hover:bg-green-500 text-white rounded-lg transition-colors duration-200">
+                                    <x-custom-icon name="cog-6-tooth" class="w-4 h-4 mr-2" />
+                                    Manage Servers
+                                </a>
+                                <a href="/customer/orders" 
+                                   class="inline-flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg transition-colors duration-200">
+                                    <x-custom-icon name="document-text" class="w-4 h-4 mr-2" />
+                                    View Orders
+                                </a>
+                                <button onclick="window.print()" 
+                                        class="inline-flex items-center px-4 py-2 bg-gray-600 hover:bg-gray-500 text-white rounded-lg transition-colors duration-200">
+                                    <x-custom-icon name="printer" class="w-4 h-4 mr-2" />
+                                    Print Configs
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                @endif
+
                 @if($this->serverPlan->server)
                 <div class="bg-white/10 backdrop-blur-md rounded-2xl p-6 border border-white/20 hover:border-white/30 transition-all duration-300 mb-6">
                     <h3 class="text-xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-cyan-400 mb-4 flex items-center">
