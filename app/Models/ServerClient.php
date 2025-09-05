@@ -273,6 +273,11 @@ class ServerClient extends Model
                     ->withTimestamps();
     }
 
+    public function orderServerClients(): \Illuminate\Database\Eloquent\Relations\HasMany
+    {
+        return $this->hasMany(OrderServerClient::class, 'server_client_id');
+    }
+
     public static function buildXuiClientLink(array $client, ServerInbound $inbound, $server): string
     {
         $protocol = strtolower($inbound->protocol);

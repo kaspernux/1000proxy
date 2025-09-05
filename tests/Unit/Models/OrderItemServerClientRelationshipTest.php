@@ -102,4 +102,35 @@ class OrderItemServerClientRelationshipTest extends TestCase
         // Test the accessor returns null
         $this->assertNull($orderItem->server_client);
     }
+
+    public function test_server_client_has_order_server_clients_relationship()
+    {
+        // Create necessary models
+        $customer = Customer::factory()->create();
+        $order = Order::factory()->create(['customer_id' => $customer->id]);
+        $serverPlan = ServerPlan::factory()->create();
+        $orderItem = OrderItem::factory()->create([
+            'order_id' => $order->id,
+            'server_plan_id' => $serverPlan->id,
+        ]);
+
+        // Create a server client
+        $serverClient = ServerClient::factory()->create([
+            'order_id' => $order->id,
+            'plan_id' => $serverPlan->id,
+        ]);
+
+        // Create the pivot record
+        OrderServerClient::create([
+            'order_id' => $order->id,
+            'order_item_id' => $orderItem->id,
+            'server_client_id' => $serverClient->id,
+            'provision_status' => 'completed',
+        ]);
+
+        // Test the reverse relationship
+        $this->assertNotNull($serverClient->orderServerClients);
+        $this->assertEquals(1, $serverClient->orderServerClients->count());
+        $this->assertEquals($order->id, $serverClient->orderServerClients->first()->order_id);
+    }
 }
