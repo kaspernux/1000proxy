@@ -69,7 +69,7 @@ class OrderItem extends Model
 
     public function serverClients(): \Illuminate\Database\Eloquent\Relations\BelongsToMany
     {
-        return $this->belongsToMany(ServerClient::class, 'order_server_clients')
+        return $this->belongsToMany(ServerClient::class, 'order_server_clients', 'order_item_id', 'server_client_id')
                     ->withPivot(['provision_status', 'provision_error', 'provision_attempts'])
                     ->withTimestamps();
     }
